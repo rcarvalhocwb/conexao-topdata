@@ -2,123 +2,123 @@ funcao;categoria;assinatura_oficial;situacao;id_matriz;fonte
 AbrirPortaComunicacao;comunicacao;byte AbrirPortaComunicacao(int Porta);DECLARADA_NO_PRODUTO;EI-002;SDK 6.0.2.0 EasyInner.cs
 AcionarBipCurto;tempo real;byte AcionarBipCurto(int Inner);DECLARADA_NO_PRODUTO;EI-048;SDK 6.0.2.0 EasyInner.cs
 AcionarBipLongo;tempo real;byte AcionarBipLongo(int Inner);DECLARADA_NO_PRODUTO;EI-049;SDK 6.0.2.0 EasyInner.cs
-AcionarRele1;tempo real;byte AcionarRele1(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+AcionarRele1;tempo real;byte AcionarRele1(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 AcionarRele2;tempo real;byte AcionarRele2(int Inner);DECLARADA_NO_PRODUTO;EI-047;SDK 6.0.2.0 EasyInner.cs
-ApagarHorariosAcesso;listas;byte ApagarHorariosAcesso(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ApagarHorariosSirene;listas;byte ApagarHorariosSirene(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ApagarListaAcesso;listas;byte ApagarListaAcesso(int Inner);ASSINATURA_CONHECIDA;EI-036;SDK 6.0.2.0 EasyInner.cs
-ApagarMensagensOffLine;listas;byte ApagarMensagensOffLine(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ApagarTodosUsuariosVerid;biometria;byte ApagarTodosUsuariosVerid(int Inner, string SenhaAdm);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ApagarUsuarioVerid;biometria;byte ApagarUsuarioVerid(int Inner, string Cartao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ApagarHorariosAcesso;listas;byte ApagarHorariosAcesso(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ApagarHorariosSirene;listas;byte ApagarHorariosSirene(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ApagarListaAcesso;listas;byte ApagarListaAcesso(int Inner);DECLARADA_NO_PRODUTO;EI-036;SDK 6.0.2.0 EasyInner.cs
+ApagarMensagensOffLine;listas;byte ApagarMensagensOffLine(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ApagarTodosUsuariosVerid;biometria;byte ApagarTodosUsuariosVerid(int Inner, string SenhaAdm);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ApagarUsuarioVerid;biometria;byte ApagarUsuarioVerid(int Inner, string Cartao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 AtribuirContadorGiro;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-AvisarQuandoMemoriaCheia;outros;byte AvisarQuandoMemoriaCheia(byte Avisa);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-CartaoMasterLiberaAcesso;outros;byte CartaoMasterLiberaAcesso(byte Libera);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+AvisarQuandoMemoriaCheia;outros;byte AvisarQuandoMemoriaCheia(byte Avisa);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+CartaoMasterLiberaAcesso;outros;byte CartaoMasterLiberaAcesso(byte Libera);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ColetarBilhete;coleta;byte ColetarBilhete(int Inner, ref byte Tipo, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, StringBuilder Cartao);DECLARADA_NO_PRODUTO;EI-039;SDK 6.0.2.0 EasyInner.cs
-CompararDigitalLeitor;biometria;byte CompararDigitalLeitor(int Inner, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-CompararPINVerid;biometria;byte CompararPINVerid(int Inner, string Cartao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-CompararTemplateVerid;biometria;byte CompararTemplateVerid(int Inner, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConectarModem;comunicacao;int ConectarModem(int Porta, string Str, int Tom, string Telefone, int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+CompararDigitalLeitor;biometria;byte CompararDigitalLeitor(int Inner, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+CompararPINVerid;biometria;byte CompararPINVerid(int Inner, string Cartao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+CompararTemplateVerid;biometria;byte CompararTemplateVerid(int Inner, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConectarModem;comunicacao;int ConectarModem(int Porta, string Str, int Tom, string Telefone, int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ConfigurarAcionamento1;configuracao;byte ConfigurarAcionamento1(byte Funcao, byte Tempo);DECLARADA_NO_PRODUTO;EI-016;SDK 6.0.2.0 EasyInner.cs
 ConfigurarAcionamento2;configuracao;byte ConfigurarAcionamento2(byte Funcao, byte Tempo);DECLARADA_NO_PRODUTO;EI-017;SDK 6.0.2.0 EasyInner.cs
-ConfigurarAjustesQualidadeBio;biometria;byte ConfigurarAjustesQualidadeBio(int Inner, byte Registro, byte Verificacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarAjustesSegurancaBio;biometria;byte ConfigurarAjustesSegurancaBio(int Inner, byte Identificacao, byte Verificacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarAjustesSensibilidadeBio;biometria;byte ConfigurarAjustesSensibilidadeBio(int Inner, byte Ganho, byte Brilho, byte Contraste);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarBio;biometria;byte ConfigurarBio(int Inner, byte HabilitaIdentificacao, byte HabilitaVerificacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarBioVariavel;biometria;void ConfigurarBioVariavel(int Maior);ASSINATURA_CONHECIDA;EI-026;SDK 6.0.2.0 EasyInner.cs
-ConfigurarBotaoExternoOffline;configuracao;byte ConfigurarBotaoExternoOffline(byte Funcao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarCapturaAdaptativaBio;biometria;byte ConfigurarCapturaAdaptativaBio(int Inner, byte Capturar, byte Total, byte Tempo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarAjustesQualidadeBio;biometria;byte ConfigurarAjustesQualidadeBio(int Inner, byte Registro, byte Verificacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarAjustesSegurancaBio;biometria;byte ConfigurarAjustesSegurancaBio(int Inner, byte Identificacao, byte Verificacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarAjustesSensibilidadeBio;biometria;byte ConfigurarAjustesSensibilidadeBio(int Inner, byte Ganho, byte Brilho, byte Contraste);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarBio;biometria;byte ConfigurarBio(int Inner, byte HabilitaIdentificacao, byte HabilitaVerificacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarBioVariavel;biometria;void ConfigurarBioVariavel(int Maior);DECLARADA_NO_PRODUTO;EI-026;SDK 6.0.2.0 EasyInner.cs
+ConfigurarBotaoExternoOffline;configuracao;byte ConfigurarBotaoExternoOffline(byte Funcao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarCapturaAdaptativaBio;biometria;byte ConfigurarCapturaAdaptativaBio(int Inner, byte Capturar, byte Total, byte Tempo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ConfigurarComportamentoIndexSearch;configuracao;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ConfigurarFiltroBio;biometria;byte ConfigurarFiltroBio(int Inner, byte Habilitar);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarFiltroBio;biometria;byte ConfigurarFiltroBio(int Inner, byte Habilitar);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ConfigurarInnerOffLine;configuracao;byte ConfigurarInnerOffLine();DECLARADA_NO_PRODUTO;EI-019;SDK 6.0.2.0 EasyInner.cs
 ConfigurarInnerOnLine;configuracao;byte ConfigurarInnerOnLine();DECLARADA_NO_PRODUTO;EI-018;SDK 6.0.2.0 EasyInner.cs
 ConfigurarLeitor1;configuracao;byte ConfigurarLeitor1(byte Operacao);DECLARADA_NO_PRODUTO;EI-014;SDK 6.0.2.0 EasyInner.cs
 ConfigurarLeitor2;configuracao;byte ConfigurarLeitor2(byte Operacao);DECLARADA_NO_PRODUTO;EI-015;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeAcura;configuracao;byte ConfigurarLeitorProximidadeAcura();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeHIDAbaTrack2;configuracao;byte ConfigurarLeitorProximidadeHIDAbaTrack2();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeMotorolaAbaTrack2;configuracao;byte ConfigurarLeitorProximidadeMotorolaAbaTrack2();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeSmartCard;configuracao;byte ConfigurarLeitorProximidadeSmartCard();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeSmartCardAcura;configuracao;byte ConfigurarLeitorProximidadeSmartCardAcura();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeWiegand;configuracao;byte ConfigurarLeitorProximidadeWiegand();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarLeitorProximidadeWiegandFacilityCode;configuracao;byte ConfigurarLeitorProximidadeWiegandFacilityCode();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeAcura;configuracao;byte ConfigurarLeitorProximidadeAcura();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeHIDAbaTrack2;configuracao;byte ConfigurarLeitorProximidadeHIDAbaTrack2();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeMotorolaAbaTrack2;configuracao;byte ConfigurarLeitorProximidadeMotorolaAbaTrack2();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeSmartCard;configuracao;byte ConfigurarLeitorProximidadeSmartCard();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeSmartCardAcura;configuracao;byte ConfigurarLeitorProximidadeSmartCardAcura();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeWiegand;configuracao;byte ConfigurarLeitorProximidadeWiegand();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarLeitorProximidadeWiegandFacilityCode;configuracao;byte ConfigurarLeitorProximidadeWiegandFacilityCode();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ConfigurarLeitorWiegandFacilityCodeSemSeparador;configuracao;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ConfigurarNivelLFD;configuracao;byte ConfigurarNivelLFD(byte NivelLFD);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarRedeVerid;biometria;byte ConfigurarRedeVerid(int Inner, byte Envia, byte Recebe, byte BroadCast);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ConfigurarTimeoutIdentificacao;configuracao;byte ConfigurarTimeoutIdentificacao(byte TimeoutIdentificacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarNivelLFD;configuracao;byte ConfigurarNivelLFD(byte NivelLFD);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarRedeVerid;biometria;byte ConfigurarRedeVerid(int Inner, byte Envia, byte Recebe, byte BroadCast);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarTimeoutIdentificacao;configuracao;byte ConfigurarTimeoutIdentificacao(byte TimeoutIdentificacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ConfigurarTipoLeitor;configuracao;byte ConfigurarTipoLeitor(byte Tipo);DECLARADA_NO_PRODUTO;EI-013;SDK 6.0.2.0 EasyInner.cs
-ConfigurarWiegandDoisLeitores;configuracao;byte ConfigurarWiegandDoisLeitores(byte Habilita, byte ExibirMensagem);ASSINATURA_CONHECIDA;EI-024;SDK 6.0.2.0 EasyInner.cs
-CriarUsuarioLeitorVerid;biometria;byte CriarUsuarioLeitorVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirCodigoEmpresa;configuracao;byte DefinirCodigoEmpresa(int Codigo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirConfiguracaoTecladoOnLine;configuracao;byte DefinirConfiguracaoTecladoOnLine(byte Digitos, byte EcoDisplay, byte Tempo, byte PosicaoCursor);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirConfiguracoesFuncoes;configuracao;byte DefinirConfiguracoesFuncoes(byte Funcao, byte Catraca, byte Rele1, byte Rele2, byte Lista, byte Biometria);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirEntradasMudancaOffLine;configuracao;byte DefinirEntradasMudancaOffLine(byte Teclado, byte Leitor1, byte Leitor2, byte Catraca);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirEntradasMudancaOffLineComBiometria;biometria;byte DefinirEntradasMudancaOffLineComBiometria(byte Teclado, byte Leitor1, byte Leitor2, byte Verificacao ,byte Identificacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirEntradasMudancaOnLine;configuracao;byte DefinirEntradasMudancaOnLine(byte Entrada);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirEventoSensor;configuracao;byte DefinirEventoSensor(byte Sensor, byte Evento, byte Tempo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirFormasPictogramasMillenium;configuracao;byte DefinirFormasPictogramasMillenium(byte Forma);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirFuncaoDefaultLeitoresProximidade;configuracao;byte DefinirFuncaoDefaultLeitoresProximidade(byte Funcao);ASSINATURA_CONHECIDA;EI-022;SDK 6.0.2.0 EasyInner.cs
-DefinirFuncaoDefaultSensorBiometria;biometria;byte DefinirFuncaoDefaultSensorBiometria(byte Funcao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ConfigurarWiegandDoisLeitores;configuracao;byte ConfigurarWiegandDoisLeitores(byte Habilita, byte ExibirMensagem);DECLARADA_NO_PRODUTO;EI-024;SDK 6.0.2.0 EasyInner.cs
+CriarUsuarioLeitorVerid;biometria;byte CriarUsuarioLeitorVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirCodigoEmpresa;configuracao;byte DefinirCodigoEmpresa(int Codigo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirConfiguracaoTecladoOnLine;configuracao;byte DefinirConfiguracaoTecladoOnLine(byte Digitos, byte EcoDisplay, byte Tempo, byte PosicaoCursor);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirConfiguracoesFuncoes;configuracao;byte DefinirConfiguracoesFuncoes(byte Funcao, byte Catraca, byte Rele1, byte Rele2, byte Lista, byte Biometria);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirEntradasMudancaOffLine;configuracao;byte DefinirEntradasMudancaOffLine(byte Teclado, byte Leitor1, byte Leitor2, byte Catraca);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirEntradasMudancaOffLineComBiometria;biometria;byte DefinirEntradasMudancaOffLineComBiometria(byte Teclado, byte Leitor1, byte Leitor2, byte Verificacao ,byte Identificacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirEntradasMudancaOnLine;configuracao;byte DefinirEntradasMudancaOnLine(byte Entrada);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirEventoSensor;configuracao;byte DefinirEventoSensor(byte Sensor, byte Evento, byte Tempo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirFormasPictogramasMillenium;configuracao;byte DefinirFormasPictogramasMillenium(byte Forma);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirFuncaoDefaultLeitoresProximidade;configuracao;byte DefinirFuncaoDefaultLeitoresProximidade(byte Funcao);DECLARADA_NO_PRODUTO;EI-022;SDK 6.0.2.0 EasyInner.cs
+DefinirFuncaoDefaultSensorBiometria;biometria;byte DefinirFuncaoDefaultSensorBiometria(byte Funcao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 DefinirFuncaoSensor1;configuracao;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-DefinirLogicaRele;configuracao;byte DefinirLogicaRele(byte Logica);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemApresentacaoEntrada;configuracao;byte DefinirMensagemApresentacaoEntrada(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemApresentacaoSaida;configuracao;byte DefinirMensagemApresentacaoSaida(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemEntradaOffLine;configuracao;byte DefinirMensagemEntradaOffLine(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemFuncaoOffLine;configuracao;byte DefinirMensagemFuncaoOffLine(string Mensagem, byte Funcao, byte Habilitada);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemPadraoMudancaOffLine;configuracao;byte DefinirMensagemPadraoMudancaOffLine(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemPadraoMudancaOnLine;configuracao;byte DefinirMensagemPadraoMudancaOnLine(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemPadraoOffLine;configuracao;byte DefinirMensagemPadraoOffLine(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirMensagemSaidaOffLine;configuracao;byte DefinirMensagemSaidaOffLine(byte ExibirData, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirNivelAcesso;configuracao;byte DefinirNivelAcesso(byte Nivel);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DefinirNumeroCartaoMaster;configuracao;byte DefinirNumeroCartaoMaster(string Master);ASSINATURA_CONHECIDA;EI-023;SDK 6.0.2.0 EasyInner.cs
+DefinirLogicaRele;configuracao;byte DefinirLogicaRele(byte Logica);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemApresentacaoEntrada;configuracao;byte DefinirMensagemApresentacaoEntrada(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemApresentacaoSaida;configuracao;byte DefinirMensagemApresentacaoSaida(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemEntradaOffLine;configuracao;byte DefinirMensagemEntradaOffLine(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemFuncaoOffLine;configuracao;byte DefinirMensagemFuncaoOffLine(string Mensagem, byte Funcao, byte Habilitada);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemPadraoMudancaOffLine;configuracao;byte DefinirMensagemPadraoMudancaOffLine(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemPadraoMudancaOnLine;configuracao;byte DefinirMensagemPadraoMudancaOnLine(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemPadraoOffLine;configuracao;byte DefinirMensagemPadraoOffLine(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirMensagemSaidaOffLine;configuracao;byte DefinirMensagemSaidaOffLine(byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirNivelAcesso;configuracao;byte DefinirNivelAcesso(byte Nivel);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DefinirNumeroCartaoMaster;configuracao;byte DefinirNumeroCartaoMaster(string Master);DECLARADA_NO_PRODUTO;EI-023;SDK 6.0.2.0 EasyInner.cs
 DefinirPadraoCartao;configuracao;byte DefinirPadraoCartao(byte Padrao);DECLARADA_NO_PRODUTO;EI-010;SDK 6.0.2.0 EasyInner.cs
-DefinirPorcentagemRevista;configuracao;byte DefinirPorcentagemRevista(byte Porcentagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+DefinirPorcentagemRevista;configuracao;byte DefinirPorcentagemRevista(byte Porcentagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 DefinirQuantidadeDigitosCartao;configuracao;byte DefinirQuantidadeDigitosCartao(byte Quantidade);DECLARADA_NO_PRODUTO;EI-011;SDK 6.0.2.0 EasyInner.cs
-DefinirSensorPortaOffline;configuracao;byte DefinirSensorPortaOffline(byte Logica);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+DefinirSensorPortaOffline;configuracao;byte DefinirSensorPortaOffline(byte Logica);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 DefinirTipoConexao;configuracao;byte DefinirTipoConexao(byte Tipo);DECLARADA_NO_PRODUTO;EI-001;SDK 6.0.2.0 EasyInner.cs
-DefinirTipoListaAcesso;configuracao;byte DefinirTipoListaAcesso(byte Tipo);ASSINATURA_CONHECIDA;EI-033;SDK 6.0.2.0 EasyInner.cs
-DesabilitarBipCatraca;outros;byte DesabilitarBipCatraca(byte Desabilita);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DesabilitarBipColetor;outros;byte DesabilitarBipColetor(byte Desabilita);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DesabilitarBloqueioCatracaMicroSwitch;outros;byte DesabilitarBloqueioCatracaMicroSwitch(byte Desabilita);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DesabilitarRele1;outros;byte DesabilitarRele1(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DesabilitarRele2;outros;byte DesabilitarRele2(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-DesabilitarWebServer;outros;byte DesabilitarWebServer(byte Desabilita);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+DefinirTipoListaAcesso;configuracao;byte DefinirTipoListaAcesso(byte Tipo);DECLARADA_NO_PRODUTO;EI-033;SDK 6.0.2.0 EasyInner.cs
+DesabilitarBipCatraca;outros;byte DesabilitarBipCatraca(byte Desabilita);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DesabilitarBipColetor;outros;byte DesabilitarBipColetor(byte Desabilita);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DesabilitarBloqueioCatracaMicroSwitch;outros;byte DesabilitarBloqueioCatracaMicroSwitch(byte Desabilita);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DesabilitarRele1;outros;byte DesabilitarRele1(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DesabilitarRele2;outros;byte DesabilitarRele2(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+DesabilitarWebServer;outros;byte DesabilitarWebServer(byte Desabilita);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 DesligarBackLite;sinalizacao;SEM ASSINATURA PUBLICADA;SO_O_NOME;EI-055;tabela de exportacao da DLL
-DesligarBipIntermitente;sinalizacao;byte DesligarBipIntermitente(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+DesligarBipIntermitente;sinalizacao;byte DesligarBipIntermitente(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 DesligarLedVerde;sinalizacao;byte DesligarLedVerde(int Inner);DECLARADA_NO_PRODUTO;EI-051;SDK 6.0.2.0 EasyInner.cs
 DesligarLedVermelho;sinalizacao;byte DesligarLedVermelho(int Inner);DECLARADA_NO_PRODUTO;EI-053;SDK 6.0.2.0 EasyInner.cs
-DevolverCartao;outros;byte DevolverCartao(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EngolirCartao;outros;byte EngolirCartao(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarAjustesBio;biometria;byte EnviarAjustesBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarBufferEventosMudancaAuto;envio;byte EnviarBufferEventosMudancaAuto(int NumInner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+DevolverCartao;outros;byte DevolverCartao(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EngolirCartao;outros;byte EngolirCartao(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarAjustesBio;biometria;byte EnviarAjustesBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarBufferEventosMudancaAuto;envio;byte EnviarBufferEventosMudancaAuto(int NumInner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 EnviarBufferTLM;envio;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 EnviarComandoAcessoNegado;envio;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 EnviarConfiguracoes;envio;byte EnviarConfiguracoes(int Inner);DECLARADA_NO_PRODUTO;EI-030;SDK 6.0.2.0 EasyInner.cs
-EnviarConfiguracoesFuncoes;envio;byte EnviarConfiguracoesFuncoes(int Inner);ASSINATURA_CONHECIDA;EI-031;SDK 6.0.2.0 EasyInner.cs
+EnviarConfiguracoesFuncoes;envio;byte EnviarConfiguracoesFuncoes(int Inner);DECLARADA_NO_PRODUTO;EI-031;SDK 6.0.2.0 EasyInner.cs
 EnviarConfiguracoesMudancaAutomaticaOnLineOffLine;envio;byte EnviarConfiguracoesMudancaAutomaticaOnLineOffLine(int Inner);DECLARADA_NO_PRODUTO;EI-029;SDK 6.0.2.0 EasyInner.cs
 EnviarCriptografiaTLM;envio;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-EnviarDigitalUsuario;biometria;byte EnviarDigitalUsuario(int Inner, string Usuario, byte[] Digital1, byte[] Digital2);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarDigitalUsuarioBio;biometria;byte EnviarDigitalUsuarioBio(int Inner, int TipoModBio, string Usuario, byte[] Digital1, byte[] Digital2);ASSINATURA_CONHECIDA;EI-058;SDK 6.0.2.0 EasyInner.cs
+EnviarDigitalUsuario;biometria;byte EnviarDigitalUsuario(int Inner, string Usuario, byte[] Digital1, byte[] Digital2);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarDigitalUsuarioBio;biometria;byte EnviarDigitalUsuarioBio(int Inner, int TipoModBio, string Usuario, byte[] Digital1, byte[] Digital2);DECLARADA_NO_PRODUTO;EI-058;SDK 6.0.2.0 EasyInner.cs
 EnviarFormasEntradasOnLine;envio;byte EnviarFormasEntradasOnLine(int Inner, byte QtdeDigitosTeclado, byte EcoTeclado, byte FormaEntrada, byte TempoTeclado, byte PosicaoCursorTeclado);DECLARADA_NO_PRODUTO;EI-032;SDK 6.0.2.0 EasyInner.cs
-EnviarHorarioVerao;envio;byte EnviarHorarioVerao(int Inner, byte DiaInicio, byte MesInicio, byte AnoInicio, byte HoraInicio, byte MinutoInicio, byte DiaFim, byte MesFim, byte AnoFim, byte HoraFim, byte MinutoFim);ASSINATURA_CONHECIDA;EI-009;SDK 6.0.2.0 EasyInner.cs
-EnviarHorariosAcesso;envio;byte EnviarHorariosAcesso(int Inner);ASSINATURA_CONHECIDA;EI-038;SDK 6.0.2.0 EasyInner.cs
-EnviarHorariosSirene;envio;byte EnviarHorariosSirene(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarListaAcesso;envio;byte EnviarListaAcesso(int Inner);ASSINATURA_CONHECIDA;EI-035;SDK 6.0.2.0 EasyInner.cs
-EnviarListaUsuariosSemDigitalBio;biometria;byte EnviarListaUsuariosSemDigitalBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+EnviarHorarioVerao;envio;byte EnviarHorarioVerao(int Inner, byte DiaInicio, byte MesInicio, byte AnoInicio, byte HoraInicio, byte MinutoInicio, byte DiaFim, byte MesFim, byte AnoFim, byte HoraFim, byte MinutoFim);DECLARADA_NO_PRODUTO;EI-009;SDK 6.0.2.0 EasyInner.cs
+EnviarHorariosAcesso;envio;byte EnviarHorariosAcesso(int Inner);DECLARADA_NO_PRODUTO;EI-038;SDK 6.0.2.0 EasyInner.cs
+EnviarHorariosSirene;envio;byte EnviarHorariosSirene(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarListaAcesso;envio;byte EnviarListaAcesso(int Inner);DECLARADA_NO_PRODUTO;EI-035;SDK 6.0.2.0 EasyInner.cs
+EnviarListaUsuariosSemDigitalBio;biometria;byte EnviarListaUsuariosSemDigitalBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 EnviarListaUsuariosSemDigitalBio500;biometria;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-EnviarListaUsuariosSemDigitalBioInnerAcesso;biometria;byte EnviarListaUsuariosSemDigitalBioInnerAcesso(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarListaUsuariosSemDigitalBioVariavel;biometria;byte EnviarListaUsuariosSemDigitalBioVariavel(int Inner, int QtdDigitosSD);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarMensagemImpressora00;envio;byte EnviarMensagemImpressora00(int Inner, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarMensagemImpressoraFF;envio;byte EnviarMensagemImpressoraFF(int Inner, string Mensagem);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+EnviarListaUsuariosSemDigitalBioInnerAcesso;biometria;byte EnviarListaUsuariosSemDigitalBioInnerAcesso(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarListaUsuariosSemDigitalBioVariavel;biometria;byte EnviarListaUsuariosSemDigitalBioVariavel(int Inner, int QtdDigitosSD);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarMensagemImpressora00;envio;byte EnviarMensagemImpressora00(int Inner, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarMensagemImpressoraFF;envio;byte EnviarMensagemImpressoraFF(int Inner, string Mensagem);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 EnviarMensagemPadraoOnLine;envio;byte EnviarMensagemPadraoOnLine(int Inner, byte ExibirData, string Mensagem);DECLARADA_NO_PRODUTO;EI-056;SDK 6.0.2.0 EasyInner.cs
 EnviarMensagemTemporariaOnLine;envio;byte EnviarMensagemTemporariaOnLine(int Inner, byte ExibirData, string Mensagem, byte Tempo);DECLARADA_NO_PRODUTO;EI-057;SDK 6.0.2.0 EasyInner.cs
-EnviarMensagensOffLine;envio;byte EnviarMensagensOffLine(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+EnviarMensagensOffLine;envio;byte EnviarMensagensOffLine(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 EnviarRelogio;envio;byte EnviarRelogio(int Inner, byte Dia, byte Mes, byte Ano, byte Hora, byte Minuto, byte Segundo);DECLARADA_NO_PRODUTO;EI-008;SDK 6.0.2.0 EasyInner.cs
-EnviarSinalizacao;envio;byte EnviarSinalizacao(int Inner, byte TipoSinalizacao, byte ModoSinalizacao, byte Terminal);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-EnviarStringInicializacaoModem;envio;int EnviarStringInicializacaoModem(string Str);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+EnviarSinalizacao;envio;byte EnviarSinalizacao(int Inner, byte TipoSinalizacao, byte ModoSinalizacao, byte Terminal);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+EnviarStringInicializacaoModem;envio;int EnviarStringInicializacaoModem(string Str);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 EnviarTempoKeepAliveRabbit;envio;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-EnviarUsuarioBio;biometria;byte EnviarUsuarioBio(int Inner, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+EnviarUsuarioBio;biometria;byte EnviarUsuarioBio(int Inner, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ExecInClientDLL;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-FazerIdentificacaoBiometricaBio;biometria;byte FazerIdentificacaoBiometricaBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-FazerVerificacaoBiometricaBio;biometria;byte FazerVerificacaoBiometricaBio(int Inner, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+FazerIdentificacaoBiometricaBio;biometria;byte FazerIdentificacaoBiometricaBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+FazerVerificacaoBiometricaBio;biometria;byte FazerVerificacaoBiometricaBio(int Inner, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 FecharPortaComunicacao;comunicacao;void FecharPortaComunicacao();DECLARADA_NO_PRODUTO;EI-003;SDK 6.0.2.0 EasyInner.cs
 GetBufferConfigDLL;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 GetBufferMsgDLL;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
@@ -126,24 +126,24 @@ HabilitaMudancaEventoSeta;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de e
 HabilitaQrAsciiEstendido;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 HabilitarCriptografia;configuracao;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 HabilitarMudancaOnLineOffLine;configuracao;byte HabilitarMudancaOnLineOffLine(byte Habilita, byte Tempo);DECLARADA_NO_PRODUTO;EI-028;SDK 6.0.2.0 EasyInner.cs
-HabilitarScoreFuncoes;configuracao;byte HabilitarScoreFuncoes(int Funcao, byte Score);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-HabilitarScoreMensagemOffLine;configuracao;byte HabilitarScoreMensagemOffLine(int Inner, byte Tipo, byte Habilitar);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+HabilitarScoreFuncoes;configuracao;byte HabilitarScoreFuncoes(int Funcao, byte Score);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+HabilitarScoreMensagemOffLine;configuracao;byte HabilitarScoreMensagemOffLine(int Inner, byte Tipo, byte Habilitar);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 HabilitarTeclado;configuracao;byte HabilitarTeclado(byte Habilita, byte Ecoar);DECLARADA_NO_PRODUTO;EI-020;SDK 6.0.2.0 EasyInner.cs
-IncluirUsuarioSemDigitalBio;biometria;byte IncluirUsuarioSemDigitalBio(string Cartao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+IncluirUsuarioSemDigitalBio;biometria;byte IncluirUsuarioSemDigitalBio(string Cartao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 IncluirUsuarioSemDigitalBio500;biometria;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-IncluirUsuarioSemDigitalBioInnerAcesso;biometria;byte IncluirUsuarioSemDigitalBioInnerAcesso(string Cartao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-IncluirUsuarioVerid;biometria;byte IncluirUsuarioVerid(int Inner, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-InicializarColetaListaUsuariosBio;biometria;void InicializarColetaListaUsuariosBio();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-InserirHorarioAcesso;listas;byte InserirHorarioAcesso(byte Horario, byte DiaSemana, byte FaixaDia, byte Hora, byte Minuto);ASSINATURA_CONHECIDA;EI-037;SDK 6.0.2.0 EasyInner.cs
-InserirHorarioMudancaEntrada;listas;byte InserirHorarioMudancaEntrada(byte Hora1, byte Minuto1, byte Hora2, byte Minuto2, byte Hora3, byte Minuto3);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-InserirHorarioMudancaSaida;listas;byte InserirHorarioMudancaSaida(byte Hora1, byte Minuto1, byte Hora2, byte Minuto2, byte Hora3, byte Minuto3);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-InserirHorarioSirene;listas;byte InserirHorarioSirene(byte Hora, byte Minuto, byte Segunda, byte Terca, byte Quarta, byte Quinta, byte Sexta, byte Sabado, byte DomingoFeriado);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-InserirQuantidadeDigitoVariavel;listas;byte InserirQuantidadeDigitoVariavel(byte Digito);ASSINATURA_CONHECIDA;EI-012;SDK 6.0.2.0 EasyInner.cs
-InserirUsuarioLeitorBio;biometria;byte InserirUsuarioLeitorBio(int Inner, byte Tipo, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-InserirUsuarioListaAcesso;listas;byte InserirUsuarioListaAcesso(string Cartao, byte Horario);ASSINATURA_CONHECIDA;EI-034;SDK 6.0.2.0 EasyInner.cs
-LerByteModem;outros;int LerByteModem();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+IncluirUsuarioSemDigitalBioInnerAcesso;biometria;byte IncluirUsuarioSemDigitalBioInnerAcesso(string Cartao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+IncluirUsuarioVerid;biometria;byte IncluirUsuarioVerid(int Inner, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+InicializarColetaListaUsuariosBio;biometria;void InicializarColetaListaUsuariosBio();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+InserirHorarioAcesso;listas;byte InserirHorarioAcesso(byte Horario, byte DiaSemana, byte FaixaDia, byte Hora, byte Minuto);DECLARADA_NO_PRODUTO;EI-037;SDK 6.0.2.0 EasyInner.cs
+InserirHorarioMudancaEntrada;listas;byte InserirHorarioMudancaEntrada(byte Hora1, byte Minuto1, byte Hora2, byte Minuto2, byte Hora3, byte Minuto3);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+InserirHorarioMudancaSaida;listas;byte InserirHorarioMudancaSaida(byte Hora1, byte Minuto1, byte Hora2, byte Minuto2, byte Hora3, byte Minuto3);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+InserirHorarioSirene;listas;byte InserirHorarioSirene(byte Hora, byte Minuto, byte Segunda, byte Terca, byte Quarta, byte Quinta, byte Sexta, byte Sabado, byte DomingoFeriado);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+InserirQuantidadeDigitoVariavel;listas;byte InserirQuantidadeDigitoVariavel(byte Digito);DECLARADA_NO_PRODUTO;EI-012;SDK 6.0.2.0 EasyInner.cs
+InserirUsuarioLeitorBio;biometria;byte InserirUsuarioLeitorBio(int Inner, byte Tipo, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+InserirUsuarioListaAcesso;listas;byte InserirUsuarioListaAcesso(string Cartao, byte Horario);DECLARADA_NO_PRODUTO;EI-034;SDK 6.0.2.0 EasyInner.cs
+LerByteModem;outros;int LerByteModem();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 LerContadorGiro;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-LerSensoresInner;outros;byte LerSensoresInner(int Inner, ref byte StatusSensor1, ref byte StatusSensor2, ref byte StatusSensor3);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+LerSensoresInner;outros;byte LerSensoresInner(int Inner, ref byte StatusSensor1, ref byte StatusSensor2, ref byte StatusSensor3);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 LerSmartCard;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 LevantarParaOnLine;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 LiberarCatracaDoisSentidos;tempo real;byte LiberarCatracaDoisSentidos(int Inner);DECLARADA_NO_PRODUTO;EI-045;SDK 6.0.2.0 EasyInner.cs
@@ -153,114 +153,114 @@ LiberarCatracaEntradaInvertida;tempo real;byte LiberarCatracaEntradaInvertida(in
 LiberarCatracaSaida;tempo real;byte LiberarCatracaSaida(int Inner);DECLARADA_NO_PRODUTO;EI-042;SDK 6.0.2.0 EasyInner.cs
 LiberarCatracaSaidaInvertida;tempo real;byte LiberarCatracaSaidaInvertida(int Inner);DECLARADA_NO_PRODUTO;EI-044;SDK 6.0.2.0 EasyInner.cs
 LigarBackLite;sinalizacao;SEM ASSINATURA PUBLICADA;SO_O_NOME;EI-054;tabela de exportacao da DLL
-LigarBipIntermitente;sinalizacao;byte LigarBipIntermitente(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+LigarBipIntermitente;sinalizacao;byte LigarBipIntermitente(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 LigarLedVerde;sinalizacao;byte LigarLedVerde(int Inner);DECLARADA_NO_PRODUTO;EI-050;SDK 6.0.2.0 EasyInner.cs
 LigarLedVermelho;sinalizacao;byte LigarLedVermelho(int Inner);DECLARADA_NO_PRODUTO;EI-052;SDK 6.0.2.0 EasyInner.cs
-LocalizarPrimeiroUsuarioVerid;biometria;byte LocalizarPrimeiroUsuarioVerid(int Inner, byte Modo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-LocalizarProximoUsuarioVerid;biometria;byte LocalizarProximoUsuarioVerid(int Inner, byte Modo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-LocalizarUsuarioVerid;biometria;byte LocalizarUsuarioVerid(int Inner, byte Modo, byte Digitos, string Cartao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ManterRele1Acionado;outros;byte ManterRele1Acionado(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ManterRele2Acionado;outros;byte ManterRele2Acionado(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+LocalizarPrimeiroUsuarioVerid;biometria;byte LocalizarPrimeiroUsuarioVerid(int Inner, byte Modo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+LocalizarProximoUsuarioVerid;biometria;byte LocalizarProximoUsuarioVerid(int Inner, byte Modo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+LocalizarUsuarioVerid;biometria;byte LocalizarUsuarioVerid(int Inner, byte Modo, byte Digitos, string Cartao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ManterRele1Acionado;outros;byte ManterRele1Acionado(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ManterRele2Acionado;outros;byte ManterRele2Acionado(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 PermitirCadastroInnerBio;biometria;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-PermitirCadastroInnerBioVerid;biometria;byte PermitirCadastroInnerBioVerid(byte Permite);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+PermitirCadastroInnerBioVerid;biometria;byte PermitirCadastroInnerBioVerid(byte Permite);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 Ping;comunicacao;byte Ping(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 PingOnLine;comunicacao;byte PingOnLine(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 PreencherBufferTLM;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 ReceberBufferConfig;leitura;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 ReceberBufferMsgA;leitura;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberConfiguracoesInner;leitura;byte ReceberConfiguracoesInner(int Inner, byte[] ConfiguracoesInner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberConfiguracoesInner;leitura;byte ReceberConfiguracoesInner(int Inner, byte[] ConfiguracoesInner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberDadosOnLine;leitura;byte ReceberDadosOnLine(int Inner, ref byte Origem, ref byte Complemento, StringBuilder Cartao, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, ref byte Segundo);DECLARADA_NO_PRODUTO;EI-040;SDK 6.0.2.0 EasyInner.cs
 ReceberDadosOnLine2;leitura;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberDadosOnLine_ComLetras;leitura;byte ReceberDadosOnLine_ComLetras(int Inner, ref byte Origem, ref byte Complemento, StringBuilder Cartao, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, ref byte Segundo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberDadosOnLine_ComLetras;leitura;byte ReceberDadosOnLine_ComLetras(int Inner, ref byte Origem, ref byte Complemento, StringBuilder Cartao, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, ref byte Segundo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberDadosOnLine_Hexadecimal;leitura;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberDadosOnLine_QRCodeComLetras;leitura;byte ReceberDadosOnLine_QRCodeComLetras(int Inner, ref byte Origem, ref byte Complemento, StringBuilder Cartao, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, ref byte Segundo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberDataHoraDadosOnLine;leitura;byte ReceberDataHoraDadosOnLine(byte Recebe);ASSINATURA_CONHECIDA;EI-027;SDK 6.0.2.0 EasyInner.cs
-ReceberDigitalUsuario;biometria;byte ReceberDigitalUsuario(int Inner, byte[] Digital, int TamResposta);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberDigitalUsuarioBio;biometria;byte ReceberDigitalUsuarioBio(int Inner, byte[] BufferTemplate, int TamanhoReceber);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberDadosOnLine_QRCodeComLetras;leitura;byte ReceberDadosOnLine_QRCodeComLetras(int Inner, ref byte Origem, ref byte Complemento, StringBuilder Cartao, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, ref byte Segundo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberDataHoraDadosOnLine;leitura;byte ReceberDataHoraDadosOnLine(byte Recebe);DECLARADA_NO_PRODUTO;EI-027;SDK 6.0.2.0 EasyInner.cs
+ReceberDigitalUsuario;biometria;byte ReceberDigitalUsuario(int Inner, byte[] Digital, int TamResposta);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberDigitalUsuarioBio;biometria;byte ReceberDigitalUsuarioBio(int Inner, byte[] BufferTemplate, int TamanhoReceber);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberInformacoesInner;leitura;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberListaPacUsuariosBio;biometria;byte ReceberListaPacUsuariosBio(int Inner, byte[] ListaUsuarios, int TamanhoBuffer);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberListaPacUsuariosBio;biometria;byte ReceberListaPacUsuariosBio(int Inner, byte[] ListaUsuarios, int TamanhoBuffer);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberListaUsuariosDigital;biometria;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberModeloBio;biometria;byte ReceberModeloBio(int Inner, byte OnLine, ref int Modelo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberPacoteListaUsuariosBio;biometria;byte ReceberPacoteListaUsuariosBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberModeloBio;biometria;byte ReceberModeloBio(int Inner, byte OnLine, ref int Modelo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberPacoteListaUsuariosBio;biometria;byte ReceberPacoteListaUsuariosBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberQrAsciiEstendido;leitura;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberQuantidadeBilhetes;coleta;byte ReceberQuantidadeBilhetes(int Inner, int[] QtdeBilhetes);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberQuantidadeUsuariosBio;biometria;byte ReceberQuantidadeUsuariosBio(int Inner, byte OnLine, ref int Quantidade);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberQuantidadeBilhetes;coleta;byte ReceberQuantidadeBilhetes(int Inner, int[] QtdeBilhetes);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberQuantidadeUsuariosBio;biometria;byte ReceberQuantidadeUsuariosBio(int Inner, byte OnLine, ref int Quantidade);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberRelogio;leitura;byte ReceberRelogio(int Inner, ref byte Dia, ref byte Mes, ref byte Ano, ref byte Hora, ref byte Minuto, ref byte Segundo);DECLARADA_NO_PRODUTO;EI-007;SDK 6.0.2.0 EasyInner.cs
-ReceberRespostaRequisicaoBio;biometria;byte ReceberRespostaRequisicaoBio(int Inner, ref int TamResposta);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberRespostaRequisicaoBio;biometria;byte ReceberRespostaRequisicaoBio(int Inner, ref int TamResposta);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberTemplateCapturadoInner;biometria;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-ReceberTemplateLeitor;biometria;byte ReceberTemplateLeitor(int Inner, byte OnLine, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberTemplateLeitorInnerBio;biometria;byte ReceberTemplateLeitorInnerBio(int Inner, byte[] TemplateRecebido, int Tamanho);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberTotalUsuariosVerid;biometria;byte ReceberTotalUsuariosVerid(int Inner, ref int Total);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberUsuarioCadastradoBio;biometria;byte ReceberUsuarioCadastradoBio(int Inner, byte OnLine, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberUsuarioComDigital;biometria;byte ReceberUsuarioComDigital(byte[] Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberUsuarioLista;leitura;byte ReceberUsuarioLista(int Inner, StringBuilder Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberUsuarioVerid;biometria;byte ReceberUsuarioVerid(int Inner, byte Modo, ref byte Digitos, byte[] Template, string Cartao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberVersaoBio;biometria;byte ReceberVersaoBio(int Inner, byte OnLine, ref int VersaoAlta, ref int VersaoBaixa);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberTemplateLeitor;biometria;byte ReceberTemplateLeitor(int Inner, byte OnLine, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberTemplateLeitorInnerBio;biometria;byte ReceberTemplateLeitorInnerBio(int Inner, byte[] TemplateRecebido, int Tamanho);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberTotalUsuariosVerid;biometria;byte ReceberTotalUsuariosVerid(int Inner, ref int Total);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberUsuarioCadastradoBio;biometria;byte ReceberUsuarioCadastradoBio(int Inner, byte OnLine, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberUsuarioComDigital;biometria;byte ReceberUsuarioComDigital(byte[] Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberUsuarioLista;leitura;byte ReceberUsuarioLista(int Inner, StringBuilder Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberUsuarioVerid;biometria;byte ReceberUsuarioVerid(int Inner, byte Modo, ref byte Digitos, byte[] Template, string Cartao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberVersaoBio;biometria;byte ReceberVersaoBio(int Inner, byte OnLine, ref int VersaoAlta, ref int VersaoBaixa);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ReceberVersaoFirmware;leitura;byte ReceberVersaoFirmware(int Inner, ref byte Linha, ref short Variacao, ref byte VersaoAlta, ref byte VersaoBaixa, ref byte VersaoSufixo, ref byte InnerAcessoBio);DECLARADA_NO_PRODUTO;EI-006;SDK 6.0.2.0 EasyInner.cs
-ReceberVersaoFirmware6xx;leitura;byte ReceberVersaoFirmware6xx(int Inner, ref byte Linha, ref short Variacao, ref byte VersaoAlta, ref byte VersaoBaixa, ref byte VersaoSufixo, ref byte InnerAcessoBio, ref byte TipoModBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ReceberVersaoFirmware6xx_ComComplementar;leitura;byte ReceberVersaoFirmware6xx_ComComplementar(int Inner, ref byte Linha, ref short Variacao, ref byte VersaoAlta, ref byte VersaoBaixa, ref byte VersaoSufixo, ref byte InnerAcessoBio, ref byte TipoModBio, ref byte ComplementarVersaoSuperior, ref byte ComplementarVersaoInferior, ref byte TipoDeOperacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RegistrarAcessoNegado;outros;byte RegistrarAcessoNegado(byte TipoRegistro);ASSINATURA_CONHECIDA;EI-021;SDK 6.0.2.0 EasyInner.cs
-RequisitarCadastrarUsuarioLeitorInnerBio;biometria;byte RequisitarCadastrarUsuarioLeitorInnerBio(int Inner, int TipoModBio, byte Solicitacao, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarEnviarAjustesBio;biometria;byte RequisitarEnviarAjustesBio(int Inner, int TipoModBio, byte[] AjustesBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarExcluirTodosUsuariosBio;biometria;byte RequisitarExcluirTodosUsuariosBio(int Inner, int TipoComBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarExcluirUsuarioBio;biometria;byte RequisitarExcluirUsuarioBio(int Inner, int TipoComBio, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarHabilitarIdentificacaoVerificacao;configuracao;byte RequisitarHabilitarIdentificacaoVerificacao(int Inner, int TipoModBio, int Identificacao, int Verificacao);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarIdentificarUsuarioLeitorBio;biometria;byte RequisitarIdentificarUsuarioLeitorBio(int Inner, int TipoModBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarListarUsuariosBio;biometria;byte RequisitarListarUsuariosBio(int Inner, int TipoComBio, int NumPacote);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarModeloBio;biometria;byte RequisitarModeloBio(int Inner, int TipoComBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarQuantidadeUsuariosBio;biometria;byte RequisitarQuantidadeUsuariosBio(int Inner, int TipoComBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarReceberTemplateLeitorInnerBio;biometria;byte RequisitarReceberTemplateLeitorInnerBio(int Inner, int TipoModBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarUsuarioCadastradoBio;biometria;byte RequisitarUsuarioCadastradoBio(int Inner, int TipoModBio, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarVerificarCadastroUsuarioBio;biometria;byte RequisitarVerificarCadastroUsuarioBio(int Inner, int TipoModBio, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarVerificarDigitalBio;biometria;byte RequisitarVerificarDigitalBio(int Inner, int TipoModBio, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RequisitarVersaoBio;biometria;byte RequisitarVersaoBio(int Inner, int TipoComBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+ReceberVersaoFirmware6xx;leitura;byte ReceberVersaoFirmware6xx(int Inner, ref byte Linha, ref short Variacao, ref byte VersaoAlta, ref byte VersaoBaixa, ref byte VersaoSufixo, ref byte InnerAcessoBio, ref byte TipoModBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ReceberVersaoFirmware6xx_ComComplementar;leitura;byte ReceberVersaoFirmware6xx_ComComplementar(int Inner, ref byte Linha, ref short Variacao, ref byte VersaoAlta, ref byte VersaoBaixa, ref byte VersaoSufixo, ref byte InnerAcessoBio, ref byte TipoModBio, ref byte ComplementarVersaoSuperior, ref byte ComplementarVersaoInferior, ref byte TipoDeOperacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RegistrarAcessoNegado;outros;byte RegistrarAcessoNegado(byte TipoRegistro);DECLARADA_NO_PRODUTO;EI-021;SDK 6.0.2.0 EasyInner.cs
+RequisitarCadastrarUsuarioLeitorInnerBio;biometria;byte RequisitarCadastrarUsuarioLeitorInnerBio(int Inner, int TipoModBio, byte Solicitacao, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarEnviarAjustesBio;biometria;byte RequisitarEnviarAjustesBio(int Inner, int TipoModBio, byte[] AjustesBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarExcluirTodosUsuariosBio;biometria;byte RequisitarExcluirTodosUsuariosBio(int Inner, int TipoComBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarExcluirUsuarioBio;biometria;byte RequisitarExcluirUsuarioBio(int Inner, int TipoComBio, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarHabilitarIdentificacaoVerificacao;configuracao;byte RequisitarHabilitarIdentificacaoVerificacao(int Inner, int TipoModBio, int Identificacao, int Verificacao);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarIdentificarUsuarioLeitorBio;biometria;byte RequisitarIdentificarUsuarioLeitorBio(int Inner, int TipoModBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarListarUsuariosBio;biometria;byte RequisitarListarUsuariosBio(int Inner, int TipoComBio, int NumPacote);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarModeloBio;biometria;byte RequisitarModeloBio(int Inner, int TipoComBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarQuantidadeUsuariosBio;biometria;byte RequisitarQuantidadeUsuariosBio(int Inner, int TipoComBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarReceberTemplateLeitorInnerBio;biometria;byte RequisitarReceberTemplateLeitorInnerBio(int Inner, int TipoModBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarUsuarioCadastradoBio;biometria;byte RequisitarUsuarioCadastradoBio(int Inner, int TipoModBio, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarVerificarCadastroUsuarioBio;biometria;byte RequisitarVerificarCadastroUsuarioBio(int Inner, int TipoModBio, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarVerificarDigitalBio;biometria;byte RequisitarVerificarDigitalBio(int Inner, int TipoModBio, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RequisitarVersaoBio;biometria;byte RequisitarVersaoBio(int Inner, int TipoComBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 ResetarModoOnLine;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-RespostaCadastrarUsuarioLeitorInnerBio;biometria;byte RespostaCadastrarUsuarioLeitorInnerBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaEnviarAjustesBio;biometria;byte RespostaEnviarAjustesBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaEnviarDigitalUsuarioBio;biometria;byte RespostaEnviarDigitalUsuarioBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaExcluirTodosUsuariosBio;biometria;byte RespostaExcluirTodosUsuariosBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaExcluirUsuarioBio;biometria;byte RespostaExcluirUsuarioBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaHabilitarIdentificacaoVerificacao;configuracao;byte RespostaHabilitarIdentificacaoVerificacao(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaIdentificarUsuarioLeitorBio;biometria;byte RespostaIdentificarUsuarioLeitorBio(int Inner, byte[] UsuarioIdentificado);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaListarUsuariosBio;biometria;byte RespostaListarUsuariosBio(int Inner, ref int QtdPacotes, ref int Tamanho);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaModeloBio;biometria;byte RespostaModeloBio(int Inner, byte[] ModeloBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaQuantidadeUsuariosBio;biometria;byte RespostaQuantidadeUsuariosBio(int Inner, ref int QtdUsuariosBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaReceberTemplateLeitorInnerBio;biometria;byte RespostaReceberTemplateLeitorInnerBio(int Inner, ref int Tamanho);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaUsuarioCadastradoBio;biometria;byte RespostaUsuarioCadastradoBio(int Inner, ref int TamanhoReceber);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaVerificarCadastroUsuarioBio;biometria;byte RespostaVerificarCadastroUsuarioBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaVerificarDigitalBio;biometria;byte RespostaVerificarDigitalBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-RespostaVersaoBio;biometria;byte RespostaVersaoBio(int Inner, byte[] VersaoBio);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoComparacaoDigitalLeitor;biometria;byte ResultadoComparacaoDigitalLeitor(int Inner, byte OnLine);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoComparacaoPINVerid;biometria;byte ResultadoComparacaoPINVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoComparacaoTemplateVerid;biometria;byte ResultadoComparacaoTemplateVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoConfiguracaoBio;biometria;byte ResultadoConfiguracaoBio(int Inner, byte OnLine);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoConfiguracaoRedeVerid;biometria;byte ResultadoConfiguracaoRedeVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoExclusaoTodosUsuariosVerid;biometria;byte ResultadoExclusaoTodosUsuariosVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoExclusaoUsuarioVerid;biometria;byte ResultadoExclusaoUsuarioVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoIdentificacaoBiometrica;biometria;byte ResultadoIdentificacaoBiometrica(int Inner, byte OnLine, byte[] Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoInclusaoUsuarioLeitorVerid;biometria;byte ResultadoInclusaoUsuarioLeitorVerid(int Inner, byte[] Template);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoInclusaoUsuarioVerid;biometria;byte ResultadoInclusaoUsuarioVerid(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoInsercaoUsuarioLeitorBio;biometria;byte ResultadoInsercaoUsuarioLeitorBio(int Inner, byte OnLine);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-ResultadoVerificacaoBiometrica;biometria;byte ResultadoVerificacaoBiometrica(int Inner, byte OnLine);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SetarBioLight;biometria;void SetarBioLight(int Light);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SetarBioVariavel;biometria;void SetarBioVariavel(int Maior);ASSINATURA_CONHECIDA;EI-025;SDK 6.0.2.0 EasyInner.cs
-SetarInnerOld;outros;void SetarInnerOld(int Inner,int Old);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarDigitalUsuario;biometria;byte SolicitarDigitalUsuario(int Inner, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarExclusaoUsuario;outros;byte SolicitarExclusaoUsuario(int Inner, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarListaUsuariosBio;biometria;byte SolicitarListaUsuariosBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarListaUsuariosBioVariavel;biometria;byte SolicitarListaUsuariosBioVariavel(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarListaUsuariosComDigital;biometria;byte SolicitarListaUsuariosComDigital(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarModeloBio;biometria;byte SolicitarModeloBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarQuantidadeUsuariosBio;biometria;byte SolicitarQuantidadeUsuariosBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarTemplateLeitor;biometria;byte SolicitarTemplateLeitor(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarTotalUsuariosVerid;biometria;byte SolicitarTotalUsuariosVerid(int Inner, byte Modo);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarUsuarioCadastradoBio;biometria;byte SolicitarUsuarioCadastradoBio(int Inner, string Usuario);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-SolicitarVersaoBio;biometria;byte SolicitarVersaoBio(int Inner);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-TemProximoPacote;outros;int TemProximoPacote();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-TemProximoUsuario;outros;int TemProximoUsuario();ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-UsuarioFoiEnviado;outros;byte UsuarioFoiEnviado(int Inner, byte OnLine);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
-UsuarioFoiExcluido;outros;byte UsuarioFoiExcluido(int Inner, byte OnLine);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+RespostaCadastrarUsuarioLeitorInnerBio;biometria;byte RespostaCadastrarUsuarioLeitorInnerBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaEnviarAjustesBio;biometria;byte RespostaEnviarAjustesBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaEnviarDigitalUsuarioBio;biometria;byte RespostaEnviarDigitalUsuarioBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaExcluirTodosUsuariosBio;biometria;byte RespostaExcluirTodosUsuariosBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaExcluirUsuarioBio;biometria;byte RespostaExcluirUsuarioBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaHabilitarIdentificacaoVerificacao;configuracao;byte RespostaHabilitarIdentificacaoVerificacao(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaIdentificarUsuarioLeitorBio;biometria;byte RespostaIdentificarUsuarioLeitorBio(int Inner, byte[] UsuarioIdentificado);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaListarUsuariosBio;biometria;byte RespostaListarUsuariosBio(int Inner, ref int QtdPacotes, ref int Tamanho);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaModeloBio;biometria;byte RespostaModeloBio(int Inner, byte[] ModeloBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaQuantidadeUsuariosBio;biometria;byte RespostaQuantidadeUsuariosBio(int Inner, ref int QtdUsuariosBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaReceberTemplateLeitorInnerBio;biometria;byte RespostaReceberTemplateLeitorInnerBio(int Inner, ref int Tamanho);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaUsuarioCadastradoBio;biometria;byte RespostaUsuarioCadastradoBio(int Inner, ref int TamanhoReceber);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaVerificarCadastroUsuarioBio;biometria;byte RespostaVerificarCadastroUsuarioBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaVerificarDigitalBio;biometria;byte RespostaVerificarDigitalBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+RespostaVersaoBio;biometria;byte RespostaVersaoBio(int Inner, byte[] VersaoBio);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoComparacaoDigitalLeitor;biometria;byte ResultadoComparacaoDigitalLeitor(int Inner, byte OnLine);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoComparacaoPINVerid;biometria;byte ResultadoComparacaoPINVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoComparacaoTemplateVerid;biometria;byte ResultadoComparacaoTemplateVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoConfiguracaoBio;biometria;byte ResultadoConfiguracaoBio(int Inner, byte OnLine);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoConfiguracaoRedeVerid;biometria;byte ResultadoConfiguracaoRedeVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoExclusaoTodosUsuariosVerid;biometria;byte ResultadoExclusaoTodosUsuariosVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoExclusaoUsuarioVerid;biometria;byte ResultadoExclusaoUsuarioVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoIdentificacaoBiometrica;biometria;byte ResultadoIdentificacaoBiometrica(int Inner, byte OnLine, byte[] Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoInclusaoUsuarioLeitorVerid;biometria;byte ResultadoInclusaoUsuarioLeitorVerid(int Inner, byte[] Template);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoInclusaoUsuarioVerid;biometria;byte ResultadoInclusaoUsuarioVerid(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoInsercaoUsuarioLeitorBio;biometria;byte ResultadoInsercaoUsuarioLeitorBio(int Inner, byte OnLine);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+ResultadoVerificacaoBiometrica;biometria;byte ResultadoVerificacaoBiometrica(int Inner, byte OnLine);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SetarBioLight;biometria;void SetarBioLight(int Light);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SetarBioVariavel;biometria;void SetarBioVariavel(int Maior);DECLARADA_NO_PRODUTO;EI-025;SDK 6.0.2.0 EasyInner.cs
+SetarInnerOld;outros;void SetarInnerOld(int Inner,int Old);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarDigitalUsuario;biometria;byte SolicitarDigitalUsuario(int Inner, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarExclusaoUsuario;outros;byte SolicitarExclusaoUsuario(int Inner, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarListaUsuariosBio;biometria;byte SolicitarListaUsuariosBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarListaUsuariosBioVariavel;biometria;byte SolicitarListaUsuariosBioVariavel(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarListaUsuariosComDigital;biometria;byte SolicitarListaUsuariosComDigital(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarModeloBio;biometria;byte SolicitarModeloBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarQuantidadeUsuariosBio;biometria;byte SolicitarQuantidadeUsuariosBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarTemplateLeitor;biometria;byte SolicitarTemplateLeitor(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarTotalUsuariosVerid;biometria;byte SolicitarTotalUsuariosVerid(int Inner, byte Modo);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarUsuarioCadastradoBio;biometria;byte SolicitarUsuarioCadastradoBio(int Inner, string Usuario);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+SolicitarVersaoBio;biometria;byte SolicitarVersaoBio(int Inner);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+TemProximoPacote;outros;int TemProximoPacote();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+TemProximoUsuario;outros;int TemProximoUsuario();DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+UsuarioFoiEnviado;outros;byte UsuarioFoiEnviado(int Inner, byte OnLine);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
+UsuarioFoiExcluido;outros;byte UsuarioFoiExcluido(int Inner, byte OnLine);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs
 Utilizar215;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 UtilizarCmdCurtoCatraca;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
 UtilizarRelogioSegundos;outros;SEM ASSINATURA PUBLICADA;SO_O_NOME;;tabela de exportacao da DLL
-UtilizarSenhaAcesso;outros;byte UtilizarSenhaAcesso(byte Utiliza);ASSINATURA_CONHECIDA;;SDK 6.0.2.0 EasyInner.cs
+UtilizarSenhaAcesso;outros;byte UtilizarSenhaAcesso(byte Utiliza);DECLARADA_NO_PRODUTO;;SDK 6.0.2.0 EasyInner.cs

@@ -129,9 +129,25 @@ A superfície real é **265 funções**.
 
 | Situação | Quantas | O que significa |
 |---|---|---|
-| Declaradas no produto | **38** | Em `EasyInnerNative.cs`, com assinatura de fonte primária |
-| Assinatura conhecida, não declarada | **191** | Estão no exemplo oficial; declarar é trabalho, não pesquisa |
+| Declaradas no produto | **229** | 86% da superfície real |
 | Só o nome | **36** | Não há assinatura publicada em lugar nenhum |
+
+As 229 se dividem em **38 escritas à mão**, que a operação usa e que estão documentadas uma
+a uma em `EasyInnerNative.cs`, e **191 geradas** por `tools/gerar-interop.py` em
+`EasyInnerGerada.cs`.
+
+Foram geradas, e não digitadas, por um motivo concreto: um tipo de parâmetro trocado numa
+delas não dá exceção — dá corrupção de memória, possivelmente horas depois. Transcrição
+manual desse volume erra; geração mecânica conferida contra a tabela de exportação do
+binário, não.
+
+O gerador extrai **só o contrato da ABI**: nome do símbolo, tipo de retorno, tipos e nomes
+dos parâmetros. Não extrai comentário, método auxiliar nem lógica do exemplo — o que a
+licença proíbe incluir.
+
+Duas funções do exemplo foram recusadas na geração, e a recusa é informação: `GetTickCount`
+é do Kernel32, e **`ResultadoEnvioAjustesBio` não está exportada pela DLL** — o exemplo
+oficial declara uma função que não existe.
 
 Por categoria, o que explica por que 38 já cobrem a operação:
 
