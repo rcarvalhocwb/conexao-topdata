@@ -27,7 +27,14 @@ de hardware identificado.
 ## Fase 1 — Fundação executável · *concluída*
 
 > **Verde contra o simulador, não contra hardware.** Nenhuma catraca real foi acionada.
-> 200 testes, 0 falhas, CI em Linux e Windows.
+>
+> **Correção de 24/09, depois de eu ter declarado a fase concluída.** O item 4 pedia
+> "`Edge.Supervisor` como Windows Service, supervisionando grupos". Eu havia construído a
+> *lógica* de supervisão e o serviço gRPC, ambos como **biblioteca** — não havia processo
+> nenhum. Pior: `IWorkerHost` só tinha dublês de teste, então nada no produto sabia **subir**
+> um worker, e o instalador mandava executar um `Edge.Supervisor.exe` que nunca era gerado.
+> Corrigido com `Program.cs`, `ProcessoDeWorker` e `ConfiguracaoDoSupervisor`, e travado por
+> um teste que reprova se o instalador publicar projeto sem executável.
 
 1. Solução .NET organizada conforme [`03`](03-arquitetura.md), com testes de arquitetura
    que proíbem as dependências erradas.

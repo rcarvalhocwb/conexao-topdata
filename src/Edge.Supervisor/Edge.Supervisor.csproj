@@ -5,6 +5,12 @@
     x86, e o supervisor precisa sobreviver à morte dele. Regra verificada por ARCH-01.
   -->
 
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Edge.Supervisor</AssemblyName>
+    <RootNamespace>Edge.Supervisor</RootNamespace>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Contracts/Contracts.csproj" />
     <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />

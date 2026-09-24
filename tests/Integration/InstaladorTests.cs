@@ -72,6 +72,53 @@ public sealed class InstaladorTests
         Assert.Contains("win-x86", linhaDoWorker, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Todo componente que o instalador publica precisa gerar executável.
+    /// </summary>
+    /// <remarks>
+    /// Escrito depois de um defeito real: <c>publicar.ps1</c> listava o Edge.Supervisor, que
+    /// é biblioteca e não tem <c>OutputType</c>. A publicação "funcionava" e não produzia
+    /// <c>.exe</c> nenhum, enquanto <c>instalar-dev.ps1</c> mandava executar
+    /// <c>Edge.Supervisor.exe</c>. Só se descobre na bancada, tentando rodar.
+    /// </remarks>
+    [Fact]
+    public void Tudo_que_o_instalador_publica_gera_executavel()
+    {
+        var script = File.ReadAllText(Path.Combine(PastaDoInstalador, "publicar.ps1"));
+
+        var projetos = Regex
+            .Matches(script, @"Projeto\s*=\s*'([^']+)'", RegexOptions.None, TimeSpan.FromSeconds(1))
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+
+        Assert.NotEmpty(projetos);
+
+        var bibliotecas = new List<string>();
+
+        foreach (var projeto in projetos)
+        {
+            var nome = projeto.Split('/')[^1];
+            var csproj = Path.Combine(LocalizarRaiz(), projeto.Replace('/', Path.DirectorySeparatorChar), $"{nome}.csproj");
+
+            Assert.True(File.Exists(csproj), $"projeto citado pelo instalador não existe: {csproj}");
+
+            var conteudo = File.ReadAllText(csproj);
+
+            if (!conteudo.Contains("<OutputType>Exe</OutputType>", StringComparison.Ordinal) &&
+                !conteudo.Contains("<OutputType>WinExe</OutputType>", StringComparison.Ordinal))
+            {
+                bibliotecas.Add(nome);
+            }
+        }
+
+        Assert.True(
+            bibliotecas.Count == 0,
+            "O instalador publica projeto que não gera executável: " +
+            string.Join(", ", bibliotecas) +
+            ". A publicação passaria sem produzir .exe, e a instrução de execução apontaria " +
+            "para um arquivo inexistente.");
+    }
+
     /// <summary>O token de sessão não pode chegar ao console nem ao log.</summary>
     /// <remarks>
     /// Console de instalação costuma ser copiado para chamado, print ou log de terminal.

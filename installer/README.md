@@ -21,13 +21,40 @@ integridade das DLLs.
 # 2. Confere os pré-requisitos da máquina
 .\installer\verificar-ambiente.ps1
 
-# 3. Sobe o ambiente de desenvolvimento
+# 3. Gera o token de sessão
 .\installer\instalar-dev.ps1
+
+# 4. Descreve os grupos
+copy installer\workers.exemplo.json artifacts\Edge.Supervisor\workers.json
+# edite: nome, porta e equipamentos de cada grupo
 ```
 
 O passo 3 gera um **token de sessão** e o grava em
-`%LOCALAPPDATA%\ConexaoTopdata\token`, com permissão só para o usuário atual. O painel
-lê o token dessa variável; sem ele, o serviço recusa a conexão.
+`%LOCALAPPDATA%\ConexaoTopdata\token`, com permissão só para o usuário atual. O serviço
+recusa a conexão sem ele, e recusa **subir** sem ele — a ACL do named pipe protege por
+identidade de usuário, não por processo, então qualquer coisa rodando na mesma conta
+alcançaria o serviço.
+
+O serviço também recusa subir com configuração inválida: porta repetida entre grupos,
+equipamento em dois grupos ou executável inexistente. Reclamar na partida é muito melhor
+que descobrir com a fila formada.
+
+## O que roda hoje, e o que não roda
+
+Sendo direto, porque a diferença decide se vale agendar bancada:
+
+| Componente | Sobe? | O que acontece |
+|---|---|---|
+| `Edge.Supervisor` | **Sim** | Lê `workers.json`, sobe os workers, supervisiona com reinício e quarentena, e atende o painel pelo IPC |
+| `Desktop.App` | **Sim** | Conecta ao serviço e mostra o estado real |
+| `Edge.Worker.X86` | **Não** | Confere os pré-requisitos e **sai com código 2**: as assinaturas P/Invoke da `EasyInner.dll` não foram obtidas |
+
+Ou seja: o caminho painel → serviço → supervisão funciona ponta a ponta. O que não existe é
+a última perna, a que fala com a catraca. Instalado hoje, o supervisor sobe, tenta o worker,
+ele sai na largada, e depois de 5 tentativas o grupo vai para quarentena com o motivo escrito
+na tela — que é o comportamento correto, e não um sistema operando.
+
+**Nenhuma catraca foi acionada por este sistema até hoje.**
 
 ## Antes de encostar em hardware
 

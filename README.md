@@ -11,7 +11,7 @@
 | Fase | Situação |
 |---|---|
 | 0 — Descoberta | Concluída |
-| 1 — Fundação executável | **Concluída** — 200 testes, 0 falhas; CI em Linux e Windows |
+| 1 — Fundação executável | **Concluída** — 221 testes, 0 falhas; CI em Linux e Windows. Painel, serviço local e supervisão sobem de verdade; **o worker não**, por falta das assinaturas nativas |
 | 2 — Operação Inner on-line/off-line | Bloqueada pelo ensaio HIL-STACK-01 e pelo `EasyInner.cs` |
 
 ## Procedência das informações
