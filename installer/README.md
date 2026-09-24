@@ -47,12 +47,24 @@ Sendo direto, porque a diferença decide se vale agendar bancada:
 |---|---|---|
 | `Edge.Supervisor` | **Sim** | Lê `workers.json`, sobe os workers, supervisiona com reinício e quarentena, e atende o painel pelo IPC |
 | `Desktop.App` | **Sim** | Conecta ao serviço e mostra o estado real |
-| `Edge.Worker.X86` | **Não** | Confere os pré-requisitos e **sai com código 2**: as assinaturas P/Invoke da `EasyInner.dll` não foram obtidas |
+| `Edge.Worker.X86` | **Tenta** | Confere os pré-requisitos e chama a DLL de verdade. É aqui que o ensaio **HIL-STACK-01** responde: código 0 se a porta abriu, 2 se a DLL não carregou ou devolveu GPF |
 
-Ou seja: o caminho painel → serviço → supervisão funciona ponta a ponta. O que não existe é
-a última perna, a que fala com a catraca. Instalado hoje, o supervisor sobe, tenta o worker,
-ele sai na largada, e depois de 5 tentativas o grupo vai para quarentena com o motivo escrito
-na tela — que é o comportamento correto, e não um sistema operando.
+O caminho painel → serviço → supervisão funciona ponta a ponta, e desde 24/09 o worker tem
+adapter real: as assinaturas vieram do SDK 6.0.2.0. O que falta é a primeira conversa com
+hardware.
+
+Rodar o worker sozinho **é** o ensaio HIL-STACK-01:
+
+```powershell
+$env:EDGE_TOKEN = Get-Content "$env:LOCALAPPDATA\ConexaoTopdata\token"
+.\artifacts\Edge.Worker.X86\Edge.Worker.X86.exe --porta 3570
+```
+
+| Saída | O que significa |
+|---|---|
+| código 0, "Porta aberta" | A DLL carregou num processo .NET 10 de 32 bits. O plano B some |
+| código 2, retorno 8 (GPF) | Ambiente: rode `verificar-ambiente.ps1` |
+| código 2, DLL não encontrada | Registre as DLLs, ou mova só este hospedeiro para .NET Framework 4.8 (docs/12) |
 
 **Nenhuma catraca foi acionada por este sistema até hoje.**
 

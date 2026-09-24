@@ -3,10 +3,10 @@
 > **Status atual: Fase 1 concluída — fundação executável, verde contra o simulador.**
 > **Nenhuma catraca real foi acionada ainda.** Todo o caminho leitura → decisão →
 > liberação → persistência roda ponta a ponta, mas contra o simulador: a ligação com a
-> `EasyInner.dll` está deliberadamente **não implementada** (as assinaturas P/Invoke não
-> foram deduzidas — ver [`src/Topdata.EasyInner.Adapter/VinculacaoNativaPendente.cs`](src/Topdata.EasyInner.Adapter/VinculacaoNativaPendente.cs)).
-> O próximo marco é de bancada, não de código: o ensaio **HIL-STACK-01**
-> ([`docs/12`](docs/12-decisao-de-stack.md)).
+> `EasyInner.dll` **já está implementada**: o SDK 6.0.2.0 chegou em 24/09/2026 e trouxe as
+> assinaturas reais. O que ainda não aconteceu é a primeira conversa com hardware — o ensaio
+> **HIL-STACK-01** ([`docs/12`](docs/12-decisao-de-stack.md)), que se executa rodando o
+> worker numa máquina Windows com o SDK instalado.
 
 | Fase | Situação |
 |---|---|

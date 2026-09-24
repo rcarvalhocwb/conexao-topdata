@@ -12,4 +12,10 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Só o adapter fala com a DLL. O compilador passa a garantir isso. -->
+    <InternalsVisibleTo Include="Topdata.EasyInner.Adapter" />
+    <InternalsVisibleTo Include="Unit.Tests" />
+  </ItemGroup>
+
 </Project>

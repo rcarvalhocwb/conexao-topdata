@@ -170,7 +170,7 @@ public sealed class SimuladorTests
         var leitura = simulador.AguardarEvento(1, TimeSpan.FromSeconds(1)).Evento;
         Assert.Equal(KnownEventOrigin.Leitor2, leitura!.Origin.Known);
 
-        simulador.AcionarReleDaUrna(1, TimeSpan.FromSeconds(6));
+        simulador.AcionarReleDaUrna(1);
 
         var recolhimento = simulador.AguardarEvento(1, TimeSpan.FromSeconds(1)).Evento;
         Assert.Equal(KnownEventOrigin.CartaoRecolhidoUrna, recolhimento!.Origin.Known);
@@ -209,20 +209,11 @@ public sealed class SimuladorTests
         var dispositivo = simulador.Dispositivo(1);
         dispositivo.UrnaCheia = true;
 
-        simulador.AcionarReleDaUrna(1, TimeSpan.FromSeconds(6));
+        simulador.AcionarReleDaUrna(1);
         var (_, evento) = simulador.AguardarEvento(1, TimeSpan.FromSeconds(1));
 
         Assert.Equal(KnownEventOrigin.UrnaCheia, evento!.Origin.Known);
         Assert.Equal(0, dispositivo.AcionamentosDaUrna);
-    }
-
-    [Fact]
-    public void Tempo_de_acionamento_acima_do_limite_do_manual_e_recusado()
-    {
-        using var simulador = SimuladorAberto();
-
-        Assert.Throws<ArgumentOutOfRangeException>(
-            () => simulador.AcionarReleDaUrna(1, TimeSpan.FromSeconds(51)));
     }
 
     [Fact]

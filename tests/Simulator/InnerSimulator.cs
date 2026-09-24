@@ -213,14 +213,16 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
             return 0;
         });
 
-    public AdapterResult AcionarReleDaUrna(int inner, TimeSpan tempo)
+    /// <summary>
+    /// Aciona o relé da urna. Sem tempo: ele vem da configuração do equipamento.
+    /// </summary>
+    /// <remarks>
+    /// A versão anterior recebia um <c>TimeSpan</c> e recusava acima de 50 s, seguindo o que
+    /// o manual sugeria. O SDK mostrou que <c>AcionarRele2</c> recebe só o Inner — o limite
+    /// de 50 s pertence a <c>ConfigurarAcionamento2</c>, e já é validado lá.
+    /// </remarks>
+    public AdapterResult AcionarReleDaUrna(int inner)
     {
-        if (tempo > TimeSpan.FromSeconds(50))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(tempo), tempo, "O tempo de acionamento vai de 0 a 50 segundos (manual, 4.1.5).");
-        }
-
         return ComDispositivo(inner, d =>
         {
             if (d.Desconectado)

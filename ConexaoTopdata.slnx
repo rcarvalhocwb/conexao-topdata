@@ -22,6 +22,7 @@
   </Folder>
   <Folder Name="/tests/Integration/">
     <Project Path="tests/Integration/Integration.Tests.csproj" />
+    <Project Path="tests/HardwareInLoop/HardwareInLoop.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/LoadAndSoak/">
     <Project Path="tests/LoadAndSoak/Soak.Tests.csproj" />

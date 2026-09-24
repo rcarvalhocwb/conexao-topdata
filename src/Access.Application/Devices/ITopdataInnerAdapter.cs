@@ -142,7 +142,13 @@ public interface ITopdataInnerAdapter : IDisposable
     AdapterResult LiberarGiro(int inner, GateDirection direcao);
 
     /// <summary>Aciona o relé 2, que abre a fenda da urna.</summary>
-    AdapterResult AcionarReleDaUrna(int inner, TimeSpan tempo);
+    /// <remarks>
+    /// <b>Sem parâmetro de tempo.</b> O SDK expõe <c>AcionarRele2(int Inner)</c> e mais nada:
+    /// a duração é a que foi gravada em <c>ConfigurarAcionamento2</c>, junto com a
+    /// configuração do equipamento. O manual sugeria uma assinatura com tempo, e estava
+    /// errado. Mudar a duração significa reenviar a configuração.
+    /// </remarks>
+    AdapterResult AcionarReleDaUrna(int inner);
 
     /// <summary>
     /// Coleta um bilhete, que é <b>removido da memória do equipamento</b>.
