@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Instalador MSI do Conexão Topdata.
+
+  Instala os três componentes e registra o serviço local. O serviço nasce em partida
+  MANUAL, de propósito: o worker ainda sai com código 2 por falta das assinaturas da
+  EasyInner.dll, e um serviço automático tentaria subir, falhar e encher o log de eventos
+  do Windows no primeiro boot. Ver installer/README.md.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package Name="Conexão Topdata"
+           Manufacturer="Conexão Topdata"
+           Version="$(var.Versao)"
+           UpgradeCode="5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="Gerenciamento de catracas, controladores e coletores da linha Inner" />
+
+    <MajorUpgrade DowngradeErrorMessage="Já existe uma versão mais nova do Conexão Topdata instalada." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ProgramFiles64Folder: o serviço e o painel são de 64 bits. O worker x86 mora
+         dentro da mesma pasta, e isso é correto — o que importa é o processo ser de 32
+         bits, não o diretório. -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Conexao Topdata">
+        <Directory Id="DIR_SUPERVISOR" Name="Servico" />
+        <Directory Id="DIR_PAINEL" Name="Painel" />
+        <Directory Id="DIR_WORKER" Name="Worker" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="DIR_ATALHOS" Name="Conexão Topdata" />
+    </StandardDirectory>
+
+    <Feature Id="Principal" Title="Conexão Topdata" Level="1">
+      <ComponentGroupRef Id="Grupo_Servico" />
+      <ComponentGroupRef Id="Grupo_Painel" />
+      <ComponentGroupRef Id="Grupo_Worker" />
+      <ComponentGroupRef Id="Grupo_Atalhos" />
+    </Feature>
+
+    <ComponentGroup Id="Grupo_Servico" Directory="DIR_SUPERVISOR">
+      <Files Include="$(var.PastaSupervisor)\**" Exclude="$(var.PastaSupervisor)\Edge.Supervisor.exe" />
+
+      <Component Id="ServicoLocal" Guid="d5418902-3ddf-4abf-a2a6-f34f04765695">
+        <File Id="ServicoExe" Source="$(var.PastaSupervisor)\Edge.Supervisor.exe" KeyPath="yes" />
+
+        <ServiceInstall Id="InstalarServico"
+                        Name="ConexaoTopdataEdge"
+                        DisplayName="Conexão Topdata — Serviço local"
+                        Description="Supervisiona os workers das catracas e atende o painel do operador."
+                        Type="ownProcess"
+                        Start="demand"
+                        ErrorControl="normal"
+                        Vital="yes" />
+
+        <ServiceControl Id="ControlarServico"
+                        Name="ConexaoTopdataEdge"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Painel" Directory="DIR_PAINEL">
+      <Files Include="$(var.PastaPainel)\**" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Worker" Directory="DIR_WORKER">
+      <Files Include="$(var.PastaWorker)\**" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
+      <Component Id="AtalhoDoPainel" Guid="*">
+        <Shortcut Id="AtalhoPainel"
+                  Name="Painel do evento"
+                  Description="Painel do operador do Conexão Topdata"
+                  Target="[DIR_PAINEL]Desktop.App.exe"
+                  WorkingDirectory="DIR_PAINEL" />
+
+        <RemoveFolder Id="RemoverPastaAtalhos" Directory="DIR_ATALHOS" On="uninstall" />
+
+        <RegistryValue Root="HKCU"
+                       Key="Software\ConexaoTopdata"
+                       Name="Instalado"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+  </Package>
+</Wix>

@@ -135,7 +135,8 @@ backlog de 24 h sem degradar; teste de contrato quebra ao alterar schema externo
 3. Segurança: MFA, rotação de segredos, atualização assinada, SBOM, verificação de DLLs.
 4. Backup, restauração e recuperação testados de ponta a ponta.
 5. `SOAK-72H` e caos completo.
-6. Manual do operador, instalador de produção e runbooks.
+6. Manual do operador, runbooks e **assinatura de código** do instalador.
+   O MSI em si foi antecipado para a Fase 1: a CI já o constrói a cada commit.
 
 **Pronto quando:** os 13 critérios CA-01..CA-13 verificados com evidência; `UX-01` com 5
 operadores reais; instalação limpa e atualização testadas em máquina virgem.

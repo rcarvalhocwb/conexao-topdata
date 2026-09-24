@@ -56,6 +56,30 @@ na tela — que é o comportamento correto, e não um sistema operando.
 
 **Nenhuma catraca foi acionada por este sistema até hoje.**
 
+## Instalador MSI
+
+A cada commit, a integração contínua constrói um **MSI de verdade** e publica como artefato
+`instalador-msi`. Baixe do run e instale com duplo clique, ou:
+
+```powershell
+msiexec /i ConexaoTopdata-0.1.42.msi /qn /l*v instalacao.log
+```
+
+O que ele faz:
+
+- instala os três componentes em `C:\Program Files\Conexao Topdata`;
+- registra o serviço **ConexaoTopdataEdge**, com partida **manual**;
+- cria o atalho "Painel do evento" no menu Iniciar;
+- desinstala limpo, parando o serviço antes de remover.
+
+**Por que partida manual e não automática:** o worker ainda sai com código 2 por falta das
+assinaturas da `EasyInner.dll`. Um serviço automático tentaria subir a cada boot, falharia
+e encheria o log de eventos do Windows. Quando o adapter nativo existir, isso vira `auto`.
+
+Antes de iniciar o serviço, ainda é preciso o `workers.json` e a variável `EDGE_TOKEN` —
+ver as seções acima. O instalador **não** os cria: token gerado por instalador seria igual
+em todas as máquinas.
+
 ## Imagens das telas
 
 Numa máquina Windows, depois de publicar:

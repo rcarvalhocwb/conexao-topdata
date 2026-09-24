@@ -107,6 +107,68 @@ jobs:
               exit 1
           }
 
+  # O instalador MSI de verdade. Construir MSI e trabalho sem tela, ao contrario de
+  # renderizar WPF, entao o runner do Windows da conta. O WiX recusa rodar em Linux:
+  # testado, ele reprova ate o caso minimo com WIX0389.
+  instalador:
+    name: Instalador MSI (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Instalar o WiX
+        run: dotnet tool install --global wix --version 6.0.2
+
+      - name: Publicar os tres componentes
+        shell: pwsh
+        run: |
+          dotnet publish src/Edge.Supervisor -c Release -r win-x64 --self-contained false -o publicado/Servico
+          dotnet publish src/Desktop.App     -c Release -r win-x64 --self-contained false -o publicado/Painel
+          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained false -o publicado/Worker
+
+      # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
+      # no cabecalho PE, e mais barato que descobrir na bancada.
+      - name: Conferir que o worker e de 32 bits
+        shell: pwsh
+        run: |
+          $fluxo = [System.IO.File]::OpenRead("publicado/Worker/Edge.Worker.X86.exe")
+          try {
+              $leitor = New-Object System.IO.BinaryReader($fluxo)
+              $fluxo.Position = 0x3C
+              $inicio = $leitor.ReadInt32()
+              $fluxo.Position = $inicio + 4
+              $maquina = $leitor.ReadUInt16()
+          } finally { $fluxo.Dispose() }
+
+          if ($maquina -ne 0x014C) {
+              throw "O worker saiu com maquina PE 0x{0:X4}, e nao 0x014C (I386)." -f $maquina
+          }
+          Write-Host "Worker em 32 bits: ok"
+
+      - name: Construir o MSI
+        shell: pwsh
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build installer/wix/ConexaoTopdata.wxs `
+            -d Versao=$versao `
+            -d PastaSupervisor=publicado/Servico `
+            -d PastaPainel=publicado/Painel `
+            -d PastaWorker=publicado/Worker `
+            -o ConexaoTopdata-$versao.msi
+
+      - name: Publicar o instalador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-msi
+          path: "*.msi"
+          if-no-files-found: error
+
   # O soak roda curto em todo commit, o suficiente para processar centenas de milhares
   # de eventos e revelar vazamento de poucos bytes por evento. O ensaio longo, de uma
   # hora, é disparado à mão em "Run workflow" com soak_minutos.
