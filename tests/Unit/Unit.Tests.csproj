@@ -18,6 +18,7 @@
     <ProjectReference Include="../../src/Access.Domain/Access.Domain.csproj" />
     <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
     <ProjectReference Include="../../src/Edge.Worker/Edge.Worker.csproj" />
+    <ProjectReference Include="../../src/Shared.Observability/Shared.Observability.csproj" />
   </ItemGroup>
 
   <ItemGroup>

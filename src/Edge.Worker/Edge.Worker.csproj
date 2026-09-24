@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="../Access.Application/Access.Application.csproj" />
     <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../Shared.Observability/Shared.Observability.csproj" />
   </ItemGroup>
 
 </Project>

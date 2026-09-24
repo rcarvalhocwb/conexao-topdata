@@ -1,4 +1,5 @@
 using Access.Application.Devices;
+using Shared.Observability;
 
 namespace Edge.Worker;
 
@@ -30,13 +31,15 @@ public sealed class DeviceGroupLoop
     private readonly DevicePump _pump;
     private readonly List<DeviceSlot> _dispositivos;
     private readonly TimeSpan _limiteDeEspera;
+    private readonly LogEstruturado? _log;
 
     public DeviceGroupLoop(
         ITopdataInnerAdapter adapter,
         IEnumerable<DeviceSlot> dispositivos,
         Watchdog watchdog,
         DevicePump? pump = null,
-        TimeSpan? limiteDeEspera = null)
+        TimeSpan? limiteDeEspera = null,
+        LogEstruturado? log = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(dispositivos);
@@ -70,6 +73,7 @@ public sealed class DeviceGroupLoop
         _pump = pump ?? new DevicePump(adapter);
         Watchdog = watchdog;
         _limiteDeEspera = limiteDeEspera ?? TimeSpan.FromMilliseconds(500);
+        _log = log;
     }
 
     public Watchdog Watchdog { get; }
@@ -93,7 +97,19 @@ public sealed class DeviceGroupLoop
         foreach (var dispositivo in _dispositivos)
         {
             Watchdog.Bater($"inner {dispositivo.Inner} em {dispositivo.Maquina.Current}");
-            acoes.Add((dispositivo.Inner, _pump.Passo(dispositivo, _limiteDeEspera)));
+
+            var estadoAntes = dispositivo.Maquina.Current;
+            var acao = _pump.Passo(dispositivo, _limiteDeEspera);
+            acoes.Add((dispositivo.Inner, acao));
+
+            // Todo log passa pelo redator: nem a ação nem o número de cartão que ela
+            // possa conter chegam ao disco em texto claro.
+            _log?.Informacao(acao, $"volta-{Voltas}-inner-{dispositivo.Inner}", new Dictionary<string, object?>
+            {
+                ["inner"] = dispositivo.Inner,
+                ["estadoAntes"] = estadoAntes.ToString(),
+                ["estadoDepois"] = dispositivo.Maquina.Current.ToString(),
+            });
         }
 
         Voltas++;
