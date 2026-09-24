@@ -82,22 +82,10 @@ jobs:
 
       # Só o PowerShell do Windows sabe dizer se estes scripts sequer analisam.
       # Sem esta etapa, um erro de sintaxe no instalador só apareceria na bancada.
-      # Imagem real da tela, renderizada pela propria arvore visual do XAML.
-      # O projeto e construido em Linux, onde o WPF compila mas nao roda; sem esta etapa a
-      # unica imagem do painel seria uma recriacao feita a mao.
-      - name: Capturar as telas do painel
-        # Teto curto de proposito: se o WPF travar no runner sem desktop, isso custa 3
-        # minutos e nao 25. Foi o que aconteceu na primeira tentativa.
-        timeout-minutes: 3
-        run: dotnet run --project src/Desktop.App --configuration Release --no-build -- --capturar capturas
-
-      - name: Publicar as telas
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: telas-do-painel
-          path: capturas/*.png
-          if-no-files-found: error
+      # NAO tente capturar as telas aqui. Foi tentado duas vezes, 24 min e 3 min, e o
+      # processo travou sem imprimir uma linha sequer nas duas. O runner do Windows nao tem
+      # sessao grafica, e o WPF nao inicializa. O modo --capturar do Desktop.App continua
+      # valendo, numa maquina Windows de verdade: ver installer/README.md.
 
       - name: Analisar os scripts do instalador
         shell: pwsh

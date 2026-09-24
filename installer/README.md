@@ -56,6 +56,23 @@ na tela — que é o comportamento correto, e não um sistema operando.
 
 **Nenhuma catraca foi acionada por este sistema até hoje.**
 
+## Imagens das telas
+
+Numa máquina Windows, depois de publicar:
+
+```powershell
+.\artifacts\Desktop.App\Desktop.App.exe --capturar capturas
+```
+
+Renderiza cinco PNGs a 192 ppp — sem internet, normal, lista local, nenhuma catraca e
+serviço caiu — pela árvore visual do próprio XAML, e grava `capturas\relatorio.txt`.
+São as telas reais, não uma recriação.
+
+Duas coisas para não se surpreender: renderiza o **conteúdo** da janela, sem a barra de
+título (ela é desenhada pelo Windows, não pela aplicação); e **não funciona na integração
+contínua** — o runner não tem sessão gráfica e o WPF trava sem mensagem. Foi tentado duas
+vezes antes de desistir.
+
 ## Antes de encostar em hardware
 
 Dois ensaios precisam ser feitos **antes** de conectar uma catraca de verdade:

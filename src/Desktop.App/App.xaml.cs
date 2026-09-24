@@ -26,9 +26,20 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             var pasta = indice + 1 < e.Args.Length ? e.Args[indice + 1] : "capturas";
-            var arquivos = CapturaDeTela.Renderizar(pasta);
 
-            Console.WriteLine(CapturaDeTela.Resumir(arquivos));
+            try
+            {
+                var arquivos = CapturaDeTela.Renderizar(pasta);
+                Console.WriteLine(CapturaDeTela.Resumir(arquivos));
+            }
+            catch (Exception erro)
+            {
+                // Engolir aqui seria cruel: quem roda isto está justamente tentando
+                // descobrir se funciona, e um processo que sai calado não responde nada.
+                Console.Error.WriteLine($"A captura falhou: {erro}");
+                Console.Error.Flush();
+                Environment.Exit(1);
+            }
 
             // Environment.Exit e não Shutdown: Shutdown pede ao laço de mensagens que
             // termine, e este laço pode nem ter começado quando OnStartup roda. Numa

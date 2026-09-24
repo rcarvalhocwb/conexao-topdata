@@ -24,6 +24,11 @@ namespace Desktop.App;
 /// de título, botões de fechar e a sombra do sistema não aparecem, porque são desenhados pelo
 /// sistema operacional e não pela aplicação.
 /// </para>
+/// <para>
+/// <b>Não funciona na CI.</b> Foi tentado duas vezes no runner do Windows do GitHub, com
+/// 24 e 3 minutos de teto, e o processo travou sem imprimir uma linha nas duas. O runner não
+/// tem sessão gráfica e o WPF não inicializa. Precisa de uma máquina Windows de verdade.
+/// </para>
 /// </remarks>
 internal static class CapturaDeTela
 {
@@ -48,6 +53,11 @@ internal static class CapturaDeTela
             Gravar(caminho, estado, equipamentos);
             gravados.Add(caminho);
         }
+
+        // Relatório em arquivo porque num WinExe a saída de console não é confiável: sem
+        // console anexado, Console.WriteLine não chega a lugar nenhum e quem rodou fica sem
+        // saber se funcionou.
+        File.WriteAllText(Path.Combine(pasta, "relatorio.txt"), Resumir(gravados));
 
         return gravados;
     }
