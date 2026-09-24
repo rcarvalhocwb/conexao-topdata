@@ -23,6 +23,14 @@
     <!-- CS1591: nem todo membro público precisa de <summary> nesta fase. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
+    <!-- Pacote com vulnerabilidade conhecida quebra o build, não só avisa.
+         O produto exige SBOM e verificação de integridade das dependências
+         (docs/03-arquitetura.md, seção 11). -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
