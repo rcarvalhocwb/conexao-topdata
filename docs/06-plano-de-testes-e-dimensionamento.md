@@ -183,8 +183,30 @@ de estados sem poda — era de **~400 bytes por evento**, cerca de 69 mil vezes 
 resíduo acima. A trava funciona; o que faltava era o instrumento não mentir a seu próprio
 favor.
 
-> Execução de 1 h com o instrumento corrigido: em andamento na data deste registro.
-> O número limpo substitui a linha "crescimento" acima quando fechar.
+### 24/09/2026 — execução de 1 h com o instrumento corrigido
+
+| Medida | Valor |
+|---|---|
+| Duração | 60,0 min |
+| Voltas do laço | 181.880.200 |
+| Eventos processados | **606.267.310** |
+| Eventos por segundo | 168.408 |
+| Amostras colhidas (240 retidas) | 363.760 |
+| Memória inicial → final | 0,9 MB → 1,2 MB |
+| **Crescimento** | **0,3 MB** |
+| Bytes por evento | 0,00 |
+
+O crescimento caiu de **4,3 MB para 0,3 MB**. A diferença de 4,0 MB é exatamente o array de
+amostras que foi removido — o diagnóstico fecha com o valor previsto, e não por
+aproximação.
+
+Sobram 0,3 MB de acomodação do heap depois de 606 milhões de eventos. Em bytes por evento
+isso arredonda para zero, e a leitura correta é que **o laço não retém nada por evento** —
+não que ele retenha pouco.
+
+> As duas execuções processaram volumes diferentes (776 milhões contra 606 milhões) porque
+> a máquina estava mais carregada na segunda. Isso não afeta a conclusão: o critério é
+> crescimento de memória, não vazão.
 
 ### Limitações deste ensaio
 
