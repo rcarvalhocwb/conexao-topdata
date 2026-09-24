@@ -48,6 +48,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 07 | [Backlog por fases](docs/07-backlog-por-fases.md) | Fases 0–5 com critérios de pronto |
 | 08 | [Riscos e validações](docs/08-riscos-e-validacoes-topdata.md) | Registro de riscos e pauta para a Topdata |
 | 09 | [Plano de bancada](docs/09-plano-de-bancada.md) | Protocolo de ensaio por modelo/firmware |
+| 10 | [Interface](docs/10-interface.md) | Telas obrigatórias, dois níveis de linguagem, acessibilidade |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |
 | — | [Runbooks](docs/runbooks/) | Template e índice dos procedimentos de operação |
 
