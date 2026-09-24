@@ -129,6 +129,32 @@ public sealed class ArquiteturaTests
             return; // Ainda não criado nesta fase.
         }
 
+        var permitidas = new[] { "Contracts", "Desktop.ViewModels", "Shared.Observability" };
+
+        var indevidas = ReferenciasDe(projeto.Caminho)
+            .Where(r => !permitidas.Contains(r, StringComparer.Ordinal))
+            .ToList();
+
+        Assert.True(
+            indevidas.Count == 0,
+            $"Desktop.App referencia indevidamente: {string.Join(", ", indevidas)}. " +
+            "A interface fala só com o serviço local, pelo IPC.");
+    }
+
+    /// <summary>
+    /// As ViewModels não podem alcançar domínio, infraestrutura nem worker: é o que as
+    /// mantém testáveis em qualquer plataforma e impede a interface de virar um segundo
+    /// lugar onde regra de acesso mora.
+    /// </summary>
+    [Fact]
+    public void As_viewmodels_so_conhecem_o_contrato()
+    {
+        var projeto = Projetos().FirstOrDefault(p => p.Nome == "Desktop.ViewModels");
+        if (projeto.Caminho is null)
+        {
+            return;
+        }
+
         var permitidas = new[] { "Contracts", "Shared.Observability" };
 
         var indevidas = ReferenciasDe(projeto.Caminho)
@@ -137,7 +163,7 @@ public sealed class ArquiteturaTests
 
         Assert.True(
             indevidas.Count == 0,
-            $"Desktop.App referencia indevidamente: {string.Join(", ", indevidas)}");
+            $"Desktop.ViewModels referencia indevidamente: {string.Join(", ", indevidas)}");
     }
 
     [Fact]

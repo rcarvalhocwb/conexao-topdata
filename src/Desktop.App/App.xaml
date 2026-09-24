@@ -1,0 +1,14 @@
+<Application xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="JanelaPrincipal.xaml">
+  <Application.Resources>
+    <!--
+      Cores vêm de recursos do sistema, não fixas: é assim que o alto contraste do
+      Windows funciona sem a gente reimplementar tema. Ver docs/10-interface.md.
+    -->
+    <Style TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+  </Application.Resources>
+</Application>

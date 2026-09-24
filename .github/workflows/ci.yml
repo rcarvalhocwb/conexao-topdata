@@ -71,6 +71,28 @@ jobs:
       - name: Testar
         run: dotnet test --no-build --configuration Release
 
+      # Só o PowerShell do Windows sabe dizer se estes scripts sequer analisam.
+      # Sem esta etapa, um erro de sintaxe no instalador só apareceria na bancada.
+      - name: Analisar os scripts do instalador
+        shell: pwsh
+        run: |
+          $erros = @()
+          Get-ChildItem installer -Filter *.ps1 | ForEach-Object {
+              $tokens = $null
+              $problemas = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  $_.FullName, [ref]$tokens, [ref]$problemas) | Out-Null
+              if ($problemas.Count -gt 0) {
+                  $erros += $problemas | ForEach-Object { "$($_.Extent.File):$($_.Extent.StartLineNumber) $($_.Message)" }
+              } else {
+                  Write-Host "ok $($_.Name)"
+              }
+          }
+          if ($erros.Count -gt 0) {
+              $erros | ForEach-Object { Write-Host "::error::$_" }
+              exit 1
+          }
+
   # O soak roda curto em todo commit, o suficiente para processar centenas de milhares
   # de eventos e revelar vazamento de poucos bytes por evento. O ensaio longo, de uma
   # hora, é disparado à mão em "Run workflow" com soak_minutos.

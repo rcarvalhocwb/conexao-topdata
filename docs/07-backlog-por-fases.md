@@ -6,26 +6,28 @@ de hardware identificado.
 
 ---
 
-## Fase 0 — Descoberta · *em andamento*
+## Fase 0 — Descoberta · *concluída*
 
 | Item | Situação |
 |---|---|
 | Inventário de hardware/modelo/firmware | **Bloqueado em B2** — depende do cliente |
 | Perguntas em aberto | Concluído — [`01`](01-perguntas-criticas.md) |
-| Matriz de capacidades e funções | **Arcabouço pronto, conteúdo bloqueado em B1** |
-| ADRs | Concluído — 18 registros |
+| Matriz de capacidades e funções | Concluído — 51 de 58 funções em fonte primária |
+| ADRs | Concluído — 21 registros |
 | Análise de riscos | Concluído — [`08`](08-riscos-e-validacoes-topdata.md) |
 | Plano de bancada | Concluído — [`09`](09-plano-de-bancada.md) |
 
-**Pronto quando:** B1 e B2 respondidos, matriz preenchida a partir do wrapper real, e
-ensaio de bancada agendado para ao menos um modelo.
-
-> A Fase 0 **não fecha** sem os SDKs. O que existe hoje é o arcabouço; o conteúdo
-> depende da fonte primária.
+> **Limitação que atravessa a fase:** falta o pacote de **exemplos de código**, com o
+> `EasyInner.cs` e o enum `Enumeradores.Retorno`. As assinaturas P/Invoke **não foram
+> deduzidas** — ver [`11`](11-capacidades-do-sdk.md), seção 5. O inventário do parque
+> (B2) continua com o cliente e não bloqueou a Fase 1.
 
 ---
 
-## Fase 1 — Fundação executável
+## Fase 1 — Fundação executável · *concluída*
+
+> **Verde contra o simulador, não contra hardware.** Nenhuma catraca real foi acionada.
+> 200 testes, 0 falhas, CI em Linux e Windows.
 
 1. Solução .NET organizada conforme [`03`](03-arquitetura.md), com testes de arquitetura
    que proíbem as dependências erradas.
@@ -44,6 +46,33 @@ ensaio de bancada agendado para ao menos um modelo.
 **Pronto quando:** CI verde em Linux e Windows; simulador roda 10 equipamentos virtuais
 por 1 h sem vazamento; `kill -9` no worker não perde evento; teste de arquitetura falha
 propositalmente ao introduzir a referência proibida (verificação do verificador).
+
+### Como cada critério foi fechado
+
+| Critério | Como foi verificado |
+|---|---|
+| CI verde nos dois sistemas | Jobs `linux` e `windows` em `.github/workflows/ci.yml` |
+| Soak sem vazamento | `tests/LoadAndSoak`. **Achou um vazamento real** — o histórico da máquina de estados crescia sem limite, ~400 B/evento, 1 MB → 115 MB em 282 mil eventos. Corrigido com janela de 100 transições e contador total |
+| `kill -9` não perde evento | `tests/Integration/QuedaAbruptaTests.cs` mata o `CrashProbe` com SIGKILL de verdade e confere o banco depois |
+| Verificação do verificador | Cada trava foi violada de propósito, a falha foi observada, e só então restaurada — arquitetura, contrato IPC, redação de log, sincronia do instalador e vazamento de token |
+
+### Limitações conhecidas ao fim da Fase 1
+
+1. **A ligação nativa não existe.** `VinculacaoNativaPendente` lança em todos os métodos,
+   de propósito: as assinaturas P/Invoke não foram deduzidas.
+2. **HIL-STACK-01 não foi executado.** Não se sabe ainda se um processo .NET 10 `win-x86`
+   carrega a `EasyInner.dll`, que exige .NET Framework 3.5 ([`12`](12-decisao-de-stack.md)).
+3. **O Desktop compila mas não foi visto rodando** — a verificação visual exige Windows.
+4. **Os scripts do instalador não foram executados**, só analisados. O job `windows` os
+   submete ao parser do PowerShell; rodar de verdade é tarefa de bancada.
+5. **B2, B4, B7 e B8 seguem sem resposta** ([`01`](01-perguntas-criticas.md)).
+
+### Próximo ensaio de hardware necessário
+
+**HIL-STACK-01**, antes de qualquer outro: publicar com `installer/publicar.ps1` numa
+máquina Windows com o SDK Inner Acesso instalado e confirmar o carregamento da DLL. É o
+que decide se o worker segue em .NET 10 ou volta para .NET Framework 4.8 atrás do mesmo
+IPC. Nenhum item da Fase 2 começa antes desse resultado.
 
 ---
 
@@ -116,6 +145,7 @@ B5/B6 ────────────────────────�
 Fase 1 NÃO depende de B1: simulador e mock destravam tudo, menos o hardware real.
 ```
 
-**Recomendação:** iniciar a Fase 1 em paralelo à coleta das respostas. Ela não desperdiça
-trabalho — o adapter mock e o simulador continuam sendo a espinha dorsal dos testes
-depois que o adapter real existir.
+**Foi o que se fez:** a Fase 1 correu em paralelo à coleta das respostas, e não
+desperdiçou trabalho — o adapter mock e o simulador seguem sendo a espinha dorsal dos
+testes depois que o adapter real existir. O que ficou parado é o que só hardware
+responde.

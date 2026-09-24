@@ -1,9 +1,18 @@
 # Conexão Topdata — Plataforma de Gerenciamento de Catracas, Controladores e Coletores
 
-> **Status atual: Fase 0 — Descoberta. Nenhum código de produção foi escrito.**
-> Este repositório contém, neste momento, apenas os artefatos de projeto da Fase 0.
-> A fundação executável (Fase 1) só será iniciada após aprovação explícita e
-> após o fechamento das lacunas listadas em [`docs/01-perguntas-criticas.md`](docs/01-perguntas-criticas.md).
+> **Status atual: Fase 1 concluída — fundação executável, verde contra o simulador.**
+> **Nenhuma catraca real foi acionada ainda.** Todo o caminho leitura → decisão →
+> liberação → persistência roda ponta a ponta, mas contra o simulador: a ligação com a
+> `EasyInner.dll` está deliberadamente **não implementada** (as assinaturas P/Invoke não
+> foram deduzidas — ver [`src/Topdata.EasyInner.Adapter/VinculacaoNativaPendente.cs`](src/Topdata.EasyInner.Adapter/VinculacaoNativaPendente.cs)).
+> O próximo marco é de bancada, não de código: o ensaio **HIL-STACK-01**
+> ([`docs/12`](docs/12-decisao-de-stack.md)).
+
+| Fase | Situação |
+|---|---|
+| 0 — Descoberta | Concluída |
+| 1 — Fundação executável | **Concluída** — 200 testes, 0 falhas; CI em Linux e Windows |
+| 2 — Operação Inner on-line/off-line | Bloqueada pelo ensaio HIL-STACK-01 e pelo `EasyInner.cs` |
 
 ## Procedência das informações
 
@@ -36,7 +45,7 @@ software proprietário da Topdata e este repositório ser público.
 Tudo que não estiver em `FONTE_PRIMARIA` nasce **desabilitado por padrão** e só é
 habilitado após ensaio de bancada com relatório assinado por modelo e firmware.
 
-## Índice dos documentos da Fase 0
+## Índice dos documentos
 
 | # | Documento | Conteúdo |
 |---|---|---|
@@ -56,6 +65,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 12 | [Decisão de stack](docs/12-decisao-de-stack.md) | **Qual linguagem, por quê, e o plano B do protocolo sob NDA** |
 | 13 | [SDK do Leitor Facial](docs/13-sdk-facial.md) | **WebSocket + Web API, 49 comandos, Catracas Easy** |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
+| — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |
 | — | [Runbooks](docs/runbooks/) | Template e índice dos procedimentos de operação |
 
@@ -70,4 +80,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 3. Solicitar à Topdata o **NDA do protocolo de baixo nível**
    ([ADR-0021](docs/ADR/ADR-0021-porta-por-worker-e-protocolo-nda.md)) — prazo de
    fabricante é longo, e não bloqueia a Fase 1.
-4. Aprovar o início da **Fase 1**, que não depende de nenhum dos itens acima.
+4. Executar o ensaio **HIL-STACK-01** numa máquina Windows: publicar com
+   [`installer/publicar.ps1`](installer/) e confirmar que um processo .NET 10 `win-x86`
+   carrega a `EasyInner.dll`. É o que decide se o worker continua em .NET 10 ou volta
+   para .NET Framework 4.8 atrás do mesmo IPC ([`docs/12`](docs/12-decisao-de-stack.md)).
