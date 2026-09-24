@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package conexaotopdata.edge.v1;
+
+option csharp_namespace = "Contracts.Edge.V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Contrato entre o aplicativo de operação e o serviço local.
+//
+// Regra que o contrato carrega por construção: NÃO existe campo para o número de
+// cartão em texto claro. A interface gráfica nunca precisa dele — ela mostra a pessoa,
+// o portão e o motivo. Um contrato sem o campo é mais forte que uma convenção de não
+// preenchê-lo. Ver docs/ADR/ADR-0008 e docs/ADR/ADR-0014.
+//
+// Versionamento: números de campo nunca são reaproveitados. Campo removido vira
+// 'reserved', e um teste de contrato confere isso.
+service EdgeControl {
+  // Estado geral do serviço, para o painel.
+  rpc ObterEstado(ObterEstadoRequest) returns (ObterEstadoResponse);
+
+  // Equipamentos e sua saúde.
+  rpc ListarEquipamentos(ListarEquipamentosRequest) returns (ListarEquipamentosResponse);
+
+  // Fluxo de eventos ao vivo. A interface nunca faz polling.
+  rpc AcompanharEventos(AcompanharEventosRequest) returns (stream EventoDeAcesso);
+}
+
+message ObterEstadoRequest {}
+
+message ObterEstadoResponse {
+  string versao = 1;
+  int32 workers_ativos = 2;
+  int32 equipamentos_conectados = 3;
+  int64 outbox_pendente = 4;
+
+  // Idade do item mais antigo ainda não sincronizado. É o sinal de que a
+  // sincronização parou — e não de que a internet caiu.
+  int64 outbox_idade_mais_antigo_segundos = 5;
+
+  // Nível de degradação em que a operação está. Ver ADR-0017.
+  NivelDeDegradacao nivel = 6;
+
+  bool internet_disponivel = 7;
+}
+
+message ListarEquipamentosRequest {}
+
+message ListarEquipamentosResponse {
+  repeated Equipamento equipamentos = 1;
+}
+
+message Equipamento {
+  int32 inner = 1;
+  string nome_do_gate = 2;
+  string worker = 3;
+  int32 porta = 4;
+  string estado = 5;
+  bool saudavel = 6;
+  google.protobuf.Timestamp ultimo_evento = 7;
+  string firmware = 8;
+  bool homologado = 9;
+
+  // Preenchido só em equipamento com urna.
+  int32 capacidade_da_urna_usada_por_cento = 10;
+}
+
+message AcompanharEventosRequest {
+  // Vazio acompanha todos.
+  repeated int32 inners = 1;
+}
+
+message EventoDeAcesso {
+  string evento_id = 1;
+  int32 inner = 2;
+  google.protobuf.Timestamp recebido_em = 3;
+
+  int32 origem_bruta = 4;
+  string origem_conhecida = 5;
+  bool origem_desconhecida = 6;
+
+  // Credencial SEMPRE mascarada. Não existe campo para o valor real.
+  string credencial_mascarada = 7;
+
+  string pessoa = 8;
+  ResultadoDoAcesso resultado = 9;
+  string motivo = 10;
+  string mensagem_ao_operador = 11;
+
+  // Verdadeiro só com prova física de giro (origem 6). Ver ADR-0007.
+  bool passagem_confirmada = 12;
+
+  string correlation_id = 13;
+}
+
+enum ResultadoDoAcesso {
+  RESULTADO_DO_ACESSO_NAO_ESPECIFICADO = 0;
+  RESULTADO_DO_ACESSO_PERMITIDO = 1;
+  RESULTADO_DO_ACESSO_NEGADO = 2;
+  RESULTADO_DO_ACESSO_EM_REVISAO = 3;
+  RESULTADO_DO_ACESSO_CONTINGENCIA = 4;
+}
+
+enum NivelDeDegradacao {
+  NIVEL_DE_DEGRADACAO_NAO_ESPECIFICADO = 0;
+  NIVEL_DE_DEGRADACAO_T0_NORMAL = 1;
+  NIVEL_DE_DEGRADACAO_T1_SEM_INTERNET = 2;
+  NIVEL_DE_DEGRADACAO_T2_LISTA_LOCAL = 3;
+  NIVEL_DE_DEGRADACAO_T3_ISOLADO = 4;
+}

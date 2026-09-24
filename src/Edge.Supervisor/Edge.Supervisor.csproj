@@ -6,7 +6,12 @@
   -->
 
   <ItemGroup>
+    <ProjectReference Include="../Contracts/Contracts.csproj" />
     <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>
