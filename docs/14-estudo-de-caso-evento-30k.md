@@ -140,11 +140,24 @@ pequena.
 
 ---
 
-## 6. Próximo passo de código que decorre deste estudo
+## 6. A trava de capacidade — construída
 
-Uma trava que recuse montar lista de acesso acima da capacidade do modelo, usando
-`limites-de-capacidade.csv` como fonte — hoje o sistema aceitaria montar 30.000 entradas e
-só descobriria o problema no envio, com a catraca travada no meio do pico.
+`LimitesDeCapacidade` (em `Access.Application/Devices/`) recusa montar lista acima da
+capacidade do modelo, **antes** de qualquer envio. O envio sobrescreve tudo e trava a
+catraca enquanto roda; descobrir o estouro ali seria uma pista parada no meio do pico.
+
+- `MaximoDeUsuarios(placa, dígitos)` — os três tipos de placa, com a queda de capacidade por
+  tamanho de cartão nas descontinuadas. Tamanho sem linha própria usa a faixa documentada
+  **imediatamente acima**: arredondar para baixo inventaria capacidade que a Topdata não
+  publicou, e o preço seria lista truncada em silêncio no equipamento.
+- `AvaliarListaDeAcesso(...)` — recusa não basta; a mensagem nomeia a saída (lista negra),
+  o custo dela (deixar passar desconhecidos na queda) e de quem é a decisão (B4).
+- `AvaliarMarcacoes(...)` — projeta a memória do equipamento pelo pior caso de marcações
+  por passagem, que continua sem confirmação da Topdata.
+
+Amarrada à matriz por teste de contrato: mexer numa constante para fazer um caso caber
+reprova o build, e apagar o selo `A_CONFIRMAR_COM_TOPDATA` da linha de marcações por
+passagem também. Os dois foram verificados violando-os de propósito.
 
 ---
 

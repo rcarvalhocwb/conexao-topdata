@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
