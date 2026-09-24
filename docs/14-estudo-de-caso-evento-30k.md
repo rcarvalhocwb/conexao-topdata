@@ -145,3 +145,74 @@ pequena.
 Uma trava que recuse montar lista de acesso acima da capacidade do modelo, usando
 `limites-de-capacidade.csv` como fonte — hoje o sistema aceitaria montar 30.000 entradas e
 só descobriria o problema no envio, com a catraca travada no meio do pico.
+
+---
+
+## 7. Adendo — o primeiro evento foi limitado a 12.000 pessoas/dia
+
+Mudança de premissa do cliente. **Muda a arquitetura duas vezes.**
+
+### 7.1 A lista branca passa a caber
+
+12.000 ingressos contra o teto de **15.000** do equipamento: cabe, com 20% de folga.
+A inversão para lista negra da seção 2 **deixa de ser necessária**, e com ela some o dilema
+B4 para este evento: cada catraca valida todo ingresso corretamente, sozinha, com a internet
+inteiramente fora.
+
+Memória de marcações também deixa de ser risco: 3.000 pessoas por catraca, 9.000 marcações no
+pior caso de 3 por passagem — 30% das 30.000 disponíveis.
+
+### 7.2 O ponto de virada é 4,0 s
+
+Cenário de show (60% em 2 h = 3.600 pessoas/h), quatro catracas:
+
+| Ciclo | Vazão das 4 | Contra 3.600/h |
+|---|---|---|
+| 3,0 s | 4.800/h | sobra 1.200/h |
+| 3,5 s | 4.114/h | sobra 514/h |
+| **4,0 s** | **3.600/h** | **exatamente no limite** |
+| 4,5 s | 3.200/h | faltam 400/h |
+| 6,0 s | 2.400/h | faltam 1.200/h |
+
+Com 30 mil, os ajustes finos do SDK eram irrelevantes — faltavam 7 catracas e nenhum ajuste
+cobre 7 catracas. **Com 12 mil, esses ajustes passam a ser o que decide se o evento funciona.**
+
+Nos demais cenários há folga: chegada plana precisa de 1,2 catracas; concentrada em 3 h precisa
+de 3,5. O único que não fecha é o show com ciclo acima de 4,0 s.
+
+### 7.3 O que fica no caderno de operação
+
+Publicado como artefato "Caderno das quatro pistas", organizado por momento: antes do evento,
+na abertura, durante o pico, no incidente e no fechamento. Novidades que não estavam na
+seção 3:
+
+- **Entrada por horário imposta pelo equipamento** (campo horário 1 a 100 na lista de usuários).
+  Achatar de 60%/2 h para 40%/4 h corta a exigência pela metade e resolve o ponto de virada.
+  A função que define as tabelas é `LACUNA` no manual.
+- **Ciclo médio em segundos no painel, contra a linha de 4,0 s.** Transforma a aritmética em
+  instrumento: o operador não precisa saber a conta, precisa saber de que lado da linha está.
+- **Teclado como canal de contingência** para ingresso ilegível. Sem ele, cada caso vai à
+  bilheteria e trava a pista.
+- **Vários tamanhos de credencial na mesma pista** (equipe, imprensa, público). Dedicar uma
+  pista à equipe custaria 25% da vazão.
+- **`disabledevice` para fechar pista sem apagá-la** — comandos seguem funcionando, então dá
+  para explicar no display por que aquela pista está fechada.
+- **Assimetria de revogação:** no leitor facial a mudança é por usuário (`enableuser`); no Inner
+  obriga a reenviar a lista inteira e trava a catraca. Logo, população volátil (equipe,
+  imprensa, convidados) pertence ao facial; o público estável fica no Inner.
+- **Teto de 8 faixas de horário na linha facial** (`setdevlock`: dayzone até 8, weekzone até 8),
+  contra até 100 no Inner. Limita a granularidade da entrada escalonada naquela linha.
+
+### 7.4 O que continua impossível, mesmo com 12 mil
+
+**Antipassback entre pistas com a rede fora.** Com a lista completa gravada cada catraca valida
+sozinha, mas não sabe o que aconteceu nas outras três. Detectar o mesmo ingresso girando na
+pista A e depois tentando na pista C exige o software no meio. É a única coisa que o modo
+off-line — agora muito melhor — ainda não faz.
+
+### 7.5 Alerta de LGPD que não é técnico
+
+O `sendlog` do leitor facial dispara a cada rosto detectado, **cadastrado ou não**, e traz foto
+em Base64 de quem é desconhecido. É captura biométrica de quem não pediu nada. O redator já
+remove a foto de qualquer log, mas usar leitor facial em evento aberto exige base legal, aviso
+visível e política de retenção **antes** da primeira pessoa chegar.
