@@ -84,3 +84,46 @@ Windows e **.NET Framework 3.5** para os exemplos EasyInner.
   — recomendado fazê-lo antes de uso comercial, e necessário para suporte e para o
   **NDA do protocolo de baixo nível** ([ADR-0021](../../docs/ADR/ADR-0021-porta-por-worker-e-protocolo-nda.md)).
 - Suporte ao desenvolvedor: `desenvolvimento@topdata.com.br`.
+
+---
+
+## SDK 6.0.2.0 recebido em 24/09/2026
+
+O instalador `SDK-EasyInner-6.0.2.0.exe` (Inno Setup, 14 MB) foi fornecido pelo cliente e
+extraído **fora do repositório**. Nada dele é versionado aqui, e não deve ser.
+
+### Restrição de licença — leia antes de usar
+
+O cabeçalho de todos os fontes de exemplo diz, palavra por palavra:
+
+> *"este exemplo deve ser utilizado apenas para demonstrar a comunicação com os
+> equipamentos da linha inner e não deve ser alterado, por este motivo ele não deve ser
+> incluso em suas aplicações comerciais."*
+
+Portanto: **o `EasyInner.cs` da Topdata não entra no produto.** Ele é lido como
+documentação da interface — nomes de símbolo, tipos de parâmetro e convenção de chamada são
+fatos sobre a ABI da DLL, e é para isso que o SDK existe. As declarações do produto são
+escritas por nós, no nosso estilo, com o identificador da matriz em cada uma.
+
+Isso também era regra do projeto desde o início: *preservar os exemplos oficiais como
+referência somente leitura*.
+
+### O que o pacote contém
+
+| Caminho | O que é |
+|---|---|
+| `app/DLLs/EasyInner.dll` | A DLL. I386, 32 bits, **774 funções exportadas por nome** |
+| `app/DLLs/Inner2K.dll`, `InnerTCP.DLL`, `InnerTCPLib.dll` | DLLs de apoio — a ausência delas é o retorno 4, 5 ou 6 |
+| `app/Exemplos/CSharp/.../COM/EasyInner.cs` | 231 declarações `DllImport`. A pasta se chama COM, mas é P/Invoke |
+| `app/Exemplos/CSharp/.../Entity/Enumeradores.cs` | Enums oficiais: retorno, origem, tipo de leitor, função de acionamento |
+| `app/DLLs/*.bat` | Registro das DLLs |
+
+### Três números que não batiam
+
+| | Fonte | Valor |
+|---|---|---|
+| Funções na DLL | Tabela de exportação | **774** |
+| Funções declaradas | Exemplo oficial em C# | **231** |
+| Funções na nossa matriz | Manual de integração | **58** |
+
+O manual descreve menos de 8% do que a DLL exporta.

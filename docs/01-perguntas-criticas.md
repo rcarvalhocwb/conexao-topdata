@@ -56,6 +56,15 @@ placa, leitor 1, leitor 2, opcionais (urna, biometria, facial, QR), IP, VLAN.
 
 ### B3. A `EasyInner.dll` é COM registrada ou DLL Win32 com exports `stdcall`?
 
+> **RESPONDIDA em 24/09/2026, pelo SDK 6.0.2.0.** É **DLL Win32 com exports por nome**,
+> não COM. A tabela de exportação traz **774 funções**, o binário é **I386 (32 bits)**, e o
+> exemplo oficial em C# as declara com `DllImport` e
+> `CallingConvention = CallingConvention.Winapi` — que em Windows é `StdCall`. O retorno é
+> `byte` na quase totalidade, e não `int`.
+>
+> A pasta do exemplo se chama `COM`, o que confunde: o conteúdo é P/Invoke puro.
+
+
 O briefing diz "nativa/COM". São caminhos de interoperabilidade diferentes:
 `DllImport`/P-Invoke × interop COM com apartment STA e bombeamento de mensagens.
 

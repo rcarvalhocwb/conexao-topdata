@@ -62,6 +62,27 @@ public enum KnownEventOrigin
 
     /// <summary>ORIGEM_QRCODE — leitura de QR Code.</summary>
     QrCode = 21,
+
+    // As seis abaixo vieram do enum Origem do SDK 6.0.2.0 e não constam do manual. São
+    // códigos ASCII das próprias teclas, o que explica os valores altos e espalhados.
+
+    /// <summary>TECLA_CONFIRMA — tecla confirma do teclado (ASCII '#').</summary>
+    TeclaConfirma = 35,
+
+    /// <summary>PRESENCA_DEDO — dedo presente no sensor biométrico (ASCII '%').</summary>
+    PresencaDeDedo = 37,
+
+    /// <summary>TECLA_ANULA — tecla anula do teclado (ASCII '*').</summary>
+    TeclaAnula = 42,
+
+    /// <summary>TECLA_FUNCAO — tecla de função do teclado (ASCII 'A').</summary>
+    TeclaFuncao = 65,
+
+    /// <summary>TECLA_ENTRADA — tecla de entrada do teclado (ASCII 'B').</summary>
+    TeclaEntrada = 66,
+
+    /// <summary>TECLA_SAIDA — tecla de saída do teclado (ASCII 'C').</summary>
+    TeclaSaida = 67,
 }
 
 /// <summary>

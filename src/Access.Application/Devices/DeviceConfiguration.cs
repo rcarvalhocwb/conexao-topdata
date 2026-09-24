@@ -83,9 +83,13 @@ public sealed record DeviceConfiguration
             problemas.Add($"PadraoCartao deve ser 0 (Topdata) ou 1 (Livre); recebido {PadraoCartao}.");
         }
 
-        if (TipoDeLeitor > 7)
+        // 0 a 8, conforme o enum TipoLeitor do SDK oficial. O manual parava em 7 e descrevia
+        // o 7 como "TTL Serial ASCII" — errado: 7 é Wiegand FC COM separador, e 8 é QR Code
+        // por letras. Eu rejeitava o 8, que é exatamente o leitor de um evento com ingresso
+        // em QR.
+        if (TipoDeLeitor > 8)
         {
-            problemas.Add($"TipoDeLeitor deve estar entre 0 e 7; recebido {TipoDeLeitor}.");
+            problemas.Add($"TipoDeLeitor deve estar entre 0 e 8; recebido {TipoDeLeitor}.");
         }
 
         if (OperacaoDoLeitor1 > 4)
@@ -98,14 +102,17 @@ public sealed record DeviceConfiguration
             problemas.Add($"OperacaoDoLeitor2 deve estar entre 0 e 4; recebido {OperacaoDoLeitor2}.");
         }
 
-        if (FuncaoDoAcionamento1 > 5)
+        // 0 a 9, conforme o enum FuncaoAcionamento do SDK oficial. O manual parava em 5
+        // (revista). Os valores 6 a 9 sinalizam estados da catraca: saída liberada, entrada
+        // liberada, liberada nos dois sentidos, e liberada nos dois sentidos com marcação.
+        if (FuncaoDoAcionamento1 > 9)
         {
-            problemas.Add($"FuncaoDoAcionamento1 deve estar entre 0 e 5; recebido {FuncaoDoAcionamento1}.");
+            problemas.Add($"FuncaoDoAcionamento1 deve estar entre 0 e 9; recebido {FuncaoDoAcionamento1}.");
         }
 
-        if (FuncaoDoAcionamento2 > 5)
+        if (FuncaoDoAcionamento2 > 9)
         {
-            problemas.Add($"FuncaoDoAcionamento2 deve estar entre 0 e 5; recebido {FuncaoDoAcionamento2}.");
+            problemas.Add($"FuncaoDoAcionamento2 deve estar entre 0 e 9; recebido {FuncaoDoAcionamento2}.");
         }
 
         if (TempoDoAcionamento1 > 50)
