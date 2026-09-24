@@ -1,0 +1,61 @@
+id;modulo;funcao;modelos_compativeis;modo;parametros;retorno;timeout_ms;efeito_fisico;precondicoes;risco;teste;selo_procedencia;fonte
+EI-001;Comunicacao;DefinirTipoConexao;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;processo x86 com DLL carregada;baixo;UNIT-EI-001 / HIL-COM-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-002;Comunicacao;AbrirPortaComunicacao;LACUNA;ambos;LACUNA;LACUNA;LACUNA;abre socket servidor;DefinirTipoConexao executado; porta livre; firewall liberado;alto - singleton por worker;UNIT-EI-002 / HIL-COM-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-003;Comunicacao;FecharPortaComunicacao;LACUNA;ambos;LACUNA;LACUNA;LACUNA;encerra socket;porta aberta;medio - vazamento de recurso se omitido;UNIT-EI-003;A_VERIFICAR_NO_WRAPPER;briefing
+EI-004;Comunicacao;TestarConexaoInner;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;porta aberta; equipamento conectado;baixo;INT-SM-002 / HIL-COM-03;A_VERIFICAR_NO_WRAPPER;briefing
+EI-005;Comunicacao;PingOnline;LACUNA;online;LACUNA;LACUNA;LACUNA;nenhum;equipamento em modo online;medio - usado na mudanca automatica online/offline;INT-SM-010;A_VERIFICAR_NO_WRAPPER;briefing
+EI-006;Diagnostico;ReceberVersaoFirmware;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;conexao estabelecida;alto - insumo do capability discovery;HIL-CAP-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-007;Diagnostico;ReceberVersaoFirmware (variantes 6xx/complementares);LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;conexao estabelecida;alto;HIL-CAP-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-008;Diagnostico;Leitura de versao/modelo biometrico;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;modulo biometrico presente;medio;HIL-BIO-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-009;Diagnostico;Leitura de relogio;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;conexao estabelecida;alto - deteccao de drift;INT-CLK-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-010;Configuracao;Envio de relogio;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera relogio do equipamento;modo manutencao recomendado;alto - afeta ordenacao de eventos;INT-CLK-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-011;Diagnostico;Recebimento das configuracoes;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;conexao estabelecida;alto - base do diff e deteccao de drift;INT-CFG-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-012;Configuracao;Padrao do cartao;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera interpretacao de leitura;buffer de config iniciado;alto - erro invalida todas as leituras;INT-CFG-02 / HIL-CARD-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-013;Configuracao;Quantidade fixa/variavel de digitos;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera interpretacao de leitura;buffer de config iniciado;alto - zeros a esquerda;HIL-CARD-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-014;Configuracao;Tipo de leitor;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera hardware ativo;capacidade confirmada;alto;HIL-CARD-03;A_VERIFICAR_NO_WRAPPER;briefing
+EI-015;Configuracao;Leitores 1 e 2;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera hardware ativo;capacidade confirmada;alto;HIL-CARD-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-016;Configuracao;Dois leitores Wiegand;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera hardware ativo;capacidade confirmada;alto;HIL-CARD-05;A_VERIFICAR_NO_WRAPPER;briefing
+EI-017;Configuracao;Operacao online/offline;LACUNA;ambos;LACUNA;LACUNA;LACUNA;muda regime de decisao;lista offline sincronizada antes de mudar;critico;INT-SM-020;A_VERIFICAR_NO_WRAPPER;briefing
+EI-018;Configuracao;Acionamentos 1 e 2;LACUNA;ambos;LACUNA;LACUNA;LACUNA;define reles acionados;comissionamento concluido;critico - sentido fisico;HIL-DIR-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-019;Configuracao;Botoes;LACUNA;ambos;LACUNA;LACUNA;LACUNA;habilita entrada fisica;-;medio;INT-CFG-03;A_VERIFICAR_NO_WRAPPER;briefing
+EI-020;Configuracao;Sensores;LACUNA;ambos;LACUNA;LACUNA;LACUNA;habilita leitura de sensores;-;alto - afeta confirmacao de giro;HIL-DIR-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-021;Configuracao;Teclado;LACUNA;ambos;LACUNA;LACUNA;LACUNA;habilita PIN;-;medio;INT-CFG-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-022;Configuracao;Mensagens;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera display;-;baixo;INT-MSG-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-023;Configuracao;Data/hora em bilhetes;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera formato do bilhete;-;medio - parsing de bilhete offline;INT-OFF-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-024;Configuracao;Mudanca automatica online/offline;LACUNA;ambos;LACUNA;LACUNA;LACUNA;muda regime sem comando;PingOnline configurado;critico;INT-SM-021;A_VERIFICAR_NO_WRAPPER;briefing
+EI-025;Configuracao;Envio atomico das configuracoes;LACUNA;ambos;LACUNA;LACUNA;LACUNA;aplica toda a configuracao;sequencia montar->enviar serializada no worker;critico - buffers possivelmente globais;INT-CFG-05 / CHAOS-CFG-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-026;TempoReal;ReceberDadosOnLine;LACUNA;online;LACUNA;LACUNA;LACUNA;nenhum;porta aberta; thread dedicada;critico - bloqueante; nunca na UI;INT-SM-030 / CHAOS-DEV-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-027;TempoReal;ReceberDadosOnLine (variante com letras);LACUNA;online;LACUNA;LACUNA;LACUNA;nenhum;idem;critico;INT-SM-031;A_VERIFICAR_NO_WRAPPER;briefing
+EI-028;TempoReal;Liberacao de leitor;LACUNA;online;LACUNA;LACUNA;LACUNA;reabilita leitura;apos evento de leitura;alto - equipamento trava se esquecido;INT-SM-032;A_VERIFICAR_NO_WRAPPER;briefing
+EI-029;TempoReal;LiberarCatracaEntrada;LACUNA;online;LACUNA;LACUNA;LACUNA;libera giro no sentido entrada;perfil fisico comissionado;critico;SIM-URNA-08 / HIL-DIR-03;A_VERIFICAR_NO_WRAPPER;briefing
+EI-030;TempoReal;Liberacao de catraca por sentido invertido;LACUNA;online;LACUNA;LACUNA;LACUNA;libera giro no sentido oposto;perfil fisico comissionado;critico;HIL-DIR-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-031;TempoReal;Liberacao de catraca nos dois sentidos;LACUNA;online;LACUNA;LACUNA;LACUNA;libera ambos os sentidos;autorizacao de supervisor;critico - risco de tailgating;HIL-DIR-05;A_VERIFICAR_NO_WRAPPER;briefing
+EI-032;TempoReal;Reles;LACUNA;online;LACUNA;LACUNA;LACUNA;aciona rele (ex. recolhimento de cartao);comissionamento; tempo configurado;critico;SIM-URNA-05;A_VERIFICAR_NO_WRAPPER;briefing
+EI-033;TempoReal;LEDs;LACUNA;online;LACUNA;LACUNA;LACUNA;sinalizacao visual;-;baixo;INT-UX-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-034;TempoReal;Backlight;LACUNA;online;LACUNA;LACUNA;LACUNA;sinalizacao visual;-;baixo;INT-UX-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-035;TempoReal;Bips;LACUNA;online;LACUNA;LACUNA;LACUNA;sinalizacao sonora;-;baixo;INT-UX-03;A_VERIFICAR_NO_WRAPPER;briefing
+EI-036;TempoReal;Mensagens temporarias/padrao;LACUNA;online;LACUNA;LACUNA;LACUNA;altera display;-;baixo;INT-MSG-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-037;TempoReal;Contador de giro;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;-;medio - reconciliacao;INT-REC-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-038;TempoReal;Acesso negado;LACUNA;online;LACUNA;LACUNA;LACUNA;sinaliza negacao; nao libera;-;medio;SIM-URNA-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-039;Offline;Lista branca/negra;LACUNA;offline;LACUNA;LACUNA;LACUNA;altera memoria do equipamento;capacidade de lista conhecida;alto - estouro de lista;INT-OFF-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-040;Offline;Inclusao e envio de usuarios;LACUNA;offline;LACUNA;LACUNA;LACUNA;altera memoria do equipamento;subconjunto priorizado definido;alto;INT-OFF-03 / LOAD-OFF-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-041;Offline;Horarios de acesso;LACUNA;offline;LACUNA;LACUNA;LACUNA;altera regras locais;limite de tabelas conhecido;medio;INT-OFF-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-042;Offline;Horarios de sirene;LACUNA;offline;LACUNA;LACUNA;LACUNA;aciona sirene;desabilitado por padrao;baixo;INT-OFF-05;A_VERIFICAR_NO_WRAPPER;briefing
+EI-043;Offline;Mensagens offline;LACUNA;offline;LACUNA;LACUNA;LACUNA;altera display;-;baixo;INT-OFF-06;A_VERIFICAR_NO_WRAPPER;briefing
+EI-044;Offline;Usuarios sem digital;LACUNA;offline;LACUNA;LACUNA;LACUNA;altera memoria;-;medio;INT-OFF-07;A_VERIFICAR_NO_WRAPPER;briefing
+EI-045;Offline;Coleta de quantidade de bilhetes;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;-;alto - alarme de memoria cheia;INT-REC-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-046;Offline;Coleta de bilhetes;LACUNA;ambos;LACUNA;LACUNA;LACUNA;pode limpar memoria;transacao local confirmada antes de limpar;critico - perda de evento;INT-REC-03 / CHAOS-REC-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-047;Offline;Recuperacao e reconciliacao;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;-;critico - duplicacao;INT-REC-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-048;Biometria;Cadastro de digital;LACUNA;ambos;LACUNA;LACUNA;LACUNA;captura no sensor;base legal LGPD; modulo presente;critico - dado sensivel;HIL-BIO-02;A_VERIFICAR_NO_WRAPPER;briefing
+EI-049;Biometria;Exclusao de digital;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera memoria;-;alto - direito de eliminacao;HIL-BIO-03;A_VERIFICAR_NO_WRAPPER;briefing
+EI-050;Biometria;Consulta/lista de digitais;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;-;alto - minimizacao;HIL-BIO-04;A_VERIFICAR_NO_WRAPPER;briefing
+EI-051;Biometria;Templates (envio/recebimento);LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera memoria;criptografia em repouso; segregacao;critico;HIL-BIO-05 / SEC-BIO-01;A_VERIFICAR_NO_WRAPPER;briefing
+EI-052;Biometria;Identificacao/verificacao;LACUNA;ambos;LACUNA;LACUNA;LACUNA;nenhum;-;alto;HIL-BIO-06;A_VERIFICAR_NO_WRAPPER;briefing
+EI-053;Biometria;Ajustes qualidade/seguranca/sensibilidade/LFD;LACUNA;ambos;LACUNA;LACUNA;LACUNA;altera comportamento do sensor;bancada por modelo;alto - falso aceite/rejeite;HIL-BIO-07;A_VERIFICAR_NO_WRAPPER;briefing
+EI-054;Biometria;Modelos Bio Light/variavel;LACUNA;ambos;LACUNA;LACUNA;LACUNA;-;capacidade confirmada;alto;HIL-BIO-08;A_VERIFICAR_NO_WRAPPER;briefing
+FA-001;Facial;Cadastro/edicao/exclusao de usuario;LACUNA;online;LACUNA;LACUNA;LACUNA;altera base do leitor;SDK Facial; WebSocket estabelecido;critico - dado sensivel;HIL-FAC-01;A_CONFIRMAR_COM_TOPDATA;briefing
+FA-002;Facial;Cadastro/exclusao de face;LACUNA;online;LACUNA;LACUNA;LACUNA;altera base do leitor;base legal LGPD;critico;HIL-FAC-02;A_CONFIRMAR_COM_TOPDATA;briefing
+FA-003;Facial;Listagem paginada;LACUNA;online;LACUNA;LACUNA;LACUNA;nenhum;-;medio;HIL-FAC-03;A_CONFIRMAR_COM_TOPDATA;briefing
+FA-004;Facial;Logs (sendlog);LACUNA;online;LACUNA;LACUNA;LACUNA;nenhum;-;critico - confirma autorizacao e NAO giro;HIL-FAC-04 / SIM-GIRO-05;A_CONFIRMAR_COM_TOPDATA;briefing
+FA-005;Facial;Keepalive com resposta obrigatoria;LACUNA;online;LACUNA;LACUNA;LACUNA;mantem sessao;-;alto - queda silenciosa se ignorado;HIL-FAC-05;A_CONFIRMAR_COM_TOPDATA;briefing
+FA-006;Facial;Status e politicas;LACUNA;online;LACUNA;LACUNA;LACUNA;-;-;medio;HIL-FAC-06;A_CONFIRMAR_COM_TOPDATA;briefing
