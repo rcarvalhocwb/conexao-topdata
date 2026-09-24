@@ -44,7 +44,18 @@
     </Feature>
 
     <ComponentGroup Id="Grupo_Servico" Directory="DIR_SUPERVISOR">
-      <Files Include="$(var.PastaSupervisor)\**" Exclude="$(var.PastaSupervisor)\Edge.Supervisor.exe" />
+      <!--
+        Por extensao, e nao "**", porque o Edge.Supervisor.exe pertence ao componente do
+        servico logo abaixo e nao pode entrar duas vezes. O elemento Files nao aceita
+        Exclude (WIX0004), entao a separacao e feita aqui.
+
+        Os .pdb entram de proposito: sem simbolos, um travamento em campo vira um endereco
+        hexadecimal. Os .xml de documentacao ficam de fora, que sao ruido em maquina de
+        operacao.
+      -->
+      <Files Include="$(var.PastaSupervisor)\*.dll" />
+      <Files Include="$(var.PastaSupervisor)\*.json" />
+      <Files Include="$(var.PastaSupervisor)\*.pdb" />
 
       <Component Id="ServicoLocal" Guid="d5418902-3ddf-4abf-a2a6-f34f04765695">
         <File Id="ServicoExe" Source="$(var.PastaSupervisor)\Edge.Supervisor.exe" KeyPath="yes" />
@@ -67,15 +78,21 @@
     </ComponentGroup>
 
     <ComponentGroup Id="Grupo_Painel" Directory="DIR_PAINEL">
-      <Files Include="$(var.PastaPainel)\**" />
+      <Files Include="$(var.PastaPainel)\*.exe" />
+      <Files Include="$(var.PastaPainel)\*.dll" />
+      <Files Include="$(var.PastaPainel)\*.json" />
+      <Files Include="$(var.PastaPainel)\*.pdb" />
     </ComponentGroup>
 
     <ComponentGroup Id="Grupo_Worker" Directory="DIR_WORKER">
-      <Files Include="$(var.PastaWorker)\**" />
+      <Files Include="$(var.PastaWorker)\*.exe" />
+      <Files Include="$(var.PastaWorker)\*.dll" />
+      <Files Include="$(var.PastaWorker)\*.json" />
+      <Files Include="$(var.PastaWorker)\*.pdb" />
     </ComponentGroup>
 
     <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
-      <Component Id="AtalhoDoPainel" Guid="*">
+      <Component Id="AtalhoDoPainel">
         <Shortcut Id="AtalhoPainel"
                   Name="Painel do evento"
                   Description="Painel do operador do Conexão Topdata"
