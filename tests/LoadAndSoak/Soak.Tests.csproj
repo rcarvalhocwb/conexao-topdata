@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ensaios de longa duração. O padrão é curto para caber na CI de todo commit; a
+    duração real vem da variável de ambiente SOAK_MINUTOS.
+  -->
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <AssemblyName>Soak.Tests</AssemblyName>
+    <RootNamespace>Soak.Tests</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
+    <ProjectReference Include="../../src/Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../../src/Edge.Worker/Edge.Worker.csproj" />
+    <ProjectReference Include="../Simulator/Simulator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

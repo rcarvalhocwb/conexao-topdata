@@ -42,6 +42,7 @@ public sealed class DeviceStateMachineTests
 
         Assert.Equal(DeviceState.Polling, m.Current);
         Assert.Equal(11, m.History.Count);
+        Assert.Equal(11, m.TotalDeTransicoes);
     }
 
     /// <summary>
@@ -165,6 +166,29 @@ public sealed class DeviceStateMachineTests
             Assert.True(Maquina(estado).CanFire(DeviceTrigger.Desabilitar), $"{estado} não aceita Desabilitar");
             Assert.True(Maquina(estado).CanFire(DeviceTrigger.DependenciaFatal), $"{estado} não aceita DependenciaFatal");
         }
+    }
+
+    /// <summary>
+    /// O histórico é uma janela, não um diário. Sem limite, um worker de plantão por
+    /// horas retém uma transição por evento — um ensaio de soak mediu 115 MB em 280 mil
+    /// eventos. A trilha durável vai para o banco.
+    /// </summary>
+    [Fact]
+    public void Historico_e_limitado_e_mantem_as_transicoes_mais_recentes()
+    {
+        var m = Maquina(DeviceState.Polling);
+
+        // Muito além do limite: alterna sem eventos, que é transição válida de Polling.
+        for (var i = 0; i < DeviceStateMachine.TamanhoDoHistorico * 5; i++)
+        {
+            Disparar(m, DeviceTrigger.SemEventos);
+        }
+
+        Assert.Equal(DeviceStateMachine.TamanhoDoHistorico, m.History.Count);
+        Assert.Equal(DeviceStateMachine.TamanhoDoHistorico * 5, m.TotalDeTransicoes);
+
+        // O que sobrou é o fim, não o começo.
+        Assert.All(m.History, r => Assert.Equal(DeviceTrigger.SemEventos, r.Trigger));
     }
 
     [Fact]

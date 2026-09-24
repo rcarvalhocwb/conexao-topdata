@@ -35,8 +35,16 @@ public sealed class DeviceSlot
     /// <summary>Identidade lida do equipamento, quando já conhecida.</summary>
     public FirmwareInfo? Firmware { get; internal set; }
 
-    /// <summary>Eventos recebidos e ainda não consumidos por quem chamou o passo.</summary>
-    public List<DeviceEvent> EventosPendentes { get; } = [];
+    /// <summary>
+    /// Último evento recebido deste equipamento.
+    /// </summary>
+    /// <remarks>
+    /// Guarda apenas o último, de propósito. Uma fila aqui cresceria sem limite num
+    /// worker que roda por dias, e não teria serventia: a decisão é sempre sobre a
+    /// leitura mais recente. Quem precisa de todos os eventos é a persistência, que os
+    /// recebe pelo sink do <c>DevicePump</c> no instante em que chegam.
+    /// </remarks>
+    public DeviceEvent? UltimoEvento { get; internal set; }
 
     /// <summary>Última decisão tomada para este equipamento.</summary>
     public Decision? UltimaDecisao { get; internal set; }
@@ -56,12 +64,14 @@ public sealed class DevicePump
     private readonly Func<DateTimeOffset> _relogio;
     private readonly IReadOnlySet<byte> _linhasHomologadas;
     private readonly Func<DeviceEvent, Decision>? _decidir;
+    private readonly Action<DeviceEvent>? _aoReceberEvento;
 
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
         IReadOnlySet<byte>? linhasHomologadas = null,
-        Func<DeviceEvent, Decision>? decidir = null)
+        Func<DeviceEvent, Decision>? decidir = null,
+        Action<DeviceEvent>? aoReceberEvento = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _adapter = adapter;
@@ -69,6 +79,10 @@ public sealed class DevicePump
 
         // O motor de decisão é de fora: o laço não decide acesso, só transporta.
         _decidir = decidir;
+
+        // Quem persiste recebe cada evento no instante em que chega, e não por uma fila
+        // acumulada no slot.
+        _aoReceberEvento = aoReceberEvento;
 
         // Nada é configurado sem que o firmware conste da matriz (ADR-0010).
         _linhasHomologadas = linhasHomologadas ?? new HashSet<byte> { 14, 16 };
@@ -222,7 +236,8 @@ public sealed class DevicePump
         {
             case AdapterStatus.Ok when evento is not null:
                 d.Disjuntor.RegistrarSucesso();
-                d.EventosPendentes.Add(evento);
+                d.UltimoEvento = evento;
+                _aoReceberEvento?.Invoke(evento);
                 Disparar(
                     d,
                     evento.Origin.ConfirmaPassagemFisica
@@ -281,7 +296,7 @@ public sealed class DevicePump
             return "aguardando motor de decisão (nenhum configurado)";
         }
 
-        var evento = d.EventosPendentes.Count > 0 ? d.EventosPendentes[^1] : null;
+        var evento = d.UltimoEvento;
         if (evento is null)
         {
             Disparar(d, DeviceTrigger.AcessoNegado, agora);

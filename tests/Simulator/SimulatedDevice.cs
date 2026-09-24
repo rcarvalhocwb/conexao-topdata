@@ -103,6 +103,16 @@ public sealed class SimulatedDevice : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Gerador contínuo de eventos, para ensaios de longa duração.
+    /// </summary>
+    /// <remarks>
+    /// Devolver <c>null</c> significa "sem evento agora". Usado quando roteirizar uma
+    /// lista finita não serve — num soak de uma hora, a lista teria de ter milhões de
+    /// itens e o próprio teste seria o vazamento.
+    /// </remarks>
+    public Func<ScriptedEvent?>? Gerador { get; set; }
+
     /// <summary>Programa bilhetes na memória do equipamento.</summary>
     public SimulatedDevice ComBilhetes(params Bilhete[] bilhetes)
     {
@@ -125,7 +135,8 @@ public sealed class SimulatedDevice : IDisposable
 
     internal bool TemEventoPendente => _eventos.Count > 0;
 
-    internal ScriptedEvent? ProximoEvento() => _eventos.Count > 0 ? _eventos.Dequeue() : null;
+    internal ScriptedEvent? ProximoEvento() =>
+        _eventos.Count > 0 ? _eventos.Dequeue() : Gerador?.Invoke();
 
     internal Bilhete? ProximoBilhete() => _bilhetes.Count > 0 ? _bilhetes.Dequeue() : null;
 

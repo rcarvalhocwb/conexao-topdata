@@ -49,7 +49,20 @@ public sealed class DeviceStateMachine
         [DeviceState.ColetarBilhetes] = TimeSpan.FromMinutes(10),
     }.ToFrozenDictionary();
 
-    private readonly List<TransitionRecord> _history = [];
+    /// <summary>
+    /// Quantas transições ficam em memória para diagnóstico imediato.
+    /// </summary>
+    /// <remarks>
+    /// O histórico é <b>limitado</b> de propósito. Um ensaio de soak mostrou que a lista
+    /// sem limite retinha cerca de 400 bytes por evento: 115 MB em 280 mil eventos, e
+    /// crescendo em linha reta. Num evento de horas, isso derruba o worker.
+    /// A trilha durável de auditoria vai para o banco (tabela
+    /// <c>device_state_transition</c>); o que fica aqui é só a janela recente, que é o
+    /// que serve para responder "o que estava acontecendo quando travou".
+    /// </remarks>
+    public const int TamanhoDoHistorico = 100;
+
+    private readonly Queue<TransitionRecord> _history = new(TamanhoDoHistorico);
 
     public DeviceStateMachine(string deviceId, DeviceState initial = DeviceState.Disabled)
     {
@@ -62,8 +75,14 @@ public sealed class DeviceStateMachine
 
     public DeviceState Current { get; private set; }
 
-    /// <summary>Histórico de transições, para auditoria e diagnóstico.</summary>
-    public IReadOnlyList<TransitionRecord> History => _history;
+    /// <summary>
+    /// Últimas transições, da mais antiga para a mais recente. Janela limitada a
+    /// <see cref="TamanhoDoHistorico"/>.
+    /// </summary>
+    public IReadOnlyCollection<TransitionRecord> History => _history;
+
+    /// <summary>Total de transições desde o início, mesmo as já descartadas da janela.</summary>
+    public long TotalDeTransicoes { get; private set; }
 
     /// <summary>Tempo-limite do estado atual, quando houver.</summary>
     public TimeSpan? CurrentTimeout => Timeouts.TryGetValue(Current, out var t) ? t : null;
@@ -99,7 +118,14 @@ public sealed class DeviceStateMachine
         }
 
         record = new TransitionRecord(Current, trigger, destino.Value, at, correlationId);
-        _history.Add(record);
+
+        _history.Enqueue(record);
+        if (_history.Count > TamanhoDoHistorico)
+        {
+            _history.Dequeue();
+        }
+
+        TotalDeTransicoes++;
         Current = destino.Value;
         return true;
     }

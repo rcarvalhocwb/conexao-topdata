@@ -78,7 +78,20 @@ public sealed class SecLog01Tests
                     ReasonCodes.Autorizado,
                     DegradationTier.T1SemInternet,
                     TimeSpan.FromMilliseconds(9),
-                    [])),
+                    []),
+
+                // O caminho realista do vazamento: quem recebe o evento loga o conteúdo
+                // para diagnosticar uma leitura que não funcionou. É exatamente aqui que
+                // o número de cartão chegaria ao disco se a redação não existisse.
+                aoReceberEvento: evento => log.Depuracao(
+                    $"evento {evento.Origin} com conteúdo {evento.RawCardData}",
+                    evento.CorrelationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["inner"] = 1,
+                        ["cartao"] = evento.RawCardData,
+                        ["origem"] = evento.Origin.Raw,
+                    })),
             log: log);
 
         laco.Iniciar(3570);
@@ -95,24 +108,6 @@ public sealed class SecLog01Tests
         for (var i = 0; i < 40; i++)
         {
             laco.UmaVolta();
-
-            // O caminho realista do vazamento: alguém logando o evento para diagnosticar
-            // uma leitura que não funcionou. É exatamente aqui que o número de cartão
-            // chegaria ao disco se a redação não existisse.
-            foreach (var evento in slots[0].EventosPendentes)
-            {
-                log.Depuracao(
-                    $"evento {evento.Origin} com conteúdo {evento.RawCardData}",
-                    evento.CorrelationId,
-                    new Dictionary<string, object?>
-                    {
-                        ["inner"] = 1,
-                        ["cartao"] = evento.RawCardData,
-                        ["origem"] = evento.Origin.Raw,
-                    });
-            }
-
-            slots[0].EventosPendentes.Clear();
         }
 
         Assert.NotEmpty(destino.Linhas);
