@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    ÚNICO projeto que declara a EasyInner.dll.
+    Só pode ser referenciado por Edge.Worker.X86, pelo adapter real e pelos testes de
+    hardware-in-the-loop. A regra é verificada por ARCH-01 (tests/Contract).
+
+    Compila em qualquer plataforma (DllImport é resolvido em runtime), mas só FUNCIONA
+    num processo Windows x86. Ver docs/ADR/ADR-0001 e docs/ADR/ADR-0019.
+  -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

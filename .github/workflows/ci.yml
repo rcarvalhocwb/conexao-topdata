@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+
+jobs:
+  # O domínio, as regras de acesso e a máquina de estados não dependem de Windows.
+  # Rodar em Linux não é conveniência: é o que mantém a separação honesta.
+  # Ver docs/ADR/ADR-0001-isolar-easyinner-em-processo-x86.md
+  linux:
+    name: Build e testes (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testar
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publicar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-linux
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+
+  # Windows é onde o produto roda de verdade. Os projetos que só compilam lá
+  # (worker x86, WPF) entram nesta matriz conforme forem criados.
+  windows:
+    name: Build e testes (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testar
+        run: dotnet test --no-build --configuration Release
+
+  # SEC-LOG-01: nenhum dado sensível pode chegar ao log.
+  # Nesta fase, a checagem é estática; ela cresce junto com a observabilidade.
+  seguranca:
+    name: Varredura de dado sensível
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Proibir interpolação direta de credencial em log
+        run: |
+          set -euo pipefail
+          # Procura chamadas de log que interpolem .Raw ou .Normalized de uma credencial.
+          if grep -rnE '(Log|log)[A-Za-z]*\(.*\.(Raw|Normalized)' src/ tests/ 2>/dev/null; then
+            echo "::error::Credencial em texto claro dentro de chamada de log."
+            exit 1
+          fi
+          echo "Nenhuma interpolação de credencial em log encontrada."

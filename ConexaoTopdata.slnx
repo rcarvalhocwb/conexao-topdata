@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Access.Application/Access.Application.csproj" />
+    <Project Path="src/Access.Domain/Access.Domain.csproj" />
+    <Project Path="src/Topdata.EasyInner.Interop/Topdata.EasyInner.Interop.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/Contract/">
+    <Project Path="tests/Contract/Contract.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Unit/">
+    <Project Path="tests/Unit/Unit.Tests.csproj" />
+  </Folder>
+</Solution>
