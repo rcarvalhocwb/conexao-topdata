@@ -116,3 +116,60 @@ public sealed class LimitesDeCapacidadeTests
         return achadas[0];
     }
 }
+
+/// <summary>
+/// Amarra o inventário da DLL ao que o produto realmente declara.
+/// </summary>
+/// <remarks>
+/// O inventário é a resposta a "quantas funções existem e quais usamos". Sem esta trava
+/// ele viraria um retrato de um dia, e a diferença entre 38 declaradas e 265 existentes é
+/// justamente o que não se quer perder de vista.
+/// </remarks>
+public sealed class InventarioDaDllTests
+{
+    private static readonly IReadOnlyList<IReadOnlyDictionary<string, string>> Inventario =
+        RepositorioDeMatriz.Ler("inventario-completo-dll.csv");
+
+    /// <summary>
+    /// A superfície real é 265, e não as 775 linhas da tabela de exportação.
+    /// </summary>
+    /// <remarks>
+    /// 510 daquelas linhas são wrappers JNI — a mesma API exposta para Java, com nome
+    /// decorado. Contá-las triplicava o tamanho aparente do SDK, e eu cheguei a relatar o
+    /// número inflado antes de conferir.
+    /// </remarks>
+    [Fact]
+    public void O_inventario_cobre_a_api_real_e_nao_os_wrappers_java()
+    {
+        Assert.Equal(265, Inventario.Count);
+        Assert.DoesNotContain(Inventario, f => f["funcao"].StartsWith("_Java_", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Toda_funcao_declarada_no_produto_esta_marcada_como_tal()
+    {
+        var declaradas = Inventario.Where(f => f["situacao"] == "DECLARADA_NO_PRODUTO").ToList();
+
+        Assert.NotEmpty(declaradas);
+
+        // Declarar o que não existe na DLL é o erro que corrompe memória em vez de lançar.
+        Assert.All(declaradas, f => Assert.NotEqual("SEM ASSINATURA PUBLICADA", f["assinatura_oficial"]));
+    }
+
+    /// <summary>
+    /// Nada pode ser declarado sem assinatura de fonte primária.
+    /// </summary>
+    [Fact]
+    public void Nenhuma_funcao_sem_assinatura_foi_declarada()
+    {
+        var inventadas = Inventario
+            .Where(f => f["situacao"] == "DECLARADA_NO_PRODUTO" && f["fonte"] != "SDK 6.0.2.0 EasyInner.cs")
+            .Select(f => f["funcao"])
+            .ToList();
+
+        Assert.True(
+            inventadas.Count == 0,
+            "Funções declaradas sem assinatura de fonte primária: " + string.Join(", ", inventadas) +
+            ". Deduzir assinatura de P/Invoke não dá exceção, dá corrupção de memória.");
+    }
+}

@@ -118,12 +118,44 @@ referência somente leitura*.
 | `app/Exemplos/CSharp/.../Entity/Enumeradores.cs` | Enums oficiais: retorno, origem, tipo de leitor, função de acionamento |
 | `app/DLLs/*.bat` | Registro das DLLs |
 
-### Três números que não batiam
+### A superfície real da DLL
 
-| | Fonte | Valor |
+**Correção de um número que eu relatei errado.** A tabela de exportação tem 775 entradas,
+e eu disse "774 funções". Está errado: **510 delas são wrappers JNI** — a mesma API
+exposta para Java, com nome decorado (`_Java_EasyInner_ColetarBilhete@20`). Conferi: os
+510 cobrem 256 nomes distintos, e 252 já existem na API comum.
+
+A superfície real é **265 funções**.
+
+| Situação | Quantas | O que significa |
 |---|---|---|
-| Funções na DLL | Tabela de exportação | **774** |
-| Funções declaradas | Exemplo oficial em C# | **231** |
-| Funções na nossa matriz | Manual de integração | **58** |
+| Declaradas no produto | **38** | Em `EasyInnerNative.cs`, com assinatura de fonte primária |
+| Assinatura conhecida, não declarada | **191** | Estão no exemplo oficial; declarar é trabalho, não pesquisa |
+| Só o nome | **36** | Não há assinatura publicada em lugar nenhum |
 
-O manual descreve menos de 8% do que a DLL exporta.
+Por categoria, o que explica por que 38 já cobrem a operação:
+
+| Categoria | Funções |
+|---|---|
+| Biometria | 104 |
+| Configuração | 53 |
+| Envio, leitura, listas | 47 |
+| Tempo real e sinalização | 18 |
+| Comunicação e coleta | 7 |
+| Outros | 36 |
+
+**104 das 265 são biometria**, fora do escopo de um evento só de entrada sem digital.
+
+Sobre o manual: ele documenta 58 das 265, ou seja **22%** — e não "menos de 8%", que era
+a conta feita sobre o número inflado.
+
+### Achados entre as 36 sem assinatura
+
+- **`LerContadorGiro` e `AtribuirContadorGiro`** — a catraca tem um **contador de giros
+  próprio**. Comparado com a nossa contagem de origem 6, dá uma auditoria independente da
+  ocupação, que é exigência legal em evento. Vale pedir a assinatura à Topdata.
+- **`HabilitaQrAsciiEstendido` e `ReceberQrAsciiEstendido`** — QR com ASCII estendido,
+  relevante se o ingresso tiver caracteres fora do básico.
+- **`ReceberDadosOnLine_Hexadecimal`** — mais uma variante de credencial.
+- **`LigarBackLite` e `DesligarBackLite`** — existem, mas **sem assinatura publicada**. Eu
+  os citei como parte da sinalização; LED e bipe têm assinatura, a luz de fundo não.
