@@ -82,6 +82,20 @@ jobs:
 
       # Só o PowerShell do Windows sabe dizer se estes scripts sequer analisam.
       # Sem esta etapa, um erro de sintaxe no instalador só apareceria na bancada.
+      # Imagem real da tela, renderizada pela propria arvore visual do XAML.
+      # O projeto e construido em Linux, onde o WPF compila mas nao roda; sem esta etapa a
+      # unica imagem do painel seria uma recriacao feita a mao.
+      - name: Capturar as telas do painel
+        run: dotnet run --project src/Desktop.App --configuration Release --no-build -- --capturar capturas
+
+      - name: Publicar as telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telas-do-painel
+          path: capturas/*.png
+          if-no-files-found: error
+
       - name: Analisar os scripts do instalador
         shell: pwsh
         run: |

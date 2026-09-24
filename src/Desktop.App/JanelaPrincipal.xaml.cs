@@ -16,8 +16,25 @@ public partial class JanelaPrincipal : Window
     private readonly DispatcherTimer _relogio = new() { Interval = TimeSpan.FromSeconds(2) };
 
     public JanelaPrincipal()
+        : this(conectar: true)
+    {
+    }
+
+    /// <summary>
+    /// Monta a janela, opcionalmente sem conectar ao serviço local.
+    /// </summary>
+    /// <param name="conectar">
+    /// Falso monta só a tela, sem cliente e sem temporizador. É o que a captura de tela usa:
+    /// ela precisa dos controles reais, não de uma conexão.
+    /// </param>
+    internal JanelaPrincipal(bool conectar)
     {
         InitializeComponent();
+
+        if (!conectar)
+        {
+            return;
+        }
 
         var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO") ?? TransporteLocal.EnderecoPadrao();
         var token = Environment.GetEnvironmentVariable("EDGE_TOKEN");
@@ -46,15 +63,30 @@ public partial class JanelaPrincipal : Window
         // um catch mudo esconderia um defeito de verdade.
         await _painel.AtualizarAsync().ConfigureAwait(true);
 
-        TextoDoEstado.Text = _painel.Estado.Mensagem;
-        TextoDoDetalhe.Text = _painel.Estado.Detalhe ?? "—";
+        Aplicar(_painel.Estado, _painel.Equipamentos);
+    }
+
+    /// <summary>
+    /// Escreve um estado na tela.
+    /// </summary>
+    /// <remarks>
+    /// Separado da atualização para que a captura de tela use <b>exatamente</b> o mesmo
+    /// caminho que a operação. Uma captura montada por fora mostraria uma tela que não
+    /// existe.
+    /// </remarks>
+    internal void Aplicar(EstadoDoPainel estado, IReadOnlyList<Equipamento> equipamentos)
+    {
+        ArgumentNullException.ThrowIfNull(estado);
+
+        TextoDoEstado.Text = estado.Mensagem;
+        TextoDoDetalhe.Text = estado.Detalhe ?? "—";
 
         TextoDeResumo.Text = string.Create(
             CultureInfo.CurrentCulture,
-            $"{_painel.Estado.EquipamentosConectados} catraca(s) conectada(s) · " +
-            $"{_painel.Estado.WorkersAtivos} grupo(s) ativo(s) · " +
-            $"{_painel.Estado.OutboxPendente} informação(ões) aguardando envio");
+            $"{estado.EquipamentosConectados} catraca(s) conectada(s) · " +
+            $"{estado.WorkersAtivos} grupo(s) ativo(s) · " +
+            $"{estado.OutboxPendente} informação(ões) aguardando envio");
 
-        GradeDeEquipamentos.ItemsSource = _painel.Equipamentos;
+        GradeDeEquipamentos.ItemsSource = equipamentos;
     }
 }
