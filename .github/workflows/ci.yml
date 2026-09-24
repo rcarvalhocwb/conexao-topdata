@@ -14,6 +14,13 @@ on:
 permissions:
   contents: read
 
+# Um push novo cancela a execução anterior do mesmo ramo. Sem isso, um job pendurado
+# ocupa o executor até o teto de 6 h do GitHub — foi exatamente o que aconteceu quando a
+# conexão por named pipe esperava para sempre.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -26,6 +33,7 @@ jobs:
   linux:
     name: Build e testes (Linux)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +63,7 @@ jobs:
   windows:
     name: Build e testes (Windows)
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -99,6 +108,7 @@ jobs:
   soak:
     name: Ensaio de soak
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -111,11 +121,22 @@ jobs:
           SOAK_MINUTOS: ${{ inputs.soak_minutos }}
         run: dotnet test tests/LoadAndSoak --configuration Release
 
+      # A medição sai mesmo quando o ensaio passa. É a tendência entre execuções que
+      # revela vazamento lento; "passou" não distingue 2 MB de 31 MB.
+      - name: Publicar a medição
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medicao-do-soak
+          path: "**/TestResults/soak-relatorio.txt"
+          if-no-files-found: warn
+
   # SEC-LOG-01: nenhum dado sensível pode chegar ao log.
   # Nesta fase, a checagem é estática; ela cresce junto com a observabilidade.
   seguranca:
     name: Varredura de dado sensível
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 

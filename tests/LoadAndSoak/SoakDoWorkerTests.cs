@@ -139,6 +139,12 @@ public sealed class SoakDoWorkerTests
         var memoriaFinal = MemoriaEstavel();
         var crescimento = memoriaFinal - memoriaInicial;
 
+        // O relatório sai SEMPRE, inclusive quando o ensaio passa. Um soak que só fala
+        // ao reprovar não deixa evidência: "passou" não distingue 2 MB de 31 MB, e é a
+        // tendência entre execuções que revela vazamento lento.
+        EscreverRelatorio(
+            duracao, cronometro.Elapsed, laco.Voltas, recebidos, memoriaInicial, memoriaFinal, amostras);
+
         // Sem evento perdido: tudo que o simulador emitiu chegou ao consumidor.
         Assert.Equal(emitidos, recebidos);
         Assert.True(recebidos > 10_000, $"o ensaio precisa processar volume para ter valor; processou {recebidos}");
@@ -155,6 +161,50 @@ public sealed class SoakDoWorkerTests
 
         // O laço não pode acumular estado por equipamento.
         Assert.All(laco.Dispositivos, d => Assert.NotNull(d.UltimoEvento));
+    }
+
+    /// <summary>
+    /// Grava a medição em <c>TestResults/soak-relatorio.txt</c>, ao lado do binário.
+    /// </summary>
+    /// <remarks>
+    /// Arquivo em vez de <c>Console.WriteLine</c> porque o executor de teste engole a
+    /// saída padrão conforme a verbosidade, e o dado sumiria justamente na execução
+    /// longa, que é a cara.
+    /// </remarks>
+    private static void EscreverRelatorio(
+        TimeSpan alvo,
+        TimeSpan decorrido,
+        long voltas,
+        long eventos,
+        long memoriaInicial,
+        long memoriaFinal,
+        List<long> amostras)
+    {
+        var crescimento = memoriaFinal - memoriaInicial;
+        var pico = amostras.Count > 0 ? amostras.Max() : memoriaFinal;
+
+        var texto = string.Create(
+            CultureInfo.InvariantCulture,
+            $"""
+            # Ensaio de soak — {Equipamentos} equipamentos
+            executado_em       : {DateTimeOffset.UtcNow:O}
+            duracao_alvo       : {alvo.TotalMinutes:F1} min
+            duracao_real       : {decorrido.TotalMinutes:F1} min
+            voltas             : {voltas}
+            eventos            : {eventos}
+            eventos_por_segundo: {eventos / Math.Max(1, decorrido.TotalSeconds):F0}
+            memoria_inicial_mb : {memoriaInicial / 1024.0 / 1024:F1}
+            memoria_final_mb   : {memoriaFinal / 1024.0 / 1024:F1}
+            memoria_pico_mb    : {pico / 1024.0 / 1024:F1}
+            crescimento_mb     : {crescimento / 1024.0 / 1024:F1}
+            bytes_por_evento   : {(eventos > 0 ? crescimento / (double)eventos : 0):F2}
+            teto_mb            : 32.0
+
+            """);
+
+        var destino = Path.Combine(AppContext.BaseDirectory, "TestResults");
+        Directory.CreateDirectory(destino);
+        File.WriteAllText(Path.Combine(destino, "soak-relatorio.txt"), texto);
     }
 
     /// <summary>

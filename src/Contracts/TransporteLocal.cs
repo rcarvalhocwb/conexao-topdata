@@ -31,6 +31,23 @@ public static class TransporteLocal
     /// <summary>Cabeçalho que carrega o token de sessão.</summary>
     public const string CabecalhoDoToken = "x-edge-token";
 
+    /// <summary>Espera máxima para estabelecer a conexão local.</summary>
+    /// <remarks>
+    /// <para>
+    /// Existe por um motivo concreto: <c>NamedPipeClientStream.ConnectAsync</c> sem
+    /// limite espera <b>para sempre</b> o servidor aparecer. Se o serviço não estiver em
+    /// execução, o painel travaria em silêncio em vez de mostrar "Sem resposta do serviço
+    /// local" — justamente o caso que ele foi feito para atender.
+    /// </para>
+    /// <para>
+    /// O socket de domínio Unix falha na hora quando o arquivo não existe, e foi por isso
+    /// que a CI Linux passou verde enquanto a do Windows ficava pendurada. Os dois
+    /// caminhos agora usam o mesmo limite, para que a plataforma de teste e a de produção
+    /// se comportem igual.
+    /// </para>
+    /// </remarks>
+    public static readonly TimeSpan TempoLimiteDeConexao = TimeSpan.FromSeconds(5);
+
     /// <summary>Verdadeiro quando o transporte de produção (named pipe) está disponível.</summary>
     public static bool UsaNamedPipe => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
@@ -75,33 +92,12 @@ public static class TransporteLocal
 
         var manipulador = new SocketsHttpHandler
         {
-            ConnectCallback = async (contexto, cancelamento) =>
-            {
-                if (UsaNamedPipe)
-                {
-                    var pipe = new NamedPipeClientStream(
-                        ".",
-                        endereco,
-                        PipeDirection.InOut,
-                        PipeOptions.WriteThrough | PipeOptions.Asynchronous);
-
-                    await pipe.ConnectAsync(cancelamento).ConfigureAwait(false);
-                    return pipe;
-                }
-
-                var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-                try
-                {
-                    await socket.ConnectAsync(new UnixDomainSocketEndPoint(endereco), cancelamento)
-                        .ConfigureAwait(false);
-                    return new NetworkStream(socket, ownsSocket: true);
-                }
-                catch
-                {
-                    socket.Dispose();
-                    throw;
-                }
-            },
+            ConnectCallback = (contexto, cancelamento) => new ValueTask<Stream>(
+                ConectarAsync(
+                    UsaNamedPipe ? AbrirPipeAsync : AbrirSocketAsync,
+                    endereco,
+                    TempoLimiteDeConexao,
+                    cancelamento)),
 
             // Cada canal fala com um serviço local; não há pool a manter quente.
             EnableMultipleHttp2Connections = false,
@@ -123,5 +119,74 @@ public static class TransporteLocal
         }
 
         return GrpcChannel.ForAddress("http://localhost", opcoes);
+    }
+
+    /// <summary>
+    /// Conecta com espera limitada.
+    /// </summary>
+    /// <remarks>
+    /// Estourar o limite vira <see cref="IOException"/>, que o gRPC traduz para
+    /// <c>Unavailable</c> — ou seja, chega à tela como estado, não como travamento.
+    /// O cancelamento de fora continua sendo cancelamento: fechar a janela durante uma
+    /// atualização não é falha de serviço.
+    /// </remarks>
+    internal static async Task<Stream> ConectarAsync(
+        Func<string, CancellationToken, Task<Stream>> abrir,
+        string endereco,
+        TimeSpan limite,
+        CancellationToken cancelamento)
+    {
+        ArgumentNullException.ThrowIfNull(abrir);
+
+        using var prazo = CancellationTokenSource.CreateLinkedTokenSource(cancelamento);
+        prazo.CancelAfter(limite);
+
+        try
+        {
+            return await abrir(endereco, prazo.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancelamento.IsCancellationRequested)
+        {
+            throw new IOException(
+                $"O serviço local não respondeu em {limite.TotalSeconds:F0}s ({endereco}). " +
+                "Verifique se o Edge.Supervisor está em execução.");
+        }
+    }
+
+    private static async Task<Stream> AbrirPipeAsync(string endereco, CancellationToken cancelamento)
+    {
+        var pipe = new NamedPipeClientStream(
+            ".",
+            endereco,
+            PipeDirection.InOut,
+            PipeOptions.WriteThrough | PipeOptions.Asynchronous);
+
+        try
+        {
+            await pipe.ConnectAsync(cancelamento).ConfigureAwait(false);
+            return pipe;
+        }
+        catch
+        {
+            await pipe.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private static async Task<Stream> AbrirSocketAsync(string endereco, CancellationToken cancelamento)
+    {
+        var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+
+        try
+        {
+            await socket.ConnectAsync(new UnixDomainSocketEndPoint(endereco), cancelamento)
+                .ConfigureAwait(false);
+            return new NetworkStream(socket, ownsSocket: true);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
     }
 }

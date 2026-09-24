@@ -19,6 +19,7 @@
     <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
     <ProjectReference Include="../../src/Edge.Worker/Edge.Worker.csproj" />
     <ProjectReference Include="../../src/Shared.Observability/Shared.Observability.csproj" />
+    <ProjectReference Include="../../src/Contracts/Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
