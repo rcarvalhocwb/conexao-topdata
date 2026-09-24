@@ -1,0 +1,8 @@
+# Software e documentacao proprietarios da Topdata: NUNCA versionar.
+# Materialize com fetch-sdk.sh / fetch-sdk.ps1.
+sdk/
+*.zip
+*.pdf
+*.dll
+*.exe
+*.msi

@@ -15,13 +15,19 @@ SDK Inner Acesso* (PDF publicado pela Topdata) e as FAQs do portal do integrador
 lidos na íntegra. A matriz de compatibilidade deixou de ser uma lacuna: **51 das 58
 funções mapeadas têm assinatura, parâmetros e retornos de fonte primária.**
 
+**O SDK do Leitor Facial também foi mapeado** — protocolo WebSocket, Web API HTTP e os
+49 comandos das duas superfícies ([`docs/13`](docs/13-sdk-facial.md)).
+
 Continua **não disponível** o pacote de **exemplos de código** (download separado do
 portal), que contém o `EasyInner.cs` e o enum `Enumeradores.Retorno`. É o que fecha as
 lacunas restantes — ver [`docs/11`](docs/11-capacidades-do-sdk.md), seção 5.
+O catálogo com todos os links oficiais e os scripts de download estão em
+[`vendor/topdata/`](vendor/topdata/); os binários **não são versionados**, por serem
+software proprietário da Topdata e este repositório ser público.
 
 | Selo | Significado | Situação |
 |---|---|---|
-| `FONTE_PRIMARIA` | Verificado contra o manual oficial ou FAQ da Topdata | **51 funções + 17 origens de evento** |
+| `FONTE_PRIMARIA` | Verificado contra manual oficial ou FAQ da Topdata | **51 funções EasyInner + 17 origens + 49 comandos faciais** |
 | `FONTE_PRIMARIA_PARCIAL` | A função é nomeada pelo manual, sem assinatura completa | 6 funções |
 | `FONTE_PRIMARIA_AMBIGUA` | O manual se contradiz ou o PDF saiu desalinhado | 1 função + tipos de bilhete |
 | `A_CONFIRMAR_COM_TOPDATA` | Ausente da documentação; exige fabricante ou bancada | origens 11, 14–17, 19 |
@@ -48,13 +54,16 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 10 | [Interface](docs/10-interface.md) | Telas obrigatórias, dois níveis de linguagem, acessibilidade |
 | 11 | [Capacidades do SDK](docs/11-capacidades-do-sdk.md) | **Inventário completo: 58 funções, o que dá para construir, lacunas** |
 | 12 | [Decisão de stack](docs/12-decisao-de-stack.md) | **Qual linguagem, por quê, e o plano B do protocolo sob NDA** |
+| 13 | [SDK do Leitor Facial](docs/13-sdk-facial.md) | **WebSocket + Web API, 49 comandos, Catracas Easy** |
+| — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |
 | — | [Runbooks](docs/runbooks/) | Template e índice dos procedimentos de operação |
 
 ## Próximo passo
 
-1. Baixar o **pacote de exemplos em C#** do portal do integrador — fecha as lacunas
-   restantes de assinatura e os códigos de retorno.
+1. Rodar [`vendor/topdata/fetch-sdk.ps1`](vendor/topdata/) numa máquina Windows e abrir o
+   `EasyInner.cs` do exemplo C# — fecha as lacunas restantes de assinatura e os códigos
+   de retorno.
 2. Responder **B2** (inventário do parque), **B4** (fail-safe × fail-secure), **B7**
    (simultaneidade) e **B8** (padrão de cartão) em
    [`docs/01-perguntas-criticas.md`](docs/01-perguntas-criticas.md).
