@@ -147,3 +147,48 @@ Protocolo em [`09-plano-de-bancada.md`](09-plano-de-bancada.md).
 
 **Suporte universal não é afirmado sem evidência.** A matriz diz o que foi ensaiado; o
 resto é lacuna declarada.
+
+---
+
+## Resultados medidos — ensaio de soak
+
+Ensaio `SOAK` com **10 equipamentos simulados**, laço de uma volta por vez, relógio
+simulado. O relatório sai em `TestResults/soak-relatorio.txt` a cada execução, inclusive
+quando passa, e a CI publica o arquivo. "Passou" não distingue 2 MB de 31 MB, e é a
+tendência entre execuções que revela vazamento lento.
+
+### 24/09/2026 — primeira execução de 1 h com medição
+
+| Medida | Valor |
+|---|---|
+| Duração | 60,0 min |
+| Voltas do laço | 232.722.200 |
+| Eventos processados | **775.740.640** |
+| Eventos por segundo | 215.483 |
+| Memória inicial → final | 0,9 MB → 5,2 MB |
+| Crescimento | 4,3 MB (teto do ensaio: 32 MB) |
+
+**Passou — mas o número estava contaminado pelo próprio instrumento.**
+
+A versão original guardava uma amostra de memória por lote num `List<long>`. Em 1 h isso
+deu **465.444 amostras**, cujo array de apoio ocupa **4,00 MB** — contra os 4,30 MB de
+crescimento total medido. O medidor respondia por **93% do que ele próprio media**.
+
+Corrigido: a amostragem virou uma janela das 240 mais recentes, com máximo e contagem
+guardados como agregados. A janela basta para mostrar a tendência na mensagem de falha, e
+o ensaio deixou de crescer junto com o que mede.
+
+Para efeito de comparação, o vazamento real encontrado em 22/09 — o histórico da máquina
+de estados sem poda — era de **~400 bytes por evento**, cerca de 69 mil vezes maior que o
+resíduo acima. A trava funciona; o que faltava era o instrumento não mentir a seu próprio
+favor.
+
+> Execução de 1 h com o instrumento corrigido: em andamento na data deste registro.
+> O número limpo substitui a linha "crescimento" acima quando fechar.
+
+### Limitações deste ensaio
+
+- Roda contra o **simulador**, não contra hardware. Não cobre vazamento na DLL nativa,
+  que é justamente onde `SOAK-72H` terá de olhar depois do ensaio `HIL-STACK-01`.
+- Usa relógio simulado; não detecta problema que dependa de tempo de parede real.
+- 1 h não é 72 h. O critério da Fase 1 pedia 1 h; `SOAK-72H` continua aberto.

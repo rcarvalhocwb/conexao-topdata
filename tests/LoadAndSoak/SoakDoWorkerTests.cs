@@ -26,6 +26,13 @@ public sealed class SoakDoWorkerTests
 {
     private const int Equipamentos = 10;
 
+    /// <summary>Quantas amostras de memória o relatório guarda, no máximo.</summary>
+    /// <remarks>
+    /// Basta para mostrar a tendência recente na mensagem de falha. Guardar todas fazia o
+    /// próprio ensaio crescer mais do que o sistema medido.
+    /// </remarks>
+    private const int AmostrasGuardadas = 240;
+
     private static TimeSpan Duracao()
     {
         var configurado = Environment.GetEnvironmentVariable("SOAK_MINUTOS");
@@ -117,7 +124,17 @@ public sealed class SoakDoWorkerTests
 
         var memoriaInicial = MemoriaEstavel();
         var cronometro = Stopwatch.StartNew();
-        var amostras = new List<long>();
+
+        // Janela limitada, e não lista crescente.
+        //
+        // A primeira versão guardava uma amostra por lote num List<long>. No ensaio de
+        // 1 h isso deu 465 mil amostras, cujo array de apoio ocupa 4,00 MB — contra
+        // 4,30 MB de crescimento total medido. Ou seja: o instrumento respondia por 93%
+        // do que ele próprio media. Um medidor que pesa quase tanto quanto o que pesa
+        // não mede nada.
+        var amostras = new Queue<long>(AmostrasGuardadas);
+        long amostraMaxima = 0;
+        long totalDeAmostras = 0;
 
         while (cronometro.Elapsed < duracao)
         {
@@ -131,7 +148,15 @@ public sealed class SoakDoWorkerTests
 
             Assert.True(cao.EstaSaudavel, cao.Diagnostico());
 
-            amostras.Add(MemoriaEstavel());
+            var amostra = MemoriaEstavel();
+            amostraMaxima = Math.Max(amostraMaxima, amostra);
+            totalDeAmostras++;
+
+            amostras.Enqueue(amostra);
+            if (amostras.Count > AmostrasGuardadas)
+            {
+                amostras.Dequeue();
+            }
         }
 
         cronometro.Stop();
@@ -143,7 +168,8 @@ public sealed class SoakDoWorkerTests
         // ao reprovar não deixa evidência: "passou" não distingue 2 MB de 31 MB, e é a
         // tendência entre execuções que revela vazamento lento.
         EscreverRelatorio(
-            duracao, cronometro.Elapsed, laco.Voltas, recebidos, memoriaInicial, memoriaFinal, amostras);
+            duracao, cronometro.Elapsed, laco.Voltas, recebidos, memoriaInicial, memoriaFinal,
+            amostraMaxima, totalDeAmostras);
 
         // Sem evento perdido: tudo que o simulador emitiu chegou ao consumidor.
         Assert.Equal(emitidos, recebidos);
@@ -157,7 +183,7 @@ public sealed class SoakDoWorkerTests
             crescimento < TetoDeCrescimento,
             $"memória cresceu {crescimento / 1024 / 1024} MB após {recebidos} eventos " +
             $"({cronometro.Elapsed.TotalSeconds:F0}s, {laco.Voltas} voltas). " +
-            $"Amostras (MB): {string.Join(", ", amostras.Select(a => a / 1024 / 1024))}");
+            $"Ultimas amostras (MB): {string.Join(", ", amostras.Select(a => a / 1024 / 1024))}");
 
         // O laço não pode acumular estado por equipamento.
         Assert.All(laco.Dispositivos, d => Assert.NotNull(d.UltimoEvento));
@@ -178,10 +204,10 @@ public sealed class SoakDoWorkerTests
         long eventos,
         long memoriaInicial,
         long memoriaFinal,
-        List<long> amostras)
+        long pico,
+        long totalDeAmostras)
     {
         var crescimento = memoriaFinal - memoriaInicial;
-        var pico = amostras.Count > 0 ? amostras.Max() : memoriaFinal;
 
         var texto = string.Create(
             CultureInfo.InvariantCulture,
@@ -195,7 +221,8 @@ public sealed class SoakDoWorkerTests
             eventos_por_segundo: {eventos / Math.Max(1, decorrido.TotalSeconds):F0}
             memoria_inicial_mb : {memoriaInicial / 1024.0 / 1024:F1}
             memoria_final_mb   : {memoriaFinal / 1024.0 / 1024:F1}
-            memoria_pico_mb    : {pico / 1024.0 / 1024:F1}
+            memoria_pico_mb    : {(pico > 0 ? pico : memoriaFinal) / 1024.0 / 1024:F1}
+            amostras           : {totalDeAmostras}
             crescimento_mb     : {crescimento / 1024.0 / 1024:F1}
             bytes_por_evento   : {(eventos > 0 ? crescimento / (double)eventos : 0):F2}
             teto_mb            : 32.0
