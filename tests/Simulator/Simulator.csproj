@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Simulador de catraca. Biblioteca, não projeto de teste: ela é CONSUMIDA pelos
+    testes e, mais tarde, pelo modo "bancada" do produto.
+
+    Implementa ITopdataInnerAdapter, então tudo que roda contra hardware roda contra
+    ele sem alterar uma linha. Ver docs/06, seção 4.
+  -->
+  <PropertyGroup>
+    <AssemblyName>Simulator</AssemblyName>
+    <RootNamespace>Simulator</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
+    <ProjectReference Include="../../src/Access.Domain/Access.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

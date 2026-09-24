@@ -19,6 +19,8 @@
     <ProjectReference Include="../../src/Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
     <!-- Referência só para garantir que o executável exista quando o teste de queda rodar. -->
     <ProjectReference Include="../CrashProbe/CrashProbe.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Simulator/Simulator.csproj" />
+    <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
