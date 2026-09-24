@@ -122,6 +122,18 @@ public interface ITopdataInnerAdapter : IDisposable
     AdapterResult EnviarConfiguracaoCompleta(int inner, DeviceConfiguration configuracao);
 
     /// <summary>
+    /// Configura as formas de entrada aceitas no modo on-line.
+    /// </summary>
+    /// <remarks>
+    /// É este passo que reabilita o leitor para a próxima leitura. Pulá-lo é a causa
+    /// documentada de "catraca/leitor trava após passar o cartão" (manual, 7.2.3).
+    /// </remarks>
+    AdapterResult ConfigurarEntradasOnline(int inner);
+
+    /// <summary>Envia a mensagem exibida no display quando ocioso.</summary>
+    AdapterResult EnviarMensagemPadrao(int inner, string mensagem);
+
+    /// <summary>
     /// Aguarda um evento. <b>Bloqueia</b> até haver evento, timeout ou erro.
     /// </summary>
     (AdapterResult Resultado, DeviceEvent? Evento) AguardarEvento(int inner, TimeSpan limite);

@@ -26,6 +26,7 @@ public sealed record ScriptedEvent(
 public sealed class SimulatedDevice : IDisposable
 {
     private readonly ManualResetEventSlim _destravar = new(initialState: false);
+    private int _entrouNoLacoTravado;
     private readonly Queue<ScriptedEvent> _eventos = new();
     private readonly Queue<Bilhete> _bilhetes = new();
     private long _sequencia;
@@ -66,6 +67,12 @@ public sealed class SimulatedDevice : IDisposable
     /// <summary>Destrava o laço, encerrando a espera.</summary>
     public void LiberarLaco() => _destravar.Set();
 
+    /// <summary>
+    /// Verdadeiro quando uma thread está realmente presa no laço travado, segurando o
+    /// acesso à DLL. É o sinal que os testes esperam — e não "a chamada começou".
+    /// </summary>
+    public bool EntrouNoLacoTravado => Volatile.Read(ref _entrouNoLacoTravado) == 1;
+
     /// <summary>Quando verdadeiro, a próxima leitura na urna emite a origem 20.</summary>
     public bool UrnaCheia { get; set; }
 
@@ -74,6 +81,12 @@ public sealed class SimulatedDevice : IDisposable
 
     /// <summary>Quantas vezes o relé da urna foi acionado.</summary>
     public int AcionamentosDaUrna { get; private set; }
+
+    /// <summary>
+    /// Quantas vezes o leitor foi reabilitado. Um ciclo de acesso que não incrementa
+    /// este contador deixa a catraca surda para a próxima pessoa.
+    /// </summary>
+    public int ReabilitacoesDoLeitor { get; private set; }
 
     /// <summary>Configurações completas recebidas, na ordem.</summary>
     public List<DeviceConfiguration> ConfiguracoesRecebidas { get; } = [];
@@ -123,8 +136,21 @@ public sealed class SimulatedDevice : IDisposable
 
     internal void RegistrarAcionamentoDaUrna() => AcionamentosDaUrna++;
 
+    internal void RegistrarReabilitacaoDoLeitor() => ReabilitacoesDoLeitor++;
+
     /// <summary>Espera o destravamento. Devolve falso quando o tempo estoura.</summary>
-    internal bool EsperarDestravar(TimeSpan limite) => _destravar.Wait(limite);
+    internal bool EsperarDestravar(TimeSpan limite)
+    {
+        Volatile.Write(ref _entrouNoLacoTravado, 1);
+        try
+        {
+            return _destravar.Wait(limite);
+        }
+        finally
+        {
+            Volatile.Write(ref _entrouNoLacoTravado, 0);
+        }
+    }
 
     public void Dispose() => _destravar.Dispose();
 }

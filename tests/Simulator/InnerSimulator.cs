@@ -119,6 +119,32 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
         });
     }
 
+    public AdapterResult ConfigurarEntradasOnline(int inner) =>
+        ComDispositivo(inner, d =>
+        {
+            if (d.Desconectado)
+            {
+                return 1;
+            }
+
+            d.RegistrarReabilitacaoDoLeitor();
+            return 0;
+        });
+
+    public AdapterResult EnviarMensagemPadrao(int inner, string mensagem)
+    {
+        ArgumentNullException.ThrowIfNull(mensagem);
+
+        if (mensagem.Length > 32)
+        {
+            throw new ArgumentException(
+                $"O display comporta 32 caracteres; recebida mensagem com {mensagem.Length} (manual, 4.6.3).",
+                nameof(mensagem));
+        }
+
+        return ComDispositivo(inner, d => d.Desconectado ? 1 : 0);
+    }
+
     public (AdapterResult Resultado, DeviceEvent? Evento) AguardarEvento(int inner, TimeSpan limite)
     {
         var dispositivo = Dispositivo(inner);
