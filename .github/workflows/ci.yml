@@ -86,6 +86,9 @@ jobs:
       # O projeto e construido em Linux, onde o WPF compila mas nao roda; sem esta etapa a
       # unica imagem do painel seria uma recriacao feita a mao.
       - name: Capturar as telas do painel
+        # Teto curto de proposito: se o WPF travar no runner sem desktop, isso custa 3
+        # minutos e nao 25. Foi o que aconteceu na primeira tentativa.
+        timeout-minutes: 3
         run: dotnet run --project src/Desktop.App --configuration Release --no-build -- --capturar capturas
 
       - name: Publicar as telas
