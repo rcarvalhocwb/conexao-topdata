@@ -1,5 +1,22 @@
 # 01 — Perguntas críticas
 
+> **Atualização de 24/09/2026.** O manual oficial e as FAQs da Topdata foram obtidos e
+> lidos. **B1, B3, B5 e B6 estão respondidos**, e 7 dos 12 itens da pauta com a Topdata
+> caíram. O que sobrou está marcado abaixo. Detalhamento em
+> [`11-capacidades-do-sdk.md`](11-capacidades-do-sdk.md).
+>
+> | Pergunta | Situação |
+> |---|---|
+> | B1 — SDKs disponíveis? | ✅ **Manual obtido.** Falta só o pacote de *exemplos* (assinaturas de 6 funções + valores de enum de retorno) |
+> | B2 — Inventário do parque | ❌ **Aberta** — depende do cliente |
+> | B3 — COM ou P/Invoke? | ✅ **P/Invoke.** Assinaturas documentadas com `ref byte` e `StringBuilder`; exemplos oficiais em C# |
+> | B4 — Fail-safe × fail-secure | ❌ **Aberta** — decisão de quem responde pela segurança do evento |
+> | B5 — Existe confirmação de giro? | ✅ **Sim na linha Inner** (origem 6, sensor óptico). **Não na linha Easy/facial** — a Topdata afirma textualmente que o `sendlog` não confirma giro |
+> | B6 — Dá para recolher cartão e liberar entrada? | ✅ **Viável.** Existem `LiberarCatracaEntrada` e `LiberarCatracaEntradaInvertida`; o fluxo da urna é `AcionarRele2` → origem 7 → liberar → origem 6. Resta o comissionamento decidir qual variante |
+> | B7 — Simultaneidade do evento | ❌ **Aberta** — depende do cliente |
+> | B8 — Padrão de cartão e zeros à esquerda | ⚠️ **Parcial** — os 8 tipos de leitor e o mecanismo de dígitos variáveis estão documentados; falta saber o do parque real |
+> | B9 — Biometria/facial no escopo | ❌ **Aberta** — decisão de negócio e de base legal |
+
 Duas classes. **B = bloqueante**: sem resposta, a Fase 1 começa sobre suposição e pode ser
 jogada fora. **N = não bloqueante**: a Fase 1 avança com um default documentado, e a
 resposta ajusta o rumo sem retrabalho estrutural.
@@ -162,25 +179,22 @@ espetáculo?** A resposta define contratos e responsabilidades.
 
 ## Itens que só a Topdata pode responder
 
+> **6 dos 10 itens abaixo foram respondidos ou parcialmente respondidos pelo manual oficial.**
+> Os que permanecem são os que a documentação pública realmente não cobre.
+
 Consolidados em [`08-riscos-e-validacoes-topdata.md`](08-riscos-e-validacoes-topdata.md),
 seção "Pauta para a Topdata". Resumo do que é genuinamente ambíguo e não se resolve lendo
 o manual:
 
-1. O limite de ~30 equipamentos é por **instância da DLL**, por **thread**, ou por
-   **processo**? A diferença define o modelo de particionamento.
-2. Os buffers de configuração são realmente **globais ao módulo** ou por handle de
-   conexão? Define se a serialização montar→enviar precisa ser por worker ou pode ser por
-   dispositivo (impacto direto em throughput de configuração).
-3. A DLL é **reentrante** entre threads distintas do mesmo processo?
+1. ~~O limite de ~30 equipamentos é por instância, thread ou processo?~~ ✅ **Respondido:** por **instância da DLL**, isto é, por thread de comunicação — e a Topdata recomenda múltiplos processos, **cada um em sua porta TCP**.
+2. ~~Os buffers são globais ao módulo ou por handle?~~ ✅ **Respondido:** a DLL inteira é **não thread-safe** e `EnviarConfiguracoes` limpa o buffer após enviar. Serialização por worker é obrigatória; a hipótese de relaxar está descartada.
+3. ~~A DLL é reentrante entre threads?~~ ✅ **Respondido: não.** *"Múltiplas threads não devem chamar funções da EasyInner.dll simultaneamente."*
 4. Qual o comportamento documentado de `ReceberDadosOnLine` em timeout e em queda de
    socket — retorna código, bloqueia indefinidamente, ou lança?
-5. Lista completa e oficial das **origens de evento** por firmware, incluindo os valores
-   não documentados no briefing (11, 14–17, 19).
-6. Quais modelos emitem **origem 6** (giro confirmado) e sob quais condições de sensor.
-7. Qual função é a correta para liberar **entrada** em instalação com urna invertida, e
-   como o sentido é determinado no equipamento.
+5. ⚠️ **Parcialmente respondido.** A tabela oficial traz 17 origens com nomes de enum. **11, 14–17 e 19 continuam ausentes** — seguem como desconhecidas ([ADR-0018](ADR/ADR-0018-eventos-desconhecidos.md)).
+6. ⚠️ **Parcialmente respondido.** A origem 6 é gerada pelo **sensor óptico** após liberação, na linha Inner; a linha Easy não confirma giro. Falta a lista modelo a modelo — fecha na bancada.
+7. ✅ **Respondido:** existem `LiberarCatracaEntrada`, `LiberarCatracaEntradaInvertida`, `LiberarCatracaSaida`, `LiberarCatracaSaidaInvertida` e `LiberarCatracaDoisSentidos`. Qual usar depende da orientação física — decidido no comissionamento.
 8. Comportamento na urna cheia: o equipamento recusa a leitura sozinho ou depende do
    software bloquear o fluxo?
-9. Precedência entre configuração feita pelo **WebServer do equipamento** e configuração
-   enviada pelo SDK — quem sobrescreve quem, e em que momento.
+9. ✅ **Respondido:** o SDK **sempre** vence, e `EnviarConfiguracoes` envia até os **defaults da DLL** para o que não foi setado. Ver [ADR-0020](ADR/ADR-0020-configuracao-sempre-completa.md).
 10. Matriz oficial de **firmware mínimo** por função do SDK.

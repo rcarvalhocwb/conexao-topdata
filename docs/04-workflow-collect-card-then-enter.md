@@ -5,8 +5,34 @@
 
 **Este workflow nasce desabilitado.** Só é ativado após o assistente de comissionamento
 ser concluído por um técnico, em modo de manutenção, com confirmação física dos dois
-sentidos — e depende das respostas a **B5** (existe origem 6?) e **B6** (a instalação
-suporta inverter?).
+sentidos.
+
+> ## ⚠️ Atualização de 24/09/2026 — a documentação oficial muda duas coisas aqui
+>
+> **1. São dois equipamentos diferentes, com finais de fluxo diferentes.**
+>
+> | | **Catraca com Urna Coletora** (manual, seção 5.3) | **Coletor Urna 4** (pedestal autônomo) |
+> |---|---|---|
+> | Mecanismo | Catraca com braço e sensor óptico | Aciona **cancela ou porta** por contato seco |
+> | Confirma passagem? | **Sim** — origem 6 | **Não existe origem 6**: não há giro |
+> | Consumo do ingresso | Na origem 6 | **Decisão de negócio** — ver abaixo |
+>
+> Para o Coletor Urna 4, o passo 9 do fluxo **não existe**. O evento mais forte
+> disponível é a **origem 7 (cartão recolhido)**, e é nela que o ingresso precisa ser
+> consumido. Isso **precisa ser aprovado explicitamente pelo cliente**: significa aceitar
+> que "recolheu" conta como "entrou", com o risco de fraude que isso carrega.
+> Não é uma decisão que o software pode tomar sozinho ([ADR-0007](ADR/ADR-0007-autorizacao-versus-passagem.md)).
+>
+> **2. Boa notícia: o firmware já garante a ordem.** A especificação oficial do Coletor
+> Urna 4 lista, como característica nativa, **"liberação de acesso somente após
+> recolhimento dos cartões"**, além de **detecção de desistência** e de **urna cheia**.
+> A parte mais delicada do workflow é responsabilidade do equipamento; o software valida
+> *quem* pode passar e registra o que aconteceu. Ainda assim, **confirmar em bancada** —
+> o produto não assume isso para toda versão de firmware.
+>
+> **3. As funções existem** (`FONTE_PRIMARIA`): `AcionarRele2(Inner, Tempo)` abre a fenda;
+> `LiberarCatracaEntrada` e `LiberarCatracaEntradaInvertida` liberam o sentido de entrada.
+> **B6 está respondida: o fluxo é implementável.**
 
 ## 1. A regra que governa tudo
 
@@ -74,11 +100,11 @@ cobrar de quem desistiu).
 | 2 | Edge recebe o identificador **como string** | — | Normalização errada → negado indevido (`HIL-CARD-*`) |
 | 3 | Motor valida: ingresso, status, janela, setor, anti-passback, usos, bloqueios, assinatura | T1 = 150 ms | Timeout → `OfflineFallback` conforme política |
 | 4 | **Negado** → não recolhe, não libera, exibe motivo | mensagem + `reasonCode` | — |
-| 5 | **Aprovado** → reserva o ingresso e aciona o relé de recolhimento | T2 = tempo configurado | Relé não aciona → libera reserva, alerta |
+| 5 | **Aprovado** → reserva o ingresso e aciona o relé de recolhimento (`AcionarRele2`) | T2 = tempo configurado (0–50 s) | Relé não aciona → libera reserva, alerta |
 | 6 | **Aguarda origem 7.** Antes disso, **não libera entrada** | — | Sem origem 7 em T2 → `CollectTimeout` |
 | 7 | Origem 20 (urna cheia) → bloqueia o fluxo, orienta outro portão, alerta | — | Gate sai de operação até esvaziamento |
 | 8 | Recolhimento confirmado → libera o sentido **ENTRADA** | função do perfil físico comissionado | Retorno de erro → registra, libera reserva |
-| 9 | Aguarda origem 6 (onde o modelo emite) | T3 = 8 s default | Sem origem 6 → `AuthorizedWithoutPassage` |
+| 9 | Aguarda origem 6 — **só em catraca com mecanismo de giro** | T3 = 8 s default | Sem origem 6 → `AuthorizedWithoutPassage`. **No Coletor Urna 4 este passo não se aplica** |
 | 10 | Consome o ingresso, registra entrada física | — | — |
 | 11 | Exceções abaixo | — | — |
 
@@ -149,8 +175,9 @@ Obrigatório antes de o workflow operar em produção. Em modo de manutenção:
 3. Repete para o **sentido B**.
 4. Associa `EntradaLógica` ao acionamento físico confirmado.
 5. Testa o relé de recolhimento com um cartão de teste e confirma a origem 7.
-6. Verifica se a origem 6 aparece; se não aparecer, **avisa em destaque** que aquele gate
-   não confirma passagem física e pede decisão consciente (B5).
+6. Verifica se a origem 6 aparece. **Num Coletor Urna 4 ela não vai aparecer** — o
+   assistente avisa em destaque que aquele gate não confirma passagem física e exige
+   decisão consciente sobre onde consumir o ingresso.
 7. Exige política de fail-safe/fail-secure ([ADR-0013](ADR/ADR-0013-fail-safe-versus-fail-secure.md)).
 8. Gera o **perfil físico do gate**, assinado, com quem comissionou e quando.
 

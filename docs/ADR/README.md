@@ -11,7 +11,7 @@ declara `Substitui ADR-XXXX`, e o antigo passa a `Substituído`. O histórico fi
 | [0003](ADR-0003-sqlite-wal-outbox.md) | SQLite/WAL com outbox-inbox transacional | Aceito |
 | [0004](ADR-0004-ipc-grpc-named-pipes.md) | IPC local por gRPC sobre named pipes | Aceito |
 | [0005](ADR-0005-particionamento-por-worker.md) | Particionamento de equipamentos por worker | Aceito |
-| [0006](ADR-0006-serializacao-montar-enviar.md) | Serializar montar→enviar por worker | Aceito (revisável com resposta da Topdata) |
+| [0006](ADR-0006-serializacao-montar-enviar.md) | Serializar montar→enviar por worker | **Confirmado por fonte primária** |
 | [0007](ADR-0007-autorizacao-versus-passagem.md) | Autorização e passagem física são eventos distintos | Aceito |
 | [0008](ADR-0008-credencial-como-string.md) | Credencial é sempre string | Aceito |
 | [0009](ADR-0009-identidade-de-evento.md) | Identidade e ordenação de eventos | Aceito |
@@ -24,3 +24,6 @@ declara `Substitui ADR-XXXX`, e o antigo passa a `Substituído`. O histórico fi
 | [0016](ADR-0016-runtime-dotnet.md) | Runtime .NET alvo | Proposto — decisão do cliente |
 | [0017](ADR-0017-niveis-de-degradacao.md) | Níveis de degradação T0–T3 | Aceito |
 | [0018](ADR-0018-eventos-desconhecidos.md) | Eventos desconhecidos são preservados, nunca descartados | Aceito |
+| [0019](ADR-0019-stack-e-linguagem.md) | Stack e linguagem | Aceito |
+| [0020](ADR-0020-configuracao-sempre-completa.md) | A configuração enviada é sempre completa e explícita | Aceito |
+| [0021](ADR-0021-porta-por-worker-e-protocolo-nda.md) | Uma porta TCP por worker, e o protocolo sob NDA | Aceito / Proposto |

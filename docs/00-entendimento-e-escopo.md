@@ -30,8 +30,8 @@ O que isso significa na prática, em ordem de importância:
 
 ## 2. A restrição mais consequente descoberta na Fase 0
 
-O briefing informa que o **Coletor Urna 4 suporta lista de até 15.000 usuários**
-(`BRIEFING_NAO_VERIFICADO`). Um evento de **50.000 pessoas** não cabe nessa lista.
+A especificação oficial confirma que o **Coletor Urna 4 suporta lista de até 15.000 usuários**
+(`FONTE_PRIMARIA`, especificação oficial). Um evento de **50.000 pessoas** não cabe nessa lista.
 
 Isso derruba a hipótese ingênua de "sincronizar todo mundo para dentro das catracas e
 deixar rodar offline". A autonomia real do sistema precisa estar **na borda (o PC do
@@ -83,15 +83,15 @@ seção "Níveis de degradação" de [`03-arquitetura.md`](03-arquitetura.md).
 
 | # | Restrição | Origem | Consequência arquitetural |
 |---|---|---|---|
-| R1 | `EasyInner.dll` é nativa, Windows, **x86** | `BRIEFING_NAO_VERIFICADO` | Processo worker compilado explicitamente `win-x86`, separado da UI x64 |
-| R2 | Exige DLLs auxiliares registradas e .NET Framework 3.5+ habilitado | `BRIEFING_NAO_VERIFICADO` | Verificador de pré-requisitos no instalador e no health check do worker |
-| R3 | Limite prático ~30 equipamentos por instância/thread | `BRIEFING_NAO_VERIFICADO` | Particionamento; teto default **20**, hard cap **25** até teste de carga ([ADR-0005](ADR/ADR-0005-particionamento-por-worker.md)) |
-| R4 | `ReceberDadosOnLine` é bloqueante | `BRIEFING_NAO_VERIFICADO` | Nunca na thread de UI; thread dedicada por worker com watchdog |
-| R5 | Buffers de configuração possivelmente globais na DLL | `BRIEFING_NAO_VERIFICADO` | Sequência montar→enviar serializada por **worker**, não por dispositivo ([ADR-0006](ADR/ADR-0006-serializacao-montar-enviar.md)) |
-| R6 | A catraca inicia a conexão TCP com o servidor | `BRIEFING_NAO_VERIFICADO` | O Edge é servidor; planejamento de IP/porta/firewall/VLAN é parte do produto |
-| R7 | `sendlog` facial confirma autorização, não giro | `BRIEFING_NAO_VERIFICADO` | Separação Autorização × Passagem ([ADR-0007](ADR/ADR-0007-autorizacao-versus-passagem.md)) |
-| R8 | Modo offline do equipamento suporta regras simples | `BRIEFING_NAO_VERIFICADO` | Regras complexas ficam na borda; degradação explícita e visível |
-| R9 | Capacidades variam por linha/placa/firmware/leitor | `BRIEFING_NAO_VERIFICADO` | Descoberta de capacidade obrigatória antes de habilitar recurso ([ADR-0010](ADR/ADR-0010-capability-discovery.md)) |
+| R1 | `EasyInner.dll` é nativa, Windows, **x86** | `FONTE_PRIMARIA` | Processo worker compilado explicitamente `win-x86`, separado da UI x64 |
+| R2 | Exige DLLs registradas pelo instalador e .NET Framework 3.5+ | `FONTE_PRIMARIA` | Verificador de pré-requisitos no instalador e no health check do worker |
+| R3 | ~30 equipamentos **por instância da DLL** = por thread; cada processo em **porta TCP própria** | `FONTE_PRIMARIA` | Particionamento; teto default **20**, hard cap **25** até teste de carga ([ADR-0005](ADR/ADR-0005-particionamento-por-worker.md)) |
+| R4 | `ReceberDadosOnLine` é bloqueante | `FONTE_PRIMARIA` | Nunca na thread de UI; thread dedicada por worker com watchdog |
+| R5 | **A DLL inteira é não thread-safe**; `EnviarConfiguracoes` limpa o buffer e envia até os **defaults** para o que não foi setado | `FONTE_PRIMARIA` | Thread única por worker ([ADR-0006](ADR/ADR-0006-serializacao-montar-enviar.md)) e configuração **sempre completa** ([ADR-0020](ADR/ADR-0020-configuracao-sempre-completa.md)) |
+| R6 | A catraca inicia a conexão TCP (porta padrão **3570**) | `FONTE_PRIMARIA` | O Edge é servidor; planejamento de IP/porta/firewall/VLAN é parte do produto |
+| R7 | `sendlog` facial confirma autorização, **não giro** — a Topdata afirma que a linha Easy não emite confirmação de giro | `FONTE_PRIMARIA` | Separação Autorização × Passagem ([ADR-0007](ADR/ADR-0007-autorizacao-versus-passagem.md)) |
+| R8 | Off-line = lista branca/negra + 100 tabelas de horário | `FONTE_PRIMARIA` | Regras complexas ficam na borda; degradação explícita e visível |
+| R9 | Capacidades variam por linha/placa/firmware (ex.: LEDs só na Linha 3) | `FONTE_PRIMARIA` | Descoberta de capacidade obrigatória antes de habilitar recurso ([ADR-0010](ADR/ADR-0010-capability-discovery.md)) |
 | R10 | Nuvem fora do caminho crítico | `DECISAO_ARQUITETURAL` | Critério de aceite verificável por teste de caos (corte de WAN) |
 
 ## 5. Critérios de aceite (rastreáveis)
