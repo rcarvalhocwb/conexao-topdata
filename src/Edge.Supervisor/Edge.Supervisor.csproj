@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Supervisiona os workers. NÃO referencia o interop: quem carrega a DLL é o worker
+    x86, e o supervisor precisa sobreviver à morte dele. Regra verificada por ARCH-01.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />
+  </ItemGroup>
+
+</Project>

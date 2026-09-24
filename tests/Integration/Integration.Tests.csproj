@@ -22,6 +22,7 @@
     <ProjectReference Include="../Simulator/Simulator.csproj" />
     <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
     <ProjectReference Include="../../src/Edge.Worker/Edge.Worker.csproj" />
+    <ProjectReference Include="../../src/Edge.Supervisor/Edge.Supervisor.csproj" />
   </ItemGroup>
 
   <ItemGroup>
