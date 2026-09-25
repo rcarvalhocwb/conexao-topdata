@@ -10,4 +10,8 @@
     <ProjectReference Include="../Sync.Ingestao/Sync.Ingestao.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Unit.Tests" />
+  </ItemGroup>
+
 </Project>

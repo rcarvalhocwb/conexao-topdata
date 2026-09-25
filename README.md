@@ -68,6 +68,8 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 15 | [Integração e sincronização](docs/15-integracao-e-sincronizacao.md) | **As três memórias, drenagem por prioridade, contrato de conector e os perfis de vertical** |
 | 16 | [Vários provedores de ingresso](docs/16-multiplos-provedores-de-ingresso.md) | **Três bilheterias num evento: QR único, consumo atômico, retorno ao site e prestação de contas** |
 | 17 | [Questionário de integração de bilheteria](docs/17-questionario-de-integracao-bilheteria.md) | **As três formas possíveis de integrar um site de ingressos, e as 21 perguntas que decidem qual** |
+| 18 | [Contrato do webhook](docs/18-contrato-do-webhook.md) | **O formato que nós definimos e o Zet produz — pronto para enviar** |
+| 19 | [Bilheteria local e divisão das catracas](docs/19-bilheteria-local-e-divisao-das-catracas.md) | **3+2 ou todas validam tudo: o que o hardware permite, e o cartão como recipiente** |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |

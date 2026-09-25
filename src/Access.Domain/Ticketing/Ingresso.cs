@@ -47,6 +47,25 @@ public enum MotivoDoUso
 
     /// <summary>O provedor está desabilitado na configuração local.</summary>
     ProvedorDesabilitado,
+
+    /// <summary>
+    /// O cartão foi usado há menos tempo que o intervalo mínimo de reuso.
+    /// </summary>
+    /// <remarks>
+    /// O ciclo físico de um cartão reutilizável — passar na catraca, voltar para a
+    /// bilheteria, ser revendido — leva minutos. O mesmo cartão aparecendo de novo antes
+    /// disso não é um cliente: é o cartão passado por cima da grade para quem está do lado
+    /// de fora, ou um clone.
+    /// </remarks>
+    EmIntervaloDeReuso,
+
+    /// <summary>
+    /// Tentativa de revender um cartão cuja venda anterior ainda não foi usada.
+    /// </summary>
+    /// <remarks>
+    /// Só existe na bilheteria. Sobrescrever uma venda paga e não usada apaga dinheiro.
+    /// </remarks>
+    VendaAnteriorNaoUsada,
 }
 
 /// <summary>
@@ -61,12 +80,23 @@ public enum MotivoDoUso
 /// </param>
 /// <param name="Conector">Para onde vai o retorno de uso. Ver docs/15, §7.</param>
 /// <param name="Habilitado">Provedor desabilitado não valida e não ingere.</param>
+/// <param name="Reutilizavel">
+/// Verdadeiro para a bilheteria local de cartão físico: o mesmo cartão é vendido, usado,
+/// devolvido e vendido de novo. Falso para ingresso online, que nasce e morre uma vez.
+/// </param>
+/// <param name="IntervaloDeReuso">
+/// Tempo mínimo entre dois usos do mesmo cartão. Zero desliga. A revenda <b>não</b>
+/// zera este relógio — é isso que impede o cartão de ser passado por cima da grade e
+/// revendido na hora.
+/// </param>
 public sealed record ProvedorDeIngresso(
     string Id,
     string Nome,
     string PerfilDeNormalizacao,
     string Conector,
-    bool Habilitado = true);
+    bool Habilitado = true,
+    bool Reutilizavel = false,
+    TimeSpan IntervaloDeReuso = default);
 
 /// <summary>Ingresso como o provedor o entregou, antes de virar linha no banco.</summary>
 /// <param name="ProvedorId">De quem veio.</param>
@@ -78,6 +108,11 @@ public sealed record ProvedorDeIngresso(
 /// <param name="ValidoAte">Fim da janela. Nulo = sem limite superior.</param>
 /// <param name="UsosMaximos">1 para ingresso comum; mais para passe de vários dias ou reentrada.</param>
 /// <param name="Cancelado">O provedor já entregou cancelado (estorno antes do evento).</param>
+/// <param name="Categoria">
+/// Inteira, meia, solidária — ou qualquer outra que aparecer. <b>É texto aberto de
+/// propósito</b>: um tipo novo de entrada criado na véspera do evento não pode exigir uma
+/// versão nova do sistema.
+/// </param>
 public sealed record IngressoRecebido(
     string ProvedorId,
     string ReferenciaExterna,
@@ -87,7 +122,8 @@ public sealed record IngressoRecebido(
     DateTimeOffset? ValidoDe = null,
     DateTimeOffset? ValidoAte = null,
     int UsosMaximos = 1,
-    bool Cancelado = false);
+    bool Cancelado = false,
+    string? Categoria = null);
 
 /// <summary>
 /// Resultado de uma tentativa de uso, já decidida.
@@ -97,12 +133,14 @@ public sealed record IngressoRecebido(
 /// <param name="ProvedorId">De quem é o ingresso, quando reconhecido.</param>
 /// <param name="Setor">Setor do ingresso, para conferir contra o portão.</param>
 /// <param name="UsosRestantes">Quantos usos sobraram depois desta tentativa.</param>
+/// <param name="Categoria">Categoria da venda que foi (ou seria) consumida.</param>
 public sealed record ResultadoDoUso(
     MotivoDoUso Motivo,
     Guid? IngressoId = null,
     string? ProvedorId = null,
     string? Setor = null,
-    int UsosRestantes = 0)
+    int UsosRestantes = 0,
+    string? Categoria = null)
 {
     /// <summary>Verdadeiro quando o giro deve ser liberado.</summary>
     public bool Liberou => Motivo is MotivoDoUso.Consumido;
