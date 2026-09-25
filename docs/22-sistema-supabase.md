@@ -10,6 +10,14 @@
 
 ---
 
+> ## Atualização de 25/09 — o relatório do sistema
+>
+> O usuário trouxe um levantamento do sistema existente, gerado pelo próprio Lovable. Ele
+> responde a pergunta 1 e muda a pergunta de fundo. O que mudou está na seção 6. O resto
+> do documento continua valendo.
+
+---
+
 ## 1. Onde ele se encaixa
 
 Nas três memórias de [`15`](15-integracao-e-sincronizacao.md), o sistema do Supabase é a
@@ -118,3 +126,113 @@ Sem ter visto o esquema, a expectativa é pequena — foi para isso que as porta
 
 O ensaio de bancada ([`21`](21-roteiro-da-bancada.md)) **não depende de nada disto**: ele
 usa ingressos de um arquivo, e pode acontecer antes.
+
+---
+
+## 6. O que o relatório mostrou
+
+### 6.1 O fluxo que já rodou em produção
+
+```
+TopData ──► Middleware C# (Windows, PC local) ──► Edge Functions ──► tabelas ──► painel
+```
+
+**A catraca não fala direto com a internet** — há um programa no PC local no meio. A
+preocupação da pergunta 1 (catraca exposta) não se confirma. A outra, sim: **esse programa
+e o nosso worker não podem ser o servidor da mesma catraca ao mesmo tempo.** Para a
+bancada, o middleware antigo precisa estar parado.
+
+O sistema operou numa edição anterior do evento, com três catracas de entrada, e o
+volume de um único dia dá a ordem de grandeza que faltava para dimensionar (pergunta B7).
+Os números ficam fora deste documento por serem dado de operação num repositório público.
+
+### 6.2 As tabelas
+
+| Tabela | Papel |
+|---|---|
+| `rfid_cards` | Cartões físicos: número, código de barras, tipo, situação, **`current_ticket_id`**, datas de atribuição e devolução, última validação, `cooldown_until`, total de usos |
+| `authorized_cards` | Espelho dos autorizados, sincronizado por gatilho |
+| `authorizations` | Regra por cartão e dispositivo, com janela de validade |
+| `access_events` | Log de cada passagem, deduplicado por função |
+| `validations` | Validações consolidadas — contagem de público e painéis |
+| `middleware_devices`, `terminal_heartbeats` | Cadastro e saúde das catracas |
+| `middleware_log_audits`, `middleware_alerts`, `middleware_integrity_checks` | Auditoria |
+
+**O modelo de cartão deles coincide com o nosso** ([`19`](19-bilheteria-local-e-divisao-das-catracas.md),
+seção 5): o cartão é recipiente, `current_ticket_id` é a venda corrente, e há cooldown por
+cartão. Tipos em uso: `INTEIRA`, `MEIA`, `SOCIAL` — o que chamávamos de "solidária".
+
+### 6.3 O contrato das funções (pelo lado do pedido)
+
+Todas com `Authorization: Bearer <segredo>`:
+
+| Função | Pedido |
+|---|---|
+| `middleware-event-receiver` | `{device_id, event_id, card_number, timestamp, validation_type}` → 200 liberado · 403 negado · 401 · 5xx |
+| `middleware-sync-cards` | `{device_id, last_sync_at, full_sync}` |
+| `middleware-sync-events` | `{device_id, events: [{event_id, event_type, timestamp, payload}]}` |
+| `middleware-heartbeat` | estado do dispositivo; **a resposta pode trazer comandos** |
+
+**O que não se sabe:** o formato das **respostas** de `sync-cards`, `sync-events` e
+`heartbeat`. Só os pedidos foram descritos. Sem isso, as implementações de ingestão e de
+confirmação não podem ser escritas sem inventar.
+
+### 6.4 A divergência de desenho
+
+O fluxo descrito valida **na nuvem, a cada passagem**: a leitura vai ao
+`middleware-event-receiver`, e só a resposta libera a catraca. O cache local é o plano B.
+
+Este projeto faz o contrário: **decide sempre na borda**, e manda os fatos para a nuvem
+em segundo plano ([`15`](15-integracao-e-sincronizacao.md)).
+
+| | Nuvem a cada passagem | Borda decide |
+|---|---|---|
+| Internet fora | cai para o cache | nada muda |
+| Internet **lenta** — o caso difícil | cada passagem espera o tempo-limite antes de cair para o cache | nada muda |
+| Painel em tempo real | sim | sim, enquanto houver internet — a fila drena por prioridade |
+| Regra única entre catracas | a nuvem garante | a borda garante, **desde que todas as catracas estejam no mesmo PC** |
+
+A última linha é a que decide a arquitetura: **uma borda por PC, com as cinco catracas
+nela**, e não um programa por catraca. O prompt do Manus configura um `DEVICE_ID` por
+instância, o que leva a um programa por catraca — e, sem internet, dois PCs não enxergam
+o uso um do outro.
+
+### 6.5 O prompt para o Manus descreve este projeto
+
+| O que o prompt pede | Neste projeto |
+|---|---|
+| Integração EasyInner | **Existe** — 229 funções declaradas, worker x86 isolado, modo bancada |
+| Fila offline em SQLite, sem duplicar | **Existe** — outbox com chave de idempotência, testada com `kill -9` |
+| Cache local de cartões | **Existe** — falta a fonte que puxa do `sync-cards` |
+| Cooldown local | **Existe** — intervalo de reuso, que a revenda não zera |
+| Reenvio em lote ao reconectar | **Existe** — drenador por prioridade |
+| Serviço Windows, instalador | **Existe** — MSI |
+| Heartbeat e comandos remotos | **Não existe** |
+| Log em arquivo diário | **Não existe** — há log estruturado com redação, sem arquivo |
+| Painel desktop completo | **Parcial** — casca WPF e console de bancada |
+
+### 6.6 Se o caminho for o Manus mesmo, o que o prompt precisa corrigir
+
+1. **Uma instância por catraca não funciona com a EasyInner.** A DLL escuta uma porta
+   (3570) e atende várias catracas; dois programas no mesmo PC disputam a porta.
+2. **A DLL é de 32 bits e não é segura entre threads.** O processo tem de ser x86 e a
+   chamada, serializada. Em 64 bits, falha com retorno 8.
+3. **`POLL_INTERVAL_MS`** sugere consulta periódica; a leitura on-line da EasyInner é uma
+   chamada que espera o evento.
+4. **`open_turnstile` vindo da nuvem abre a catraca pela internet.** Quem tiver o segredo
+   abre o portão. Exige registro de quem mandou, e idealmente aprovação de duas pessoas.
+5. **Um segredo só para todas as catracas.** Se vazar, qualquer um grava evento. Um por
+   dispositivo, rotacionável.
+6. **`customer_name` no cache local** leva dado pessoal para a máquina da portaria sem
+   necessidade: a catraca não precisa do nome para decidir.
+7. **Os fatos do SDK já apurados** — retorno em `byte`, `LiberarLeitor` não existe, o tipo 8
+   é QR, `AcionarRele2` não tem tempo — teriam de ser redescobertos.
+
+## 7. O que preciso para ligar este projeto ao Supabase
+
+1. **O código do middleware C# que já rodou.** É o artefato mais valioso: tem o contrato
+   exato **e** o uso da EasyInner que funcionou na catraca real.
+2. **Os formatos de resposta** de `sync-cards`, `sync-events` e `heartbeat` — ou o código
+   das funções, que os contém.
+3. **A decisão da seção 6.4:** borda decide, ou nuvem decide a cada passagem.
+
