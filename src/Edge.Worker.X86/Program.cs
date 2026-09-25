@@ -1,5 +1,9 @@
+using System.Globalization;
 using Access.Application.Devices;
+using Access.Application.Ingressos;
+using Access.Infrastructure.SQLite;
 using Edge.Worker;
+using Edge.Worker.Bancada;
 using Topdata.EasyInner.Adapter;
 
 namespace Edge.Worker.X86;
@@ -69,8 +73,13 @@ internal static class Program
                 return 1;
             }
 
-            Console.WriteLine("Porta aberta. O laço da máquina de estados entra na Fase 2.");
-            return 0;
+            if (Array.IndexOf(args, "--bancada") < 0)
+            {
+                Console.WriteLine("Porta aberta. Para o ensaio com catraca, rode com --bancada (docs/21).");
+                return 0;
+            }
+
+            return ExecutarBancada(adapter, args);
         }
         catch (DllNotFoundException erro)
         {
@@ -89,6 +98,85 @@ internal static class Program
             Console.Error.WriteLine("Este processo precisa ser de 32 bits. Confira PlatformTarget.");
             return 2;
         }
+    }
+
+    /// <summary>
+    /// Ensaio de bancada: o laço de verdade contra catracas de verdade, decidindo pela base
+    /// local e mostrando cada passo. Ver docs/21-roteiro-da-bancada.md.
+    /// </summary>
+    private static int ExecutarBancada(TopdataInnerAdapter adapter, string[] args)
+    {
+        var caminhoDoBanco = Valor(args, "--banco") ?? "bancada.db";
+        var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
+        new Migrator(fabrica).Aplicar();
+        var repositorio = new RepositorioDeIngressos(fabrica);
+
+        Console.WriteLine($"Base local: {Path.GetFullPath(caminhoDoBanco)}");
+
+        var arquivo = Valor(args, "--bancada");
+        if (arquivo is not null && !arquivo.StartsWith("--", StringComparison.Ordinal))
+        {
+            var carga = ArquivoDeBancada.Carregar(File.ReadAllText(arquivo), repositorio, DateTimeOffset.UtcNow);
+            Console.WriteLine(
+                $"Carga: {carga.Provedores} provedor(es), {carga.Ingressos} ingresso(s), {carga.Cartoes} cartão(ões).");
+            foreach (var problema in carga.Problemas)
+            {
+                Console.WriteLine($"  atenção: {problema}");
+            }
+        }
+
+        var inners = (Valor(args, "--inner") ?? "1")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(v => int.Parse(v, CultureInfo.InvariantCulture))
+            .ToList();
+
+        var tipoDeLeitor = byte.Parse(Valor(args, "--tipo-leitor") ?? "8", CultureInfo.InvariantCulture);
+        var comUrna = Array.IndexOf(args, "--sem-urna") < 0;
+
+        Console.WriteLine(
+            $"Catracas: {string.Join(", ", inners)} · tipo de leitor {tipoDeLeitor} · leitor da urna {(comUrna ? "ligado" : "desligado")}");
+        Console.WriteLine("ATENÇÃO: o código lido aparece inteiro na tela. Use só cartões e ingressos de teste.");
+        Console.WriteLine("Ctrl+C encerra e mostra a prestação de contas.");
+        Console.WriteLine();
+
+        var sessao = new SessaoDeBancada(
+            adapter,
+            inners,
+            ConfiguracaoDeBancada.TopFit4(tipoDeLeitor, comUrna),
+            new DecisorDeIngresso(repositorio),
+            Console.WriteLine);
+
+        using var cancelamento = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            cancelamento.Cancel();
+        };
+
+        sessao.Executar(cancelamento.Token);
+
+        Console.WriteLine();
+        Console.WriteLine(sessao.Resumo());
+
+        var agora = DateTimeOffset.UtcNow;
+        foreach (var provedor in repositorio.Provedores())
+        {
+            var conta = repositorio.Conciliar(provedor.Id, agora);
+            Console.WriteLine(
+                $"{provedor.Id}: consumidos {conta.UsosConsumidos} · com giro {conta.UsosComPassagemFisica} · " +
+                $"sem giro {conta.UsosSemPassagemFisica} · negados {conta.TentativasNegadas.Values.Sum()}");
+        }
+
+        var (tentativas, codigos) = repositorio.QrDesconhecidos(agora);
+        Console.WriteLine($"códigos desconhecidos: {tentativas} tentativa(s), {codigos} código(s) distinto(s)");
+
+        return 0;
+    }
+
+    private static string? Valor(string[] args, string nome)
+    {
+        var indice = Array.IndexOf(args, nome);
+        return indice >= 0 && indice + 1 < args.Length ? args[indice + 1] : null;
     }
 
     /// <summary>Lê a porta de <c>--porta N</c>. O supervisor sempre a informa.</summary>

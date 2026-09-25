@@ -39,5 +39,8 @@ foreach ($c in $componentes) {
     }
 }
 
+# O arquivo de exemplo do ensaio de bancada vai junto do worker (docs/21).
+Copy-Item (Join-Path $raiz 'installer/bancada.exemplo.json') (Join-Path $saida 'Edge.Worker.X86') -Force
+
 Write-Host ""
 Write-Host "Pronto. Confira o ambiente com .\installer\verificar-ambiente.ps1"

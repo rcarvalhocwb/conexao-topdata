@@ -1,4 +1,5 @@
 using System.Globalization;
+using Access.Application.Ingressos;
 using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 using Microsoft.Data.Sqlite;
@@ -126,7 +127,7 @@ public sealed record ConciliacaoDoProvedor(
 /// </list>
 /// <para>Ver docs/16-multiplos-provedores-de-ingresso.md.</para>
 /// </remarks>
-public sealed class RepositorioDeIngressos : IDestinoDeIngressos
+public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIngressos
 {
     private const string StatusValido = "valido";
     private const string StatusConsumido = "consumido";
@@ -139,6 +140,15 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         ArgumentNullException.ThrowIfNull(fabrica);
         _fabrica = fabrica;
     }
+
+    /// <inheritdoc />
+    (ResultadoDoUso Resultado, Guid TentativaId) IValidadorDeIngressos.TentarUsar(
+        string qrNormalizado,
+        string gateId,
+        string deviceId,
+        DateTimeOffset agora,
+        KnownEventOrigin? leitor) =>
+        TentarUsar(qrNormalizado, gateId, deviceId, agora, decisionId: null, leitor);
 
     /// <inheritdoc />
     /// <remarks>É o mesmo que <see cref="Ingerir"/>: a ingestão não pede nada além disso.</remarks>

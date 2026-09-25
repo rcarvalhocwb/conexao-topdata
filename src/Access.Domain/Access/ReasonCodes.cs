@@ -43,9 +43,22 @@ public static class ReasonCodes
     public static readonly ReasonCode AutorizadoSemConfirmacao = new("AUTORIZADO_SEM_CONFIRMACAO");
     public static readonly ReasonCode GiroReverso = new("GIRO_REVERSO");
 
+    // --- Ingresso e cartão de bilheteria (docs/16, docs/19) ---
+    public static readonly ReasonCode IngressoCancelado = new("INGRESSO_CANCELADO");
+    public static readonly ReasonCode ProvedorDesabilitado = new("PROVEDOR_DESABILITADO");
+    public static readonly ReasonCode IntervaloDeReuso = new("INTERVALO_DE_REUSO");
+    public static readonly ReasonCode ForaDaUrna = new("FORA_DA_URNA");
+    public static readonly ReasonCode VendaAnteriorNaoUsada = new("VENDA_ANTERIOR_NAO_USADA");
+
     // --- Operação ---
     public static readonly ReasonCode LiberacaoManual = new("LIBERACAO_MANUAL");
     public static readonly ReasonCode TempoDeDecisaoEsgotado = new("TEMPO_DE_DECISAO_ESGOTADO");
     public static readonly ReasonCode EquipamentoEmManutencao = new("EQUIPAMENTO_EM_MANUTENCAO");
     public static readonly ReasonCode EquipamentoNaoHomologado = new("EQUIPAMENTO_NAO_HOMOLOGADO");
+
+    /// <summary>A base local falhou ao responder. Nega — B4 (fail-safe × fail-secure) segue sem resposta.</summary>
+    public static readonly ReasonCode FalhaNaBaseLocal = new("FALHA_NA_BASE_LOCAL");
+
+    /// <summary>Motivo que o catálogo não conhece. Nega e aparece no relatório, em vez de virar outro código.</summary>
+    public static readonly ReasonCode MotivoNaoMapeado = new("MOTIVO_NAO_MAPEADO");
 }

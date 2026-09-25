@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />
+    <!-- Só o modo bancada usa: a base local onde o ensaio decide. -->
+    <ProjectReference Include="../Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
     <ProjectReference Include="../Topdata.EasyInner.Adapter/Topdata.EasyInner.Adapter.csproj" />
   </ItemGroup>
 

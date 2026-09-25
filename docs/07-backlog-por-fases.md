@@ -85,6 +85,13 @@ IPC. Nenhum item da Fase 2 começa antes desse resultado.
 
 ## Fase 2 — Operação Inner on-line/off-line
 
+> **25/09 — pronto para bancada.** O caminho leitura → decisão → liberação → giro está de
+> pé: `DecisorDeIngresso` liga o laço do worker à base de ingressos, e o modo `--bancada`
+> do `Edge.Worker.X86` roda tudo contra catracas reais, mostrando cada passo. Exercitado
+> inteiro contra o simulador. O roteiro está em [`21`](21-roteiro-da-bancada.md). **Não
+> incluído:** o recolhimento pela urna (relé 2, Fase 3) e o caminho de produção via
+> supervisor.
+
 1. Adapter **real** sobre a DLL, com documentação interna por chamada (fonte, assinatura,
    modelos testados, tratamento de retorno).
 2. Descoberta de capacidade e checagem de compatibilidade.

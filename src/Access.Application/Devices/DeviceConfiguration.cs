@@ -29,7 +29,7 @@ public sealed record DeviceConfiguration
     /// <summary>Comprimentos aceitos, quando o equipamento usa dígitos variáveis.</summary>
     public IReadOnlyList<byte> QuantidadesVariaveisDeDigitos { get; init; } = [];
 
-    /// <summary>Tecnologia do leitor: 0 a 7.</summary>
+    /// <summary>Tecnologia do leitor: 0 a 8 (8 = QR Code por letras).</summary>
     public required byte TipoDeLeitor { get; init; }
 
     /// <summary>Operação do leitor 1: 0 a 4.</summary>
