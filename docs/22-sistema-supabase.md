@@ -234,5 +234,7 @@ o uso um do outro.
    exato **e** o uso da EasyInner que funcionou na catraca real.
 2. **Os formatos de resposta** de `sync-cards`, `sync-events` e `heartbeat` — ou o código
    das funções, que os contém.
-3. **A decisão da seção 6.4:** borda decide, ou nuvem decide a cada passagem.
+3. ~~A decisão da seção 6.4.~~ **Decidido em 25/09: a catraca decide no PC local, que
+   recebe e envia informações para a nuvem.** Ver
+   [ADR-0023](ADR/ADR-0023-borda-decide-nuvem-sincroniza.md).
 
