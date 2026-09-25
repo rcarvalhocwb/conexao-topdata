@@ -238,6 +238,27 @@ public sealed class BilheteriaLocalTests
     }
 
     [Fact]
+    public void Limitacao_dois_cartoes_fisicos_com_o_mesmo_numero_sao_um_cartao_so()
+    {
+        // LIMITAÇÃO, não comportamento desejado — e documentada por isso mesmo.
+        // Se o fornecedor entregar dois cartões que a catraca lê com o mesmo número (um
+        // Mifare de 7 bytes truncado, por exemplo), o software não tem como distingui-los:
+        // depois que o primeiro é usado, a venda do segundo é aceita como REVENDA. A única
+        // defesa é testar o lote na bancada. Ver docs/20, seção 4.1.
+        using var banco = new BancoTemporario();
+        var r = Preparar(banco);
+
+        Assert.Equal(ResultadoDaVenda.Vendido, r.VenderNoBalcao(Bilheteria, "0012345678", "inteira", Abertura));
+        Passar(r, "0012345678", Abertura.AddMinutes(1));
+
+        // O "segundo cartão", fisicamente outro, com o mesmo número.
+        Assert.Equal(ResultadoDaVenda.Vendido, r.VenderNoBalcao(Bilheteria, "0012345678", "meia", Abertura.AddMinutes(2)));
+
+        // E ele é barrado pelo intervalo de reuso, sem motivo aparente para quem está na porta.
+        Assert.Equal(MotivoDoUso.EmIntervaloDeReuso, Passar(r, "0012345678", Abertura.AddMinutes(3)).Motivo);
+    }
+
+    [Fact]
     public void A_categoria_de_cada_uso_e_a_da_venda_nao_a_do_cartao_hoje()
     {
         // Se o relatório lesse a categoria atual do cartão, a meia-entrada vendida às 18h

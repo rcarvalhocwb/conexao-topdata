@@ -136,11 +136,23 @@ public sealed class TradutorDoContratoV1 : ITradutorDeIngresso
                 $"ingressos[{posicao}].situacao = '{situacao}' não é reconhecido; use 'valido' ou 'cancelado'."),
         };
 
+        var normalizado = _normalizacao.Apply(qr);
+
+        if (!_normalizacao.IsLengthAccepted(normalizado))
+        {
+            // Recusar aqui é recusar dias antes do evento, quando o provedor ainda pode
+            // corrigir. Aceitar é descobrir na porta que a catraca não lê este ingresso.
+            throw new FormatException(
+                $"ingressos[{posicao}].qr tem {normalizado.Length} caracteres, e o perfil " +
+                $"'{_normalizacao.Name}' não aceita esse tamanho — a catraca não conseguiria ler. " +
+                "Ver docs/20-leitores-qr-e-cartao-mifare.md");
+        }
+
         return new IngressoRecebido(
             ProvedorId: Provedor,
             ReferenciaExterna: referencia,
             QrBruto: qr,
-            QrNormalizado: _normalizacao.Apply(qr),
+            QrNormalizado: normalizado,
             Setor: Texto(item, "setor", posicao, obrigatorio: false),
             ValidoDe: Data(item, "validoDe", posicao),
             ValidoAte: Data(item, "validoAte", posicao),
@@ -260,7 +272,7 @@ public sealed class TradutorDoContratoV1 : ITradutorDeIngresso
           "ingressos": [
             {
               "referencia": "ZET-8842179",
-              "qr": "0081AC33F0",
+              "qr": "0081443290",
               "setor": "pista",
               "validoDe": "2026-11-14T18:00:00-03:00",
               "validoAte": "2026-11-15T02:00:00-03:00",

@@ -144,6 +144,12 @@ catraca.
 
 ### B8. Credencial: qual é exatamente o identificador, e ele tem zeros à esquerda?
 
+> **Parcialmente respondida em 25/09:** cartão **Mifare** na bilheteria; leitor de QR
+> externo nas cinco catracas. Segundo a Topdata, a Catraca 4 entrega o Mifare em
+> **10 dígitos** e lê QR de **4 a 16**. **Falta:** confirmar na bancada que o leitor do
+> balcão e a catraca entregam o mesmo número para o mesmo cartão, e o conteúdo do QR do
+> Zet. Ver [`20`](20-leitores-qr-e-cartao-mifare.md).
+
 Tipo de cartão (RFID/Mifare/proximidade/código de barras/QR/PIN), padrão de leitura,
 quantidade de dígitos (fixa ou variável), presença de Facility Code, e se o número impresso
 no cartão é o mesmo lido pelo leitor.

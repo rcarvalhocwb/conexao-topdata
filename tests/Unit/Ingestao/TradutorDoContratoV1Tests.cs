@@ -25,7 +25,7 @@ public sealed class TradutorDoContratoV1Tests
     private static string Envelope(string ingressos) =>
         $$"""{"versao":1,"id":"e-1","emitidoEm":"2026-11-14T20:31:07-03:00","ingressos":[{{ingressos}}]}""";
 
-    private const string Minimo = """{"referencia":"ZET-1","qr":"0081AC33F0","situacao":"valido"}""";
+    private const string Minimo = """{"referencia":"ZET-1","qr":"0081443290","situacao":"valido"}""";
 
     [Fact]
     public void O_exemplo_canonico_do_contrato_e_lido_inteiro()
@@ -36,7 +36,7 @@ public sealed class TradutorDoContratoV1Tests
 
         Assert.Equal("zet", ingresso.ProvedorId);
         Assert.Equal("ZET-8842179", ingresso.ReferenciaExterna);
-        Assert.Equal("0081AC33F0", ingresso.QrBruto);
+        Assert.Equal("0081443290", ingresso.QrBruto);
         Assert.Equal("pista", ingresso.Setor);
         Assert.Equal(1, ingresso.UsosMaximos);
         Assert.Equal("inteira", ingresso.Categoria);

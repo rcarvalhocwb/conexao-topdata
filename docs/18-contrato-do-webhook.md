@@ -50,7 +50,7 @@ Respondemos rápido e sem interpretar o conteúdo: guardamos primeiro, lemos dep
   "ingressos": [
     {
       "referencia": "ZET-8842179",
-      "qr": "0081AC33F0",
+      "qr": "0081443290",
       "setor": "pista",
       "validoDe": "2026-11-14T18:00:00-03:00",
       "validoAte": "2026-11-15T02:00:00-03:00",
@@ -76,7 +76,7 @@ Respondemos rápido e sem interpretar o conteúdo: guardamos primeiro, lemos dep
 | Campo | Obrigatório | Tipo | Regra |
 |---|---|---|---|
 | `referencia` | **sim** | texto | Identificador do ingresso **no sistema de vocês**. **Nunca muda.** É por ele que prestamos contas |
-| `qr` | **sim** | **texto** | Exatamente o conteúdo do QR Code, caractere por caractere |
+| `qr` | **sim** | **texto** | Exatamente o conteúdo do QR Code, caractere por caractere. **De 4 a 16 caracteres** (seção 5.0) |
 | `situacao` | **sim** | texto | `valido` ou `cancelado` |
 | `setor` | não | texto | Pista, camarote, etc. |
 | `validoDe` | não | texto | Início da validade, ISO 8601 **com fuso** |
@@ -87,9 +87,33 @@ Respondemos rápido e sem interpretar o conteúdo: guardamos primeiro, lemos dep
 **Campos a mais são ignorados.** Vocês podem incluir o que quiserem além disso, sem
 combinar conosco antes.
 
-## 5. As três regras que não são negociáveis
+## 5. As quatro regras que não são negociáveis
 
-Todas as outras podem ser conversadas. Estas três, se quebradas, barram gente na porta.
+Todas as outras podem ser conversadas. Estas quatro, se quebradas, barram gente na porta.
+
+### 5.0 O QR tem de 4 a 16 caracteres — de preferência, só números
+
+**Esta é a regra mais importante do documento, e vem de uma limitação da catraca, não
+nossa.** O leitor de QR das catracas (Topdata TopFit 4) lê códigos **de 4 até 16
+caracteres**. Um QR mais longo **não passa na catraca, com nenhum leitor**.
+
+```json
+"qr": "0081443290"                               ✅  10 caracteres
+"qr": "8842179003345120"                         ✅  16 caracteres
+"qr": "9f3c2a10-7b4e-4c1a-9d2e-5f6a7b8c9d0e"     ❌  36 caracteres — recusado
+"qr": "https://zet.com.br/i/8842179"             ❌  URL — recusado
+```
+
+Se o QR que vocês emitem hoje é um identificador longo, um link ou um código assinado,
+**precisamos de um código curto para a catraca** — um número de ingresso de até 16
+dígitos, por exemplo — impresso no QR. O identificador longo pode continuar existindo; ele
+só não pode ser o conteúdo do QR que vai para a catraca.
+
+**Recusamos na entrada o ingresso com QR fora de 4 a 16 caracteres.** É melhor saber disso
+quando vocês enviam, dias antes do evento, do que na porta.
+
+**Só números é o caminho seguro.** Se letras passam ainda depende de um ensaio nosso com a
+catraca. Até lá, um QR com letras é um risco.
 
 ### 5.1 O QR é sempre texto, nunca número
 
@@ -194,9 +218,11 @@ vez** — quando a internet do evento cai, guardamos e reenviamos quando volta. 
 
 ## 11. O que precisamos de vocês
 
-1. **Confirmar** que conseguem produzir este formato — ou nos dizer o que não conseguem.
-2. **Um exemplo real** de cada acontecimento (venda, cancelamento, troca), de um evento de
+1. **O que exatamente está dentro do QR hoje, e quantos caracteres tem.** Se passar de 16,
+   precisamos combinar um código curto antes de qualquer outra coisa (seção 5.0).
+2. **Confirmar** que conseguem produzir este formato — ou nos dizer o que não conseguem.
+3. **Um exemplo real** de cada acontecimento (venda, cancelamento, troca), de um evento de
    teste. Resolve mais dúvida que qualquer especificação.
-3. **O endereço e a autenticação** para o retorno da seção 10.
-4. **Um evento de teste** no ambiente de vocês, para ensaiarmos antes do evento real.
-5. **O que é o campo `Termos`** na tela de cadastro do webhook.
+4. **O endereço e a autenticação** para o retorno da seção 10.
+5. **Um evento de teste** no ambiente de vocês, para ensaiarmos antes do evento real.
+6. **O que é o campo `Termos`** na tela de cadastro do webhook.
