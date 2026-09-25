@@ -246,7 +246,7 @@ public sealed class ArquiteturaTests
         {
             ["Sync.Core"] = [],
             ["Sync.Ingestao"] = ["Access.Domain"],
-            ["Sync.Connectors.Rest"] = ["Sync.Core"],
+            ["Sync.Connectors.Rest"] = ["Sync.Core", "Sync.Ingestao"],
         };
 
         var violacoes = new List<string>();

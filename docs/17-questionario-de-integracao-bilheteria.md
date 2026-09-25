@@ -24,6 +24,14 @@
 > A 8 mais que todas: **QR dinâmico inviabiliza validação na catraca**, e não há plano B
 > técnico para isso — só operacional.
 
+> **Descoberta de 25/09, no painel do produtor: o Zet TEM webhook.** Cadastro por evento,
+> com um campo de link e um campo `Termos`. Isso responde metade de B10 e muda o desenho —
+> o relé na nuvem deixou de ser hipótese e virou requisito, porque a máquina local não pode
+> receber. Ver [ADR-0022](ADR/ADR-0022-rele-de-webhook.md).
+>
+> **A tela não oferece campo de segredo nem de assinatura.** A URL é a credencial. Isso
+> promove as perguntas **22 a 26**, abaixo, ao topo da lista.
+
 ---
 
 ## 1. O que se sabe do Zet pelo que ele publica
@@ -147,6 +155,20 @@ Pronto para enviar, igual para os três provedores. As respostas fecham **B10**,
     evento.*
 18. **Limite de requisições** por minuto.
 19. **Contato técnico** e prazo de resposta durante o evento.
+
+### Webhook — depois de ver a tela de cadastro
+
+22. **Existe assinatura do payload** (HMAC, cabeçalho de assinatura, mTLS) que não aparece
+    na tela de cadastro? *Hoje a URL é a única credencial: quem a descobrir injeta
+    ingressos na base do evento.*
+23. **De quais IPs saem as entregas?** Uma lista fixa nos permite fechar o resto.
+24. **Quais acontecimentos disparam o webhook?** Venda, cancelamento, estorno, troca de
+    titularidade, alteração de lote?
+25. **Qual é o corpo exato?** Um exemplo real de cada tipo de acontecimento resolve as
+    perguntas 7 a 11 de uma vez.
+26. **Há reentrega quando a resposta falha?** Quantas vezes, em que intervalo, e existe
+    forma de **pedir de novo** um período — ou uma entrega perdida está perdida?
+27. **O que significa o campo `Termos`** na tela de cadastro do webhook?
 
 ### Contrato
 
