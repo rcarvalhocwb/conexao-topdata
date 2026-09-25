@@ -13,6 +13,28 @@ using Microsoft.Extensions.Hosting;
 // em processo separado, justamente para que este aqui sobreviva à morte dele.
 // Ver docs/ADR/ADR-0001 e ADR-0004.
 
+// Gravar o segredo da nuvem no cofre, lendo da entrada padrão para que ele não apareça
+// na linha de comando nem no histórico do terminal. Usado pelo instalador.
+if (args.Contains("--gravar-segredo-da-nuvem"))
+{
+    if (!OperatingSystem.IsWindows())
+    {
+        Console.Error.WriteLine("O cofre de segredos usa DPAPI e só existe no Windows.");
+        return 1;
+    }
+
+    var segredo = Console.In.ReadLine()?.Trim();
+    if (string.IsNullOrWhiteSpace(segredo) || segredo.Length < 32)
+    {
+        Console.Error.WriteLine("Segredo vazio ou curto demais (mínimo de 32 caracteres).");
+        return 1;
+    }
+
+    new CofreDpapi(PastaDosSegredos()).Gravar(CabecalhoDeSegredo.NomeDoSegredo, segredo);
+    Console.WriteLine("Segredo da nuvem gravado no cofre.");
+    return 0;
+}
+
 var caminhoDaConfig = Environment.GetEnvironmentVariable("EDGE_CONFIG")
     ?? Path.Combine(AppContext.BaseDirectory, "workers.json");
 
@@ -86,6 +108,31 @@ var workers = configuracao.Grupos
 var supervisor = new WorkerSupervisor(workers);
 var operacao = new Operacao(fabrica);
 var nuvem = new EstadoDaNuvem();
+var registro = new Edge.Worker.Operacao.RegistroEmArquivo(
+    Path.Combine(configuracao.PastaDeDados, "registros"), "servico");
+
+void Registrar(string linha)
+{
+    registro.Escrever(linha);
+    Console.WriteLine(linha);
+}
+
+SincronizacaoComANuvem? sincronizacao = null;
+if (configuracao.Nuvem is { } configuracaoDaNuvem)
+{
+    ICofreDeSegredos cofre = OperatingSystem.IsWindows()
+        ? new CofreDpapi(PastaDosSegredos())
+        : new CofreEmMemoria();
+
+    // Montar antes de subir os workers: é aqui que o espelho das tentativas é ligado na
+    // configuração que eles leem ao subir.
+    sincronizacao = SincronizacaoComANuvem.Montar(configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar);
+
+    if (cofre.Ler(CabecalhoDeSegredo.NomeDoSegredo) is null)
+    {
+        Registrar("nuvem: nenhum segredo gravado; as requisições saem sem credencial (docs/22, seção 8.1).");
+    }
+}
 
 var construtor = WebApplication.CreateBuilder(args);
 construtor.WebHost.ConfigureKestrel(opcoes => TransporteLocal.Escutar(opcoes, endereco));
@@ -99,6 +146,11 @@ construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token)
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
 
+if (sincronizacao is not null)
+{
+    construtor.Services.AddHostedService(_ => sincronizacao);
+}
+
 var aplicacao = construtor.Build();
 aplicacao.MapGrpcService<EdgeControlService>();
 
@@ -108,3 +160,8 @@ Console.WriteLine(string.Create(
 
 await aplicacao.RunAsync().ConfigureAwait(false);
 return 0;
+
+static string PastaDosSegredos() => Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+    "ConexaoTopdata",
+    "segredos");

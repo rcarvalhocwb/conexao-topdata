@@ -14,11 +14,16 @@ public sealed record GrupoConfigurado(string Nome, int Porta, IReadOnlyList<int>
 /// <param name="Endereco">Nome do named pipe (Windows) ou caminho do socket.</param>
 /// <param name="Grupos">Grupos a supervisionar.</param>
 /// <param name="Banco">Caminho da base local; vazio usa o padrão, ver <see cref="CaminhoDoBanco"/>.</param>
+/// <param name="Nuvem">Painel na nuvem; ausente, a borda opera sem sincronizar.</param>
 public sealed record ConfiguracaoDoSupervisor(
     string? Endereco,
     IReadOnlyList<GrupoConfigurado> Grupos,
-    string? Banco = null)
+    string? Banco = null,
+    ConfiguracaoDaNuvem? Nuvem = null)
 {
+    /// <summary>Pasta de dados: base, registros e segredos.</summary>
+    public string PastaDeDados => Path.GetDirectoryName(Path.GetFullPath(CaminhoDoBanco))!;
+
     /// <summary>
     /// Base local compartilhada pelo serviço e pelos workers (ADR-0024). Sem valor, fica
     /// em <c>%ProgramData%\ConexaoTopdata\acesso.db</c>, que sobrevive a reinstalação.
@@ -78,6 +83,11 @@ public sealed record ConfiguracaoDoSupervisor(
         foreach (var repetido in Grupos.SelectMany(g => g.Inners).GroupBy(i => i).Where(g => g.Count() > 1))
         {
             problemas.Add($"Equipamento {repetido.Key} aparece em mais de um grupo.");
+        }
+
+        if (Nuvem is not null)
+        {
+            problemas.AddRange(Nuvem.Validar());
         }
 
         foreach (var grupo in Grupos.Where(g => !File.Exists(g.Executavel)))
