@@ -67,6 +67,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 14 | [Estudo de caso: evento de 30 mil](docs/14-estudo-de-caso-evento-30k.md) | **A conta de 4 catracas, tetos de fábrica e 12 usos pouco explorados do SDK** |
 | 15 | [Integração e sincronização](docs/15-integracao-e-sincronizacao.md) | **As três memórias, drenagem por prioridade, contrato de conector e os perfis de vertical** |
 | 16 | [Vários provedores de ingresso](docs/16-multiplos-provedores-de-ingresso.md) | **Três bilheterias num evento: QR único, consumo atômico, retorno ao site e prestação de contas** |
+| 17 | [Questionário de integração de bilheteria](docs/17-questionario-de-integracao-bilheteria.md) | **As três formas possíveis de integrar um site de ingressos, e as 21 perguntas que decidem qual** |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |

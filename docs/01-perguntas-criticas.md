@@ -174,6 +174,17 @@ aberta para a internet**. Provedor que só oferece webhook exige um relé na nuv
 borda puxa. O atraso publicado é o que determina se o ingresso comprado na fila chega a
 tempo — ver B12. Ver [`16`](16-multiplos-provedores-de-ingresso.md), seção 2.
 
+**Primeiro provedor identificado: Zet (`comprenozet.com.br`), do Clube Gazeta do Povo.** O
+que ele publica é um **aplicativo de validação** ("Zet Valida"), não uma API — nenhuma
+documentação de integração apareceu em busca pública. Se não houver API para parceiro, a
+forma de trabalho muda de "a catraca valida o ingresso" para "o ingresso é trocado por uma
+credencial nossa no credenciamento". O questionário para fechar isto, com os três
+provedores, está em [`17`](17-questionario-de-integracao-bilheteria.md).
+
+**Pergunta que decide sozinha o desenho:** o QR do provedor é **estável** ou
+**dinâmico/rotativo**? Código que muda a cada minuto não pode ser validado offline por
+terceiro, e nesse caso não existe escolha.
+
 ### B11. Para cada provedor, "utilizado" é a autorização ou o giro físico?
 
 Autorizar não é passar. Entre o comando de liberação e o giro confirmado (origem 6) cabem
