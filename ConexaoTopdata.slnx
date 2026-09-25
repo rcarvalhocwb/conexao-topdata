@@ -10,7 +10,9 @@
     <Project Path="src/Edge.Worker.X86/Edge.Worker.X86.csproj" />
     <Project Path="src/Edge.Worker/Edge.Worker.csproj" />
     <Project Path="src/Shared.Observability/Shared.Observability.csproj" />
+    <Project Path="src/Sync.Connectors.Rest/Sync.Connectors.Rest.csproj" />
     <Project Path="src/Sync.Core/Sync.Core.csproj" />
+    <Project Path="src/Sync.Ingestao/Sync.Ingestao.csproj" />
     <Project Path="src/Topdata.EasyInner.Adapter/Topdata.EasyInner.Adapter.csproj" />
     <Project Path="src/Topdata.EasyInner.Interop/Topdata.EasyInner.Interop.csproj" />
   </Folder>

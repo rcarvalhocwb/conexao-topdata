@@ -1,36 +1,9 @@
 using System.Globalization;
 using Access.Domain.Ticketing;
 using Microsoft.Data.Sqlite;
+using Sync.Ingestao;
 
 namespace Access.Infrastructure.SQLite;
-
-/// <summary>Um QR que dois provedores diferentes reivindicam.</summary>
-/// <param name="QrNormalizado">O valor em conflito.</param>
-/// <param name="ProvedorExistente">Quem já tinha o QR.</param>
-/// <param name="ReferenciaExistente">Referência do ingresso já gravado.</param>
-/// <param name="ProvedorNovo">Quem tentou gravar por cima.</param>
-/// <param name="ReferenciaNova">Referência do ingresso recusado.</param>
-public sealed record ColisaoDeQr(
-    string QrNormalizado,
-    string ProvedorExistente,
-    string ReferenciaExistente,
-    string ProvedorNovo,
-    string ReferenciaNova);
-
-/// <summary>O que uma ingestão fez.</summary>
-/// <param name="Inseridos">Ingressos novos.</param>
-/// <param name="Atualizados">Ingressos que já existiam e foram reescritos.</param>
-/// <param name="Colisoes">Recusados por conflito de QR com outro provedor.</param>
-/// <param name="ProvedorDesconhecido">Recusados porque o provedor não está cadastrado.</param>
-public sealed record ResultadoDaIngestao(
-    int Inseridos,
-    int Atualizados,
-    IReadOnlyList<ColisaoDeQr> Colisoes,
-    int ProvedorDesconhecido)
-{
-    /// <summary>Nada entrou nem foi alterado.</summary>
-    public bool Vazia => Inseridos == 0 && Atualizados == 0;
-}
 
 /// <summary>Prestação de contas de um provedor.</summary>
 /// <param name="ProvedorId">De quem.</param>
@@ -139,7 +112,7 @@ public sealed record ConciliacaoDoProvedor(
 /// </list>
 /// <para>Ver docs/16-multiplos-provedores-de-ingresso.md.</para>
 /// </remarks>
-public sealed class RepositorioDeIngressos
+public sealed class RepositorioDeIngressos : IDestinoDeIngressos
 {
     private const string StatusValido = "valido";
     private const string StatusConsumido = "consumido";
@@ -152,6 +125,11 @@ public sealed class RepositorioDeIngressos
         ArgumentNullException.ThrowIfNull(fabrica);
         _fabrica = fabrica;
     }
+
+    /// <inheritdoc />
+    /// <remarks>É o mesmo que <see cref="Ingerir"/>: a ingestão não pede nada além disso.</remarks>
+    public ResultadoDaIngestao Aplicar(IReadOnlyCollection<IngressoRecebido> lote, DateTimeOffset agora) =>
+        Ingerir(lote, agora);
 
     /// <summary>Cadastra ou atualiza um provedor.</summary>
     public void RegistrarProvedor(ProvedorDeIngresso provedor, DateTimeOffset agora)

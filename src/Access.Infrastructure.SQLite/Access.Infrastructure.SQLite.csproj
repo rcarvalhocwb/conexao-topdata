@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
     <ProjectReference Include="../Sync.Core/Sync.Core.csproj" />
+    <ProjectReference Include="../Sync.Ingestao/Sync.Ingestao.csproj" />
   </ItemGroup>
 
   <ItemGroup>

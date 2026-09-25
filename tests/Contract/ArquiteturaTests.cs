@@ -225,6 +225,51 @@ public sealed class ArquiteturaTests
             "Ela define as portas; quem tem banco, rede e relógio implementa.");
     }
 
+    /// <summary>
+    /// Cada projeto de sincronização conhece só o que precisa.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A ingestão conhece o domínio, porque é dele o ingresso que ela traz. O conector
+    /// HTTP conhece o contrato de saída, e mais nada. Nenhum dos dois conhece SQLite.
+    /// </para>
+    /// <para>
+    /// O dia em que o conector alcançar o banco, deixa de ser possível trocá-lo por outro
+    /// sem mexer em persistência — e o dia em que a ingestão alcançar HTTP, deixa de ser
+    /// possível testar a retomada de cursor sem servidor.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Os_projetos_de_sincronizacao_so_conhecem_o_que_precisam()
+    {
+        var permitido = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["Sync.Core"] = [],
+            ["Sync.Ingestao"] = ["Access.Domain"],
+            ["Sync.Connectors.Rest"] = ["Sync.Core"],
+        };
+
+        var violacoes = new List<string>();
+
+        foreach (var (nome, permitidas) in permitido)
+        {
+            var projeto = Projetos().FirstOrDefault(p => p.Nome == nome);
+            if (projeto.Caminho is null)
+            {
+                continue;
+            }
+
+            violacoes.AddRange(
+                ReferenciasDe(projeto.Caminho)
+                    .Where(r => !permitidas.Contains(r, StringComparer.Ordinal))
+                    .Select(r => $"{nome} -> {r}"));
+        }
+
+        Assert.True(
+            violacoes.Count == 0,
+            $"Projeto de sincronização com referência indevida: {string.Join("; ", violacoes)}");
+    }
+
     [Fact]
     public void Nenhum_projeto_de_producao_referencia_projeto_de_teste()
     {

@@ -132,7 +132,10 @@ documentado com causa.
 
 1. SDK de conectores com contrato versionado. **`IConectorDeSincronizacao` construído.**
 2. Conectores REST, PostgreSQL, SQL Server, MySQL, Supabase (via API/backend seguro).
-   *Nenhum construído: o drenador foi exercitado só contra conectores de teste.*
+   **`Sync.Connectors.Rest` construído** — genérico, sem credencial, com classificação de
+   repetível × definitivo. Banco e fila continuam pendentes.
+   **`Sync.Ingestao` construído** — a perna de entrada, por cursor, com varredura completa
+   separada. Falta a implementação de `IFonteDeIngressos` para o Zet, que depende de B10.
 3. Prioridade de sincronização, DLQ, reprocessamento manual, cursores.
    **Drenador, prioridades e cartas mortas construídos** (`Sync.Core`, migração `002`);
    o reprocessamento manual e a descida por cursor continuam pendentes.

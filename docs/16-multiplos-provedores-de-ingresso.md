@@ -242,6 +242,55 @@ Três políticas possíveis, e **a escolha é do cliente, não minha**:
 
 ## 7. O que existe hoje, e o que não existe
 
+### A entrada e a volta, construídas
+
+**A borda puxa, e o cursor só avança depois de gravar.** É a regra que dá a garantia de
+"ao menos uma vez": se a gravação falhar, o cursor fica onde estava e a página inteira é
+lida de novo. Reler é barato porque a ingestão é idempotente; perder um ingresso é caro
+porque a pessoa é barrada na porta com o ingresso pago na mão.
+
+Dois fluxos, que nunca se atropelam:
+
+| Fluxo | Para quê | Cursor |
+|---|---|---|
+| **Incremental** | o quase-tempo-real, de segundos | próprio |
+| **Varredura completa** | pegar o que o incremental não viu — provedor reprocessa venda, corrige lote e publica fora de ordem | próprio, separado |
+
+A varredura **nunca move o cursor do incremental**. Se movesse, o incremental andaria para
+trás e reprocessaria horas de fila no pior momento possível: durante o evento. E ela
+retoma de onde parou em vez de recomeçar — numa base de trinta mil ingressos, é a
+diferença entre terminar e nunca terminar.
+
+Há um teto de páginas por rodada, porque uma carga inicial de cinquenta mil ingressos não
+pode monopolizar o processo e atrasar a drenagem dos avisos de uso — que é justamente o
+que o provedor está esperando.
+
+**Na volta**, o conector HTTP decide uma coisa só: **se vale repetir.**
+
+| Resposta do provedor | Veredito |
+|---|---|
+| 2xx | entregue |
+| 409 Conflict | já tinha — conta como entregue |
+| 408, 429, 5xx, tempo esgotado, rede fora | repetir |
+| demais 4xx | recusa definitiva → cartas mortas |
+
+Martelar um 401 durante quatro horas não conserta a credencial e atrasa a fila inteira.
+
+Duas decisões de segurança, e as duas são estruturais e não disciplina:
+
+- **O conector não conhece credencial nenhuma.** Autenticação é do `HttpClient` que lhe
+  entregam, montado no ponto de composição. Um segredo não pode vazar por ali porque
+  nunca passa por ali — e há teste que reprova se a configuração ganhar campo de token.
+- **O corpo da resposta de erro não entra no detalhe gravado.** Ele pode devolver o
+  ingresso e o CPF, e esse texto iria para o banco e para a tela do operador. O código de
+  situação já diz o que precisa ser dito.
+
+O corpo enviado é **exatamente** o `payload_json` da outbox, sem reescrita: mudar a forma
+no meio do caminho tornaria impossível reproduzir o que foi enviado a partir do que está
+gravado.
+
+---
+
 **Construído e testado** (15 testes de integração contra SQLite de verdade):
 
 - Cadastro de provedores, com perfil de normalização e conector próprios
@@ -253,12 +302,17 @@ Três políticas possíveis, e **a escolha é do cliente, não minha**:
 - Confirmação de passagem física e confirmação de recebimento pelo provedor
 - Relatório de conciliação por provedor, com corte reproduzível
 
+Mais 15 de entrada e volta: o laço de ingestão com cursor, o conector HTTP, e quatro de
+ciclo completo — do provedor à catraca e de volta ao provedor, inclusive o caso de
+internet fora no meio.
+
 **Não existe:**
 
-1. **Nenhum ingestor real.** Não há código que fale com a API de bilheteria nenhuma — o
-   contrato de entrada é a chamada `Ingerir(lote)`, e quem a alimenta ainda não foi escrito.
-2. **Nenhum conector de saída real.** O aviso entra na fila e nada o entrega
-   ([`15`](15-integracao-e-sincronizacao.md), §11).
+1. **A peça específica do Zet.** `IFonteDeIngressos` tem **um método**, e é tudo o que
+   falta para ligar uma bilheteria. Não o escrevo antes de saber a URL, a autenticação e o
+   formato da resposta — inventar isso produziria código que compila e não funciona.
+2. **Nada disso está hospedado.** As classes existem e são testadas; nenhum processo as
+   executa. Falta o ponto de composição no `Edge.Supervisor`.
 3. **O caminho da catraca até aqui não está ligado.** `TentarUsar` é chamado por teste, não
    pelo worker: falta o motor de decisão da Fase 2.
 4. **Não há tela.** O relatório é um tipo de dados, não um PDF nem um painel.

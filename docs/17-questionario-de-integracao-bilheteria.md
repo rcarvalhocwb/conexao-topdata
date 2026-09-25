@@ -14,6 +14,16 @@
 > três formas possíveis de integração, e transformar isso num questionário pronto para
 > enviar.
 
+> **Decisão de 25/09: neste ano só o Zet.** Uma bilheteria só, integrada de ponta a
+> ponta, para poder testar de verdade. Isso é a escolha certa — e **concentra o risco em
+> vez de diminuí-lo**: se o Zet não tiver API de parceiro, não há segundo provedor para
+> compensar, e o evento inteiro cai para a forma C (troca de ingresso por credencial no
+> credenciamento).
+>
+> As perguntas **7, 8, 10 e 12** deixaram de ser levantamento e viraram **bloqueio**.
+> A 8 mais que todas: **QR dinâmico inviabiliza validação na catraca**, e não há plano B
+> técnico para isso — só operacional.
+
 ---
 
 ## 1. O que se sabe do Zet pelo que ele publica
