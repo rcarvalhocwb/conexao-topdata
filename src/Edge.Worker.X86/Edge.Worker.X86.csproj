@@ -25,4 +25,13 @@
     <ProjectReference Include="../Topdata.EasyInner.Adapter/Topdata.EasyInner.Adapter.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- O exemplo da bancada vai junto de qualquer publicação, e não só da feita pelo
+         publicar.ps1: o pacote da bancada e o MSI da CI também precisam dele (docs/21). -->
+    <None Include="../../installer/bancada.exemplo.json"
+          Link="bancada.exemplo.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

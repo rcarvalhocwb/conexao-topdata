@@ -150,16 +150,66 @@ jobs:
           }
           Write-Host "Worker em 32 bits: ok"
 
+      # Caminhos ABSOLUTOS. Em <Files>, caminho relativo é resolvido a partir da pasta do
+      # .wxs, e não da pasta em que o comando roda: com "publicado/Worker" o WiX procurava
+      # em installer/wix/publicado/Worker, não achava nada, e o MSI saía com 70 KB e só o
+      # executável do serviço — sem erro. https://docs.firegiant.com/wix/schema/wxs/files/
       - name: Construir o MSI
         shell: pwsh
         run: |
           $versao = "0.1.$env:GITHUB_RUN_NUMBER"
           wix build installer/wix/ConexaoTopdata.wxs `
             -d Versao=$versao `
-            -d PastaSupervisor=publicado/Servico `
-            -d PastaPainel=publicado/Painel `
-            -d PastaWorker=publicado/Worker `
+            -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
+            -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
+            -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
             -o ConexaoTopdata-$versao.msi
+
+      # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
+      # a tabela File tem que ter o que o operador precisa, e não pode ter a EasyInner.dll,
+      # que é da Topdata e vem do SDK instalado na máquina.
+      - name: Conferir o conteúdo do MSI
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $instalador = New-Object -ComObject WindowsInstaller.Installer
+          $banco = $instalador.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $instalador, @($msi, 0))
+          $consulta = $banco.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $banco, @('SELECT `FileName` FROM `File`'))
+          $consulta.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $consulta, $null) | Out-Null
+          $arquivos = @()
+          while ($null -ne ($linha = $consulta.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $consulta, $null))) {
+              $nome = $linha.GetType().InvokeMember('StringData', 'GetProperty', $null, $linha, 1)
+              # FileName guarda "curto|longo"; o longo é o que interessa.
+              $arquivos += ($nome -split '\|')[-1]
+          }
+          Write-Host "$($arquivos.Count) arquivos no MSI ($([math]::Round((Get-Item $msi).Length / 1MB, 1)) MB)"
+
+          $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
+                          'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json'
+          $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
+          if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
+
+          if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI.' }
+          Write-Host 'Conteúdo do MSI: ok'
+
+      # Para a bancada (docs/21) não é preciso instalar nada: o worker vai num zip,
+      # autocontido, sem exigir o .NET instalado no PC. A EasyInner.dll continua vindo do
+      # SDK da Topdata instalado na máquina.
+      - name: Montar o pacote da bancada
+        shell: pwsh
+        run: |
+          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained true -o bancada/Edge.Worker.X86
+          Copy-Item docs/21-roteiro-da-bancada.md bancada/
+          Copy-Item installer/verificar-ambiente.ps1 bancada/
+          if (-not (Test-Path bancada/Edge.Worker.X86/bancada.exemplo.json)) { throw 'Falta o bancada.exemplo.json.' }
+          if (Test-Path bancada/Edge.Worker.X86/EasyInner.dll) { throw 'A EasyInner.dll não pode ir no pacote.' }
+
+      - name: Publicar o pacote da bancada
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacote-da-bancada
+          path: bancada/
+          if-no-files-found: error
 
       - name: Publicar o instalador
         if: always()

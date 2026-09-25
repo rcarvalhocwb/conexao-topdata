@@ -16,10 +16,22 @@
 | Uma TopFit 4 | Com o leitor de QR externo e o leitor Mifare da urna instalados |
 | Um PC Windows | Na **mesma rede** da catraca |
 | SDK Inner Acesso instalado | É o que traz a `EasyInner.dll` |
-| Os arquivos publicados | `installer\publicar.ps1` gera `artifacts\Edge.Worker.X86\` |
+| Os arquivos publicados | O **pacote da bancada** da CI (abaixo), ou `installer\publicar.ps1`, que gera `artifacts\Edge.Worker.X86\` |
 | Cartões Mifare **de teste** | Cinco ou dez, nunca de cliente |
 | Um celular | Para mostrar QR Codes de teste |
 | Um gerador de QR | Qualquer site ou aplicativo que gere QR a partir de um texto |
+
+**Como baixar o pacote da bancada.** No GitHub, entre logado, abra a aba **Actions**, clique
+na execução mais recente da CI da branch com sucesso e, no fim da página, em **Artifacts**,
+baixe `pacote-da-bancada`. É um zip com a pasta `Edge.Worker.X86` (autocontida: não
+precisa instalar o .NET), este roteiro e o `verificar-ambiente.ps1`. Descompacte, por
+exemplo, em `C:\Bancada`, e use `C:\Bancada\Edge.Worker.X86` onde este roteiro diz
+`artifacts\Edge.Worker.X86`. A `EasyInner.dll` **não** vem no pacote: ela é da Topdata e
+vem do SDK instalado na máquina.
+
+O MSI (`instalador-msi`, mesma página) instala o serviço e o painel do operador. **Para
+este ensaio ele não é necessário**, e exige o .NET 10 instalado (x64 e x86, e o Desktop
+Runtime para o painel).
 
 **A catraca precisa ser configurada para se conectar a este PC.** Na integração pela
 `EasyInner.dll`, quem inicia a conexão é a catraca, e o PC escuta. No Gerenciador de
