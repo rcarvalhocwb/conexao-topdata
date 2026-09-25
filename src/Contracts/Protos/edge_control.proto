@@ -42,6 +42,17 @@ message ObterEstadoResponse {
   NivelDeDegradacao nivel = 6;
 
   bool internet_disponivel = 7;
+
+  // Contagens do evento, lidas da base local (ADR-0024).
+  int64 liberados = 8;
+  int64 negados = 9;
+  int64 giros = 10;
+  int64 liberados_ultimos_5_minutos = 11;
+  int64 cartas_mortas = 12;
+  int32 equipamentos_cadastrados = 13;
+
+  // Quando a nuvem respondeu com sucesso pela última vez; vazio se nunca.
+  google.protobuf.Timestamp ultima_sincronizacao = 14;
 }
 
 message ListarEquipamentosRequest {}
@@ -63,6 +74,14 @@ message Equipamento {
 
   // Preenchido só em equipamento com urna.
   int32 capacidade_da_urna_usada_por_cento = 10;
+
+  // Em operação: atendendo público. Falso também quando o worker parou de dar notícia.
+  bool em_operacao = 11;
+  int32 tentativas_de_reconexao = 12;
+  // "liberado" ou "negado"; vazio se ainda não decidiu nada.
+  string ultima_decisao = 13;
+  // Quando o worker deu notícia desta catraca pela última vez.
+  google.protobuf.Timestamp noticia_em = 14;
 }
 
 message AcompanharEventosRequest {
@@ -91,6 +110,10 @@ message EventoDeAcesso {
   bool passagem_confirmada = 12;
 
   string correlation_id = 13;
+
+  // Categoria do ingresso no instante da tentativa (meia, inteira, social...).
+  string categoria = 14;
+  string portao = 15;
 }
 
 enum ResultadoDoAcesso {

@@ -24,13 +24,20 @@ public sealed class ProcessoDeWorker : IWorkerHost
     private Process? _processo;
     private DateTimeOffset? _iniciadoEm;
     private string _ultimaSaida = "ainda não iniciado";
+    private readonly IReadOnlyList<string> _argumentosExtras;
+    private readonly Queue<string> _ultimasLinhas = new();
+    private readonly Lock _travaDasLinhas = new();
+
+    /// <summary>Quantas linhas da saída do worker ficam guardadas para diagnóstico.</summary>
+    public const int LinhasGuardadas = 50;
 
     public ProcessoDeWorker(
         string nome,
         int porta,
         IReadOnlyList<int> inners,
         string executavel,
-        Func<DateTimeOffset>? relogio = null)
+        Func<DateTimeOffset>? relogio = null,
+        IReadOnlyList<string>? argumentosExtras = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nome);
         ArgumentException.ThrowIfNullOrWhiteSpace(executavel);
@@ -42,6 +49,7 @@ public sealed class ProcessoDeWorker : IWorkerHost
         Inners = [.. inners];
         _executavel = executavel;
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
+        _argumentosExtras = argumentosExtras ?? [];
     }
 
     public string Nome { get; }
@@ -97,6 +105,12 @@ public sealed class ProcessoDeWorker : IWorkerHost
         inicio.ArgumentList.Add("--inners");
         inicio.ArgumentList.Add(string.Join(',', Inners));
 
+        foreach (var argumento in _argumentosExtras)
+        {
+            inicio.ArgumentList.Add(argumento);
+        }
+
+        _ultimoErro = null;
         _processo = Process.Start(inicio);
         _iniciadoEm = _relogio();
         _ultimaSaida = "em execução";
@@ -107,10 +121,16 @@ public sealed class ProcessoDeWorker : IWorkerHost
             return;
         }
 
-        // A saída do worker é a explicação de por que ele não subiu. Perdê-la transforma
-        // "o worker morreu" num mistério.
+        // A saída precisa ser LIDA enquanto o worker roda. Redirecionada e não lida, ela
+        // enche o buffer do pipe (poucos KB) e o worker trava no próximo Console.WriteLine
+        // — com a catraca parada e o processo "vivo". As últimas linhas ficam guardadas: são
+        // a explicação de por que ele não subiu ou morreu.
+        _processo.OutputDataReceived += (_, e) => Guardar(e.Data);
+        _processo.ErrorDataReceived += (_, e) => Guardar(e.Data, erro: true);
         _processo.Exited += (_, _) => RegistrarSaida();
         _processo.EnableRaisingEvents = true;
+        _processo.BeginOutputReadLine();
+        _processo.BeginErrorReadLine();
     }
 
     public void Matar()
@@ -138,17 +158,48 @@ public sealed class ProcessoDeWorker : IWorkerHost
             return;
         }
 
-        var erro = _processo.StandardError.ReadToEnd().Trim();
+        // Espera a leitura assíncrona terminar, senão a última linha de erro — a que
+        // explica a saída — ainda não chegou.
+        _processo.WaitForExit();
         var codigo = _processo.ExitCode;
+        var erro = _ultimoErro;
 
         _ultimaSaida = string.IsNullOrWhiteSpace(erro)
             ? $"encerrou com código {codigo}"
-            : $"encerrou com código {codigo}: {PrimeiraLinha(erro)}";
+            : $"encerrou com código {codigo}: {erro}";
     }
 
-    private static string PrimeiraLinha(string texto)
+    /// <summary>As últimas linhas que o worker escreveu, da mais antiga à mais nova.</summary>
+    public IReadOnlyList<string> UltimasLinhas()
     {
-        var quebra = texto.IndexOf('\n', StringComparison.Ordinal);
-        return quebra < 0 ? texto : texto[..quebra].TrimEnd('\r');
+        lock (_travaDasLinhas)
+        {
+            return [.. _ultimasLinhas];
+        }
+    }
+
+    private string? _ultimoErro;
+
+    private void Guardar(string? linha, bool erro = false)
+    {
+        if (linha is null)
+        {
+            return;
+        }
+
+        lock (_travaDasLinhas)
+        {
+            if (erro && _ultimoErro is null && !string.IsNullOrWhiteSpace(linha))
+            {
+                // A primeira linha de erro costuma ser a causa; as seguintes, consequência.
+                _ultimoErro = linha.Trim();
+            }
+
+            _ultimasLinhas.Enqueue(linha);
+            while (_ultimasLinhas.Count > LinhasGuardadas)
+            {
+                _ultimasLinhas.Dequeue();
+            }
+        }
     }
 }

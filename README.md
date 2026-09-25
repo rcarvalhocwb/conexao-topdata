@@ -53,7 +53,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 01 | [Perguntas críticas](docs/01-perguntas-criticas.md) | Bloqueantes e não bloqueantes, com impacto de cada resposta |
 | 02 | [Matriz de compatibilidade](docs/02-matriz-compatibilidade.md) | Funções, modelos, origens de evento, lacunas |
 | 03 | [Arquitetura](docs/03-arquitetura.md) | Componentes, processos, limites, fluxo de dados, níveis de degradação |
-| — | [ADRs](docs/ADR/) | 23 decisões arquiteturais registradas |
+| — | [ADRs](docs/ADR/) | 24 decisões arquiteturais registradas |
 | 04 | [Workflow CollectCardThenEnter](docs/04-workflow-collect-card-then-enter.md) | Fluxo do coletor/urna liberando ENTRADA |
 | 05 | [Modelo de dados](docs/05-modelo-de-dados.md) | Esquema local, outbox, auditoria, idempotência |
 | 06 | [Testes e dimensionamento](docs/06-plano-de-testes-e-dimensionamento.md) | Estratégia de testes, simulador, calculadora de capacidade |

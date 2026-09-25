@@ -13,8 +13,23 @@ public sealed record GrupoConfigurado(string Nome, int Porta, IReadOnlyList<int>
 /// <summary>Configuração do serviço local.</summary>
 /// <param name="Endereco">Nome do named pipe (Windows) ou caminho do socket.</param>
 /// <param name="Grupos">Grupos a supervisionar.</param>
-public sealed record ConfiguracaoDoSupervisor(string? Endereco, IReadOnlyList<GrupoConfigurado> Grupos)
+/// <param name="Banco">Caminho da base local; vazio usa o padrão, ver <see cref="CaminhoDoBanco"/>.</param>
+public sealed record ConfiguracaoDoSupervisor(
+    string? Endereco,
+    IReadOnlyList<GrupoConfigurado> Grupos,
+    string? Banco = null)
 {
+    /// <summary>
+    /// Base local compartilhada pelo serviço e pelos workers (ADR-0024). Sem valor, fica
+    /// em <c>%ProgramData%\ConexaoTopdata\acesso.db</c>, que sobrevive a reinstalação.
+    /// </summary>
+    public string CaminhoDoBanco => string.IsNullOrWhiteSpace(Banco)
+        ? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "ConexaoTopdata",
+            "acesso.db")
+        : Banco;
+
     private static readonly JsonSerializerOptions Opcoes = new()
     {
         PropertyNameCaseInsensitive = true,

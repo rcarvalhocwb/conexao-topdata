@@ -66,6 +66,16 @@ public sealed class CredentialValue : IEquatable<CredentialValue>
     /// </summary>
     public override string ToString() => Mask(Normalized);
 
+    /// <summary>
+    /// Máscara para qualquer código lido — tela de operador, log, painel. Mesma regra de
+    /// <see cref="ToString"/>: no máximo os dois últimos caracteres e o comprimento.
+    /// </summary>
+    public static string Mascarar(string valor)
+    {
+        ArgumentNullException.ThrowIfNull(valor);
+        return Mask(valor);
+    }
+
     internal static string Mask(string value)
     {
         if (value.Length <= 4)

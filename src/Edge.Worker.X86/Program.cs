@@ -4,6 +4,7 @@ using Access.Application.Ingressos;
 using Access.Infrastructure.SQLite;
 using Edge.Worker;
 using Edge.Worker.Bancada;
+using Edge.Worker.Operacao;
 using Topdata.EasyInner.Adapter;
 
 namespace Edge.Worker.X86;
@@ -73,13 +74,20 @@ internal static class Program
                 return 1;
             }
 
-            if (Array.IndexOf(args, "--bancada") < 0)
+            if (Array.IndexOf(args, "--bancada") >= 0)
             {
-                Console.WriteLine("Porta aberta. Para o ensaio com catraca, rode com --bancada (docs/21).");
-                return 0;
+                return ExecutarBancada(adapter, args);
             }
 
-            return ExecutarBancada(adapter, args);
+            if (Valor(args, "--banco") is { } banco)
+            {
+                return ExecutarOperacao(adapter, porta, banco, args);
+            }
+
+            Console.WriteLine(
+                "Porta aberta. Para o ensaio com catraca, rode com --bancada (docs/21); " +
+                "em operação, o serviço passa --banco.");
+            return 0;
         }
         catch (DllNotFoundException erro)
         {
@@ -170,6 +178,85 @@ internal static class Program
         var (tentativas, codigos) = repositorio.QrDesconhecidos(agora);
         Console.WriteLine($"códigos desconhecidos: {tentativas} tentativa(s), {codigos} código(s) distinto(s)");
 
+        return 0;
+    }
+
+    /// <summary>
+    /// Operação: o laço de verdade, sem tela, decidindo pela base local compartilhada com o
+    /// serviço. É como o serviço sobe o worker (ADR-0024).
+    /// </summary>
+    private static int ExecutarOperacao(TopdataInnerAdapter adapter, int porta, string banco, string[] args)
+    {
+        var nome = Valor(args, "--worker") ?? $"porta-{porta}";
+        var pastaDeRegistros = Valor(args, "--registros")
+            ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(banco)) ?? ".", "registros");
+        var registro = new RegistroEmArquivo(pastaDeRegistros, $"worker-{nome}");
+
+        void Registrar(string linha)
+        {
+            registro.Escrever(linha);
+            Console.WriteLine(linha);
+        }
+
+        var fabrica = new SqliteConnectionFactory(banco);
+        new Migrator(fabrica).Aplicar();
+
+        var (configuracao, ilegiveis) = new ConfiguracoesDaBorda(fabrica).Ler();
+        foreach (var chave in ilegiveis)
+        {
+            Registrar($"configuração '{chave}' ilegível; usando o padrão.");
+        }
+
+        var problemas = configuracao.Validar();
+        if (problemas.Count > 0)
+        {
+            // Configuração ruim não pode parar a catraca: sobe com o padrão e avisa.
+            Registrar("configuração do evento inválida, usando o padrão: " + string.Join(" ", problemas));
+            configuracao = new ConfiguracaoDaOperacao();
+        }
+
+        var espelho = configuracao.EspelhoLigado
+            ? new EspelhoDeTentativas(configuracao.ConectorDoEspelho, TimeSpan.FromSeconds(configuracao.EsperaPeloGiroSegundos))
+            : null;
+        var repositorio = new RepositorioDeIngressos(fabrica, espelho);
+        var operacao = new Access.Infrastructure.SQLite.Operacao(fabrica);
+
+        var inners = (Valor(args, "--inners") ?? Valor(args, "--inner") ?? "1")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(v => int.Parse(v, CultureInfo.InvariantCulture))
+            .ToList();
+
+        var configuracaoDasCatracas = ConfiguracaoDeBancada.TopFit4(configuracao.TipoDeLeitor, configuracao.LeitorDaUrna) with
+        {
+            TempoDoAcionamento1 = configuracao.TempoDeAcionamento,
+            MensagemPadrao = configuracao.MensagemPadrao,
+        };
+
+        Registrar(string.Create(
+            CultureInfo.InvariantCulture,
+            $"worker {nome} · porta {porta} · catracas {string.Join(", ", inners)} · leitor {configuracao.TipoDeLeitor} · " +
+            $"urna {(configuracao.LeitorDaUrna ? "ligada" : "desligada")} · nuvem {(espelho is null ? "desligada" : "ligada")}"));
+
+        var sessao = new SessaoDeOperacao(
+            adapter,
+            inners,
+            configuracaoDasCatracas,
+            new DecisorDeIngresso(repositorio),
+            Registrar,
+            situacoes => operacao.GravarSituacao(
+                [.. situacoes.Select(c => new SituacaoDoEquipamento(
+                    c.DeviceId, c.Inner, nome, c.Estado.ToString(), c.EmOperacao, c.Firmware,
+                    c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow))]));
+
+        using var cancelamento = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            cancelamento.Cancel();
+        };
+
+        sessao.Executar(cancelamento.Token);
+        Registrar("encerrado.");
         return 0;
     }
 

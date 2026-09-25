@@ -1,4 +1,5 @@
 using System.Globalization;
+using Access.Infrastructure.SQLite;
 using Contracts;
 using Edge.Supervisor;
 using Microsoft.AspNetCore.Builder;
@@ -65,25 +66,45 @@ var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO")
     ?? configuracao.Endereco
     ?? TransporteLocal.EnderecoPadrao();
 
+// A base local é o canal entre os workers e este serviço (ADR-0024). O serviço aplica as
+// migrações ANTES de subir qualquer worker, para que nenhum deles corra para aplicá-las
+// ao mesmo tempo.
+var caminhoDoBanco = configuracao.CaminhoDoBanco;
+Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco))!);
+var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
+new Migrator(fabrica).Aplicar();
+
 var workers = configuracao.Grupos
-    .Select(g => new ProcessoDeWorker(g.Nome, g.Porta, g.Inners, g.Executavel))
+    .Select(g => new ProcessoDeWorker(
+        g.Nome,
+        g.Porta,
+        g.Inners,
+        g.Executavel,
+        argumentosExtras: ["--banco", caminhoDoBanco, "--worker", g.Nome]))
     .ToList();
 
 var supervisor = new WorkerSupervisor(workers);
+var operacao = new Operacao(fabrica);
+var nuvem = new EstadoDaNuvem();
 
 var construtor = WebApplication.CreateBuilder(args);
 construtor.WebHost.ConfigureKestrel(opcoes => TransporteLocal.Escutar(opcoes, endereco));
 construtor.Services.AddSingleton(supervisor);
-construtor.Services.AddSingleton<EdgeControlService>();
+construtor.Services.AddSingleton(fabrica);
+construtor.Services.AddSingleton(operacao);
+construtor.Services.AddSingleton(nuvem);
+construtor.Services.AddSingleton(new ConfiguracoesDaBorda(fabrica));
+construtor.Services.AddSingleton(_ => new EdgeControlService(supervisor, operacao: operacao, nuvem: nuvem));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
+construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
 
 var aplicacao = construtor.Build();
 aplicacao.MapGrpcService<EdgeControlService>();
 
 Console.WriteLine(string.Create(
     CultureInfo.InvariantCulture,
-    $"Serviço local em {endereco} · {workers.Count} grupo(s) · {workers.Sum(w => w.Inners.Count)} equipamento(s)"));
+    $"Serviço local em {endereco} · {workers.Count} grupo(s) · {workers.Sum(w => w.Inners.Count)} equipamento(s) · base {caminhoDoBanco}"));
 
 await aplicacao.RunAsync().ConfigureAwait(false);
 return 0;

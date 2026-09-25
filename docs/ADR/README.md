@@ -27,3 +27,6 @@ declara `Substitui ADR-XXXX`, e o antigo passa a `Substituído`. O histórico fi
 | [0019](ADR-0019-stack-e-linguagem.md) | Stack e linguagem | Aceito |
 | [0020](ADR-0020-configuracao-sempre-completa.md) | A configuração enviada é sempre completa e explícita | Aceito |
 | [0021](ADR-0021-porta-por-worker-e-protocolo-nda.md) | Uma porta TCP por worker, e o protocolo sob NDA | Aceito / Proposto |
+| [0022](ADR-0022-rele-de-webhook.md) | Relé de webhook: a borda puxa, nunca recebe | Aceito |
+| [0023](ADR-0023-borda-decide-nuvem-sincroniza.md) | A catraca decide no PC local; a nuvem recebe e envia | Aceito |
+| [0024](ADR-0024-worker-e-servico-pelo-banco-local.md) | Worker e serviço conversam pela base local | Aceito |

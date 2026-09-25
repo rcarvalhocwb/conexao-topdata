@@ -5,6 +5,25 @@ using Access.Infrastructure.SQLite;
 
 // Uso: CrashProbe <caminhoDoBanco> <quantidadeDeEventos>
 // Grava os eventos, imprime "PRONTO" e espera ser morto.
+//
+// Uso: CrashProbe ... --tagarela <marcador>
+// Escreve muito mais do que cabe no buffer de um pipe e, se não travar, cria o arquivo
+// marcador. É como o supervisor prova que lê a saída do worker enquanto ele roda.
+
+var tagarela = Array.IndexOf(args, "--tagarela");
+if (tagarela >= 0 && tagarela + 1 < args.Length)
+{
+    var linha = new string('x', 200);
+    for (var n = 0; n < 20_000; n++)
+    {
+        Console.WriteLine($"{n} {linha}");
+        Console.Error.WriteLine($"{n} {linha}");
+    }
+
+    File.WriteAllText(args[tagarela + 1], "ok");
+    await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
+    return 0;
+}
 
 if (args.Length < 2)
 {
