@@ -1,4 +1,5 @@
 using System.Globalization;
+using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 using Microsoft.Data.Sqlite;
 using Sync.Ingestao;
@@ -154,15 +155,16 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         comando.CommandText =
             """
             INSERT INTO ticket_provider
-                (id, name, normalization_profile, connector, enabled, created_at, reusable, reuse_interval_seconds)
-            VALUES ($id, $nome, $perfil, $conector, $habilitado, $em, $reutilizavel, $intervalo)
+                (id, name, normalization_profile, connector, enabled, created_at, reusable, reuse_interval_seconds, urn_only)
+            VALUES ($id, $nome, $perfil, $conector, $habilitado, $em, $reutilizavel, $intervalo, $urna)
             ON CONFLICT (id) DO UPDATE SET
                 name = excluded.name,
                 normalization_profile = excluded.normalization_profile,
                 connector = excluded.connector,
                 enabled = excluded.enabled,
                 reusable = excluded.reusable,
-                reuse_interval_seconds = excluded.reuse_interval_seconds;
+                reuse_interval_seconds = excluded.reuse_interval_seconds,
+                urn_only = excluded.urn_only;
             """;
         comando.Parameters.AddWithValue("$id", provedor.Id);
         comando.Parameters.AddWithValue("$nome", provedor.Nome);
@@ -172,6 +174,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         comando.Parameters.AddWithValue("$em", Iso(agora));
         comando.Parameters.AddWithValue("$reutilizavel", provedor.Reutilizavel ? 1 : 0);
         comando.Parameters.AddWithValue("$intervalo", (long)Math.Max(0, provedor.IntervaloDeReuso.TotalSeconds));
+        comando.Parameters.AddWithValue("$urna", provedor.SomenteNaUrna ? 1 : 0);
         comando.ExecuteNonQuery();
     }
 
@@ -182,7 +185,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         using var comando = conexao.CreateCommand();
         comando.CommandText =
             """
-            SELECT id, name, normalization_profile, connector, enabled, reusable, reuse_interval_seconds
+            SELECT id, name, normalization_profile, connector, enabled, reusable, reuse_interval_seconds, urn_only
             FROM ticket_provider ORDER BY id;
             """;
 
@@ -197,7 +200,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
                 leitor.GetString(3),
                 leitor.GetInt32(4) == 1,
                 leitor.GetInt32(5) == 1,
-                TimeSpan.FromSeconds(leitor.GetInt64(6))));
+                TimeSpan.FromSeconds(leitor.GetInt64(6)),
+                leitor.GetInt32(7) == 1));
         }
 
         return lista;
@@ -281,13 +285,18 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
     /// <param name="deviceId">Equipamento.</param>
     /// <param name="agora">Instante da leitura.</param>
     /// <param name="decisionId">Decisão de acesso correspondente, quando houver.</param>
+    /// <param name="leitor">
+    /// Origem da leitura: leitor 1 (frente) ou leitor 2 (fenda da urna). Nulo quando não
+    /// se sabe — e, para provedor que exige urna, não saber é recusar.
+    /// </param>
     /// <returns>O resultado, já com o motivo exato da negativa.</returns>
     public (ResultadoDoUso Resultado, Guid TentativaId) TentarUsar(
         string qrNormalizado,
         string gateId,
         string deviceId,
         DateTimeOffset agora,
-        Guid? decisionId = null)
+        Guid? decisionId = null,
+        KnownEventOrigin? leitor = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(qrNormalizado);
         ArgumentException.ThrowIfNullOrWhiteSpace(gateId);
@@ -299,7 +308,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         // A escrita vem primeiro, de propósito: é ela que pega a trava. Ler antes e
         // escrever depois, numa transação adiada, é a receita do SQLITE_BUSY que não
         // se recupera.
-        var consumiu = ConsumirUmUso(conexao, transacao, qrNormalizado, gateId, agora) == 1;
+        var naUrna = leitor == KnownEventOrigin.Leitor2;
+        var consumiu = ConsumirUmUso(conexao, transacao, qrNormalizado, gateId, agora, naUrna) == 1;
 
         var estado = Estado(conexao, transacao, qrNormalizado);
         var tentativaId = Guid.CreateVersion7(agora);
@@ -321,7 +331,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         }
         else
         {
-            var motivo = Diagnosticar(estado, agora);
+            var motivo = Diagnosticar(estado, agora, naUrna);
             resultado = new ResultadoDoUso(
                 motivo, estado?.Id, estado?.Provedor, estado?.Setor, Categoria: estado?.Categoria);
 
@@ -876,7 +886,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         SqliteTransaction transacao,
         string qr,
         string gateId,
-        DateTimeOffset agora)
+        DateTimeOffset agora,
+        bool naUrna)
     {
         using var comando = conexao.CreateCommand();
         comando.Transaction = transacao;
@@ -898,6 +909,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
                     SELECT 1 FROM ticket_provider p
                     WHERE p.id = ticket.provider_id
                       AND p.enabled = 1
+                      AND (p.urn_only = 0 OR $naUrna = 1)
                       -- O intervalo de reuso: o mesmo cartão de volta cedo demais não é um
                       -- cliente, é o cartão passado por cima da grade. A revenda NÃO zera
                       -- last_used_epoch, então revender na hora não contorna isto.
@@ -907,6 +919,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         comando.Parameters.AddWithValue("$qr", qr);
         comando.Parameters.AddWithValue("$em", Iso(agora));
         comando.Parameters.AddWithValue("$epoch", agora.ToUnixTimeSeconds());
+        comando.Parameters.AddWithValue("$naUrna", naUrna ? 1 : 0);
         comando.Parameters.AddWithValue("$gate", gateId);
         return comando.ExecuteNonQuery();
     }
@@ -925,7 +938,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         string? Categoria,
         long? UltimoUsoEpoch,
         long IntervaloDeReusoSegundos,
-        bool Reutilizavel);
+        bool Reutilizavel,
+        bool SomenteNaUrna);
 
     private static EstadoDoIngresso? Estado(SqliteConnection conexao, SqliteTransaction transacao, string qr)
     {
@@ -935,7 +949,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
             """
             SELECT t.id, t.provider_id, t.sector, t.status, t.used_count, t.max_uses,
                    t.valid_from, t.valid_to, t.external_ref, p.enabled,
-                   t.category, t.last_used_epoch, p.reuse_interval_seconds, p.reusable
+                   t.category, t.last_used_epoch, p.reuse_interval_seconds, p.reusable, p.urn_only
             FROM ticket t
             JOIN ticket_provider p ON p.id = t.provider_id
             WHERE t.qr_normalized = $qr;
@@ -962,10 +976,11 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
             leitor.IsDBNull(10) ? null : leitor.GetString(10),
             leitor.IsDBNull(11) ? null : leitor.GetInt64(11),
             leitor.GetInt64(12),
-            leitor.GetInt32(13) == 1);
+            leitor.GetInt32(13) == 1,
+            leitor.GetInt32(14) == 1);
     }
 
-    private static MotivoDoUso Diagnosticar(EstadoDoIngresso? estado, DateTimeOffset agora)
+    private static MotivoDoUso Diagnosticar(EstadoDoIngresso? estado, DateTimeOffset agora, bool naUrna)
     {
         if (estado is null)
         {
@@ -975,6 +990,13 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos
         if (!estado.ProvedorHabilitado)
         {
             return MotivoDoUso.ProvedorDesabilitado;
+        }
+
+        // Vem cedo de propósito: para quem está na frente da catraca com o cartão na mão,
+        // "use a urna" é a única instrução que resolve.
+        if (estado.SomenteNaUrna && !naUrna)
+        {
+            return MotivoDoUso.ForaDaUrna;
         }
 
         // A ordem importa: cancelado vem antes de esgotado porque explica melhor o que

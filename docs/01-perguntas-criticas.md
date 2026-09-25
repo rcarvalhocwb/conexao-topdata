@@ -44,6 +44,12 @@ estiver no escopo), manuais dos modelos/firmwares do parque.
 
 ### B2. Qual é o parque real — modelo, quantidade, firmware, placa e leitor de cada equipamento?
 
+> **Parcialmente respondida em 25/09:** cinco catracas **TopFit 4**, com cartão padrão para
+> **urna coletora**. Segundo a Topdata, a linha 4 aceita leitor de QR e de proximidade (ou
+> smart) juntos, com urna — o que muda a divisão das catracas
+> ([`19`](19-bilheteria-local-e-divisao-das-catracas.md)). **Falta:** se as cinco têm urna
+> e leitor de QR, se o cartão é de proximidade ou Mifare, e o firmware.
+
 Sem inventário, "compatível" é chute.
 
 **O que muda:** define quantos workers, quantos hosts, quais módulos entram, e quais

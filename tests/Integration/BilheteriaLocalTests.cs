@@ -1,3 +1,4 @@
+using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 using Access.Infrastructure.SQLite;
 using static Access.Infrastructure.SQLite.RepositorioDeIngressos;
@@ -39,6 +40,88 @@ public sealed class BilheteriaLocalTests
 
     private static ResultadoDoUso Passar(RepositorioDeIngressos r, string cartao, DateTimeOffset quando) =>
         r.TentarUsar(cartao, "portao-1", "catraca-01", quando).Resultado;
+
+    private static RepositorioDeIngressos PrepararComUrna(BancoTemporario banco)
+    {
+        banco.Migrar();
+        var repositorio = new RepositorioDeIngressos(banco.Fabrica);
+
+        repositorio.RegistrarProvedor(
+            new ProvedorDeIngresso(Bilheteria, "Bilheteria local", "raw", "",
+                Reutilizavel: true, IntervaloDeReuso: Intervalo, SomenteNaUrna: true),
+            Abertura);
+
+        repositorio.RegistrarProvedor(new ProvedorDeIngresso(Online, "Zet", "raw", "zet-rest"), Abertura);
+        return repositorio;
+    }
+
+    [Fact]
+    public void Cartao_da_bilheteria_no_leitor_da_frente_e_recusado()
+    {
+        // Aceitar aqui deixaria a pessoa passar com o cartão na mão — e daí para o outro
+        // lado da grade. A urna existe para que o cartão fique.
+        using var banco = new BancoTemporario();
+        var r = PrepararComUrna(banco);
+        r.VenderNoBalcao(Bilheteria, "04A1B2C3", "inteira", Abertura);
+
+        var (frente, _) = r.TentarUsar("04A1B2C3", "portao-1", "catraca-01", Abertura.AddMinutes(1),
+            leitor: KnownEventOrigin.Leitor1);
+
+        Assert.False(frente.Liberou);
+        Assert.Equal(MotivoDoUso.ForaDaUrna, frente.Motivo);
+
+        // E a venda continua intacta: recusar no leitor errado não queima a entrada.
+        var (urna, _) = r.TentarUsar("04A1B2C3", "portao-1", "catraca-01", Abertura.AddMinutes(1).AddSeconds(5),
+            leitor: KnownEventOrigin.Leitor2);
+
+        Assert.True(urna.Liberou);
+    }
+
+    [Fact]
+    public void Leitor_desconhecido_e_recusado_quando_o_provedor_exige_urna()
+    {
+        // Não saber onde foi lido é recusar. O contrário abriria a porta que a regra fecha.
+        using var banco = new BancoTemporario();
+        var r = PrepararComUrna(banco);
+        r.VenderNoBalcao(Bilheteria, "04A1B2C3", "inteira", Abertura);
+
+        Assert.Equal(MotivoDoUso.ForaDaUrna, Passar(r, "04A1B2C3", Abertura.AddMinutes(1)).Motivo);
+    }
+
+    [Fact]
+    public void Ingresso_online_nao_exige_urna()
+    {
+        // O QR do celular não vai para a urna — não há cartão para recolher.
+        using var banco = new BancoTemporario();
+        var r = PrepararComUrna(banco);
+        r.Ingerir([new IngressoRecebido(Online, "ZET-1", "ZET-QR-1", "ZET-QR-1")], Abertura);
+
+        var (uso, _) = r.TentarUsar("ZET-QR-1", "portao-1", "catraca-01", Abertura.AddMinutes(1),
+            leitor: KnownEventOrigin.Leitor1);
+
+        Assert.True(uso.Liberou);
+    }
+
+    [Fact]
+    public void A_mesma_catraca_com_urna_e_qr_atende_os_dois_fluxos_pelo_leitor_certo()
+    {
+        // A linha 4 da Topdata aceita leitor de QR e leitor de proximidade juntos, com urna.
+        // O cartão entra pela fenda; o QR, pelo leitor da frente. A conta sai separada.
+        using var banco = new BancoTemporario();
+        var r = PrepararComUrna(banco);
+        r.VenderNoBalcao(Bilheteria, "04A1B2C3", "meia", Abertura);
+        r.Ingerir([new IngressoRecebido(Online, "ZET-1", "ZET-QR-1", "ZET-QR-1", Categoria: "inteira")], Abertura);
+
+        var cartao = r.TentarUsar("04A1B2C3", "portao-1", "catraca-01", Abertura.AddMinutes(1),
+            leitor: KnownEventOrigin.Leitor2).Resultado;
+        var qr = r.TentarUsar("ZET-QR-1", "portao-1", "catraca-01", Abertura.AddMinutes(1).AddSeconds(8),
+            leitor: KnownEventOrigin.Leitor1).Resultado;
+
+        Assert.True(cartao.Liberou);
+        Assert.True(qr.Liberou);
+        Assert.Equal(1, r.Conciliar(Bilheteria, Abertura.AddHours(6)).UsosConsumidos);
+        Assert.Equal(1, r.Conciliar(Online, Abertura.AddHours(6)).UsosConsumidos);
+    }
 
     [Fact]
     public void Primeira_venda_cria_o_cartao_e_ele_gira()

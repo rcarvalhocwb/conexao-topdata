@@ -66,6 +66,15 @@ public enum MotivoDoUso
     /// Só existe na bilheteria. Sobrescrever uma venda paga e não usada apaga dinheiro.
     /// </remarks>
     VendaAnteriorNaoUsada,
+
+    /// <summary>
+    /// Cartão que só vale na fenda da urna, lido em outro leitor.
+    /// </summary>
+    /// <remarks>
+    /// Aceitar no leitor da frente deixaria a pessoa passar com o cartão na mão — e daí
+    /// para o outro lado da grade. A urna existe para que o cartão fique.
+    /// </remarks>
+    ForaDaUrna,
 }
 
 /// <summary>
@@ -89,6 +98,10 @@ public enum MotivoDoUso
 /// zera este relógio — é isso que impede o cartão de ser passado por cima da grade e
 /// revendido na hora.
 /// </param>
+/// <param name="SomenteNaUrna">
+/// O ingresso só vale se lido na fenda da urna (leitor 2). Para o cartão da bilheteria,
+/// que precisa ficar retido na entrada.
+/// </param>
 public sealed record ProvedorDeIngresso(
     string Id,
     string Nome,
@@ -96,7 +109,8 @@ public sealed record ProvedorDeIngresso(
     string Conector,
     bool Habilitado = true,
     bool Reutilizavel = false,
-    TimeSpan IntervaloDeReuso = default);
+    TimeSpan IntervaloDeReuso = default,
+    bool SomenteNaUrna = false);
 
 /// <summary>Ingresso como o provedor o entregou, antes de virar linha no banco.</summary>
 /// <param name="ProvedorId">De quem veio.</param>
