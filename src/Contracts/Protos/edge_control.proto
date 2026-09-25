@@ -24,6 +24,15 @@ service EdgeControl {
 
   // Fluxo de eventos ao vivo. A interface nunca faz polling.
   rpc AcompanharEventos(AcompanharEventosRequest) returns (stream EventoDeAcesso);
+
+  // Telas do operador. Tudo o que volta com código vem mascarado.
+  rpc ListarAcessos(ListarAcessosRequest) returns (ListarAcessosResponse);
+  rpc ObterConfiguracao(ObterConfiguracaoRequest) returns (ConfiguracaoDoEvento);
+  rpc GravarConfiguracao(GravarConfiguracaoRequest) returns (GravarConfiguracaoResponse);
+  rpc ObterSincronizacao(ObterSincronizacaoRequest) returns (SituacaoDaSincronizacao);
+  rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
+  rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
+  rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
 }
 
 message ObterEstadoRequest {}
@@ -130,4 +139,143 @@ enum NivelDeDegradacao {
   NIVEL_DE_DEGRADACAO_T1_SEM_INTERNET = 2;
   NIVEL_DE_DEGRADACAO_T2_LISTA_LOCAL = 3;
   NIVEL_DE_DEGRADACAO_T3_ISOLADO = 4;
+}
+
+enum FiltroDeResultado {
+  FILTRO_DE_RESULTADO_NAO_ESPECIFICADO = 0;  // todos
+  FILTRO_DE_RESULTADO_LIBERADOS = 1;
+  FILTRO_DE_RESULTADO_NEGADOS = 2;
+}
+
+message ListarAcessosRequest {
+  int32 inner = 1;                         // 0 = todas as catracas
+  FiltroDeResultado resultado = 2;
+  google.protobuf.Timestamp desde = 3;
+  google.protobuf.Timestamp ate = 4;
+  int32 limite = 5;                        // 0 = padrão do serviço
+  string categoria = 6;                    // vazio = todas
+}
+
+message ListarAcessosResponse {
+  repeated EventoDeAcesso acessos = 1;     // do mais recente ao mais antigo
+  bool ha_mais = 2;
+}
+
+message ObterConfiguracaoRequest {}
+
+message ConfiguracaoDoEvento {
+  int32 tipo_de_leitor = 1;
+  bool leitor_da_urna = 2;
+  int32 tempo_de_acionamento_segundos = 3;
+  string mensagem_padrao = 4;
+  bool nuvem_ligada = 5;                   // só leitura: vem da instalação
+  int32 espera_pelo_giro_segundos = 6;
+}
+
+message GravarConfiguracaoRequest {
+  ConfiguracaoDoEvento configuracao = 1;
+  string operador = 2;
+}
+
+message GravarConfiguracaoResponse {
+  bool gravada = 1;
+  repeated string problemas = 2;
+  // As catracas leem a configuração ao conectar: vale depois que o serviço reiniciar.
+  bool exige_reinicio = 3;
+}
+
+message ObterSincronizacaoRequest {}
+
+message SituacaoDaSincronizacao {
+  bool configurada = 1;
+  google.protobuf.Timestamp ultimo_sucesso = 2;
+  string ultima_falha = 3;
+  int64 pendentes = 4;
+  int64 idade_do_mais_antigo_segundos = 5;
+  int64 cartas_mortas = 6;
+  repeated ProvedorCadastrado provedores = 7;
+}
+
+message ProvedorCadastrado {
+  string id = 1;
+  string nome = 2;
+  int64 codigos = 3;
+  bool reutilizavel = 4;
+  int32 intervalo_de_reuso_segundos = 5;
+  bool somente_na_urna = 6;
+  bool habilitado = 7;
+}
+
+message ObterPrestacaoDeContasRequest {
+  google.protobuf.Timestamp desde = 1;
+  google.protobuf.Timestamp ate = 2;
+}
+
+message PrestacaoDeContas {
+  repeated LinhaPorCategoria por_categoria = 1;
+  repeated LinhaPorCatraca por_catraca = 2;
+  repeated LinhaPorHora por_hora = 3;
+  repeated LinhaDeNegativa negativas = 4;
+  int64 liberados = 5;
+  int64 giros = 6;
+  int64 negados = 7;
+  google.protobuf.Timestamp gerada_em = 8;
+}
+
+message LinhaPorCategoria {
+  string categoria = 1;
+  int64 liberados = 2;
+  int64 giros = 3;
+}
+
+message LinhaPorCatraca {
+  int32 inner = 1;
+  int64 liberados = 2;
+  int64 giros = 3;
+  int64 negados = 4;
+}
+
+message LinhaPorHora {
+  google.protobuf.Timestamp hora = 1;
+  int64 liberados = 2;
+  int64 negados = 3;
+}
+
+message LinhaDeNegativa {
+  string motivo = 1;
+  string mensagem = 2;
+  int64 quantidade = 3;
+}
+
+// O operador digita o código para consultar; a resposta nunca o devolve inteiro.
+message ConsultarCodigoRequest {
+  string codigo = 1;
+}
+
+message ConsultarCodigoResponse {
+  bool encontrado = 1;
+  string codigo_mascarado = 2;
+  string provedor = 3;
+  string categoria = 4;
+  string situacao = 5;
+  int64 usos_feitos = 6;
+  int64 usos_maximos = 7;                  // 0 = sem limite
+  google.protobuf.Timestamp ultimo_uso = 8;
+  repeated EventoDeAcesso historico = 9;   // do mais recente ao mais antigo
+}
+
+message ObterDiagnosticoRequest {}
+
+message Diagnostico {
+  string versao = 1;
+  string pasta_de_dados = 2;
+  repeated DiagnosticoDeWorker workers = 3;
+}
+
+message DiagnosticoDeWorker {
+  string nome = 1;
+  string situacao = 2;
+  string detalhe = 3;
+  int32 reinicios = 4;
+  repeated string ultimas_linhas = 5;
 }

@@ -48,7 +48,14 @@ public sealed class ServicoDaOperacaoTests
             Supervisor = new WorkerSupervisor([new WorkerFalso("setor-a", 3570, 1, 2)]);
             Supervisor.Iniciar();
             Nuvem = new EstadoDaNuvem();
-            Servico = new EdgeControlService(Supervisor, relogio: () => Relogio, operacao: Operacao, nuvem: Nuvem);
+            Servico = new EdgeControlService(
+                Supervisor,
+                relogio: () => Relogio,
+                operacao: Operacao,
+                nuvem: Nuvem,
+                consultas: new ConsultasDaOperacao(Banco.Fabrica),
+                configuracoes: new ConfiguracoesDaBorda(Banco.Fabrica),
+                pastaDeDados: "C:\\dados");
         }
 
         public DateTimeOffset Relogio { get; set; } = Agora;
@@ -192,5 +199,128 @@ public sealed class ServicoDaOperacaoTests
 
         Assert.Equal(0, difusor.Assinantes);
         Assert.True(difusor.Writer.TryWrite(new EventoDeAcesso { EventoId = "x" }));
+    }
+
+    [Fact]
+    public async Task Tela_de_acessos_filtra_ordena_do_mais_recente_e_nunca_mostra_o_codigo()
+    {
+        using var c = new Cenario();
+        c.Repositorio.TentarUsar(Qr, "portao-1", "inner-1", Agora.AddMinutes(-3));
+        c.Repositorio.TentarUsar("9999999999", "portao-1", "inner-2", Agora.AddMinutes(-2));
+        c.Repositorio.TentarUsar(Qr, "portao-1", "inner-1", Agora.AddMinutes(-1));
+
+        var todos = await c.Servico.ListarAcessos(new ListarAcessosRequest(), null!);
+        Assert.Equal(3, todos.Acessos.Count);
+        Assert.True(todos.Acessos[0].RecebidoEm.ToDateTimeOffset() > todos.Acessos[2].RecebidoEm.ToDateTimeOffset());
+        Assert.DoesNotContain(Qr, todos.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("9999999999", todos.ToString(), StringComparison.Ordinal);
+
+        var negados = await c.Servico.ListarAcessos(new ListarAcessosRequest { Resultado = FiltroDeResultado.Negados }, null!);
+        Assert.Equal(2, negados.Acessos.Count);
+
+        var catraca2 = await c.Servico.ListarAcessos(new ListarAcessosRequest { Inner = 2 }, null!);
+        Assert.Equal("Negado · código não cadastrado", Assert.Single(catraca2.Acessos).MensagemAoOperador);
+
+        var limitado = await c.Servico.ListarAcessos(new ListarAcessosRequest { Limite = 2 }, null!);
+        Assert.Equal(2, limitado.Acessos.Count);
+        Assert.True(limitado.HaMais);
+    }
+
+    [Fact]
+    public async Task Configuracao_do_evento_pela_tela_valida_grava_e_avisa_que_precisa_reiniciar()
+    {
+        using var c = new Cenario();
+
+        var atual = await c.Servico.ObterConfiguracao(new ObterConfiguracaoRequest(), null!);
+        Assert.Equal(8, atual.TipoDeLeitor);
+        Assert.False(atual.NuvemLigada);
+
+        var ruim = atual.Clone();
+        ruim.MensagemPadrao = new string('x', 40);
+        var recusada = await c.Servico.GravarConfiguracao(new GravarConfiguracaoRequest { Configuracao = ruim }, null!);
+        Assert.False(recusada.Gravada);
+        Assert.NotEmpty(recusada.Problemas);
+
+        var nova = atual.Clone();
+        nova.MensagemPadrao = "Bem-vindo";
+        nova.LeitorDaUrna = false;
+        var gravada = await c.Servico.GravarConfiguracao(new GravarConfiguracaoRequest { Configuracao = nova, Operador = "ana" }, null!);
+        Assert.True(gravada.Gravada);
+        Assert.True(gravada.ExigeReinicio);
+
+        var lida = await c.Servico.ObterConfiguracao(new ObterConfiguracaoRequest(), null!);
+        Assert.Equal("Bem-vindo", lida.MensagemPadrao);
+        Assert.False(lida.LeitorDaUrna);
+    }
+
+    [Fact]
+    public async Task Prestacao_de_contas_por_categoria_catraca_hora_e_motivo()
+    {
+        using var c = new Cenario();
+        var (_, t1) = c.Repositorio.TentarUsar(Qr, "portao-1", "inner-1", Agora.AddMinutes(-50));
+        c.Repositorio.ConfirmarPassagemFisica(t1, Agora.AddMinutes(-50).AddSeconds(2));
+        c.Repositorio.TentarUsar(Qr, "portao-1", "inner-2", Agora.AddMinutes(-40));
+        c.Repositorio.TentarUsar("9999999999", "portao-1", "inner-2", Agora.AddMinutes(-30));
+
+        var contas = await c.Servico.ObterPrestacaoDeContas(
+            new ObterPrestacaoDeContasRequest
+            {
+                Desde = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(Agora.AddHours(-2)),
+                Ate = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(Agora),
+            },
+            null!);
+
+        Assert.Equal(1, contas.Liberados);
+        Assert.Equal(1, contas.Giros);
+        Assert.Equal(2, contas.Negados);
+
+        var meia = Assert.Single(contas.PorCategoria);
+        Assert.Equal(("meia", 1L, 1L), (meia.Categoria, meia.Liberados, meia.Giros));
+
+        Assert.Equal([1, 2], contas.PorCatraca.Select(l => l.Inner));
+        Assert.Equal(2, contas.PorCatraca.Single(l => l.Inner == 2).Negados);
+
+        Assert.Equal(3, contas.PorHora.Sum(h => h.Liberados + h.Negados));
+        Assert.Contains(contas.Negativas, n => n.Mensagem == "Negado · já utilizado" && n.Quantidade == 1);
+        Assert.Contains(contas.Negativas, n => n.Mensagem == "Negado · código não cadastrado" && n.Quantidade == 1);
+    }
+
+    [Fact]
+    public async Task Consulta_de_codigo_mostra_situacao_e_historico_sem_devolver_o_codigo()
+    {
+        using var c = new Cenario();
+        c.Repositorio.TentarUsar(Qr, "portao-1", "inner-1", Agora.AddMinutes(-10));
+        c.Repositorio.TentarUsar(Qr, "portao-1", "inner-1", Agora.AddMinutes(-5));
+
+        var achado = await c.Servico.ConsultarCodigo(new ConsultarCodigoRequest { Codigo = Qr }, null!);
+
+        Assert.True(achado.Encontrado);
+        Assert.Equal("meia", achado.Categoria);
+        Assert.Equal("consumido", achado.Situacao);
+        Assert.Equal(1, achado.UsosFeitos);
+        Assert.Equal(1, achado.UsosMaximos);
+        Assert.Equal(2, achado.Historico.Count);
+        Assert.DoesNotContain(Qr, achado.ToString(), StringComparison.Ordinal);
+
+        var ausente = await c.Servico.ConsultarCodigo(new ConsultarCodigoRequest { Codigo = "0000000000" }, null!);
+        Assert.False(ausente.Encontrado);
+        Assert.DoesNotContain("0000000000", ausente.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Sincronizacao_e_diagnostico_para_as_telas()
+    {
+        using var c = new Cenario();
+        c.Nuvem.Configurada = true;
+        c.Nuvem.RegistrarFalha("cartões: HTTP 503");
+
+        var sincronizacao = await c.Servico.ObterSincronizacao(new ObterSincronizacaoRequest(), null!);
+        Assert.True(sincronizacao.Configurada);
+        Assert.Equal("cartões: HTTP 503", sincronizacao.UltimaFalha);
+        Assert.Equal(1, Assert.Single(sincronizacao.Provedores).Codigos);
+
+        var diagnostico = await c.Servico.ObterDiagnostico(new ObterDiagnosticoRequest(), null!);
+        Assert.Equal("C:\\dados", diagnostico.PastaDeDados);
+        Assert.Equal("setor-a", Assert.Single(diagnostico.Workers).Nome);
     }
 }

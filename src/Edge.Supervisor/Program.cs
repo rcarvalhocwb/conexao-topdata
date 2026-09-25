@@ -140,8 +140,15 @@ construtor.Services.AddSingleton(supervisor);
 construtor.Services.AddSingleton(fabrica);
 construtor.Services.AddSingleton(operacao);
 construtor.Services.AddSingleton(nuvem);
-construtor.Services.AddSingleton(new ConfiguracoesDaBorda(fabrica));
-construtor.Services.AddSingleton(_ => new EdgeControlService(supervisor, operacao: operacao, nuvem: nuvem));
+var configuracoesDaBorda = new ConfiguracoesDaBorda(fabrica);
+construtor.Services.AddSingleton(configuracoesDaBorda);
+construtor.Services.AddSingleton(_ => new EdgeControlService(
+    supervisor,
+    operacao: operacao,
+    nuvem: nuvem,
+    consultas: new ConsultasDaOperacao(fabrica),
+    configuracoes: configuracoesDaBorda,
+    pastaDeDados: configuracao.PastaDeDados));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
