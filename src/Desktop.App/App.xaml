@@ -1,14 +1,86 @@
 <Application xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-            >
+             xmlns:local="clr-namespace:Desktop.App"
+             xmlns:vm="clr-namespace:Desktop.ViewModels;assembly=Desktop.ViewModels"
+             xmlns:telas="clr-namespace:Desktop.App.Telas">
   <Application.Resources>
     <!--
-      Cores vêm de recursos do sistema, não fixas: é assim que o alto contraste do
-      Windows funciona sem a gente reimplementar tema. Ver docs/10-interface.md.
+      Cores de texto e fundo vêm de recursos do sistema, não fixas: é assim que o alto
+      contraste do Windows funciona sem reimplementar tema. As cores de situação são as
+      únicas fixas, e sempre acompanhadas de texto. Ver docs/10-interface.md.
     -->
+    <local:SinalParaPincel x:Key="SinalParaPincel" />
+    <local:SaudeParaPincel x:Key="SaudeParaPincel" />
+    <local:InstanteParaTexto x:Key="InstanteParaTexto" />
+    <local:SimOuTraco x:Key="SimOuTraco" />
+    <local:VazioSome x:Key="VazioSome" />
+    <BooleanToVisibilityConverter x:Key="BoolParaVisibilidade" />
+
     <Style TargetType="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
+
+    <Style x:Key="Titulo" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+
+    <Style x:Key="Rotulo" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+      <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+
+    <Style x:Key="Aviso" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Margin" Value="0,8,0,8" />
+    </Style>
+
+    <!-- Alvos de toque de pelo menos 44 px (docs/10). -->
+    <Style TargetType="Button">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="MinWidth" Value="120" />
+      <Setter Property="Padding" Value="16,6" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <Style TargetType="TextBox">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <Style TargetType="DataGrid">
+      <Setter Property="AutoGenerateColumns" Value="False" />
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="HeadersVisibility" Value="Column" />
+      <Setter Property="GridLinesVisibility" Value="Horizontal" />
+      <Setter Property="CanUserAddRows" Value="False" />
+      <Setter Property="RowHeight" Value="32" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- Cartão de número do painel. -->
+    <Style x:Key="Cartao" TargetType="Border">
+      <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="16,12" />
+      <Setter Property="Margin" Value="0,0,12,12" />
+      <Setter Property="MinWidth" Value="150" />
+    </Style>
+
+    <!-- Cada ViewModel de tela é desenhada pela sua UserControl. -->
+    <DataTemplate DataType="{x:Type vm:PainelAoVivoViewModel}"><telas:PainelAoVivo /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:CatracasViewModel}"><telas:Catracas /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:AcessosViewModel}"><telas:Acessos /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ConsultaViewModel}"><telas:Consulta /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:SincronizacaoViewModel}"><telas:Sincronizacao /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ContasViewModel}"><telas:Contas /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ConfiguracoesViewModel}"><telas:Configuracoes /></DataTemplate>
+    <DataTemplate DataType="{x:Type vm:DiagnosticoViewModel}"><telas:Diagnostico /></DataTemplate>
   </Application.Resources>
 </Application>

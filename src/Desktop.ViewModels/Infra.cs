@@ -94,3 +94,7 @@ public enum Sinal
     Atencao,
     Problema,
 }
+
+/// <summary>Um rótulo e seu valor, numa linha de detalhe da tela.</summary>
+/// <remarks>Record, e não tupla: o WPF só liga a propriedades, e tupla tem campos.</remarks>
+public sealed record ParDeTexto(string Rotulo, string Valor);

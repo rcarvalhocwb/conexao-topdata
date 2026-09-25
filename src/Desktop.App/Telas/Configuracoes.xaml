@@ -1,0 +1,45 @@
+<UserControl x:Class="Desktop.App.Telas.Configuracoes"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Configurações">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel MaxWidth="640" HorizontalAlignment="Left">
+      <TextBlock Style="{StaticResource Titulo}" Text="Configurações do evento" />
+      <TextBlock Style="{StaticResource Rotulo}"
+                 Text="Valem para todas as catracas. Elas passam a usar a nova configuração quando o serviço for reiniciado." />
+
+      <TextBlock Style="{StaticResource Rotulo}" Margin="0,16,0,4" Text="Mensagem no display da catraca (até 32 letras)" />
+      <TextBox MaxLength="32" Text="{Binding MensagemPadrao, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Mensagem do display" />
+
+      <TextBlock Style="{StaticResource Rotulo}" Margin="0,16,0,4" Text="Segundos que a catraca fica liberada esperando o giro (1 a 50)" />
+      <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding TempoDeAcionamento, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tempo de acionamento" />
+
+      <CheckBox Margin="0,16,0,0" MinHeight="32" VerticalContentAlignment="Center" IsChecked="{Binding LeitorDaUrna}"
+                Content="Leitor da urna ligado (cartão da bilheteria entra pela fenda)" />
+
+      <TextBlock Style="{StaticResource Rotulo}" Margin="0,16,0,4" Text="Tipo de leitor (técnico — 8 na bancada; 5 se o QR não for lido)" />
+      <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding TipoDeLeitor, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tipo de leitor" />
+
+      <TextBlock Style="{StaticResource Rotulo}" Margin="0,16,0,4" Text="Segundos que a liberação espera o giro antes de subir para a nuvem" />
+      <TextBox Width="120" HorizontalAlignment="Left" IsEnabled="{Binding NuvemLigada}"
+               Text="{Binding EsperaPeloGiro, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Espera pelo giro" />
+
+      <TextBlock Style="{StaticResource Rotulo}" Margin="0,16,0,4" Text="Seu nome (fica registrado junto da mudança)" />
+      <TextBox Width="320" HorizontalAlignment="Left" Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador" />
+
+      <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+        <Button Content="_Salvar" IsDefault="True" Command="{Binding Salvar}" />
+      </StackPanel>
+
+      <TextBlock Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+                 Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+      <ItemsControl ItemsSource="{Binding Problemas}" AutomationProperties.Name="Problemas">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Margin="0,2" Text="{Binding StringFormat='• {0}'}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

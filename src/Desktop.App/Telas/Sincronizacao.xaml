@@ -1,0 +1,43 @@
+<UserControl x:Class="Desktop.App.Telas.Sincronizacao"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Sincronização">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+      <Ellipse Width="16" Height="16" Margin="0,0,10,16" VerticalAlignment="Center"
+               Fill="{Binding Sinal, Converter={StaticResource SinalParaPincel}}" />
+      <TextBlock Style="{StaticResource Titulo}" Text="Sincronização" />
+    </StackPanel>
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rotulo}"
+               Text="Sem internet as catracas continuam funcionando. O que não foi enviado espera aqui e sobe sozinho quando a conexão voltar." />
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Situacao}" Margin="0,12,0,16"
+                  AutomationProperties.Name="Situação da sincronização">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Grid Margin="0,3">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="220" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource Rotulo}" Text="{Binding Rotulo}" />
+            <TextBlock Grid.Column="1" FontSize="14" Text="{Binding Valor}" />
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" Text="Origens dos códigos" />
+    <DataGrid ItemsSource="{Binding Provedores}" AutomationProperties.Name="Origens dos códigos">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Origem" Binding="{Binding Nome}" Width="*" />
+        <DataGridTextColumn Header="Códigos" Binding="{Binding Codigos}" Width="100" />
+        <DataGridTextColumn Header="Reutilizável" Binding="{Binding Reutilizavel, Converter={StaticResource SimOuTraco}}" Width="100" />
+        <DataGridTextColumn Header="Intervalo de reuso (s)" Binding="{Binding IntervaloDeReusoSegundos}" Width="160" />
+        <DataGridTextColumn Header="Só na urna" Binding="{Binding SomenteNaUrna, Converter={StaticResource SimOuTraco}}" Width="100" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

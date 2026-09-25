@@ -1,0 +1,57 @@
+<UserControl x:Class="Desktop.App.Telas.Acessos"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Acessos">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Acessos" />
+
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="Catraca (vazio = todas)" />
+        <TextBox Width="120" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Catraca" />
+      </StackPanel>
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="Resultado" />
+        <ComboBox Width="140" MinHeight="36" ItemsSource="{Binding OpcoesDeResultado}"
+                  SelectedIndex="{Binding Resultado}" AutomationProperties.Name="Resultado" />
+      </StackPanel>
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="Categoria" />
+        <TextBox Width="140" Text="{Binding Categoria, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Categoria" />
+      </StackPanel>
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="De" />
+        <DatePicker MinHeight="36" SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+      </StackPanel>
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="Até" />
+        <DatePicker MinHeight="36" SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+      </StackPanel>
+      <Button VerticalAlignment="Bottom" Margin="0,0,0,8" Content="_Buscar" IsDefault="True" Command="{Binding Buscar}" />
+    </WrapPanel>
+
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <DataGrid ItemsSource="{Binding Linhas}" AutomationProperties.Name="Acessos encontrados">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Hora" Binding="{Binding Hora}" Width="80" />
+        <DataGridTextColumn Header="Catraca" Binding="{Binding Inner}" Width="70" />
+        <DataGridTemplateColumn Header="Resultado" Width="*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Ellipse Width="10" Height="10" Margin="0,0,6,0"
+                         Fill="{Binding Sinal, Converter={StaticResource SinalParaPincel}}" />
+                <TextBlock Text="{Binding Mensagem}" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Categoria" Binding="{Binding Categoria}" Width="110" />
+        <DataGridTextColumn Header="Girou" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="60" />
+        <DataGridTextColumn Header="Código" Binding="{Binding Codigo}" Width="130" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

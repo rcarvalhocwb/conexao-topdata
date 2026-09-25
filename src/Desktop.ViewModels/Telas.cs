@@ -335,7 +335,7 @@ public sealed class ConsultaViewModel : TelaBase
 {
     private string _codigo = string.Empty;
     private bool _encontrado;
-    private IReadOnlyList<(string Rotulo, string Valor)> _detalhes = [];
+    private IReadOnlyList<ParDeTexto> _detalhes = [];
     private IReadOnlyList<LinhaDeAcesso> _historico = [];
 
     public ConsultaViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
@@ -366,7 +366,7 @@ public sealed class ConsultaViewModel : TelaBase
 
     public bool Encontrado { get => _encontrado; private set => Definir(ref _encontrado, value); }
 
-    public IReadOnlyList<(string Rotulo, string Valor)> Detalhes { get => _detalhes; private set => Definir(ref _detalhes, value); }
+    public IReadOnlyList<ParDeTexto> Detalhes { get => _detalhes; private set => Definir(ref _detalhes, value); }
 
     public IReadOnlyList<LinhaDeAcesso> Historico { get => _historico; private set => Definir(ref _historico, value); }
 
@@ -394,10 +394,10 @@ public sealed class ConsultaViewModel : TelaBase
 
             Detalhes =
             [
-                ("Código", r.CodigoMascarado),
-                ("Origem", r.Provedor),
-                ("Categoria", string.IsNullOrWhiteSpace(r.Categoria) ? "—" : r.Categoria),
-                ("Situação", r.Situacao switch
+                new ParDeTexto("Código", r.CodigoMascarado),
+                new ParDeTexto("Origem", r.Provedor),
+                new ParDeTexto("Categoria", string.IsNullOrWhiteSpace(r.Categoria) ? "—" : r.Categoria),
+                new ParDeTexto("Situação", r.Situacao switch
                 {
                     "valido" => "Válido",
                     "consumido" => "Já utilizado",
@@ -405,10 +405,10 @@ public sealed class ConsultaViewModel : TelaBase
                     "bloqueado" => "Bloqueado",
                     _ => r.Situacao,
                 }),
-                ("Usos", r.UsosMaximos == 0
+                new ParDeTexto("Usos", r.UsosMaximos == 0
                     ? string.Create(CultureInfo.CurrentCulture, $"{r.UsosFeitos} (sem limite)")
                     : string.Create(CultureInfo.CurrentCulture, $"{r.UsosFeitos} de {r.UsosMaximos}")),
-                ("Último uso", Textos.Ha(r.UltimoUso?.ToDateTimeOffset(), agora)),
+                new ParDeTexto("Último uso", Textos.Ha(r.UltimoUso?.ToDateTimeOffset(), agora)),
             ];
             Mensagem = string.Empty;
         }).ConfigureAwait(true);
@@ -418,7 +418,7 @@ public sealed class ConsultaViewModel : TelaBase
 /// <summary>Sincronização com a nuvem e com os sites de ingresso.</summary>
 public sealed class SincronizacaoViewModel : TelaBase
 {
-    private IReadOnlyList<(string Rotulo, string Valor)> _situacao = [];
+    private IReadOnlyList<ParDeTexto> _situacao = [];
     private IReadOnlyList<ProvedorCadastrado> _provedores = [];
     private Sinal _sinal;
 
@@ -429,7 +429,7 @@ public sealed class SincronizacaoViewModel : TelaBase
 
     public override string Titulo => "Sincronização";
 
-    public IReadOnlyList<(string Rotulo, string Valor)> Situacao { get => _situacao; private set => Definir(ref _situacao, value); }
+    public IReadOnlyList<ParDeTexto> Situacao { get => _situacao; private set => Definir(ref _situacao, value); }
 
     public IReadOnlyList<ProvedorCadastrado> Provedores { get => _provedores; private set => Definir(ref _provedores, value); }
 
@@ -450,12 +450,12 @@ public sealed class SincronizacaoViewModel : TelaBase
 
             Situacao =
             [
-                ("Nuvem", r.Configurada ? "Configurada" : "Não configurada nesta instalação"),
-                ("Última sincronização", Textos.Ha(ultima, agora)),
-                ("Última falha", string.IsNullOrWhiteSpace(r.UltimaFalha) ? "—" : r.UltimaFalha),
-                ("Aguardando envio", string.Create(CultureInfo.CurrentCulture, $"{r.Pendentes}")),
-                ("Mais antigo na fila", r.Pendentes == 0 ? "—" : Textos.Ha(agora.AddSeconds(-r.IdadeDoMaisAntigoSegundos), agora)),
-                ("Recusados pela nuvem", string.Create(CultureInfo.CurrentCulture, $"{r.CartasMortas}")),
+                new ParDeTexto("Nuvem", r.Configurada ? "Configurada" : "Não configurada nesta instalação"),
+                new ParDeTexto("Última sincronização", Textos.Ha(ultima, agora)),
+                new ParDeTexto("Última falha", string.IsNullOrWhiteSpace(r.UltimaFalha) ? "—" : r.UltimaFalha),
+                new ParDeTexto("Aguardando envio", string.Create(CultureInfo.CurrentCulture, $"{r.Pendentes}")),
+                new ParDeTexto("Mais antigo na fila", r.Pendentes == 0 ? "—" : Textos.Ha(agora.AddSeconds(-r.IdadeDoMaisAntigoSegundos), agora)),
+                new ParDeTexto("Recusados pela nuvem", string.Create(CultureInfo.CurrentCulture, $"{r.CartasMortas}")),
             ];
             Provedores = [.. r.Provedores];
             Mensagem = string.Empty;

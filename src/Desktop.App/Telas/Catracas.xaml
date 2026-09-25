@@ -1,0 +1,35 @@
+<UserControl x:Class="Desktop.App.Telas.Catracas"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Catracas">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Catracas" />
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Rotulo}" Margin="0,8,0,0"
+               Text="Para incluir ou tirar catracas, ajuste a instalação (workers.json) e reinicie o serviço." />
+    <DataGrid ItemsSource="{Binding Catracas}" AutomationProperties.Name="Catracas">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Nº" Binding="{Binding Inner}" Width="50" />
+        <DataGridTextColumn Header="Nome" Binding="{Binding Nome}" Width="*" />
+        <DataGridTemplateColumn Header="Situação" Width="2*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Ellipse Width="10" Height="10" Margin="0,0,6,0"
+                         Fill="{Binding Sinal, Converter={StaticResource SinalParaPincel}}" />
+                <TextBlock Text="{Binding Situacao}" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Última decisão" Binding="{Binding UltimaDecisao}" Width="110" />
+        <DataGridTextColumn Header="Quando" Binding="{Binding UltimoEvento}" Width="90" />
+        <DataGridTextColumn Header="Firmware" Binding="{Binding Firmware}" Width="90" />
+        <DataGridTextColumn Header="Grupo" Binding="{Binding Grupo}" Width="100" />
+        <DataGridTextColumn Header="Porta" Binding="{Binding Porta}" Width="70" />
+        <DataGridTextColumn Header="Reconexões" Binding="{Binding Reconexoes}" Width="90" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

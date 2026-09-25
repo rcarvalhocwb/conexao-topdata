@@ -4,68 +4,77 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Contracts;
 using Contracts.Edge.V1;
 using Desktop.ViewModels;
 
 namespace Desktop.App;
 
 /// <summary>
-/// Renderiza a janela real em PNG, sem precisar de alguém olhando o monitor.
+/// Renderiza cada tela da janela real em PNG, sem precisar de alguém olhando o monitor.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Existe porque o projeto é construído em Linux, onde o WPF compila mas não roda. Sem isto,
-/// a única imagem da tela seria uma recriação feita à mão — que mostra o que <i>deveria</i>
-/// aparecer, não o que aparece. A captura usa a árvore visual do próprio XAML e o mesmo
-/// método <see cref="JanelaPrincipal.Aplicar"/> que a operação usa.
+/// Existe porque o projeto é construído em Linux, onde o WPF compila mas não roda. Roda na
+/// máquina do evento, com o serviço local ligado: cada tela é preenchida pelo serviço de
+/// verdade (as mesmas ViewModels da operação) e fotografada. Sem serviço, as telas saem com
+/// a mensagem "sem resposta do serviço local" — o que também é uma imagem útil.
 /// </para>
 /// <para>
-/// Limitação honesta: renderiza o <b>conteúdo</b> da janela, não a moldura do Windows. Barra
-/// de título, botões de fechar e a sombra do sistema não aparecem, porque são desenhados pelo
-/// sistema operacional e não pela aplicação.
+/// Limitação honesta: renderiza o <b>conteúdo</b> da janela, não a moldura do Windows.
 /// </para>
 /// <para>
-/// <b>Não funciona na CI.</b> Foi tentado duas vezes no runner do Windows do GitHub, com
-/// 24 e 3 minutos de teto, e o processo travou sem imprimir uma linha nas duas. O runner não
-/// tem sessão gráfica e o WPF não inicializa. Precisa de uma máquina Windows de verdade.
+/// <b>Não funciona na CI.</b> O runner do Windows do GitHub não tem sessão gráfica e o
+/// WPF não inicializa. Precisa de uma máquina Windows de verdade.
 /// </para>
 /// </remarks>
 internal static class CapturaDeTela
 {
-    private const int Largura = 1000;
-    private const int Altura = 600;
+    private const int Largura = 1366;
+    private const int Altura = 768;
 
-    /// <summary>Pontos por polegada da captura. 192 = duas vezes o padrão, para leitura.</summary>
-    private const double Resolucao = 192;
+    /// <summary>Pontos por polegada da captura. 144 = uma vez e meia o padrão.</summary>
+    private const double Resolucao = 144;
 
-    /// <summary>Renderiza um PNG por cenário na pasta indicada.</summary>
+    /// <summary>Renderiza um PNG por tela na pasta indicada.</summary>
     /// <returns>Os arquivos gravados.</returns>
-    internal static IReadOnlyList<string> Renderizar(string pasta)
+    internal static async Task<IReadOnlyList<string>> RenderizarAsync(string pasta)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pasta);
         Directory.CreateDirectory(pasta);
 
-        var gravados = new List<string>();
+        var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO") ?? TransporteLocal.EnderecoPadrao();
+        var token = Environment.GetEnvironmentVariable("EDGE_TOKEN");
+        var janela = new JanelaViewModel(new EdgeControl.EdgeControlClient(TransporteLocal.CriarCanal(endereco, token)));
 
-        foreach (var (nome, estado, equipamentos) in Cenarios())
+        var gravados = new List<string>();
+        var numero = 1;
+
+        foreach (var tela in janela.Telas)
         {
-            var caminho = Path.Combine(pasta, $"painel-{nome}.png");
-            Gravar(caminho, estado, equipamentos);
+            janela.TelaAtual = tela;
+
+            // Com await, e nunca .GetResult(): as telas voltam para a thread da interface,
+            // e bloqueá-la esperando por elas trava o processo para sempre.
+            await janela.AtualizarAsync().ConfigureAwait(true);
+            await tela.AtualizarAsync().ConfigureAwait(true);
+
+            var caminho = Path.Combine(
+                pasta,
+                string.Create(CultureInfo.InvariantCulture, $"{numero:D2}-{Arquivo(tela.Titulo)}.png"));
+            Gravar(caminho, janela);
             gravados.Add(caminho);
+            numero++;
         }
 
-        // Relatório em arquivo porque num WinExe a saída de console não é confiável: sem
-        // console anexado, Console.WriteLine não chega a lugar nenhum e quem rodou fica sem
-        // saber se funcionou.
+        // Relatório em arquivo porque num WinExe a saída de console não é confiável.
         File.WriteAllText(Path.Combine(pasta, "relatorio.txt"), Resumir(gravados));
-
         return gravados;
     }
 
-    private static void Gravar(string caminho, EstadoDoPainel estado, IReadOnlyList<Equipamento> equipamentos)
+    private static void Gravar(string caminho, JanelaViewModel vm)
     {
-        var janela = new JanelaPrincipal(conectar: false);
-        janela.Aplicar(estado, equipamentos);
+        var janela = new JanelaPrincipal(vm);
 
         // A janela nunca é exibida. O conteúdo é desligado dela e medido num contêiner
         // próprio: renderizar uma Window que nunca apareceu devolve imagem vazia.
@@ -77,9 +86,7 @@ internal static class CapturaDeTela
             Child = raiz,
             Width = Largura,
             Height = Altura,
-
-            // Fundo explícito: sem ele o PNG sai com transparência onde deveria haver a
-            // cor da janela, e a imagem engana quem olhar.
+            DataContext = vm,
             Background = SystemColors.WindowBrush,
         };
 
@@ -106,60 +113,10 @@ internal static class CapturaDeTela
         janela.Close();
     }
 
-    private static IEnumerable<(string Nome, EstadoDoPainel Estado, IReadOnlyList<Equipamento> Equipamentos)> Cenarios()
-    {
-        var frota = Frota();
-
-        yield return ("sem-internet", De(NivelDeDegradacao.T1SemInternet, 6, 3, 1842), frota);
-        yield return ("normal", De(NivelDeDegradacao.T0Normal, 6, 3, 0), frota);
-        yield return ("lista-local", De(NivelDeDegradacao.T2ListaLocal, 6, 3, 1842), frota);
-        yield return ("sem-catraca", De(NivelDeDegradacao.T3Isolado, 0, 3, 1842), []);
-
-        // Estado de falha: nasce de um estado bom e recebe a queda, como na operação.
-        yield return (
-            "servico-caiu",
-            De(NivelDeDegradacao.T1SemInternet, 6, 3, 1842)
-                .ComFalhaDeComunicacao("Unavailable: failed to connect to all addresses", Agora.AddSeconds(22)),
-            frota);
-    }
-
-    private static readonly DateTimeOffset Agora = new(2026, 9, 24, 19, 40, 0, TimeSpan.Zero);
-
-    private static EstadoDoPainel De(NivelDeDegradacao nivel, int conectados, int workers, long outbox) =>
-        EstadoDoPainel.De(
-            new ObterEstadoResponse
-            {
-                Versao = "1.0.0-fase1",
-                Nivel = nivel,
-                EquipamentosConectados = conectados,
-                WorkersAtivos = workers,
-                OutboxPendente = outbox,
-                InternetDisponivel = nivel == NivelDeDegradacao.T0Normal,
-            },
-            Agora);
-
-    private static List<Equipamento> Frota() =>
-    [
-        Equipamento(1, "Entrada Principal — A", "setor-a", 3570, "Polling"),
-        Equipamento(2, "Entrada Principal — B", "setor-a", 3570, "MonitoraGiroCatraca"),
-        Equipamento(3, "Entrada Principal — C", "setor-a", 3570, "Polling"),
-        Equipamento(7, "Portão Norte — Coletor de cartão", "setor-b", 3571, "ColetarBilhetes"),
-        Equipamento(8, "Portão Norte — Catraca 1", "setor-b", 3571, "OfflineAutonomo"),
-        Equipamento(12, "Credenciamento", "setor-c", 3572, "Reconectar"),
-    ];
-
-    private static Equipamento Equipamento(int inner, string gate, string worker, int porta, string estado) =>
-        new()
-        {
-            Inner = inner,
-            NomeDoGate = gate,
-            Worker = worker,
-            Porta = porta,
-            Estado = estado,
-            Saudavel = estado is "Polling" or "MonitoraGiroCatraca" or "ColetarBilhetes",
-            Firmware = "5.20",
-            Homologado = true,
-        };
+    private static string Arquivo(string titulo) =>
+        new string([.. titulo.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD)
+            .Where(c => char.IsAsciiLetterOrDigit(c) || c == ' ')])
+        .Replace(' ', '-');
 
     internal static string Resumir(IReadOnlyList<string> arquivos) =>
         string.Create(

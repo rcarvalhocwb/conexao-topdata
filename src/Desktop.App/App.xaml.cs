@@ -27,27 +27,36 @@ public partial class App : Application
 
             var pasta = indice + 1 < e.Args.Length ? e.Args[indice + 1] : "capturas";
 
-            try
-            {
-                var arquivos = CapturaDeTela.Renderizar(pasta);
-                Console.WriteLine(CapturaDeTela.Resumir(arquivos));
-            }
-            catch (Exception erro)
-            {
-                // Engolir aqui seria cruel: quem roda isto está justamente tentando
-                // descobrir se funciona, e um processo que sai calado não responde nada.
-                Console.Error.WriteLine($"A captura falhou: {erro}");
-                Console.Error.Flush();
-                Environment.Exit(1);
-            }
-
-            // Environment.Exit e não Shutdown: Shutdown pede ao laço de mensagens que
-            // termine, e este laço pode nem ter começado quando OnStartup roda. Numa
-            // ferramenta de linha de comando, sair é o que se quer — não pedir para sair.
-            Console.Out.Flush();
-            Environment.Exit(0);
+            // Assíncrono de propósito: o laço de mensagens precisa rodar para as telas
+            // receberem as respostas do serviço.
+            _ = CapturarAsync(pasta);
+            return;
         }
 
-        new JanelaPrincipal().Show();
+        var janela = new JanelaPrincipal();
+        janela.Iniciar();
+        janela.Show();
+    }
+
+    private static async Task CapturarAsync(string pasta)
+    {
+        try
+        {
+            var arquivos = await CapturaDeTela.RenderizarAsync(pasta).ConfigureAwait(true);
+            Console.WriteLine(CapturaDeTela.Resumir(arquivos));
+        }
+        catch (Exception erro)
+        {
+            // Engolir aqui seria cruel: quem roda isto está justamente tentando descobrir
+            // se funciona, e um processo que sai calado não responde nada.
+            Console.Error.WriteLine($"A captura falhou: {erro}");
+            Console.Error.Flush();
+            Environment.Exit(1);
+        }
+
+        // Environment.Exit e não Shutdown: numa ferramenta de linha de comando, sair é o
+        // que se quer — não pedir para sair.
+        Console.Out.Flush();
+        Environment.Exit(0);
     }
 }

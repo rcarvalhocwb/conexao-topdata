@@ -206,8 +206,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.Equal(string.Empty, consulta.Codigo);
         Assert.True(consulta.Encontrado);
-        Assert.Contains(("Situação", "Já utilizado"), consulta.Detalhes);
-        Assert.Contains(("Categoria", "meia"), consulta.Detalhes);
+        Assert.Contains(new ParDeTexto("Situação", "Já utilizado"), consulta.Detalhes);
+        Assert.Contains(new ParDeTexto("Categoria", "meia"), consulta.Detalhes);
         Assert.DoesNotContain(consulta.Detalhes, d => d.Valor.Contains(Qr, StringComparison.Ordinal));
         Assert.Single(consulta.Historico);
 
@@ -284,7 +284,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.Equal(1, janela.Painel.Catracas.Count(c => c.Sinal == Sinal.Bom));
         var sincronizacao = (SincronizacaoViewModel)janela.TelaAtual;
-        Assert.Contains(("Nuvem", "Não configurada nesta instalação"), sincronizacao.Situacao);
+        Assert.Contains(new ParDeTexto("Nuvem", "Não configurada nesta instalação"), sincronizacao.Situacao);
         Assert.Equal(2, Assert.Single(sincronizacao.Provedores).Codigos);
     }
 
