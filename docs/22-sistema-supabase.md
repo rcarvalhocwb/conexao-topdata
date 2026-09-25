@@ -339,3 +339,79 @@ que isso obriga do nosso lado (`ConectorDeTentativasDoPainel` + `EspelhoDeTentat
   (`tests/Integration/PainelNaNuvemTests.cs`, `tests/Unit/Conectores/PainelTests.cs`).
   Falta ligar no serviço, com o segredo no cofre, e testar contra um projeto de teste
   na nuvem — **não** contra o de produção, que tem dados pessoais de clientes.
+
+### 8.5 O cadastro de cartões exportado (25/09)
+
+O usuário exportou `authorized_cards`, `rfid_cards` e `offline_cards`. **As planilhas não
+estão neste repositório e não vão estar.** Abaixo, só contagens e formatos — nenhum número
+de cartão.
+
+**Quantidade.** 2.243 cartões em `authorized_cards`, 2.242 ativos. Os três cadastros batem
+entre si, com uma diferença de um cartão em cada lado.
+
+**A lista passa de 1.000.** O risco do item 8.2.1 é real neste evento: se o limite do
+projeto for o padrão de 1.000 linhas, a sincronização completa de `middleware-sync-cards`
+entrega menos da metade dos cartões, sem avisar. A borda detecta e não avança o cursor,
+mas a correção de verdade é paginar no servidor. `A_CONFIRMAR`: o limite do projeto.
+
+**Os números não têm formato único.**
+
+| Dígitos | Cartões | Categorias | Observação |
+|---:|---:|---|---|
+| 12 | 1.832 | INTEIRA, MEIA, SOCIAL | todos só com dígitos, nenhum começa com zero |
+| 14 | 395 | só SOCIAL | 137 começam com `00`; 61 começam com `0000` |
+| 11 | 10 | INTEIRA | todos com o mesmo início; podem ser números de 12 dígitos que perderam o zero da frente numa planilha |
+| 6 | 6 | cartões de teste | |
+
+Nenhum é Mifare de 10 dígitos, que era o perfil previsto a partir da documentação da
+Topdata (`mifare-catraca4`). **Com esse perfil, todos os 2.242 seriam recusados na
+ingestão.** O perfil dos cartões não pode ser escolhido antes da bancada.
+
+**O mesmo cartão cadastrado duas vezes.** 31 cartões SOCIAL existem em duas grafias: 12
+dígitos e os mesmos 12 com `00` na frente (14). Em um desses casos o cartão de 12 dígitos
+foi cadastrado a partir de uma leitura **negada** na catraca (`source =
+manual_from_denied`). Ou seja: no evento passado, a catraca entregou 12 dígitos para um
+cartão cadastrado com 14, negou, e alguém cadastrou de novo à mão. É exatamente o erro
+que a regra "cartão é texto, nunca número" existe para evitar, visto em produção.
+
+Os 14 cartões cadastrados a partir de leitura negada têm todos **12 dígitos**. É o único
+indício do que a catraca entregou no ano passado; a bancada confirma
+([`21`](21-roteiro-da-bancada.md), passo 3, linhas 8 a 12).
+
+**Consequência para a borda — ainda não implementada, de propósito:**
+
+1. O perfil do cartão sai da bancada, não da documentação.
+2. Se a catraca entregar 12 dígitos, completar com zeros à esquerda até 14, **na ingestão
+   e na leitura**, junta as duas grafias no mesmo cartão. As 31 duplicatas viram colisão
+   na ingestão (mesma categoria dos dois lados, então nada muda para quem passa), e a
+   colisão fica registrada. Os SOCIAL de 14 dígitos sem zero na frente continuariam
+   diferentes do que a catraca lê — se a catraca ler 12 — e precisam ser testados à
+   parte: podem ser outra tecnologia de cartão.
+3. **Hoje o decisor compara a leitura crua**, sem aplicar o perfil; o perfil só é aplicado
+   na ingestão. Com um perfil que completa zeros, isso precisa ser simétrico, senão a
+   leitura de 12 dígitos não encontra o cadastro de 14. Registrado como limitação
+   conhecida até a bancada dizer qual é o formato.
+
+**Outros achados.**
+
+- `max_uses` vazio, `times_used` zero e nenhuma validade em todos os cartões: todo cartão
+  ativo é de uso livre, controlado pela urna e pelo intervalo de reuso — o caso
+  `SemLimiteDeUsos` da seção 8.2.
+- `rfid_cards` está todo como `available`, sem uso e sem `cooldown_until` preenchido: o
+  intervalo de reuso do ano passado não estava na nuvem. Ele é da borda.
+- A categoria sai de `customer_name` (INTEIRA 1.033, SOCIAL 602, MEIA 602, mais cartões de
+  teste). `metadata.admission_type` concorda em todos os casos.
+- Nenhum CPF preenchido.
+
+### 8.6 Acesso anônimo ao banco — segundo caminho de exposição
+
+Além das funções da seção 8.1: pelas migrations, a chave pública (`anon`, que vai dentro
+do aplicativo web e portanto é pública por definição) pode **ler toda a tabela
+`authorizations`** e **ler e inserir em `access_events`**, e a função
+`sync_offline_cards` pode ser chamada por ela. Um manual do repositório do painel também
+traz o endereço do projeto e a chave em texto.
+
+A chave anônima ser pública é normal no Supabase; o problema são as permissões dadas a
+ela. **Não verificado no banco em produção** — permissões podem ter sido mudadas pelo
+painel do Supabase sem migration. A correção é tirar essas permissões do papel `anon` e
+fazer a borda falar só pelas funções, com segredo.

@@ -84,6 +84,11 @@ Com o sistema rodando, faça cada leitura e **anote exatamente o que aparece na 
 | 5 | QR `ABC1234567` (com letras) | | | |
 | 6 | QR com **20 caracteres** | | | |
 | 7 | Cartão Mifare A no **leitor do balcão** | — | | |
+| 8 | Cartão do estoque, **INTEIRA ou MEIA**, cujo número no painel tem **12 dígitos** | | | |
+| 9 | Cartão **SOCIAL** cujo número no painel tem **14 dígitos começando com `00`** | | | |
+| 10 | Cartão **SOCIAL** cujo número no painel tem **14 dígitos sem zero no começo** | | | |
+| 11 | Um dos cartões **INTEIRA** cujo número no painel tem **11 dígitos** | | | |
+| 12 | Cartão **SOCIAL** cujo número no painel começa com **`0000`** | | | |
 
 Cada linha responde uma pergunta que nenhum documento respondeu:
 
@@ -95,6 +100,13 @@ Cada linha responde uma pergunta que nenhum documento respondeu:
 - **7 comparado com 1** — **se o leitor do balcão e a catraca entregam o mesmo número.** Se
   não entregarem, toda venda do balcão será recusada na porta
   ([`20`](20-leitores-qr-e-cartao-mifare.md), seção 4.2).
+- **8 a 12** — **se o número que a catraca lê é o mesmo cadastrado no painel.** O cadastro
+  exportado em 25/09 tem números de 12, 14, 11 e 6 dígitos, e 31 cartões SOCIAL
+  aparecem duas vezes (com e sem `00` na frente). Para cada linha, anote também o número
+  que o painel mostra para aquele cartão e diga se são iguais, iguais a menos de zeros à
+  esquerda, ou diferentes. É isso que decide a regra de normalização dos cartões
+  ([`22`](22-sistema-supabase.md), seção 8.5). **Não escreva o número completo em
+  nenhum lugar que vá para o repositório**; a tabela preenchida fica com você.
 
 **Se nenhum QR for lido**, encerre (Ctrl+C) e rode de novo com `--tipo-leitor 5`. A
 Topdata fala em "serial barcode", que no SDK pode ser o 5 ou o 8.
