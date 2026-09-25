@@ -395,6 +395,23 @@ public sealed class PainelNaNuvemTests
     }
 
     [Fact]
+    public async Task Cartao_esgotado_na_nuvem_nao_derruba_o_lote_e_e_negado()
+    {
+        // Antes: gravava max_uses = 0, a restrição da base recusava, e o lote inteiro de
+        // cartões — inclusive os bons — deixava de entrar.
+        using var c = new Cenario();
+        c.Painel.Cartoes.Add(Cartao(CartaoUmUso, "inteira", maximo: 1, usados: 1));
+        c.Painel.Cartoes.Add(Cartao(CartaoMeia, "meia"));
+
+        var resumo = await c.Ingestao.PuxarAsync(CancellationToken.None);
+
+        Assert.False(resumo.Interrompido, resumo.Erro);
+        Assert.Equal(2, resumo.Inseridos);
+        Assert.Equal(MotivoDoUso.Cancelado, c.NaUrna(CartaoUmUso).Uso.Motivo);
+        Assert.True(c.NaUrna(CartaoMeia).Uso.Liberou);
+    }
+
+    [Fact]
     public async Task Cartao_desativado_na_nuvem_para_de_passar_e_reativado_volta()
     {
         using var c = new Cenario();

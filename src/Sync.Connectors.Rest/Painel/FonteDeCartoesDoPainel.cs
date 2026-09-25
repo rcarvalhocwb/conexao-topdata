@@ -221,8 +221,11 @@ public sealed class FonteDeCartoesDoPainel : IFonteDeIngressos
             QrNormalizado: normalizado,
             ValidoDe: de,
             ValidoAte: ate,
-            UsosMaximos: usos,
-            Cancelado: !ativo,
+            // A base local exige pelo menos um uso por cadastro. Cartão que já gastou
+            // tudo na nuvem entra cancelado: gravar 0 violaria a restrição e derrubaria
+            // o lote inteiro de cartões; gravar 1 daria uma entrada a mais.
+            UsosMaximos: Math.Max(usos, 1),
+            Cancelado: !ativo || usos == 0,
             Categoria: Texto(cartao, "admission_type"));
 
         return true;

@@ -86,6 +86,18 @@ public sealed class PainelTests
     }
 
     [Fact]
+    public async Task Cartao_sem_usos_restantes_na_nuvem_entra_cancelado_e_nunca_com_zero_usos()
+    {
+        var (fonte, _) = Fonte(new Servidor(HttpStatusCode.OK,
+            Resposta("""{"card_number":"0000000101","active":true,"max_uses":1,"times_used":1}""")));
+
+        var item = Assert.Single((await fonte.LerAsync(null, CancellationToken.None)).Itens);
+
+        Assert.True(item.Cancelado);
+        Assert.Equal(1, item.UsosMaximos);
+    }
+
+    [Fact]
     public async Task Resposta_sem_marca_do_servidor_nao_e_aceita()
     {
         // Sem ela não há cursor confiável; seguir com o relógio do PC perderia mudanças.
