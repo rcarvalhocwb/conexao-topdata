@@ -333,16 +333,24 @@ public sealed class SimuladorTests
     /// apareça no teste, e não no portão.
     /// </summary>
     [Fact]
-    public async Task Uso_concorrente_e_recusado()
+    public void Uso_concorrente_e_recusado()
     {
         using var simulador = SimuladorAberto();
         simulador.Dispositivo(1).LacoTravado = true;
 
         // Esta thread entra no adapter e fica presa lá dentro, segurando o acesso.
-        var travado = Task.Run(() => simulador.AguardarEvento(1, TimeSpan.FromSeconds(30)));
+        //
+        // Thread PRÓPRIA, e não Task.Run. Com Task.Run, ela dependia de sobrar thread no
+        // pool — e na CI Windows, com os testes de integração rodando em paralelo e vários
+        // deles bloqueando threads do pool, não sobrou em 5 s. O teste falhava com "a thread
+        // não chegou a entrar", sem nada errado no código testado. Reproduzido saturando o
+        // pool de propósito: o padrão antigo falha, este passa.
+        var travado = new Thread(() => simulador.AguardarEvento(1, TimeSpan.FromSeconds(30))) { IsBackground = true };
+        travado.Start();
 
-        // Espera a thread realmente entrar.
-        var entrou = SpinWait.SpinUntil(() => simulador.ChamadasNativas > 0, TimeSpan.FromSeconds(5));
+        // Espera o sinal exato de "preso lá dentro, segurando o acesso". O prazo é folgado
+        // de propósito: no caminho feliz ele volta na hora, e só custa numa máquina lenta.
+        var entrou = SpinWait.SpinUntil(() => simulador.Dispositivo(1).EntrouNoLacoTravado, TimeSpan.FromSeconds(30));
         Assert.True(entrou, "a thread não chegou a entrar no adapter");
 
         // Com alguém lá dentro, qualquer outra chamada precisa ser recusada.
@@ -350,6 +358,6 @@ public sealed class SimuladorTests
         Assert.Contains("thread-safe", erro.Message, StringComparison.Ordinal);
 
         simulador.Dispositivo(1).LiberarLaco();
-        await travado.ConfigureAwait(true);
+        travado.Join();
     }
 }

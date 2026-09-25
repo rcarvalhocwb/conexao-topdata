@@ -268,7 +268,7 @@ public sealed class WorkerTests
     /// protege o resto do parque não é o laço, é o watchdog somado ao particionamento.
     /// </summary>
     [Fact]
-    public async Task Catraca_travada_bloqueia_o_worker_e_o_watchdog_percebe()
+    public void Catraca_travada_bloqueia_o_worker_e_o_watchdog_percebe()
     {
         var relogio = new RelogioDeTeste(Inicio);
         var (sim, laco, cao) = Montar(3, () => relogio.Agora);
@@ -276,7 +276,9 @@ public sealed class WorkerTests
 
         sim.Dispositivo(2).LacoTravado = true;
 
-        var laçoTravado = Task.Run(() =>
+        // Thread própria, e não Task.Run: com o pool saturado pelos testes em paralelo, a
+        // thread pode não ser agendada a tempo. Ver SimuladorTests.Uso_concorrente_e_recusado.
+        var laçoTravado = new Thread(() =>
         {
             try
             {
@@ -289,12 +291,16 @@ public sealed class WorkerTests
             {
                 // O laço morre ao estourar a espera — quem age antes disso é o watchdog.
             }
-        });
+        })
+        {
+            IsBackground = true,
+        };
+        laçoTravado.Start();
 
         // Espera a thread ficar REALMENTE presa dentro do adapter, e não apenas ter
         // começado a volta: é a posse do acesso que faz o batimento envelhecer.
         Assert.True(
-            SpinWait.SpinUntil(() => sim.Dispositivo(2).EntrouNoLacoTravado, TimeSpan.FromSeconds(10)),
+            SpinWait.SpinUntil(() => sim.Dispositivo(2).EntrouNoLacoTravado, TimeSpan.FromSeconds(30)),
             "o laço não ficou preso no equipamento travado");
 
         relogio.Avancar(TimeSpan.FromSeconds(31));
@@ -303,7 +309,7 @@ public sealed class WorkerTests
         Assert.Contains("SEM BATIMENTO", cao.Diagnostico(), StringComparison.Ordinal);
 
         sim.Dispositivo(2).LiberarLaco();
-        await laçoTravado.ConfigureAwait(true);
+        laçoTravado.Join();
     }
 
     [Fact]
