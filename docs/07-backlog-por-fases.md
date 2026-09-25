@@ -117,9 +117,17 @@ documentado com causa.
 
 ## Fase 4 — Nuvem e extensibilidade
 
-1. SDK de conectores com contrato versionado.
+> **Antecipado em 25/09:** os itens 1 e 3 foram construídos fora de ordem, de propósito.
+> Não dependem de hardware — o que estava bloqueando as Fases 2 e 3 é `HIL-STACK-01`, e
+> drenagem de fila não toca em catraca nenhuma. Ver
+> [`15`](15-integracao-e-sincronizacao.md).
+
+1. SDK de conectores com contrato versionado. **`IConectorDeSincronizacao` construído.**
 2. Conectores REST, PostgreSQL, SQL Server, MySQL, Supabase (via API/backend seguro).
+   *Nenhum construído: o drenador foi exercitado só contra conectores de teste.*
 3. Prioridade de sincronização, DLQ, reprocessamento manual, cursores.
+   **Drenador, prioridades e cartas mortas construídos** (`Sync.Core`, migração `002`);
+   o reprocessamento manual e a descida por cursor continuam pendentes.
 4. Observabilidade completa e exportação OpenTelemetry.
 5. Importação/exportação CSV/JSON de contingência.
 

@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../Sync.Core/Sync.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

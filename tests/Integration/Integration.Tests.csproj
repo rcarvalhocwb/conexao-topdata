@@ -25,6 +25,7 @@
     <ProjectReference Include="../../src/Edge.Supervisor/Edge.Supervisor.csproj" />
     <ProjectReference Include="../../src/Shared.Observability/Shared.Observability.csproj" />
     <ProjectReference Include="../../src/Contracts/Contracts.csproj" />
+    <ProjectReference Include="../../src/Sync.Core/Sync.Core.csproj" />
     <ProjectReference Include="../../src/Desktop.ViewModels/Desktop.ViewModels.csproj" />
   </ItemGroup>
 

@@ -65,6 +65,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 12 | [Decisão de stack](docs/12-decisao-de-stack.md) | **Qual linguagem, por quê, e o plano B do protocolo sob NDA** |
 | 13 | [SDK do Leitor Facial](docs/13-sdk-facial.md) | **WebSocket + Web API, 49 comandos, Catracas Easy** |
 | 14 | [Estudo de caso: evento de 30 mil](docs/14-estudo-de-caso-evento-30k.md) | **A conta de 4 catracas, tetos de fábrica e 12 usos pouco explorados do SDK** |
+| 15 | [Integração e sincronização](docs/15-integracao-e-sincronizacao.md) | **As três memórias, drenagem por prioridade, contrato de conector e os perfis de vertical** |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |

@@ -166,6 +166,65 @@ public sealed class ArquiteturaTests
             $"Desktop.ViewModels referencia indevidamente: {string.Join(", ", indevidas)}");
     }
 
+    /// <summary>
+    /// O caminho de decisão não alcança a sincronização.
+    /// </summary>
+    /// <remarks>
+    /// A regra existe para que ninguém consiga, num prazo apertado, "só chamar a nuvem
+    /// para conferir" no meio de uma decisão de acesso. Um giro de catraca nunca pode
+    /// depender de rede. O que a decisão faz é gravar uma linha na outbox, na mesma
+    /// transação — e quem a drena vive do outro lado desta fronteira.
+    /// Ver docs/15-integracao-e-sincronizacao.md e docs/ADR/ADR-0002-local-first.md
+    /// </remarks>
+    [Fact]
+    public void O_caminho_de_decisao_nao_alcanca_a_sincronizacao()
+    {
+        var violacoes = new List<string>();
+
+        foreach (var nome in new[] { "Access.Domain", "Access.Application" })
+        {
+            var projeto = Projetos().FirstOrDefault(p => p.Nome == nome);
+            if (projeto.Caminho is null)
+            {
+                continue;
+            }
+
+            violacoes.AddRange(
+                ReferenciasDe(projeto.Caminho)
+                    .Where(r => r.StartsWith("Sync.", StringComparison.Ordinal))
+                    .Select(r => $"{nome} -> {r}"));
+        }
+
+        Assert.True(
+            violacoes.Count == 0,
+            $"Caminho de decisão alcançando sincronização: {string.Join("; ", violacoes)}");
+    }
+
+    /// <summary>
+    /// <c>Sync.Core</c> define política pura: ordem, repetição e cartas mortas.
+    /// </summary>
+    /// <remarks>
+    /// Sem referência nenhuma, ela é testável em milissegundos contra uma fila em
+    /// memória. No dia em que passar a depender de SQLite ou de HTTP, a suíte que hoje
+    /// roda em 120 ms passa a precisar de banco e de rede — e deixa de ser executada.
+    /// </remarks>
+    [Fact]
+    public void A_politica_de_sincronizacao_nao_depende_de_infraestrutura()
+    {
+        var projeto = Projetos().FirstOrDefault(p => p.Nome == "Sync.Core");
+        if (projeto.Caminho is null)
+        {
+            return;
+        }
+
+        var referencias = ReferenciasDe(projeto.Caminho).ToList();
+
+        Assert.True(
+            referencias.Count == 0,
+            $"Sync.Core passou a referenciar: {string.Join(", ", referencias)}. " +
+            "Ela define as portas; quem tem banco, rede e relógio implementa.");
+    }
+
     [Fact]
     public void Nenhum_projeto_de_producao_referencia_projeto_de_teste()
     {
