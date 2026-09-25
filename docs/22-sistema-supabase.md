@@ -232,9 +232,110 @@ o uso um do outro.
 
 1. **O código do middleware C# que já rodou.** É o artefato mais valioso: tem o contrato
    exato **e** o uso da EasyInner que funcionou na catraca real.
-2. **Os formatos de resposta** de `sync-cards`, `sync-events` e `heartbeat` — ou o código
-   das funções, que os contém.
+2. ~~Os formatos de resposta de `sync-cards`, `sync-events` e `heartbeat`.~~ **Lidos no
+   código das funções em 25/09.** Ver a seção 8.
 3. ~~A decisão da seção 6.4.~~ **Decidido em 25/09: a catraca decide no PC local, que
    recebe e envia informações para a nuvem.** Ver
    [ADR-0023](ADR/ADR-0023-borda-decide-nuvem-sincroniza.md).
 
+
+## 8. O que o código das funções mostrou (25/09)
+
+O código do sistema foi lido em 25/09, com acesso concedido pelo dono. **Ele não está
+neste repositório e não vai estar**: este repositório é público. O que segue descreve o
+comportamento com as nossas palavras, para que a integração possa ser revisada aqui. O
+código do middleware C# **não** estava no repositório — só um manual de instalação.
+
+### 8.1 Segurança — resolver antes do evento
+
+`middleware-sync-cards`, `middleware-sync-events` e `middleware-heartbeat` estão com a
+verificação de JWT desligada, e o código delas não confere segredo nenhum. O relatório
+dizia que havia um segredo compartilhado; o código não o confere. Se o que está
+publicado for igual ao repositório, qualquer um com o endereço do projeto pode, sem
+credencial:
+
+- baixar a lista de cartões ativos, com nome do cliente, categoria e validade;
+- gravar eventos de acesso falsos, que viram validações no painel;
+- criar equipamentos e alertas falsos.
+
+**Não foi testado contra o servidor real**, de propósito. A correção é a função exigir
+um segredo por equipamento, comparado em tempo constante; do nosso lado, o segredo fica
+no cofre do Windows e é posto por um `DelegatingHandler`, nunca pelo conector (ver
+ADR-0023 e docs/15).
+
+### 8.2 Cartões — sentido "desce" (`middleware-sync-cards`)
+
+| | |
+|---|---|
+| Pedido | `device_id`, `last_sync_at` (opcional), `full_sync` |
+| Resposta | `cards[]`, `removed_cards[]`, `total_cards`, `sync_timestamp` |
+| Cada cartão | `card_number`, `active`, `max_uses`, `times_used`, `valid_from`, `valid_until`, `ticket_type`, `admission_type`, `customer_name` |
+| Cursor | `sync_timestamp`, relógio **do servidor**, marcado antes da consulta |
+
+O que isso obriga do nosso lado (`FonteDeCartoesDoPainel`):
+
+1. **Sem paginação.** A resposta traz tudo de uma vez, e o Supabase costuma limitar uma
+   consulta a 1.000 linhas. Com 1.000 ou mais cartões na resposta, a borda **avisa e não
+   avança o cursor**. A correção de verdade é paginar no servidor. `A_CONFIRMAR`: o
+   limite configurado no projeto.
+2. **Removidos só na incremental.** A lista completa traz só os ativos. Como a varredura
+   completa nunca move o cursor incremental (docs/16), a remoção ainda chega pela
+   incremental seguinte.
+3. **A nuvem não soma usos a partir dos eventos.** Nada no código incrementa
+   `times_used`. Quem conta é a borda, e o contador local nunca é sobrescrito pela
+   sincronização. `max_uses` nulo vira "sem limite de usos": o controle é físico, pela
+   urna e pelo intervalo de reuso. Com `max_uses` preenchido, os usos que já estiverem em
+   `times_used` são descontados (no pior caso nega cedo, nunca libera a mais).
+4. **Cartão desativado e reativado volta a valer** — só para provedor reutilizável (a
+   bilheteria). Ingresso de site cancelado continua cancelado para sempre.
+5. **`card_number` precisa ser texto e passar pelo perfil do leitor** (Mifare: 10
+   dígitos, zeros à esquerda completados). Número JSON é recusado. O motivo da recusa diz
+   o tamanho, nunca o número. `A_CONFIRMAR` na bancada: se o número cadastrado na nuvem
+   é o mesmo texto que a catraca entrega.
+6. **A categoria é do cartão**, não da venda: o painel manda `admission_type` (meia,
+   inteira, social, cortesia) e cada cartão físico tem a sua.
+7. O `admission_type` é deduzido de `customer_name` e do tipo de ingresso; a leitura de
+   `metadata`, prevista no código, não acontece porque a coluna não é pedida na consulta.
+   Não afeta a borda, mas explica categoria "errada" no painel.
+
+### 8.3 Tentativas — sentido "sobe" (`middleware-sync-events`)
+
+| | |
+|---|---|
+| Pedido | `device_id`, `events[]` (até 100), `sync_reason` |
+| Cada evento | `card_id`, `occurred_at`, `authorized`, `reason`, `admission_type`, `ticket_id`, `device_direction`, `extra`, `event_id` |
+| Resposta | **200** com `saved`, `failed`, `duplicates_ignored`, `failed_events[]` |
+| Repetição | reconhecida por equipamento + cartão + horário; `event_id` é descartado |
+
+Cada evento "autorizado" que entra vira uma validação no painel (gatilho no banco). O
+que isso obriga do nosso lado (`ConectorDeTentativasDoPainel` + `EspelhoDeTentativas`):
+
+1. **Um evento por tentativa, nunca dois.** Um segundo evento "autorizado" para a mesma
+   passagem seria uma pessoa a mais no relatório.
+2. **A liberação espera o giro antes de subir.** Ela entra na fila na mesma transação da
+   decisão, mas só sai depois de `EsperaPeloGiro` (maior que o tempo de acionamento). Se
+   o giro chegar antes, ele entra no mesmo item e o libera na hora. Assim o evento já sobe
+   dizendo se a pessoa passou (`extra.giro_confirmado`, `extra.giro_em`). O painel
+   continua contando a liberação, como já contava; contar só quem girou passa a ser um
+   filtro nesse campo. **A confirmar com o dono do painel.** Giro que chegar depois de o
+   evento ter saído fica só na borda.
+3. **Negativa sobe na hora**, com o motivo em `reason`.
+4. **Horário sempre com a mesma grafia** (UTC, milissegundos, `Z`), porque ele é parte da
+   chave de repetição lá. Reenviar depois de uma resposta perdida cai como repetido.
+5. **200 não quer dizer que tudo entrou.** Os itens de `failed_events` vão para cartas
+   mortas; se o servidor disser que N falharam e não der para apontar quais, o grupo
+   inteiro é reenviado (o que já entrou volta como repetido).
+6. **Uma requisição por catraca**, porque o `device_id` é do pedido, não do evento.
+
+### 8.4 O que não mudou
+
+- O webhook do Zet **não** cadastra nada em `authorized_cards`: hoje o QR comprado online
+  não chega à lista da catraca. Pergunta aberta ao usuário: como o comprador online
+  entra.
+- `middleware-heartbeat` e os comandos remotos continuam fora. Comando remoto (abrir
+  catraca pela nuvem) só depois de desenhado com trilha de auditoria (ADR-0023).
+- Nada disto está ligado ao serviço ainda: as peças existem e estão testadas contra um
+  servidor falso que imita o comportamento acima
+  (`tests/Integration/PainelNaNuvemTests.cs`, `tests/Unit/Conectores/PainelTests.cs`).
+  Falta ligar no serviço, com o segredo no cofre, e testar contra um projeto de teste
+  na nuvem — **não** contra o de produção, que tem dados pessoais de clientes.

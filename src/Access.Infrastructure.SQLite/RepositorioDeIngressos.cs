@@ -3,6 +3,7 @@ using Access.Application.Ingressos;
 using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 using Microsoft.Data.Sqlite;
+using Sync.Core;
 using Sync.Ingestao;
 
 namespace Access.Infrastructure.SQLite;
@@ -102,6 +103,15 @@ public sealed record ConciliacaoDoProvedor(
     }
 }
 
+/// <summary>Liga o espelho das tentativas para um sistema de fora.</summary>
+/// <param name="Conector">Nome do conector na outbox, igual ao do conector registrado.</param>
+/// <param name="EsperaPeloGiro">
+/// Quanto a liberação espera o giro antes de sair. Precisa ser maior que o tempo de
+/// acionamento configurado na catraca (5 s na bancada), senão o evento sai antes da
+/// prova de passagem.
+/// </param>
+public sealed record EspelhoDeTentativas(string Conector, TimeSpan EsperaPeloGiro);
+
 /// <summary>
 /// Ingressos de múltiplos provedores, na base local.
 /// </summary>
@@ -134,11 +144,25 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
     private const string StatusCancelado = "cancelado";
 
     private readonly SqliteConnectionFactory _fabrica;
+    private readonly EspelhoDeTentativas? _espelho;
 
-    public RepositorioDeIngressos(SqliteConnectionFactory fabrica)
+    /// <param name="fabrica">Conexões com a base local.</param>
+    /// <param name="espelho">
+    /// Quando informado, toda tentativa também entra na outbox para o painel na nuvem.
+    /// Nulo desliga o espelho, e a borda funciona igual sem ele.
+    /// </param>
+    public RepositorioDeIngressos(SqliteConnectionFactory fabrica, EspelhoDeTentativas? espelho = null)
     {
         ArgumentNullException.ThrowIfNull(fabrica);
+
+        if (espelho is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(espelho.Conector);
+            ArgumentOutOfRangeException.ThrowIfLessThan(espelho.EsperaPeloGiro, TimeSpan.Zero);
+        }
+
         _fabrica = fabrica;
+        _espelho = espelho;
     }
 
     /// <inheritdoc />
@@ -334,6 +358,9 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             RegistrarTentativa(conexao, transacao, tentativaId, e.Id, e.Provedor, qrNormalizado, gateId, deviceId,
                 "consumido", MotivoDoUso.Consumido, decisionId, agora, e.Categoria);
 
+            Espelhar(conexao, transacao, tentativaId, qrNormalizado, deviceId, gateId, agora,
+                liberado: true, MotivoDoUso.Consumido, e.Provedor, e.Categoria);
+
             // O aviso ao provedor sai na MESMA transação do consumo. Se o processo morrer
             // no microssegundo seguinte, ou o ingresso foi consumido e o aviso está na
             // fila, ou nada aconteceu. Não existe "consumiu e esqueceu de avisar".
@@ -347,6 +374,9 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
 
             RegistrarTentativa(conexao, transacao, tentativaId, estado?.Id, estado?.Provedor, qrNormalizado,
                 gateId, deviceId, "negado", motivo, decisionId, agora, estado?.Categoria);
+
+            Espelhar(conexao, transacao, tentativaId, qrNormalizado, deviceId, gateId, agora,
+                liberado: false, motivo, estado?.Provedor, estado?.Categoria);
         }
 
         transacao.Commit();
@@ -364,7 +394,10 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
     public void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em)
     {
         using var conexao = _fabrica.Abrir();
+        using var transacao = conexao.BeginTransaction();
+
         using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
         comando.CommandText =
             """
             UPDATE ticket_use_attempt
@@ -373,7 +406,34 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             """;
         comando.Parameters.AddWithValue("$em", Iso(em));
         comando.Parameters.AddWithValue("$id", tentativaId.ToString());
-        comando.ExecuteNonQuery();
+        var confirmou = comando.ExecuteNonQuery() == 1;
+
+        if (confirmou && _espelho is not null)
+        {
+            // O giro entra no item que ainda está esperando na fila, e o libera para sair
+            // já. Se o item já saiu (a espera acabou antes do giro), o giro fica só aqui:
+            // a nuvem reconhece evento repetido por catraca + cartão + horário, e mandar
+            // um segundo evento "liberado" contaria a entrada duas vezes lá.
+            using var espelho = conexao.CreateCommand();
+            espelho.Transaction = transacao;
+            espelho.CommandText =
+                """
+                UPDATE outbox
+                SET payload_json    = json_set(payload_json, '$.giroEm', $em),
+                    next_attempt_at = CASE WHEN attempts = 0 THEN NULL ELSE next_attempt_at END
+                WHERE connector = $conector
+                  AND aggregate_type = $tipo
+                  AND aggregate_id = $id
+                  AND sent_at IS NULL;
+                """;
+            espelho.Parameters.AddWithValue("$em", Iso(em));
+            espelho.Parameters.AddWithValue("$conector", _espelho.Conector);
+            espelho.Parameters.AddWithValue("$tipo", TentativaEspelhada.TipoDoAgregado);
+            espelho.Parameters.AddWithValue("$id", tentativaId.ToString());
+            espelho.ExecuteNonQuery();
+        }
+
+        transacao.Commit();
     }
 
     /// <summary>
@@ -861,6 +921,13 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
                 status        = CASE
                                     WHEN excluded.status = '{StatusCancelado}' THEN '{StatusCancelado}'
                                     WHEN ticket.used_count >= MAX(excluded.max_uses, ticket.used_count) THEN '{StatusConsumido}'
+                                    -- Cartão da bilheteria desativado e depois reativado na
+                                    -- nuvem (perdido e achado, por exemplo) volta a valer. No
+                                    -- ingresso de site o cancelamento é definitivo.
+                                    WHEN ticket.status = '{StatusCancelado}'
+                                         AND EXISTS (SELECT 1 FROM ticket_provider p
+                                                     WHERE p.id = ticket.provider_id AND p.reusable = 1)
+                                         THEN '{StatusValido}'
                                     ELSE ticket.status
                                 END;
             """;
@@ -1088,6 +1155,61 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         estado.IntervaloDeReusoSegundos > 0
         && estado.UltimoUsoEpoch is { } ultimo
         && ultimo + estado.IntervaloDeReusoSegundos > agora.ToUnixTimeSeconds();
+
+    private void Espelhar(
+        SqliteConnection conexao,
+        SqliteTransaction transacao,
+        Guid tentativaId,
+        string codigo,
+        string deviceId,
+        string gateId,
+        DateTimeOffset agora,
+        bool liberado,
+        MotivoDoUso motivo,
+        string? provedor,
+        string? categoria)
+    {
+        if (_espelho is null)
+        {
+            return;
+        }
+
+        var conteudo = new TentativaEspelhada(
+            TentativaEspelhada.VersaoAtual, tentativaId, codigo, deviceId, gateId, agora.ToUniversalTime(),
+            liberado, motivo.ToString(), provedor, categoria, GiroEm: null).ParaJson();
+
+        using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
+        comando.CommandText =
+            """
+            INSERT OR IGNORE INTO outbox
+                (id, aggregate_type, aggregate_id, payload_json, priority,
+                 connector, idempotency_key, created_at, next_attempt_at)
+            VALUES ($id, $tipo, $tentativa, $conteudo, $prioridade,
+                    $conector, $idempotencia, $em, $aPartirDe);
+            """;
+        comando.Parameters.AddWithValue("$id", Guid.CreateVersion7(agora).ToString());
+        comando.Parameters.AddWithValue("$tipo", TentativaEspelhada.TipoDoAgregado);
+        comando.Parameters.AddWithValue("$tentativa", tentativaId.ToString());
+        comando.Parameters.AddWithValue("$conteudo", conteudo);
+        comando.Parameters.AddWithValue(
+            "$prioridade",
+            liberado ? PrioridadeDeSincronizacao.PassagemFisica : PrioridadeDeSincronizacao.DecisaoDeAcesso);
+        comando.Parameters.AddWithValue("$conector", _espelho.Conector);
+        comando.Parameters.AddWithValue("$idempotencia", $"tentativa:{tentativaId}");
+        comando.Parameters.AddWithValue("$em", Iso(agora));
+
+        // A liberação espera o giro antes de sair: assim vai UM evento só, já dizendo se
+        // a pessoa passou. A negativa não tem giro a esperar e sai na hora. Entrar na
+        // fila acontece de qualquer jeito, e na mesma transação da tentativa — se o
+        // processo cair agora, ou as duas existem, ou nenhuma.
+        comando.Parameters.AddWithValue(
+            "$aPartirDe",
+            liberado && _espelho.EsperaPeloGiro > TimeSpan.Zero
+                ? Iso(agora + _espelho.EsperaPeloGiro)
+                : DBNull.Value);
+        comando.ExecuteNonQuery();
+    }
 
     private static void EnfileirarAvisoDeUso(
         SqliteConnection conexao,

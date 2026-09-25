@@ -40,9 +40,9 @@ A pergunta era qual dos dois modelos seguir daqui em diante.
 
 | Pergunta | Onde se resolve |
 |---|---|
-| O formato das **respostas** de `sync-cards`, `sync-events` e `heartbeat` | Código do middleware C# atual, ou das funções |
-| O evento sobe **na liberação** ou **no giro**? O painel de vocês conta público pelas validações — uma liberação sem giro seria contada como entrada | Mesma fonte, e uma decisão sobre o que o painel deve contar |
-| Como a nuvem trata `offline_validated: true` — como fato consumado, ou revalida? | Código de `middleware-sync-events` |
-| O QR do Zet sobe pelo mesmo evento que o cartão? | Código das funções |
+| ~~O formato das respostas~~ | **Resolvido em 25/09**, pelo código das funções: docs/22, seção 8 |
+| O evento sobe na liberação ou no giro? | **Proposta implementada em 25/09, a confirmar com o dono do painel**: sobe um evento só, marcado como autorizado, depois de esperar o giro e já dizendo se houve giro (`extra.giro_confirmado`; docs/22, seção 8.3). O painel continua contando a liberação, como já contava; quem quiser contar só quem girou filtra por esse campo |
+| ~~Como a nuvem trata um evento já validado~~ | **Resolvido**: grava como fato, sem revalidar. Todo evento autorizado vira validação |
+| O QR do Zet sobe pelo mesmo evento que o cartão? | **Aberto.** Hoje o QR do Zet não chega à lista da catraca (docs/22, seção 8.4) |
 
 Nenhuma dessas respostas muda a decisão; todas mudam o código que a implementa.

@@ -153,14 +153,7 @@ public sealed class ConectorRest : IConectorDeSincronizacao
             return new RespostaDeItem(id, ResultadoDoEnvio.Duplicado, Detalhe(status));
         }
 
-        // Sobrecarga, indisponibilidade e tempo esgotado do lado deles: repetir resolve.
-        var temporario = status is HttpStatusCode.RequestTimeout
-            or HttpStatusCode.TooManyRequests
-            or HttpStatusCode.Locked
-            or (HttpStatusCode)425   // Too Early
-            || (int)status >= 500;
-
-        if (temporario)
+        if (ClassificacaoHttp.ValeRepetir(status))
         {
             return new RespostaDeItem(id, ResultadoDoEnvio.FalhaTemporaria, Detalhe(status));
         }
@@ -170,12 +163,31 @@ public sealed class ConectorRest : IConectorDeSincronizacao
         return new RespostaDeItem(id, ResultadoDoEnvio.FalhaPermanente, Detalhe(status));
     }
 
+    private static string Detalhe(HttpStatusCode status) => ClassificacaoHttp.Detalhe(status);
+
+    private static string Resumir(Exception erro) => ClassificacaoHttp.Resumir(erro);
+}
+
+/// <summary>Regras de HTTP comuns aos conectores deste projeto.</summary>
+internal static class ClassificacaoHttp
+{
+    /// <summary>
+    /// Sobrecarga, indisponibilidade e tempo esgotado do lado deles: repetir resolve.
+    /// Os demais 4xx são recusa de conteúdo ou de permissão, e repetir não muda nada.
+    /// </summary>
+    public static bool ValeRepetir(HttpStatusCode status) =>
+        status is HttpStatusCode.RequestTimeout
+            or HttpStatusCode.TooManyRequests
+            or HttpStatusCode.Locked
+            or (HttpStatusCode)425   // Too Early
+        || (int)status >= 500;
+
     // O corpo da resposta NÃO entra no detalhe: ele pode conter o ingresso de volta, e
     // esse texto vai para o banco e para a tela. O código de situação já diz o que
     // precisa ser dito.
-    private static string Detalhe(HttpStatusCode status) =>
+    public static string Detalhe(HttpStatusCode status) =>
         string.Create(CultureInfo.InvariantCulture, $"HTTP {(int)status} {status}");
 
-    private static string Resumir(Exception erro) =>
+    public static string Resumir(Exception erro) =>
         string.Create(CultureInfo.InvariantCulture, $"{erro.GetType().Name}: {erro.Message}");
 }
