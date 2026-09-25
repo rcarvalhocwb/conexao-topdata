@@ -162,6 +162,38 @@ reduz materialmente a exposição.
 **Quem é o controlador dos dados — o cliente final, o organizador do evento, ou a casa de
 espetáculo?** A resposta define contratos e responsabilidades.
 
+### B10. Como os ingressos de cada provedor chegam à base local, e com qual atraso?
+
+Três sites vendendo para o mesmo evento significam três integrações de entrada. Precisa-se
+saber, de cada um: **que API existe** (consulta por cursor, exportação em arquivo, webhook),
+**qual o atraso real** entre a venda e o ingresso ficar disponível, e **se o cancelamento
+também é publicado** — ou se estorno só aparece em conciliação posterior.
+
+**O que muda:** a máquina local fica na mesma rede das catracas e **não pode ter porta
+aberta para a internet**. Provedor que só oferece webhook exige um relé na nuvem, do qual a
+borda puxa. O atraso publicado é o que determina se o ingresso comprado na fila chega a
+tempo — ver B12. Ver [`16`](16-multiplos-provedores-de-ingresso.md), seção 2.
+
+### B11. Para cada provedor, "utilizado" é a autorização ou o giro físico?
+
+Autorizar não é passar. Entre o comando de liberação e o giro confirmado (origem 6) cabem
+a desistência, a catraca travada e a liberação que ninguém aproveitou.
+
+**O que muda:** avisar na autorização pode queimar um ingresso pago sem que ninguém tenha
+entrado; avisar só no giro faz um sensor defeituoso apagar entradas reais do sistema do
+provedor. O produto sustenta os dois e informa a diferença no relatório, mas a escolha é
+contratual e precisa ser feita **antes** do evento, provedor a provedor.
+
+### B12. O que fazer com o ingresso comprado durante o evento que ainda não chegou?
+
+Alguém compra pelo celular a três metros da catraca.
+
+**O que muda:** negar é simples e gera reclamação na porta; consultar o provedor na hora
+põe uma dependência de rede no caminho da porta, onde ela não deveria estar; liberar com
+conferência transfere o risco para a contabilidade. **Sem resposta, o comportamento é
+negar** — é o único que não inventa risco no lugar do cliente. Ver
+[`16`](16-multiplos-provedores-de-ingresso.md), seção 6.
+
 ---
 
 ## N — Não bloqueantes (com default assumido)

@@ -102,6 +102,14 @@ em `CHAOS-REC-01`; latência p95 medida e registrada.
 
 ## Fase 3 — Urna/coletores e evento
 
+> **Antecipado em 25/09:** o núcleo de ingressos com múltiplos provedores foi construído
+> fora de ordem, pelo mesmo motivo da Fase 4 — não depende de hardware. Ingestão
+> idempotente, recusa de QR colidente, consumo com vencedor único, registro de toda
+> tentativa e relatório de conciliação por provedor, com corte reproduzível.
+> Ver [`16`](16-multiplos-provedores-de-ingresso.md). **O que não existe:** ingestor real
+> de bilheteria, conector de saída real, e a ligação entre a leitura da catraca e o
+> `TentarUsar` — essa depende do motor de decisão da Fase 2.
+
 1. Workflow `CollectCardThenEnter` completo ([`04`](04-workflow-collect-card-then-enter.md)).
 2. Assistente de comissionamento com teste dos dois sentidos.
 3. Estoque e ciclo de vida do cartão, com cadeia de custódia.
