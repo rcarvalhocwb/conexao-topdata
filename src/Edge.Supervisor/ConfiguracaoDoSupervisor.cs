@@ -15,12 +15,26 @@ public sealed record GrupoConfigurado(string Nome, int Porta, IReadOnlyList<int>
 /// <param name="Grupos">Grupos a supervisionar.</param>
 /// <param name="Banco">Caminho da base local; vazio usa o padrão, ver <see cref="CaminhoDoBanco"/>.</param>
 /// <param name="Nuvem">Painel na nuvem; ausente, a borda opera sem sincronizar.</param>
+/// <param name="NomesDasCatracas">Nome de cada catraca no painel, pelo número do Inner.</param>
 public sealed record ConfiguracaoDoSupervisor(
     string? Endereco,
     IReadOnlyList<GrupoConfigurado> Grupos,
     string? Banco = null,
-    ConfiguracaoDaNuvem? Nuvem = null)
+    ConfiguracaoDaNuvem? Nuvem = null,
+    IReadOnlyDictionary<int, string>? NomesDasCatracas = null)
 {
+    /// <summary>
+    /// Caminho relativo do executável é relativo à pasta do serviço, e não à pasta atual:
+    /// um serviço do Windows roda com a pasta atual em System32.
+    /// </summary>
+    public static string ResolverExecutavel(string executavel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executavel);
+        return Path.IsPathRooted(executavel)
+            ? executavel
+            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, executavel));
+    }
+
     /// <summary>Pasta de dados: base, registros e segredos.</summary>
     public string PastaDeDados => Path.GetDirectoryName(Path.GetFullPath(CaminhoDoBanco))!;
 
@@ -90,7 +104,7 @@ public sealed record ConfiguracaoDoSupervisor(
             problemas.AddRange(Nuvem.Validar());
         }
 
-        foreach (var grupo in Grupos.Where(g => !File.Exists(g.Executavel)))
+        foreach (var grupo in Grupos.Where(g => !File.Exists(ResolverExecutavel(g.Executavel))))
         {
             problemas.Add($"Grupo {grupo.Nome}: executável não encontrado em {grupo.Executavel}.");
         }

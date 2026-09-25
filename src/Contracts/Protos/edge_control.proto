@@ -62,6 +62,10 @@ message ObterEstadoResponse {
 
   // Quando a nuvem respondeu com sucesso pela última vez; vazio se nunca.
   google.protobuf.Timestamp ultima_sincronizacao = 14;
+
+  // Verdadeiro quando o serviço subiu sem arquivo de configuração: falta rodar o
+  // assistente de configuração. Falso (o padrão) em serviço configurado ou antigo.
+  bool sem_configuracao = 15;
 }
 
 message ListarEquipamentosRequest {}

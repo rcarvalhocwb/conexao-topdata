@@ -43,12 +43,9 @@ public sealed class WorkerSupervisor
     {
         ArgumentNullException.ThrowIfNull(workers);
 
+        // Lista vazia é permitida: é o serviço recém-instalado, ainda sem configuração. Ele
+        // sobe, atende o painel e diz o que falta, em vez de cair na subida.
         _workers = [.. workers];
-
-        if (_workers.Count == 0)
-        {
-            throw new ArgumentException("Não há workers para supervisionar.", nameof(workers));
-        }
 
         var portasRepetidas = _workers.GroupBy(w => w.Porta).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
         if (portasRepetidas.Count > 0)

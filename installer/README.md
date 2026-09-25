@@ -45,8 +45,8 @@ Sendo direto, porque a diferença decide se vale agendar bancada:
 
 | Componente | Sobe? | O que acontece |
 |---|---|---|
-| `Edge.Supervisor` | **Sim** | Lê `workers.json`, sobe os workers, supervisiona com reinício e quarentena, e atende o painel pelo IPC |
-| `Desktop.App` | **Sim** | Conecta ao serviço e mostra o estado real |
+| `Edge.Supervisor` | **Sim** | Lê `workers.json`, sobe os workers com a base local, supervisiona com reinício e quarentena, sincroniza com a nuvem e atende o painel pelo IPC (ADR-0024) |
+| `Desktop.App` | **Sim** | Painel do evento com oito telas, lendo o serviço |
 | `Edge.Worker.X86` | **Tenta** | Confere os pré-requisitos e chama a DLL de verdade. É aqui que o ensaio **HIL-STACK-01** responde: código 0 se a porta abriu, 2 se a DLL não carregou ou devolveu GPF |
 
 O caminho painel → serviço → supervisão funciona ponta a ponta, e desde 24/09 o worker tem
@@ -68,46 +68,83 @@ $env:EDGE_TOKEN = Get-Content "$env:LOCALAPPDATA\ConexaoTopdata\token"
 
 **Nenhuma catraca foi acionada por este sistema até hoje.**
 
-## Instalador MSI
+## Instalador MSI — o caminho de produção
 
-A cada commit, a integração contínua constrói um **MSI de verdade** e publica como artefato
-`instalador-msi`. Baixe do run e instale com duplo clique, ou:
+A cada commit, a integração contínua constrói o **MSI** e publica como artefato
+`instalador-msi` (e o `pacote-da-bancada`, que é outra coisa: ver docs/21).
+
+### Antes de instalar
+
+No computador do evento, instale:
+
+| O quê | Para quê |
+|---|---|
+| SDK Inner Acesso da Topdata | traz a `EasyInner.dll`, que **não** vem com este instalador |
+| .NET Framework 3.5 (recursos do Windows) | sem ele a DLL devolve retorno 8 |
+| .NET 10 Runtime **x86** | o programa das catracas é de 32 bits por causa da DLL |
+| ASP.NET Core Runtime 10 **x64** | o serviço |
+| .NET Desktop Runtime 10 **x64** | o painel e o assistente |
+
+O assistente confere cada um desses itens na primeira tela e diz o que falta.
+
+### Instalar
+
+Duplo clique no MSI, ou:
 
 ```powershell
 msiexec /i ConexaoTopdata-0.1.42.msi /qn /l*v instalacao.log
 ```
 
-O que ele faz:
+Ele instala em `C:\Program Files\Conexao Topdata` e:
 
-- instala os três componentes em `C:\Program Files\Conexao Topdata`;
-- registra o serviço **ConexaoTopdataEdge**, com partida **manual**;
-- cria o atalho "Painel do evento" no menu Iniciar;
+- registra o serviço **ConexaoTopdataEdge**, com partida **automática** — mas **não** o
+  inicia durante a instalação: se faltasse um runtime, a partida falharia e o Windows
+  Installer desfaria tudo;
+- cria no menu Iniciar o **Painel do evento** e o **Assistente de configuração**;
 - desinstala limpo, parando o serviço antes de remover.
 
-**Por que partida manual e não automática:** o worker ainda sai com código 2 por falta das
-assinaturas da `EasyInner.dll`. Um serviço automático tentaria subir a cada boot, falharia
-e encheria o log de eventos do Windows. Quando o adapter nativo existir, isso vira `auto`.
+### Configurar — Assistente de configuração
 
-Antes de iniciar o serviço, ainda é preciso o `workers.json` e a variável `EDGE_TOKEN` —
-ver as seções acima. O instalador **não** os cria: token gerado por instalador seria igual
-em todas as máquinas.
+Abra pelo menu Iniciar (ele pede permissão de administrador):
+
+1. **Ambiente** — o que o computador tem e o que falta.
+2. **Catracas** — número do Inner e nome de cada uma, e a porta (3570). Em cada catraca,
+   aponte o servidor para o IP deste computador e essa porta.
+3. **Nuvem** — opcional: endereço, identificador deste computador, formato do cartão,
+   intervalo de reuso, só na urna, e o segredo.
+4. **Gravar** — confere tudo, grava e reinicia o serviço.
+
+Onde fica cada coisa, em `%ProgramData%\ConexaoTopdata`:
+
+| Arquivo | O que é |
+|---|---|
+| `workers.json` | a configuração que o assistente gravou |
+| `acesso.db` | a base local: ingressos, cartões, tentativas, fila de envio |
+| `token` | senha interna entre o painel e o serviço, gerada pelo serviço na primeira subida; só administradores escrevem, usuários leem |
+| `segredos\nuvem.segredo` | o segredo da nuvem, cifrado pelo Windows (DPAPI) para esta máquina; só SYSTEM e administradores leem |
+| `registros\` | registro diário do serviço e de cada programa de catraca, sem número de cartão |
+
+Reabrir o assistente traz a configuração atual preenchida; o segredo nunca é mostrado, e
+deixar o campo em branco mantém o que está no cofre.
+
+### Usar — Painel do evento
+
+Abre pelo menu Iniciar, sem senha: o token é lido de `%ProgramData%`. Recém-instalado e
+sem configuração, o cabeçalho diz "Instalação ainda não configurada — abra o Assistente de
+configuração".
 
 ## Imagens das telas
 
-Numa máquina Windows, depois de publicar:
+Numa máquina Windows, com o serviço rodando:
 
 ```powershell
-.\artifacts\Desktop.App\Desktop.App.exe --capturar capturas
+& "C:\Program Files\Conexao Topdata\Painel\Desktop.App.exe" --capturar capturas
 ```
 
-Renderiza cinco PNGs a 192 ppp — sem internet, normal, lista local, nenhuma catraca e
-serviço caiu — pela árvore visual do próprio XAML, e grava `capturas\relatorio.txt`.
-São as telas reais, não uma recriação.
-
-Duas coisas para não se surpreender: renderiza o **conteúdo** da janela, sem a barra de
-título (ela é desenhada pelo Windows, não pela aplicação); e **não funciona na integração
-contínua** — o runner não tem sessão gráfica e o WPF trava sem mensagem. Foi tentado duas
-vezes antes de desistir.
+Fotografa as oito telas do painel com os dados reais do serviço e grava
+`capturas\relatorio.txt`. Sem serviço, as telas saem com "sem resposta do serviço local".
+Renderiza o **conteúdo** da janela, sem a barra de título, e **não funciona na integração
+contínua**: o runner não tem sessão gráfica.
 
 ## Antes de encostar em hardware
 

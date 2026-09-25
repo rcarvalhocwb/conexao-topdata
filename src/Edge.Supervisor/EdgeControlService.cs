@@ -34,6 +34,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly Access.Infrastructure.SQLite.ConsultasDaOperacao? _consultas;
     private readonly Access.Infrastructure.SQLite.ConfiguracoesDaBorda? _configuracoes;
     private readonly string _pastaDeDados;
+    private readonly bool _semConfiguracao;
+    private readonly IReadOnlyDictionary<int, string> _nomes;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -46,6 +48,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="consultas">Consultas das telas; sem elas, as telas respondem vazio.</param>
     /// <param name="configuracoes">Configuração do evento.</param>
     /// <param name="pastaDeDados">Onde ficam base, registros e segredos, para o diagnóstico.</param>
+    /// <param name="semConfiguracao">O serviço subiu sem arquivo de configuração.</param>
+    /// <param name="nomesDasCatracas">Nome de cada catraca no painel.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -54,7 +58,9 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         EstadoDaNuvem? nuvem = null,
         Access.Infrastructure.SQLite.ConsultasDaOperacao? consultas = null,
         Access.Infrastructure.SQLite.ConfiguracoesDaBorda? configuracoes = null,
-        string? pastaDeDados = null)
+        string? pastaDeDados = null,
+        bool semConfiguracao = false,
+        IReadOnlyDictionary<int, string>? nomesDasCatracas = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -65,6 +71,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         _consultas = consultas;
         _configuracoes = configuracoes;
         _pastaDeDados = pastaDeDados ?? string.Empty;
+        _semConfiguracao = semConfiguracao;
+        _nomes = nomesDasCatracas ?? new Dictionary<int, string>();
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -91,6 +99,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
             // Ver docs/ADR/ADR-0017.
             Nivel = internet ? NivelDeDegradacao.T0Normal : NivelDeDegradacao.T1SemInternet,
             InternetDisponivel = internet,
+            SemConfiguracao = _semConfiguracao,
         };
 
         if (ultimaSincronizacao is { } quando)
@@ -133,7 +142,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
                 var equipamento = new Equipamento
                 {
                     Inner = inner,
-                    NomeDoGate = $"{worker.Nome}/{inner}",
+                    NomeDoGate = _nomes.TryGetValue(inner, out var nome) ? nome : $"{worker.Nome}/{inner}",
                     Worker = worker.Nome,
                     Porta = worker.Porta,
                     Estado = situacoes[worker.Nome].ToString(),

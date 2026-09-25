@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Assistente de configuração da instalação: catracas, nuvem e segredo. Roda como
+    administrador (app.manifest), porque grava em %ProgramData%, no cofre da máquina e
+    reinicia o serviço. A lógica está em Edge.Supervisor/Instalacao, testada sem WPF.
+
+    EnableWindowsTargeting permite compilar na CI Linux. Executar, só no Windows.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>Edge.Configurador</AssemblyName>
+    <RootNamespace>Edge.Configurador</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Edge.Supervisor/Edge.Supervisor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

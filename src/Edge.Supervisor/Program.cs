@@ -30,59 +30,61 @@ if (args.Contains("--gravar-segredo-da-nuvem"))
         return 1;
     }
 
-    new CofreDpapi(PastaDosSegredos()).Gravar(CabecalhoDeSegredo.NomeDoSegredo, segredo);
+    new CofreDpapi(InstalacaoLocal.PastaDosSegredos).Gravar(CabecalhoDeSegredo.NomeDoSegredo, segredo);
     Console.WriteLine("Segredo da nuvem gravado no cofre.");
     return 0;
 }
 
+// Configuração: EDGE_CONFIG (desenvolvimento), a da pasta de dados (instalação), ou a
+// que estiver ao lado do executável.
 var caminhoDaConfig = Environment.GetEnvironmentVariable("EDGE_CONFIG")
-    ?? Path.Combine(AppContext.BaseDirectory, "workers.json");
+    ?? (File.Exists(InstalacaoLocal.ArquivoDeConfiguracao)
+        ? InstalacaoLocal.ArquivoDeConfiguracao
+        : Path.Combine(AppContext.BaseDirectory, "workers.json"));
 
-if (!File.Exists(caminhoDaConfig))
-{
-    Console.Error.WriteLine(
-        $"Configuração não encontrada em {caminhoDaConfig}. " +
-        "Descreva os grupos em workers.json ou aponte EDGE_CONFIG para o arquivo. " +
-        "Ver installer/README.md.");
-    return 1;
-}
-
+// Sem configuração o serviço SOBE mesmo assim, sem catracas: o painel abre e diz o que
+// falta ("rode o assistente de configuração"), em vez de o serviço falhar em silêncio
+// logo depois da instalação.
+var semConfiguracao = !File.Exists(caminhoDaConfig);
 ConfiguracaoDoSupervisor configuracao;
 
-try
+if (semConfiguracao)
 {
-    configuracao = ConfiguracaoDoSupervisor.Ler(caminhoDaConfig);
+    configuracao = new ConfiguracaoDoSupervisor(null, []);
+    Console.Error.WriteLine(
+        $"Instalação ainda não configurada ({caminhoDaConfig} não existe). " +
+        "O serviço sobe sem catracas; rode o Assistente de configuração.");
 }
-catch (Exception erro) when (erro is IOException or InvalidDataException or System.Text.Json.JsonException)
+else
 {
-    Console.Error.WriteLine($"Não foi possível ler {caminhoDaConfig}: {erro.Message}");
-    return 1;
-}
-
-var problemas = configuracao.Validar();
-
-if (problemas.Count > 0)
-{
-    Console.Error.WriteLine($"{problemas.Count} problema(s) na configuração:");
-
-    foreach (var problema in problemas)
+    try
     {
-        Console.Error.WriteLine($"  - {problema}");
+        configuracao = ConfiguracaoDoSupervisor.Ler(caminhoDaConfig);
+    }
+    catch (Exception erro) when (erro is IOException or InvalidDataException or System.Text.Json.JsonException)
+    {
+        Console.Error.WriteLine($"Não foi possível ler {caminhoDaConfig}: {erro.Message}");
+        return 1;
     }
 
-    return 1;
+    var problemas = configuracao.Validar();
+
+    if (problemas.Count > 0)
+    {
+        Console.Error.WriteLine($"{problemas.Count} problema(s) na configuração:");
+
+        foreach (var problema in problemas)
+        {
+            Console.Error.WriteLine($"  - {problema}");
+        }
+
+        return 1;
+    }
 }
 
-var token = Environment.GetEnvironmentVariable("EDGE_TOKEN");
-
-if (string.IsNullOrWhiteSpace(token))
-{
-    // Sem token, qualquer processo da mesma conta alcançaria o serviço: a ACL do pipe
-    // protege por identidade de usuário, não por processo.
-    Console.Error.WriteLine(
-        "EDGE_TOKEN não definido. Rode installer/instalar-dev.ps1 e exporte o token gerado.");
-    return 1;
-}
+// Token de sessão: além da ACL do named pipe, que protege por identidade de usuário e não
+// separa processos da mesma conta. Gerado na primeira subida e reaproveitado depois.
+var token = SegurancaLocal.GarantirToken(InstalacaoLocal.ArquivoDoToken);
 
 var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO")
     ?? configuracao.Endereco
@@ -101,7 +103,7 @@ var workers = configuracao.Grupos
         g.Nome,
         g.Porta,
         g.Inners,
-        g.Executavel,
+        ConfiguracaoDoSupervisor.ResolverExecutavel(g.Executavel),
         argumentosExtras: ["--banco", caminhoDoBanco, "--worker", g.Nome]))
     .ToList();
 
@@ -121,7 +123,7 @@ SincronizacaoComANuvem? sincronizacao = null;
 if (configuracao.Nuvem is { } configuracaoDaNuvem)
 {
     ICofreDeSegredos cofre = OperatingSystem.IsWindows()
-        ? new CofreDpapi(PastaDosSegredos())
+        ? new CofreDpapi(InstalacaoLocal.PastaDosSegredos)
         : new CofreEmMemoria();
 
     // Montar antes de subir os workers: é aqui que o espelho das tentativas é ligado na
@@ -134,8 +136,23 @@ if (configuracao.Nuvem is { } configuracaoDaNuvem)
     }
 }
 
-var construtor = WebApplication.CreateBuilder(args);
+var construtor = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+
+    // Como serviço, a pasta atual é System32; o conteúdo do programa está ao lado do exe.
+    ContentRootPath = AppContext.BaseDirectory,
+});
+
+// Responde ao gerenciador de serviços do Windows. Fora de um serviço, não faz nada.
+construtor.Host.UseWindowsService(opcoes => opcoes.ServiceName = "ConexaoTopdataEdge");
 construtor.WebHost.ConfigureKestrel(opcoes => TransporteLocal.Escutar(opcoes, endereco));
+
+if (OperatingSystem.IsWindows())
+{
+    SegurancaLocal.AplicarNoCanal(construtor.WebHost);
+}
+
 construtor.Services.AddSingleton(supervisor);
 construtor.Services.AddSingleton(fabrica);
 construtor.Services.AddSingleton(operacao);
@@ -148,7 +165,9 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     nuvem: nuvem,
     consultas: new ConsultasDaOperacao(fabrica),
     configuracoes: configuracoesDaBorda,
-    pastaDeDados: configuracao.PastaDeDados));
+    pastaDeDados: configuracao.PastaDeDados,
+    semConfiguracao: semConfiguracao,
+    nomesDasCatracas: configuracao.NomesDasCatracas));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
@@ -167,8 +186,3 @@ Console.WriteLine(string.Create(
 
 await aplicacao.RunAsync().ConfigureAwait(false);
 return 0;
-
-static string PastaDosSegredos() => Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-    "ConexaoTopdata",
-    "segredos");

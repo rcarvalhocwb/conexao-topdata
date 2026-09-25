@@ -2,10 +2,13 @@
 <!--
   Instalador MSI do Conexão Topdata.
 
-  Instala os três componentes e registra o serviço local. O serviço nasce em partida
-  MANUAL, de propósito: o worker ainda sai com código 2 por falta das assinaturas da
-  EasyInner.dll, e um serviço automático tentaria subir, falhar e encher o log de eventos
-  do Windows no primeiro boot. Ver installer/README.md.
+  Instala o serviço, o painel, o programa das catracas e o assistente de configuração.
+  O serviço inicia com o Windows. Recém-instalado, ele sobe sem catracas e o painel pede
+  o assistente; o assistente grava a configuração e reinicia o serviço.
+
+  O serviço NÃO é iniciado durante a instalação: se faltar um runtime do .NET, a partida
+  falharia e o Windows Installer desfaria a instalação inteira. O assistente confere o
+  ambiente e inicia o serviço. Ver installer/README.md.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
@@ -29,6 +32,7 @@
         <Directory Id="DIR_SUPERVISOR" Name="Servico" />
         <Directory Id="DIR_PAINEL" Name="Painel" />
         <Directory Id="DIR_WORKER" Name="Worker" />
+        <Directory Id="DIR_CONFIGURADOR" Name="Configurador" />
       </Directory>
     </StandardDirectory>
 
@@ -40,6 +44,7 @@
       <ComponentGroupRef Id="Grupo_Servico" />
       <ComponentGroupRef Id="Grupo_Painel" />
       <ComponentGroupRef Id="Grupo_Worker" />
+      <ComponentGroupRef Id="Grupo_Configurador" />
       <ComponentGroupRef Id="Grupo_Atalhos" />
     </Feature>
 
@@ -65,7 +70,7 @@
                         DisplayName="Conexão Topdata — Serviço local"
                         Description="Supervisiona os workers das catracas e atende o painel do operador."
                         Type="ownProcess"
-                        Start="demand"
+                        Start="auto"
                         ErrorControl="normal"
                         Vital="yes" />
 
@@ -91,6 +96,12 @@
       <Files Include="$(var.PastaWorker)\*.pdb" />
     </ComponentGroup>
 
+    <ComponentGroup Id="Grupo_Configurador" Directory="DIR_CONFIGURADOR">
+      <Files Include="$(var.PastaConfigurador)\*.exe" />
+      <Files Include="$(var.PastaConfigurador)\*.dll" />
+      <Files Include="$(var.PastaConfigurador)\*.json" />
+    </ComponentGroup>
+
     <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
       <Component Id="AtalhoDoPainel">
         <Shortcut Id="AtalhoPainel"
@@ -98,6 +109,12 @@
                   Description="Painel do operador do Conexão Topdata"
                   Target="[DIR_PAINEL]Desktop.App.exe"
                   WorkingDirectory="DIR_PAINEL" />
+
+        <Shortcut Id="AtalhoConfigurador"
+                  Name="Assistente de configuração"
+                  Description="Catracas, nuvem e segredo de acesso (pede permissão de administrador)"
+                  Target="[DIR_CONFIGURADOR]Edge.Configurador.exe"
+                  WorkingDirectory="DIR_CONFIGURADOR" />
 
         <RemoveFolder Id="RemoverPastaAtalhos" Directory="DIR_ATALHOS" On="uninstall" />
 

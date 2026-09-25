@@ -87,7 +87,12 @@ public sealed record EstadoDoPainel
             _ => (SaudeDoPainel.Atencao, "Estado desconhecido informado pelo serviço"),
         };
 
-        if (resposta.EquipamentosConectados == 0)
+        if (resposta.SemConfiguracao)
+        {
+            saude = SaudeDoPainel.Acao;
+            mensagem = "Instalação ainda não configurada — abra o Assistente de configuração";
+        }
+        else if (resposta.EquipamentosConectados == 0)
         {
             saude = SaudeDoPainel.Acao;
             mensagem = "Nenhuma catraca conectada — verifique a rede e a alimentação";

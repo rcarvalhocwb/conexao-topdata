@@ -60,7 +60,7 @@ public partial class JanelaPrincipal : Window
     private static JanelaViewModel ConectarAoServico()
     {
         var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO") ?? TransporteLocal.EnderecoPadrao();
-        var token = Environment.GetEnvironmentVariable("EDGE_TOKEN");
+        var token = InstalacaoLocal.LerToken();
         var canal = TransporteLocal.CriarCanal(endereco, token);
         return new JanelaViewModel(new EdgeControl.EdgeControlClient(canal));
     }

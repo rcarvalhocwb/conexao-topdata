@@ -130,6 +130,7 @@ jobs:
           dotnet publish src/Edge.Supervisor -c Release -r win-x64 --self-contained false -o publicado/Servico
           dotnet publish src/Desktop.App     -c Release -r win-x64 --self-contained false -o publicado/Painel
           dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained false -o publicado/Worker
+          dotnet publish src/Edge.Configurador -c Release -r win-x64 --self-contained false -o publicado/Configurador
 
       # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
       # no cabecalho PE, e mais barato que descobrir na bancada.
@@ -163,6 +164,7 @@ jobs:
             -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
             -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
             -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
+            -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
             -o ConexaoTopdata-$versao.msi
 
       # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
@@ -185,7 +187,8 @@ jobs:
           Write-Host "$($arquivos.Count) arquivos no MSI ($([math]::Round((Get-Item $msi).Length / 1MB, 1)) MB)"
 
           $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
-                          'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json'
+                          'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
+                          'Edge.Configurador.exe'
           $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
           if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
 
