@@ -1,0 +1,85 @@
+<UserControl x:Class="Desktop.App.Telas.Contas"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Prestação de contas">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Prestação de contas" />
+
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="De" />
+        <DatePicker MinHeight="36" SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+      </StackPanel>
+      <StackPanel Margin="0,0,12,8">
+        <TextBlock Style="{StaticResource Rotulo}" Text="Até (vazio = agora)" />
+        <DatePicker MinHeight="36" SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+      </StackPanel>
+      <Button VerticalAlignment="Bottom" Margin="0,0,8,8" Content="_Gerar" IsDefault="True" Command="{Binding Gerar}" />
+      <Button VerticalAlignment="Bottom" Margin="0,0,0,8" Content="_Exportar para Excel" Click="Exportar" />
+    </WrapPanel>
+
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <WrapPanel DockPanel.Dock="Top" DataContext="{Binding Contas}">
+      <Border Style="{StaticResource Cartao}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource Rotulo}" Text="Liberados" />
+          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Liberados}" />
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Cartao}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource Rotulo}" Text="Com giro confirmado" />
+          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Giros}" />
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Cartao}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource Rotulo}" Text="Negados" />
+          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Negados}" />
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding Contas}">
+      <StackPanel>
+        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,8" Text="Por categoria" />
+        <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Categoria" Binding="{Binding Categoria}" Width="*" />
+            <DataGridTextColumn Header="Liberados" Binding="{Binding Liberados}" Width="120" />
+            <DataGridTextColumn Header="Com giro" Binding="{Binding Giros}" Width="120" />
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" Text="Por catraca" />
+        <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Catraca" Binding="{Binding Inner}" Width="*" />
+            <DataGridTextColumn Header="Liberados" Binding="{Binding Liberados}" Width="120" />
+            <DataGridTextColumn Header="Com giro" Binding="{Binding Giros}" Width="120" />
+            <DataGridTextColumn Header="Negados" Binding="{Binding Negados}" Width="120" />
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" Text="Por hora" />
+        <DataGrid ItemsSource="{Binding PorHora}" AutomationProperties.Name="Por hora">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Hora" Binding="{Binding Hora, Converter={StaticResource InstanteParaTexto}, ConverterParameter='dd/MM HH:00'}" Width="*" />
+            <DataGridTextColumn Header="Liberados" Binding="{Binding Liberados}" Width="120" />
+            <DataGridTextColumn Header="Negados" Binding="{Binding Negados}" Width="120" />
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" Text="Motivos de negativa" />
+        <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Motivo" Binding="{Binding Mensagem}" Width="*" />
+            <DataGridTextColumn Header="Quantidade" Binding="{Binding Quantidade}" Width="120" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

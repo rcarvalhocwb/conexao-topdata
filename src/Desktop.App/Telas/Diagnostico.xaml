@@ -1,0 +1,31 @@
+<UserControl x:Class="Desktop.App.Telas.Diagnostico"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Diagnóstico">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Diagnóstico" />
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <StackPanel DockPanel.Dock="Top" DataContext="{Binding Diagnostico}" Margin="0,0,0,12">
+      <TextBlock><Run Text="Versão do serviço: " /><Run Text="{Binding Versao, Mode=OneWay}" /></TextBlock>
+      <TextBlock><Run Text="Pasta de dados e registros: " /><Run Text="{Binding PastaDeDados, Mode=OneWay}" /></TextBlock>
+    </StackPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Diagnostico.Workers}" AutomationProperties.Name="Programas das catracas">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Style="{StaticResource Cartao}" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding Nome}" />
+                <TextBlock><Run Text="Situação: " /><Run Text="{Binding Situacao, Mode=OneWay}" /><Run Text="  ·  reinícios: " /><Run Text="{Binding Reinicios, Mode=OneWay}" /></TextBlock>
+                <TextBlock Style="{StaticResource Rotulo}" Text="{Binding Detalhe}" />
+                <TextBlock Style="{StaticResource Rotulo}" Margin="0,8,0,4" Text="Últimas linhas do programa (sem número de cartão):" />
+                <ItemsControl ItemsSource="{Binding UltimasLinhas}" FontFamily="Consolas" FontSize="12" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

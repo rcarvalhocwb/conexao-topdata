@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Setup.exe do Conexão Topdata: um arquivo só, que instala tudo.
+
+  É um "bundle" do WiX (Burn) em volta do MSI. O MSI já traz o .NET embutido em cada
+  componente (publicação self-contained), então não há pré-requisito de runtime para
+  baixar nem versão para casar. Ao terminar, o botão "Abrir" abre o Assistente de
+  configuração, que confere o SDK da Topdata e grava catracas e nuvem.
+
+  O que continua fora, de propósito:
+  - a EasyInner.dll e o SDK da Topdata: são da Topdata e este repositório é público. O
+    assistente localiza a DLL no computador (ou num pendrive) e a copia para o lugar certo;
+  - o .NET Framework 3.5: é um recurso do Windows; o assistente o habilita com um clique.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="Conexão Topdata"
+          Manufacturer="Conexão Topdata"
+          Version="$(var.Versao)"
+          UpgradeCode="8b0c64a6-2f6b-4a3e-9d0a-6d2f3c1a9e41">
+
+    <BootstrapperApplication>
+      <!-- Sem licença a aceitar: é um sistema do próprio evento. -->
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense" />
+    </BootstrapperApplication>
+
+    <!-- O botão "Abrir" da última tela abre o assistente, que pede administrador. -->
+    <Variable Name="LaunchTarget" Value="[ProgramFiles64Folder]Conexao Topdata\Configurador\Edge.Configurador.exe" />
+
+    <Chain>
+      <MsiPackage SourceFile="$(var.Msi)" Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

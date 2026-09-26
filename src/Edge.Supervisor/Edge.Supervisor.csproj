@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Supervisiona os workers. NÃO referencia o interop: quem carrega a DLL é o worker
+    x86, e o supervisor precisa sobreviver à morte dele. Regra verificada por ARCH-01.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Edge.Supervisor</AssemblyName>
+    <RootNamespace>Edge.Supervisor</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Contracts/Contracts.csproj" />
+    <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />
+    <ProjectReference Include="../Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
+    <ProjectReference Include="../Sync.Connectors.Rest/Sync.Connectors.Rest.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DPAPI: o cofre do segredo da nuvem. Só é usado no Windows. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+    <!-- Sem isto o executável não responde ao gerenciador de serviços do Windows, que
+         desiste da partida com o erro 1053. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

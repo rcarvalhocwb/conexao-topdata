@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Lógica do worker, independente de plataforma e da DLL: fala apenas por
+    ITopdataInnerAdapter. É isso que permite testar laço, watchdog, backoff e circuit
+    breaker contra o simulador, em CI Linux.
+
+    O hospedeiro x86 (Edge.Worker.X86) é fino: só injeta o adapter real.
+    Ver docs/ADR/ADR-0001 e docs/ADR/ADR-0019.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Access.Application/Access.Application.csproj" />
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../Shared.Observability/Shared.Observability.csproj" />
+  </ItemGroup>
+
+</Project>

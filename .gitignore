@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+artifacts/
+TestResults/
+.vs/
+.idea/
+
+# Banco local gerado em testes e execução
+*.db
+*.db-wal
+*.db-shm
+
+# Cobertura
+coverage/
+*.coverage
+*.trx

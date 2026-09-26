@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Drenagem da outbox. Fica FORA do caminho crítico de decisão: nada aqui pode
+    atrasar um giro de catraca.
+    Ver docs/15-integracao-e-sincronizacao.md e docs/ADR/ADR-0003-sqlite-wal-outbox.md
+  -->
+
+  <!--
+    Sem ProjectReference de propósito. Este projeto define as portas; quem tem banco,
+    rede e relógio implementa. É o que permite testar prioridade, repetição e DLQ em
+    milissegundos, sem SQLite e sem internet.
+  -->
+
+</Project>

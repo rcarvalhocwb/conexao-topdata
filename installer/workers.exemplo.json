@@ -1,0 +1,35 @@
+{
+  "//": "Copie para workers.json ao lado do Edge.Supervisor.exe e ajuste.",
+  "//endereco": "Named pipe no Windows. Omitir usa o padrão.",
+  "endereco": "conexao-topdata-edge",
+
+  "//banco": "Base local do serviço e dos workers. Omitir usa %ProgramData%\\ConexaoTopdata\\acesso.db.",
+
+  "//nuvem": "Painel na nuvem (docs/22). Omitir: a borda opera sem sincronizar. O segredo NÃO vai aqui: grave com 'Edge.Supervisor.exe --gravar-segredo-da-nuvem' (lê da entrada padrão).",
+  "nuvem": {
+    "base": "https://SEU-PROJETO.supabase.co/functions/v1/",
+    "dispositivo": "borda-01",
+    "provedor": "bilheteria-local",
+    "//perfil": "raw até a bancada dizer o formato do cartão (docs/22, seção 8.5).",
+    "perfil": "raw",
+    "intervaloDeReusoSegundos": 240,
+    "somenteNaUrna": true,
+    "intervaloSegundos": 30
+  },
+
+  "//grupos": "Um worker por grupo. Cada um com SUA porta TCP, e a catraca aponta para ela.",
+  "grupos": [
+    {
+      "nome": "setor-a",
+      "porta": 3570,
+      "inners": [1, 2, 3],
+      "executavel": "..\\Edge.Worker.X86\\Edge.Worker.X86.exe"
+    },
+    {
+      "nome": "setor-b",
+      "porta": 3571,
+      "inners": [7, 8],
+      "executavel": "..\\Edge.Worker.X86\\Edge.Worker.X86.exe"
+    }
+  ]
+}

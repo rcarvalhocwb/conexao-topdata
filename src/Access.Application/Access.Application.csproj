@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Casos de uso e máquinas de estado. Conhece a interface ITopdataInnerAdapter,
+    nunca a implementação. Não referencia interop, SQLite nem UI.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,38 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Access.Application/Access.Application.csproj" />
+    <Project Path="src/Access.Domain/Access.Domain.csproj" />
+    <Project Path="src/Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
+    <Project Path="src/Contracts/Contracts.csproj" />
+    <Project Path="src/Desktop.App/Desktop.App.csproj" />
+    <Project Path="src/Desktop.ViewModels/Desktop.ViewModels.csproj" />
+    <Project Path="src/Edge.Configurador/Edge.Configurador.csproj" />
+    <Project Path="src/Edge.Supervisor/Edge.Supervisor.csproj" />
+    <Project Path="src/Edge.Worker.X86/Edge.Worker.X86.csproj" />
+    <Project Path="src/Edge.Worker/Edge.Worker.csproj" />
+    <Project Path="src/Relay.Ingressos/Relay.Ingressos.csproj" />
+    <Project Path="src/Shared.Observability/Shared.Observability.csproj" />
+    <Project Path="src/Sync.Connectors.Rest/Sync.Connectors.Rest.csproj" />
+    <Project Path="src/Sync.Core/Sync.Core.csproj" />
+    <Project Path="src/Sync.Ingestao/Sync.Ingestao.csproj" />
+    <Project Path="src/Topdata.EasyInner.Adapter/Topdata.EasyInner.Adapter.csproj" />
+    <Project Path="src/Topdata.EasyInner.Interop/Topdata.EasyInner.Interop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CrashProbe/CrashProbe.csproj" />
+    <Project Path="tests/Simulator/Simulator.csproj" />
+  </Folder>
+  <Folder Name="/tests/Contract/">
+    <Project Path="tests/Contract/Contract.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Integration/">
+    <Project Path="tests/Integration/Integration.Tests.csproj" />
+    <Project Path="tests/HardwareInLoop/HardwareInLoop.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/LoadAndSoak/">
+    <Project Path="tests/LoadAndSoak/Soak.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Unit/">
+    <Project Path="tests/Unit/Unit.Tests.csproj" />
+  </Folder>
+</Solution>

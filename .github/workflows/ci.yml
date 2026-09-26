@@ -1,0 +1,310 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      soak_minutos:
+        description: "Duração do ensaio de soak, em minutos (o padrão da CI é curto)"
+        required: false
+        default: "60"
+
+permissions:
+  contents: read
+
+# Um push novo cancela a execução anterior do mesmo ramo. Sem isso, um job pendurado
+# ocupa o executor até o teto de 6 h do GitHub — foi exatamente o que aconteceu quando a
+# conexão por named pipe esperava para sempre.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+
+jobs:
+  # O domínio, as regras de acesso e a máquina de estados não dependem de Windows.
+  # Rodar em Linux não é conveniência: é o que mantém a separação honesta.
+  # Ver docs/ADR/ADR-0001-isolar-easyinner-em-processo-x86.md
+  linux:
+    name: Build e testes (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testar
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publicar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-linux
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+
+  # Windows é onde o produto roda de verdade. Os projetos que só compilam lá
+  # (worker x86, WPF) entram nesta matriz conforme forem criados.
+  windows:
+    name: Build e testes (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testar
+        run: dotnet test --no-build --configuration Release
+
+      # Só o PowerShell do Windows sabe dizer se estes scripts sequer analisam.
+      # Sem esta etapa, um erro de sintaxe no instalador só apareceria na bancada.
+      # NAO tente capturar as telas aqui. Foi tentado duas vezes, 24 min e 3 min, e o
+      # processo travou sem imprimir uma linha sequer nas duas. O runner do Windows nao tem
+      # sessao grafica, e o WPF nao inicializa. O modo --capturar do Desktop.App continua
+      # valendo, numa maquina Windows de verdade: ver installer/README.md.
+
+      - name: Analisar os scripts do instalador
+        shell: pwsh
+        run: |
+          $erros = @()
+          Get-ChildItem installer -Filter *.ps1 | ForEach-Object {
+              $tokens = $null
+              $problemas = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  $_.FullName, [ref]$tokens, [ref]$problemas) | Out-Null
+              if ($problemas.Count -gt 0) {
+                  $erros += $problemas | ForEach-Object { "$($_.Extent.File):$($_.Extent.StartLineNumber) $($_.Message)" }
+              } else {
+                  Write-Host "ok $($_.Name)"
+              }
+          }
+          if ($erros.Count -gt 0) {
+              $erros | ForEach-Object { Write-Host "::error::$_" }
+              exit 1
+          }
+
+  # O instalador MSI de verdade. Construir MSI e trabalho sem tela, ao contrario de
+  # renderizar WPF, entao o runner do Windows da conta. O WiX recusa rodar em Linux:
+  # testado, ele reprova ate o caso minimo com WIX0389.
+  instalador:
+    name: Instalador MSI (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    # Escrita só aqui, e só para publicar o Setup.exe na pré-release de teste.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Instalar o WiX
+        run: |
+          dotnet tool install --global wix --version 6.0.2
+          wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
+
+      # Self-contained: cada componente leva o seu .NET. O Setup.exe instala e funciona
+      # sem pedir runtime nenhum ao operador; o custo é o tamanho (uns 240 MB).
+      - name: Publicar os componentes
+        shell: pwsh
+        run: |
+          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -o publicado/Servico
+          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -o publicado/Painel
+          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -o publicado/Worker
+          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -o publicado/Configurador
+
+      # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
+      # no cabecalho PE, e mais barato que descobrir na bancada.
+      - name: Conferir que o worker e de 32 bits
+        shell: pwsh
+        run: |
+          $fluxo = [System.IO.File]::OpenRead("publicado/Worker/Edge.Worker.X86.exe")
+          try {
+              $leitor = New-Object System.IO.BinaryReader($fluxo)
+              $fluxo.Position = 0x3C
+              $inicio = $leitor.ReadInt32()
+              $fluxo.Position = $inicio + 4
+              $maquina = $leitor.ReadUInt16()
+          } finally { $fluxo.Dispose() }
+
+          if ($maquina -ne 0x014C) {
+              throw "O worker saiu com maquina PE 0x{0:X4}, e nao 0x014C (I386)." -f $maquina
+          }
+          Write-Host "Worker em 32 bits: ok"
+
+      # Caminhos ABSOLUTOS. Em <Files>, caminho relativo é resolvido a partir da pasta do
+      # .wxs, e não da pasta em que o comando roda: com "publicado/Worker" o WiX procurava
+      # em installer/wix/publicado/Worker, não achava nada, e o MSI saía com 70 KB e só o
+      # executável do serviço — sem erro. https://docs.firegiant.com/wix/schema/wxs/files/
+      - name: Construir o MSI
+        shell: pwsh
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build installer/wix/ConexaoTopdata.wxs `
+            -d Versao=$versao `
+            -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
+            -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
+            -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
+            -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
+            -o ConexaoTopdata-$versao.msi
+
+      # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
+      # a tabela File tem que ter o que o operador precisa, e não pode ter a EasyInner.dll,
+      # que é da Topdata e vem do SDK instalado na máquina.
+      - name: Conferir o conteúdo do MSI
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $instalador = New-Object -ComObject WindowsInstaller.Installer
+          $banco = $instalador.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $instalador, @($msi, 0))
+          $consulta = $banco.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $banco, @('SELECT `FileName` FROM `File`'))
+          $consulta.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $consulta, $null) | Out-Null
+          $arquivos = @()
+          while ($null -ne ($linha = $consulta.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $consulta, $null))) {
+              $nome = $linha.GetType().InvokeMember('StringData', 'GetProperty', $null, $linha, 1)
+              # FileName guarda "curto|longo"; o longo é o que interessa.
+              $arquivos += ($nome -split '\|')[-1]
+          }
+          Write-Host "$($arquivos.Count) arquivos no MSI ($([math]::Round((Get-Item $msi).Length / 1MB, 1)) MB)"
+
+          $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
+                          'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
+                          'Edge.Configurador.exe'
+          $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
+          if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
+
+          if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI.' }
+          Write-Host 'Conteúdo do MSI: ok'
+
+      - name: Construir o Setup.exe
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
+            -d Versao=$versao -d Msi=$msi -o ConexaoTopdata-Setup.exe
+          Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item ConexaoTopdata-Setup.exe).Length / 1MB))
+
+      - name: Publicar o Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-exe
+          path: ConexaoTopdata-Setup.exe
+          if-no-files-found: error
+
+      # Artefato do Actions sempre baixa em zip. A pré-release "instalador-de-teste" dá um
+      # link direto para o .exe, sempre com o do último commit.
+      - name: Atualizar a pré-release de teste
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          $tag = 'instalador-de-teste'
+          gh release delete $tag --yes --cleanup-tag 2>$null
+          $notas = "Instalador de teste gerado automaticamente a partir do commit $env:COMMIT. " +
+                   "Não é versão de produção. Baixe ConexaoTopdata-Setup.exe e execute como administrador."
+          gh release create $tag ConexaoTopdata-Setup.exe --prerelease --target $env:COMMIT `
+            --title "Instalador de teste" --notes $notas
+
+      # Para a bancada (docs/21) não é preciso instalar nada: o worker vai num zip,
+      # autocontido, sem exigir o .NET instalado no PC. A EasyInner.dll continua vindo do
+      # SDK da Topdata instalado na máquina.
+      - name: Montar o pacote da bancada
+        shell: pwsh
+        run: |
+          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained true -o bancada/Edge.Worker.X86
+          Copy-Item docs/21-roteiro-da-bancada.md bancada/
+          Copy-Item installer/verificar-ambiente.ps1 bancada/
+          if (-not (Test-Path bancada/Edge.Worker.X86/bancada.exemplo.json)) { throw 'Falta o bancada.exemplo.json.' }
+          if (Test-Path bancada/Edge.Worker.X86/EasyInner.dll) { throw 'A EasyInner.dll não pode ir no pacote.' }
+
+      - name: Publicar o pacote da bancada
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacote-da-bancada
+          path: bancada/
+          if-no-files-found: error
+
+      - name: Publicar o instalador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-msi
+          path: "*.msi"
+          if-no-files-found: error
+
+  # O soak roda curto em todo commit, o suficiente para processar centenas de milhares
+  # de eventos e revelar vazamento de poucos bytes por evento. O ensaio longo, de uma
+  # hora, é disparado à mão em "Run workflow" com soak_minutos.
+  soak:
+    name: Ensaio de soak
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Executar soak
+        env:
+          SOAK_MINUTOS: ${{ inputs.soak_minutos }}
+        run: dotnet test tests/LoadAndSoak --configuration Release
+
+      # A medição sai mesmo quando o ensaio passa. É a tendência entre execuções que
+      # revela vazamento lento; "passou" não distingue 2 MB de 31 MB.
+      - name: Publicar a medição
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medicao-do-soak
+          path: "**/TestResults/soak-relatorio.txt"
+          if-no-files-found: warn
+
+  # SEC-LOG-01: nenhum dado sensível pode chegar ao log.
+  # Nesta fase, a checagem é estática; ela cresce junto com a observabilidade.
+  seguranca:
+    name: Varredura de dado sensível
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Proibir interpolação direta de credencial em log
+        run: |
+          set -euo pipefail
+          # Procura chamadas de log que interpolem .Raw ou .Normalized de uma credencial.
+          if grep -rnE '(Log|log)[A-Za-z]*\(.*\.(Raw|Normalized)' src/ tests/ 2>/dev/null; then
+            echo "::error::Credencial em texto claro dentro de chamada de log."
+            exit 1
+          fi
+          echo "Nenhuma interpolação de credencial em log encontrada."

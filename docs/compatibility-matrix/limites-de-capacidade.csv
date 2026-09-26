@@ -1,0 +1,8 @@
+limite;escopo;valor;condicao;impacto_no_projeto;selo;fonte
+LISTA_ACESSO;Controle Catraca / Inner Acesso (producao atual);15000;qualquer quantidade de digitos;lista branca de 30.000 ingressos NAO cabe - exige inversao para lista negra;FONTE_PRIMARIA;suporte.topdata.com.br/suporte/capacidade-da-lista-de-controle-de-acesso-nos-produtos-da-linha-inner/
+LISTA_ACESSO;Controle Catraca / Inner Acesso;14900;cartao de 16 digitos;idem, com margem ainda menor;FONTE_PRIMARIA;idem
+LISTA_ACESSO;Inner Plus / Inner Net (descontinuados);5000 a 15000;varia com digitos: 4d=15000 6d=11250 8d=9000 10d=7500 12d=6425 14d=5625 16d=5000;equipamento legado exige dimensionar por quantidade de digitos;FONTE_PRIMARIA;idem
+LISTA_ACESSO;Placa Inner antiga (ate 1999, um unico rele);1125 a 3000;varia com digitos;fora de escopo para evento - identificavel por ter so um rele;FONTE_PRIMARIA;idem
+MARCACOES;Inner Acesso e Catraca 3;30000;todos os padroes e tipos de cartao;coleta precisa ser continua - 30.000 pessoas/dia com 2 marcacoes por passagem estoura;FONTE_PRIMARIA;suporte.topdata.com.br/suporte/capacidade-de-armazenamento-de-marcacoes-dos-produtos-da-linha-inner-acesso-e-catraca-3/
+MARCACOES_POR_PASSAGEM;todos;1 a 3;offline: leitura (origem 2) + giro (origem 6) + eventual timeout (origem 5);muda o dimensionamento da memoria pela metade ou mais;A_CONFIRMAR_COM_TOPDATA;deducao a partir da tabela de origens - NAO confirmado
+EQUIPAMENTOS_POR_DLL;instancia da EasyInner.dll;30;por processo/thread;nao e limite com 4 catracas - vira limite acima de 30 portoes;FONTE_PRIMARIA;Manual secao 1.3.3

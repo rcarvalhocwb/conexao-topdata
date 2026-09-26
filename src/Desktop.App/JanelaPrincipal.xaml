@@ -1,0 +1,81 @@
+<Window x:Class="Desktop.App.JanelaPrincipal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Conexão Topdata — Painel do evento"
+        Height="768" Width="1366"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}">
+
+  <!--
+    1366x768 é a resolução mínima suportada (docs/10). Nada de fonte fixa no layout: o
+    escalonamento do Windows manda. Menu lateral navegável por teclado (setas e Tab).
+  -->
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="230" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- Menu lateral. -->
+    <Border Grid.Column="0" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+            BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" BorderThickness="0,0,1,0">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="20,20,16,20">
+          <TextBlock FontSize="18" FontWeight="Bold" Text="Conexão Topdata" />
+          <TextBlock Style="{StaticResource Rotulo}" Text="Controle de acesso" />
+        </StackPanel>
+
+        <ListBox x:Name="Menu" BorderThickness="0" Background="Transparent"
+                 ItemsSource="{Binding Telas}" SelectedItem="{Binding TelaAtual}"
+                 AutomationProperties.Name="Menu">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="MinHeight" Value="44" />
+              <Setter Property="Padding" Value="20,0" />
+              <Setter Property="VerticalContentAlignment" Value="Center" />
+              <Setter Property="FontSize" Value="15" />
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Titulo}" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Column="1" Margin="24,16,24,16">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <!-- Cabeçalho: o estado geral, em qualquer tela. -->
+      <Border Grid.Row="0" Margin="0,0,0,16" Padding="16,10" CornerRadius="6" BorderThickness="6,1,1,1"
+              DataContext="{Binding Painel}"
+              BorderBrush="{Binding Estado.Saude, Converter={StaticResource SaudeParaPincel}}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Ellipse Width="18" Height="18" Margin="0,0,12,0" VerticalAlignment="Center"
+                   Fill="{Binding Estado.Saude, Converter={StaticResource SaudeParaPincel}}" />
+          <StackPanel Grid.Column="1">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="{Binding Estado.Mensagem}"
+                       AutomationProperties.LiveSetting="Assertive"
+                       AutomationProperties.Name="Estado da operação" />
+            <TextBlock Style="{StaticResource Rotulo}" Text="{Binding Internet}" />
+          </StackPanel>
+          <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="14" Text="{Binding Resumo}" />
+        </Grid>
+      </Border>
+
+      <ContentControl Grid.Row="1" Content="{Binding TelaAtual}" Focusable="False" />
+    </Grid>
+  </Grid>
+</Window>

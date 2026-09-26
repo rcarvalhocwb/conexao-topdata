@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Aplicativo de operação. Fala SÓ com o serviço local, pelo IPC: nunca carrega a
+    EasyInner.dll, nunca abre o banco, nunca fala com um equipamento. É isso que o
+    mantém de pé quando um worker morre. Ver docs/ADR/ADR-0001 e ADR-0004.
+
+    EnableWindowsTargeting permite compilar na CI Linux. Executar, só no Windows.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>Desktop.App</AssemblyName>
+    <RootNamespace>Desktop.App</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Contracts/Contracts.csproj" />
+    <ProjectReference Include="../Desktop.ViewModels/Desktop.ViewModels.csproj" />
+  </ItemGroup>
+
+</Project>

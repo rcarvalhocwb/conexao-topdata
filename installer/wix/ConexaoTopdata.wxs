@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Instalador MSI do Conexão Topdata.
+
+  Instala o serviço, o painel, o programa das catracas e o assistente de configuração.
+  O serviço inicia com o Windows. Recém-instalado, ele sobe sem catracas e o painel pede
+  o assistente; o assistente grava a configuração e reinicia o serviço.
+
+  O serviço NÃO é iniciado durante a instalação: se faltar um runtime do .NET, a partida
+  falharia e o Windows Installer desfaria a instalação inteira. O assistente confere o
+  ambiente e inicia o serviço. Ver installer/README.md.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package Name="Conexão Topdata"
+           Manufacturer="Conexão Topdata"
+           Version="$(var.Versao)"
+           UpgradeCode="5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="Gerenciamento de catracas, controladores e coletores da linha Inner" />
+
+    <MajorUpgrade DowngradeErrorMessage="Já existe uma versão mais nova do Conexão Topdata instalada." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ProgramFiles64Folder: o serviço e o painel são de 64 bits. O worker x86 mora
+         dentro da mesma pasta, e isso é correto — o que importa é o processo ser de 32
+         bits, não o diretório. -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Conexao Topdata">
+        <Directory Id="DIR_SUPERVISOR" Name="Servico" />
+        <Directory Id="DIR_PAINEL" Name="Painel" />
+        <Directory Id="DIR_WORKER" Name="Worker" />
+        <Directory Id="DIR_CONFIGURADOR" Name="Configurador" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="DIR_ATALHOS" Name="Conexão Topdata" />
+    </StandardDirectory>
+
+    <Feature Id="Principal" Title="Conexão Topdata" Level="1">
+      <ComponentGroupRef Id="Grupo_Servico" />
+      <ComponentGroupRef Id="Grupo_Painel" />
+      <ComponentGroupRef Id="Grupo_Worker" />
+      <ComponentGroupRef Id="Grupo_Configurador" />
+      <ComponentGroupRef Id="Grupo_Atalhos" />
+    </Feature>
+
+    <ComponentGroup Id="Grupo_Servico" Directory="DIR_SUPERVISOR">
+      <!--
+        Por extensao, e nao "**", porque o Edge.Supervisor.exe pertence ao componente do
+        servico logo abaixo e nao pode entrar duas vezes. O elemento Files nao aceita
+        Exclude (WIX0004), entao a separacao e feita aqui.
+
+        Os .pdb entram de proposito: sem simbolos, um travamento em campo vira um endereco
+        hexadecimal. Os .xml de documentacao ficam de fora, que sao ruido em maquina de
+        operacao.
+      -->
+      <Files Include="$(var.PastaSupervisor)\*.dll" />
+      <Files Include="$(var.PastaSupervisor)\*.json" />
+      <Files Include="$(var.PastaSupervisor)\*.pdb" />
+
+      <Component Id="ServicoLocal" Guid="d5418902-3ddf-4abf-a2a6-f34f04765695">
+        <File Id="ServicoExe" Source="$(var.PastaSupervisor)\Edge.Supervisor.exe" KeyPath="yes" />
+
+        <ServiceInstall Id="InstalarServico"
+                        Name="ConexaoTopdataEdge"
+                        DisplayName="Conexão Topdata — Serviço local"
+                        Description="Supervisiona os workers das catracas e atende o painel do operador."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Vital="yes" />
+
+        <ServiceControl Id="ControlarServico"
+                        Name="ConexaoTopdataEdge"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Painel" Directory="DIR_PAINEL">
+      <Files Include="$(var.PastaPainel)\*.exe" />
+      <Files Include="$(var.PastaPainel)\*.dll" />
+      <Files Include="$(var.PastaPainel)\*.json" />
+      <Files Include="$(var.PastaPainel)\*.pdb" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Worker" Directory="DIR_WORKER">
+      <Files Include="$(var.PastaWorker)\*.exe" />
+      <Files Include="$(var.PastaWorker)\*.dll" />
+      <Files Include="$(var.PastaWorker)\*.json" />
+      <Files Include="$(var.PastaWorker)\*.pdb" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Configurador" Directory="DIR_CONFIGURADOR">
+      <Files Include="$(var.PastaConfigurador)\*.exe" />
+      <Files Include="$(var.PastaConfigurador)\*.dll" />
+      <Files Include="$(var.PastaConfigurador)\*.json" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
+      <Component Id="AtalhoDoPainel">
+        <Shortcut Id="AtalhoPainel"
+                  Name="Painel do evento"
+                  Description="Painel do operador do Conexão Topdata"
+                  Target="[DIR_PAINEL]Desktop.App.exe"
+                  WorkingDirectory="DIR_PAINEL" />
+
+        <Shortcut Id="AtalhoConfigurador"
+                  Name="Assistente de configuração"
+                  Description="Catracas, nuvem e segredo de acesso (pede permissão de administrador)"
+                  Target="[DIR_CONFIGURADOR]Edge.Configurador.exe"
+                  WorkingDirectory="DIR_CONFIGURADOR" />
+
+        <RemoveFolder Id="RemoverPastaAtalhos" Directory="DIR_ATALHOS" On="uninstall" />
+
+        <RegistryValue Root="HKCU"
+                       Key="Software\ConexaoTopdata"
+                       Name="Instalado"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+  </Package>
+</Wix>

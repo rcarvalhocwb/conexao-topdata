@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Persistência local durável. SQLite com WAL.
+    Ver docs/ADR/ADR-0003-sqlite-wal-outbox.md
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../Access.Application/Access.Application.csproj" />
+    <ProjectReference Include="../Sync.Core/Sync.Core.csproj" />
+    <ProjectReference Include="../Sync.Ingestao/Sync.Ingestao.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Os testes de integração inspecionam PRAGMAs e gatilhos diretamente. -->
+    <InternalsVisibleTo Include="Integration.Tests" />
+  </ItemGroup>
+
+</Project>

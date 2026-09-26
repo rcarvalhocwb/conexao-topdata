@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Testes do adapter da EasyInner. Autorizado a referenciar o interop por ARCH-01.
+
+    Rodam em QUALQUER plataforma: a DLL é substituída por uma costura falsa, e o que se
+    testa é a tradução — mapeamento de retorno, montagem de data, escolha do sentido de
+    giro, leitura do buffer. O que exige a DLL de verdade está marcado A_CONFIRMAR no
+    adapter e pertence à bancada.
+  -->
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <AssemblyName>HardwareInLoop.Tests</AssemblyName>
+    <RootNamespace>HardwareInLoop.Tests</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Topdata.EasyInner.Adapter/Topdata.EasyInner.Adapter.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

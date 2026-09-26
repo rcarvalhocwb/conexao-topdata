@@ -1,0 +1,50 @@
+<UserControl x:Class="Desktop.App.Telas.Consulta"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Consultar código">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Consultar código" />
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rotulo}"
+               Text="Digite o número do cartão ou do ingresso, ou passe no leitor do balcão. O número não fica guardado na tela." />
+
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,8,0,8">
+      <TextBox x:Name="CampoDoCodigo" Width="320" Margin="0,0,8,0"
+               Text="{Binding Codigo, UpdateSourceTrigger=PropertyChanged}"
+               AutomationProperties.Name="Código a consultar">
+        <TextBox.InputBindings>
+          <KeyBinding Key="Enter" Command="{Binding Consultar}" />
+        </TextBox.InputBindings>
+      </TextBox>
+      <Button Content="_Consultar" Command="{Binding Consultar}" />
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
+               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Detalhes}" Margin="0,0,0,12"
+                  AutomationProperties.Name="Situação do código">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Grid Margin="0,2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="160" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource Rotulo}" Text="{Binding Rotulo}" />
+            <TextBlock Grid.Column="1" FontSize="14" FontWeight="SemiBold" Text="{Binding Valor}" />
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" Text="Últimas tentativas com este código" />
+    <DataGrid ItemsSource="{Binding Historico}" AutomationProperties.Name="Histórico do código">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Hora" Binding="{Binding Hora}" Width="80" />
+        <DataGridTextColumn Header="Catraca" Binding="{Binding Inner}" Width="70" />
+        <DataGridTextColumn Header="Resultado" Binding="{Binding Mensagem}" Width="*" />
+        <DataGridTextColumn Header="Girou" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="60" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>
