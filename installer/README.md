@@ -68,40 +68,34 @@ $env:EDGE_TOKEN = Get-Content "$env:LOCALAPPDATA\ConexaoTopdata\token"
 
 **Nenhuma catraca foi acionada por este sistema até hoje.**
 
-## Instalador MSI — o caminho de produção
+## Setup.exe — o caminho de produção
 
-A cada commit, a integração contínua constrói o **MSI** e publica como artefato
-`instalador-msi` (e o `pacote-da-bancada`, que é outra coisa: ver docs/21).
+Um arquivo só: **`ConexaoTopdata-Setup.exe`**, com o .NET embutido (uns 240 MB). Link
+direto, sempre do último commit, na pré-release **Instalador de teste**:
 
-### Antes de instalar
+https://github.com/rcarvalhocwb/conexao-topdata/releases/tag/instalador-de-teste
 
-No computador do evento, instale:
+(O mesmo arquivo também sai como artefato `setup-exe` da CI, mas artefato do Actions
+sempre baixa em zip.)
 
-| O quê | Para quê |
-|---|---|
-| SDK Inner Acesso da Topdata | traz a `EasyInner.dll`, que **não** vem com este instalador |
-| .NET Framework 3.5 (recursos do Windows) | sem ele a DLL devolve retorno 8 |
-| .NET 10 Runtime **x86** | o programa das catracas é de 32 bits por causa da DLL |
-| ASP.NET Core Runtime 10 **x64** | o serviço |
-| .NET Desktop Runtime 10 **x64** | o painel e o assistente |
+### O que ele faz
 
-O assistente confere cada um desses itens na primeira tela e diz o que falta.
+Execute como administrador. Ele:
 
-### Instalar
-
-Duplo clique no MSI, ou:
-
-```powershell
-msiexec /i ConexaoTopdata-0.1.42.msi /qn /l*v instalacao.log
-```
-
-Ele instala em `C:\Program Files\Conexao Topdata` e:
-
-- registra o serviço **ConexaoTopdataEdge**, com partida **automática** — mas **não** o
-  inicia durante a instalação: se faltasse um runtime, a partida falharia e o Windows
-  Installer desfaria tudo;
+- instala o serviço, o painel, o programa das catracas e o assistente em
+  `C:\Program Files\Conexao Topdata`, cada um com o seu .NET — nada para instalar antes;
+- registra o serviço **ConexaoTopdataEdge** com partida **automática** (não o inicia
+  durante a instalação: quem inicia é o assistente, depois de gravar a configuração);
 - cria no menu Iniciar o **Painel do evento** e o **Assistente de configuração**;
-- desinstala limpo, parando o serviço antes de remover.
+- ao terminar, o botão **Abrir** abre o assistente;
+- desinstala limpo por "Aplicativos instalados" do Windows.
+
+### O que fica de fora, e como o assistente resolve
+
+| Item | Por que não vem | Como resolver |
+|---|---|---|
+| SDK da Topdata (`EasyInner.dll`) | É da Topdata, e este repositório é público | Instale o SDK Inner Acesso, **ou** no assistente clique em **Localizar EasyInner.dll…** e escolha o arquivo (pasta do SDK, pendrive). Ele recusa a DLL de 64 bits |
+| .NET Framework 3.5 | É recurso do Windows, não arquivo | No assistente, **Habilitar .NET Framework 3.5** (pode precisar de internet) |
 
 ### Configurar — Assistente de configuração
 

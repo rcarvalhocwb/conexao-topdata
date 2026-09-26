@@ -200,21 +200,16 @@ public static class AssistenteDeConfiguracao
     /// do Windows em que roda.
     /// </summary>
     /// <param name="existeArquivo">Se um arquivo existe.</param>
-    /// <param name="subpastas">Nomes das subpastas de uma pasta (vazio se não existe).</param>
     /// <param name="net35Instalado">Se o .NET Framework 3.5 está habilitado; nulo se não dá para saber.</param>
     /// <param name="pastaDoWorker">Pasta onde o worker foi instalado.</param>
     public static IReadOnlyList<ItemDoAmbiente> VerificarAmbiente(
         Func<string, bool> existeArquivo,
-        Func<string, IEnumerable<string>> subpastas,
         bool? net35Instalado,
         string pastaDoWorker)
     {
         ArgumentNullException.ThrowIfNull(existeArquivo);
-        ArgumentNullException.ThrowIfNull(subpastas);
 
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        var programas = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        var programas86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
 
         // Onde a EasyInner.dll de 32 bits pode estar para o worker x86 achá-la.
         var locaisDaDll = new[]
@@ -225,13 +220,6 @@ public static class AssistenteDeConfiguracao
         };
         var dll = locaisDaDll.FirstOrDefault(existeArquivo);
 
-        bool TemVersao10(string pasta) =>
-            subpastas(pasta).Any(v => v.StartsWith("10.", StringComparison.Ordinal));
-
-        var runtimeX86 = TemVersao10(Path.Combine(programas86, "dotnet", "shared", "Microsoft.NETCore.App"));
-        var aspnetX64 = TemVersao10(Path.Combine(programas, "dotnet", "shared", "Microsoft.AspNetCore.App"));
-        var desktopX64 = TemVersao10(Path.Combine(programas, "dotnet", "shared", "Microsoft.WindowsDesktop.App"));
-
         return
         [
             new ItemDoAmbiente(
@@ -239,29 +227,82 @@ public static class AssistenteDeConfiguracao
                 dll is not null,
                 dll is not null
                     ? $"Encontrada em {dll}."
-                    : "Não encontrada. Instale o SDK Inner Acesso da Topdata; a DLL não vem com este instalador."),
+                    : "Não encontrada. Instale o SDK Inner Acesso da Topdata, ou clique em \"Localizar EasyInner.dll\" " +
+                      "para copiá-la de onde estiver (pasta do SDK, pendrive)."),
             new ItemDoAmbiente(
                 ".NET Framework 3.5",
                 net35Instalado,
                 net35Instalado switch
                 {
                     true => "Habilitado.",
-                    false => "Habilite em 'Ativar ou desativar recursos do Windows'. Sem ele a EasyInner.dll falha com retorno 8.",
-                    _ => "Não foi possível verificar; confira em 'Ativar ou desativar recursos do Windows'.",
+                    false => "Clique em \"Habilitar .NET Framework 3.5\". Sem ele a EasyInner.dll falha com retorno 8.",
+                    _ => "Não foi possível verificar; clique em \"Habilitar .NET Framework 3.5\" por garantia.",
                 }),
             new ItemDoAmbiente(
-                ".NET 10 de 32 bits (programa das catracas)",
-                runtimeX86,
-                runtimeX86 ? "Instalado." : "Instale o \".NET 10 Runtime\" x86. O programa das catracas é de 32 bits por causa da EasyInner.dll."),
-            new ItemDoAmbiente(
-                "ASP.NET Core 10 de 64 bits (serviço)",
-                aspnetX64,
-                aspnetX64 ? "Instalado." : "Instale o \"ASP.NET Core Runtime 10\" x64."),
-            new ItemDoAmbiente(
-                ".NET Desktop 10 de 64 bits (painel)",
-                desktopX64,
-                desktopX64 ? "Instalado." : "Instale o \".NET Desktop Runtime 10\" x64."),
+                ".NET 10",
+                true,
+                "Vem junto com o instalador; não é preciso instalar nada."),
         ];
+    }
+
+    /// <summary>
+    /// Copia a EasyInner.dll escolhida pelo instalador para a pasta do programa das catracas.
+    /// </summary>
+    /// <remarks>
+    /// Recusa DLL de 64 bits antes de copiar: o programa das catracas é de 32 bits, e a DLL
+    /// errada só apareceria na primeira conexão, como retorno 8.
+    /// </remarks>
+    /// <returns>O caminho da cópia.</returns>
+    /// <exception cref="ArgumentException">Não é a EasyInner.dll de 32 bits.</exception>
+    public static string CopiarEasyInner(string origem, string pastaDoWorker)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(origem);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pastaDoWorker);
+
+        if (!string.Equals(Path.GetFileName(origem), "EasyInner.dll", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Escolha o arquivo EasyInner.dll.", nameof(origem));
+        }
+
+        if (MaquinaDoPe(origem) is not 0x014C)
+        {
+            throw new ArgumentException(
+                "Esta EasyInner.dll não é de 32 bits. Use a do SDK Inner Acesso para Windows 32 bits.", nameof(origem));
+        }
+
+        Directory.CreateDirectory(pastaDoWorker);
+        var destino = Path.Combine(pastaDoWorker, "EasyInner.dll");
+        File.Copy(origem, destino, overwrite: true);
+        return destino;
+    }
+
+    /// <summary>O campo "Machine" do cabeçalho PE; nulo se o arquivo não é um executável do Windows.</summary>
+    public static ushort? MaquinaDoPe(string arquivo)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(arquivo);
+
+        using var fluxo = File.OpenRead(arquivo);
+        using var leitor = new BinaryReader(fluxo);
+
+        if (fluxo.Length < 0x40 || leitor.ReadUInt16() != 0x5A4D)
+        {
+            return null;
+        }
+
+        fluxo.Position = 0x3C;
+        var inicio = leitor.ReadInt32();
+        if (inicio <= 0 || inicio + 6 > fluxo.Length)
+        {
+            return null;
+        }
+
+        fluxo.Position = inicio;
+        if (leitor.ReadUInt32() != 0x00004550)
+        {
+            return null;
+        }
+
+        return leitor.ReadUInt16();
     }
 
     private static ConfiguracaoDaNuvem Nuvem(DadosDaInstalacao dados) =>

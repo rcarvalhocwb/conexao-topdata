@@ -108,7 +108,6 @@ public partial class JanelaDoAssistente : Window
     {
         var itens = AssistenteDeConfiguracao.VerificarAmbiente(
             File.Exists,
-            pasta => Directory.Exists(pasta) ? Directory.GetDirectories(pasta).Select(Path.GetFileName).OfType<string>() : [],
             Net35Instalado(),
             PastaDoWorker);
 
@@ -118,6 +117,71 @@ public partial class JanelaDoAssistente : Window
             false => new LinhaDoAmbiente(i.Item, i.Orientacao, "✖ FALTA", Brushes.Firebrick),
             _ => new LinhaDoAmbiente(i.Item, i.Orientacao, "? CONFERIR", Brushes.DarkGoldenrod),
         }).ToList();
+    }
+
+    private void LocalizarEasyInner(object sender, RoutedEventArgs e)
+    {
+        var dialogo = new OpenFileDialog
+        {
+            Title = "Localizar a EasyInner.dll do SDK da Topdata",
+            Filter = "EasyInner.dll|EasyInner.dll",
+        };
+
+        if (dialogo.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var destino = AssistenteDeConfiguracao.CopiarEasyInner(dialogo.FileName, PastaDoWorker);
+            TextoDoAmbiente.Text = $"EasyInner.dll copiada para {destino}.";
+        }
+        catch (Exception erro) when (erro is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            TextoDoAmbiente.Text = $"Não foi possível copiar: {erro.Message}";
+        }
+
+        VerificarAmbiente(this, e);
+    }
+
+    // DISM é a ferramenta do próprio Windows para ligar recursos. Pode precisar de internet
+    // (Windows Update) e de alguns minutos; roda em segundo plano para a janela não travar.
+    private async void HabilitarNet35(object sender, RoutedEventArgs e)
+    {
+        BotaoNet35.IsEnabled = false;
+        TextoDoAmbiente.Text = "Habilitando o .NET Framework 3.5… pode levar alguns minutos.";
+
+        try
+        {
+            var inicio = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.SystemDirectory, "dism.exe"),
+                Arguments = "/Online /Enable-Feature /FeatureName:NetFx3 /All /NoRestart",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var processo = System.Diagnostics.Process.Start(inicio)!;
+            await processo.WaitForExitAsync().ConfigureAwait(true);
+
+            TextoDoAmbiente.Text = processo.ExitCode switch
+            {
+                0 => ".NET Framework 3.5 habilitado.",
+                3010 => ".NET Framework 3.5 habilitado. Reinicie o computador para concluir.",
+                _ => $"O Windows não conseguiu habilitar (código {processo.ExitCode}). Verifique a internet ou habilite em " +
+                     "'Ativar ou desativar recursos do Windows'.",
+            };
+        }
+        catch (Exception erro) when (erro is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            TextoDoAmbiente.Text = $"Não foi possível executar o DISM: {erro.Message}";
+        }
+        finally
+        {
+            BotaoNet35.IsEnabled = true;
+            VerificarAmbiente(this, e);
+        }
     }
 
     private static bool? Net35Instalado()

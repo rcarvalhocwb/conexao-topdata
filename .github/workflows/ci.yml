@@ -113,7 +113,10 @@ jobs:
   instalador:
     name: Instalador MSI (Windows)
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    # Escrita só aqui, e só para publicar o Setup.exe na pré-release de teste.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -122,15 +125,19 @@ jobs:
           global-json-file: global.json
 
       - name: Instalar o WiX
-        run: dotnet tool install --global wix --version 6.0.2
+        run: |
+          dotnet tool install --global wix --version 6.0.2
+          wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
 
-      - name: Publicar os tres componentes
+      # Self-contained: cada componente leva o seu .NET. O Setup.exe instala e funciona
+      # sem pedir runtime nenhum ao operador; o custo é o tamanho (uns 240 MB).
+      - name: Publicar os componentes
         shell: pwsh
         run: |
-          dotnet publish src/Edge.Supervisor -c Release -r win-x64 --self-contained false -o publicado/Servico
-          dotnet publish src/Desktop.App     -c Release -r win-x64 --self-contained false -o publicado/Painel
-          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained false -o publicado/Worker
-          dotnet publish src/Edge.Configurador -c Release -r win-x64 --self-contained false -o publicado/Configurador
+          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -o publicado/Servico
+          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -o publicado/Painel
+          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -o publicado/Worker
+          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -o publicado/Configurador
 
       # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
       # no cabecalho PE, e mais barato que descobrir na bancada.
@@ -194,6 +201,38 @@ jobs:
 
           if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI.' }
           Write-Host 'Conteúdo do MSI: ok'
+
+      - name: Construir o Setup.exe
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
+            -d Versao=$versao -d Msi=$msi -o ConexaoTopdata-Setup.exe
+          Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item ConexaoTopdata-Setup.exe).Length / 1MB))
+
+      - name: Publicar o Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-exe
+          path: ConexaoTopdata-Setup.exe
+          if-no-files-found: error
+
+      # Artefato do Actions sempre baixa em zip. A pré-release "instalador-de-teste" dá um
+      # link direto para o .exe, sempre com o do último commit.
+      - name: Atualizar a pré-release de teste
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          $tag = 'instalador-de-teste'
+          gh release delete $tag --yes --cleanup-tag 2>$null
+          $notas = "Instalador de teste gerado automaticamente a partir do commit $env:COMMIT. " +
+                   "Não é versão de produção. Baixe ConexaoTopdata-Setup.exe e execute como administrador."
+          gh release create $tag ConexaoTopdata-Setup.exe --prerelease --target $env:COMMIT `
+            --title "Instalador de teste" --notes $notas
 
       # Para a bancada (docs/21) não é preciso instalar nada: o worker vai num zip,
       # autocontido, sem exigir o .NET instalado no PC. A EasyInner.dll continua vindo do

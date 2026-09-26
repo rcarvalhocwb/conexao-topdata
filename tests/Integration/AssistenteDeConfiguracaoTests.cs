@@ -134,14 +134,62 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
     {
         var itens = AssistenteDeConfiguracao.VerificarAmbiente(
             existeArquivo: _ => false,
-            subpastas: pasta => pasta.Contains("AspNetCore", StringComparison.Ordinal) ? ["10.0.1"] : [],
             net35Instalado: false,
             pastaDoWorker: _pasta);
 
         Assert.Equal(false, itens.Single(i => i.Item.StartsWith("SDK da Topdata", StringComparison.Ordinal)).Ok);
+        Assert.Contains("Localizar EasyInner.dll", itens[0].Orientacao, StringComparison.Ordinal);
         Assert.Equal(false, itens.Single(i => i.Item == ".NET Framework 3.5").Ok);
-        Assert.Equal(true, itens.Single(i => i.Item.StartsWith("ASP.NET Core", StringComparison.Ordinal)).Ok);
-        Assert.Contains("x86", itens.Single(i => i.Item.StartsWith(".NET 10 de 32", StringComparison.Ordinal)).Orientacao, StringComparison.Ordinal);
+
+        // O .NET vem dentro do instalador: não é pré-requisito.
+        Assert.Equal(true, itens.Single(i => i.Item == ".NET 10").Ok);
+
+        var achou = AssistenteDeConfiguracao.VerificarAmbiente(
+            existeArquivo: caminho => caminho == Path.Combine(_pasta, "EasyInner.dll"),
+            net35Instalado: true,
+            pastaDoWorker: _pasta);
+        Assert.All(achou, i => Assert.Equal(true, i.Ok));
+    }
+
+    [Fact]
+    public void Copia_so_a_EasyInner_de_32_bits()
+    {
+        var origem = Path.Combine(_pasta, "sdk");
+        Directory.CreateDirectory(origem);
+
+        var de32 = Path.Combine(origem, "EasyInner.dll");
+        File.WriteAllBytes(de32, Pe(0x014C));
+
+        var destino = AssistenteDeConfiguracao.CopiarEasyInner(de32, Path.Combine(_pasta, "Worker"));
+        Assert.Equal(File.ReadAllBytes(de32), File.ReadAllBytes(destino));
+
+        var pasta64 = Path.Combine(_pasta, "sdk64");
+        Directory.CreateDirectory(pasta64);
+        var de64 = Path.Combine(pasta64, "EasyInner.dll");
+        File.WriteAllBytes(de64, Pe(0x8664));
+        var erro = Assert.Throws<ArgumentException>(() => AssistenteDeConfiguracao.CopiarEasyInner(de64, Path.Combine(_pasta, "Worker")));
+        Assert.Contains("32 bits", erro.Message, StringComparison.Ordinal);
+
+        var outra = Path.Combine(origem, "Outra.dll");
+        File.WriteAllBytes(outra, Pe(0x014C));
+        Assert.Throws<ArgumentException>(() => AssistenteDeConfiguracao.CopiarEasyInner(outra, Path.Combine(_pasta, "Worker")));
+
+        var texto = Path.Combine(pasta64, "..", "texto", "EasyInner.dll");
+        Directory.CreateDirectory(Path.GetDirectoryName(texto)!);
+        File.WriteAllText(texto, "isto não é uma DLL, mas precisa ter mais de sessenta e quatro bytes para o teste");
+        Assert.Throws<ArgumentException>(() => AssistenteDeConfiguracao.CopiarEasyInner(texto, Path.Combine(_pasta, "Worker")));
+    }
+
+    // Cabeçalho PE mínimo: "MZ", o ponteiro em 0x3C, "PE\0\0" e o campo Machine.
+    private static byte[] Pe(ushort maquina)
+    {
+        var bytes = new byte[0x100];
+        bytes[0] = (byte)'M';
+        bytes[1] = (byte)'Z';
+        BitConverter.GetBytes(0x80).CopyTo(bytes, 0x3C);
+        "PE\0\0"u8.ToArray().CopyTo(bytes, 0x80);
+        BitConverter.GetBytes(maquina).CopyTo(bytes, 0x84);
+        return bytes;
     }
 
     [Fact]
