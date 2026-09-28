@@ -122,11 +122,14 @@ public sealed class SessaoDeOperacao
     }
 
     /// <summary>Roda até o cancelamento.</summary>
-    public void Executar(CancellationToken cancelamento)
+    /// <param name="cancelamento">Parada.</param>
+    /// <param name="aCadaVolta">Chamado entre as voltas; o modo simulação entrega leituras aqui.</param>
+    public void Executar(CancellationToken cancelamento, Action? aCadaVolta = null)
     {
         while (!cancelamento.IsCancellationRequested)
         {
             UmaVolta();
+            aCadaVolta?.Invoke();
         }
     }
 

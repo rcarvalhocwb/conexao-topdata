@@ -98,6 +98,12 @@ public sealed record EstadoDoPainel
             mensagem = "Nenhuma catraca conectada — verifique a rede e a alimentação";
         }
 
+        if (resposta.Simulacao)
+        {
+            // Impossível confundir com operação real: vem antes de qualquer outra frase.
+            mensagem = "MODO SIMULAÇÃO (sem catraca física) — " + mensagem;
+        }
+
         return new EstadoDoPainel
         {
             Saude = saude,

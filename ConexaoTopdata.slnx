@@ -20,7 +20,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CrashProbe/CrashProbe.csproj" />
-    <Project Path="tests/Simulator/Simulator.csproj" />
+    <Project Path="src/Simulator/Simulator.csproj" />
   </Folder>
   <Folder Name="/tests/Contract/">
     <Project Path="tests/Contract/Contract.Tests.csproj" />

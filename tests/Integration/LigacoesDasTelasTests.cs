@@ -32,6 +32,7 @@ public sealed partial class LigacoesDasTelasTests
         ],
         ["Telas/Configuracoes.xaml"] = [typeof(ConfiguracoesViewModel)],
         ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker)],
+        ["Telas/Simulador.xaml"] = [typeof(SimuladorViewModel), typeof(LinhaDeAcesso), typeof(ParDeTexto)],
         ["JanelaPrincipal.xaml"] = [typeof(JanelaViewModel), typeof(PainelAoVivoViewModel), typeof(EstadoDoPainel), typeof(ITela)],
     };
 
@@ -89,6 +90,20 @@ public sealed partial class LigacoesDasTelasTests
     {
         var xaml = File.ReadAllText(Path.Combine(PastaDoAplicativo(), "..", "..", arquivo));
         Assert.Contains($"x:Class=\"{classe}\"", xaml, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// WPF em globalização invariante cai na primeira ligação que converte número em texto
+    /// ("Cannot find non-neutral culture related to 'en-us'"). Foi o painel caindo ao abrir
+    /// e o assistente fechando no Avançar.
+    /// </summary>
+    [Theory]
+    [InlineData("src/Desktop.App/Desktop.App.csproj")]
+    [InlineData("src/Edge.Configurador/Edge.Configurador.csproj")]
+    public void Aplicativo_de_tela_nao_usa_globalizacao_invariante(string projeto)
+    {
+        var xml = File.ReadAllText(Path.Combine(PastaDoAplicativo(), "..", "..", projeto));
+        Assert.Contains("<InvariantGlobalization>false</InvariantGlobalization>", xml, StringComparison.Ordinal);
     }
 
     // Caminho pontilhado: cada trecho precisa existir no tipo do trecho anterior; o

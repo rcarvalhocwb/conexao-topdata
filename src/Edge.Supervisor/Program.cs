@@ -104,8 +104,24 @@ var workers = configuracao.Grupos
         g.Porta,
         g.Inners,
         ConfiguracaoDoSupervisor.ResolverExecutavel(g.Executavel),
-        argumentosExtras: ["--banco", caminhoDoBanco, "--worker", g.Nome]))
+        argumentosExtras: configuracao.Simulacao
+            ? ["--banco", caminhoDoBanco, "--worker", g.Nome, "--simulador"]
+            : ["--banco", caminhoDoBanco, "--worker", g.Nome]))
     .ToList();
+
+// Modo simulação: ingressos e cartões de teste carregados a cada partida (idempotente).
+LeiturasSimuladas? leiturasSimuladas = null;
+if (configuracao.Simulacao)
+{
+    leiturasSimuladas = new LeiturasSimuladas(fabrica);
+    var exemplo = Path.Combine(AppContext.BaseDirectory, "simulacao.exemplo.json");
+
+    if (File.Exists(exemplo))
+    {
+        var carga = ArquivoDeBancada.Carregar(File.ReadAllText(exemplo), new RepositorioDeIngressos(fabrica), DateTimeOffset.UtcNow);
+        Console.WriteLine($"MODO SIMULAÇÃO: {carga.Ingressos} ingresso(s) e {carga.Cartoes} cartão(ões) de teste carregados.");
+    }
+}
 
 var supervisor = new WorkerSupervisor(workers);
 var operacao = new Operacao(fabrica);
@@ -167,7 +183,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     configuracoes: configuracoesDaBorda,
     pastaDeDados: configuracao.PastaDeDados,
     semConfiguracao: semConfiguracao,
-    nomesDasCatracas: configuracao.NomesDasCatracas));
+    nomesDasCatracas: configuracao.NomesDasCatracas,
+    simulacao: leiturasSimuladas));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();

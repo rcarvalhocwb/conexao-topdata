@@ -128,6 +128,7 @@ jobs:
         run: |
           dotnet tool install --global wix --version 6.0.2
           wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
+          wix extension add --global WixToolset.Util.wixext/6.0.2
 
       # Self-contained: cada componente leva o seu .NET. O Setup.exe instala e funciona
       # sem pedir runtime nenhum ao operador; o custo é o tamanho (uns 240 MB).
@@ -189,7 +190,7 @@ jobs:
         shell: pwsh
         run: |
           $versao = "0.1.$env:GITHUB_RUN_NUMBER"
-          wix build installer/wix/ConexaoTopdata.wxs `
+          wix build installer/wix/ConexaoTopdata.wxs -ext WixToolset.Util.wixext `
             -d Versao=$versao `
             -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
             -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `

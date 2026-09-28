@@ -1,0 +1,25 @@
+// Ingressos e cartões DE TESTE do modo simulação. Carregados pelo serviço a cada partida
+// quando workers.json tem "simulacao": true. Ver docs/23-modo-simulacao.md.
+//
+// São fictícios. Use estes códigos na tela "Simulador" do painel.
+{
+  "provedores": [
+    { "id": "simulacao-online", "nome": "Venda online (simulação)" },
+    { "id": "simulacao-bilheteria", "nome": "Bilheteria (simulação)",
+      "reutilizavel": true, "intervaloDeReusoSegundos": 240, "somenteNaUrna": true }
+  ],
+
+  "ingressos": [
+    { "provedor": "simulacao-online", "referencia": "SIM-01", "qr": "1000000001", "categoria": "inteira" },
+    { "provedor": "simulacao-online", "referencia": "SIM-02", "qr": "1000000002", "categoria": "meia" },
+    { "provedor": "simulacao-online", "referencia": "SIM-03", "qr": "1000000003", "categoria": "solidaria" },
+    { "provedor": "simulacao-online", "referencia": "SIM-04", "qr": "2000000004", "categoria": "inteira", "usos": 2 }
+  ],
+
+  // Cartões da bilheteria: só valem na fenda da urna, e não voltam antes de 4 minutos.
+  "cartoes": [
+    { "provedor": "simulacao-bilheteria", "codigo": "0000000101", "categoria": "inteira" },
+    { "provedor": "simulacao-bilheteria", "codigo": "0000000102", "categoria": "meia" },
+    { "provedor": "simulacao-bilheteria", "codigo": "0000000103", "categoria": "social" }
+  ]
+}

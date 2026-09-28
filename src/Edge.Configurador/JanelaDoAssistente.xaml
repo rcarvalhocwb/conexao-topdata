@@ -48,6 +48,8 @@
           <StackPanel DockPanel.Dock="Top">
             <TextBlock Style="{StaticResource Titulo}" Text="Quais catracas este computador atende?" />
             <TextBlock Text="O número é o do Inner configurado em cada catraca. O nome é o que aparece no painel. Em cada catraca, aponte o servidor para o IP deste computador e para a porta abaixo." />
+            <CheckBox x:Name="CaixaSimulacao" Click="VerificarAmbiente" Margin="0,12,0,0" MinHeight="32" VerticalContentAlignment="Center"
+                      Content="Modo simulação: catracas simuladas, sem catraca física (para treinar e testar)" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Porta (padrão 3570)" />
             <TextBox x:Name="CampoPorta" Width="120" HorizontalAlignment="Left" AutomationProperties.Name="Porta" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Catracas (clique na última linha para incluir; selecione e tecle Delete para tirar)" />

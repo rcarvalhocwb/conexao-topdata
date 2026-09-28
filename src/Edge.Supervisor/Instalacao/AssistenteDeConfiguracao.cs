@@ -30,6 +30,9 @@ public sealed record DadosDaInstalacao
 
     public bool SomenteNaUrna { get; init; } = true;
 
+    /// <summary>Catracas simuladas, sem EasyInner.dll nem catraca física.</summary>
+    public bool Simulacao { get; init; }
+
     /// <summary>Segredo da nuvem. Nulo = manter o que já está no cofre.</summary>
     [JsonIgnore]
     public string? Segredo { get; init; }
@@ -128,7 +131,8 @@ public static class AssistenteDeConfiguracao
             Grupos: [new GrupoConfigurado(NomeDoGrupo, dados.Porta, [.. dados.Catracas.Select(c => c.Inner).Order()], executavelDoWorker)],
             Banco: null,
             Nuvem: dados.NuvemLigada ? Nuvem(dados) : null,
-            NomesDasCatracas: dados.Catracas.ToDictionary(c => c.Inner, c => c.Nome.Trim()));
+            NomesDasCatracas: dados.Catracas.ToDictionary(c => c.Inner, c => c.Nome.Trim()),
+            Simulacao: dados.Simulacao);
     }
 
     /// <summary>
@@ -192,6 +196,7 @@ public static class AssistenteDeConfiguracao
             Perfil = c.Nuvem?.Perfil ?? "raw",
             IntervaloDeReusoSegundos = c.Nuvem?.IntervaloDeReusoSegundos ?? 240,
             SomenteNaUrna = c.Nuvem?.SomenteNaUrna ?? true,
+            Simulacao = c.Simulacao,
         };
     }
 
@@ -202,10 +207,12 @@ public static class AssistenteDeConfiguracao
     /// <param name="existeArquivo">Se um arquivo existe.</param>
     /// <param name="net35Instalado">Se o .NET Framework 3.5 está habilitado; nulo se não dá para saber.</param>
     /// <param name="pastaDoWorker">Pasta onde o worker foi instalado.</param>
+    /// <param name="simulacao">Modo simulação: a EasyInner.dll não é necessária.</param>
     public static IReadOnlyList<ItemDoAmbiente> VerificarAmbiente(
         Func<string, bool> existeArquivo,
         bool? net35Instalado,
-        string pastaDoWorker)
+        string pastaDoWorker,
+        bool simulacao = false)
     {
         ArgumentNullException.ThrowIfNull(existeArquivo);
 
@@ -224,8 +231,10 @@ public static class AssistenteDeConfiguracao
         [
             new ItemDoAmbiente(
                 "SDK da Topdata (EasyInner.dll)",
-                dll is not null,
-                dll is not null
+                dll is not null || simulacao,
+                simulacao && dll is null
+                    ? "Não é necessário no modo simulação. Para usar catraca física, instale o SDK Inner Acesso."
+                    : dll is not null
                     ? $"Encontrada em {dll}."
                     : "Não encontrada. Instale o SDK Inner Acesso da Topdata, ou clique em \"Localizar EasyInner.dll\" " +
                       "para copiá-la de onde estiver (pasta do SDK, pendrive)."),

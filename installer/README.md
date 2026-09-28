@@ -95,7 +95,10 @@ Execute como administrador. Ele:
 | Item | Por que não vem | Como resolver |
 |---|---|---|
 | SDK da Topdata (`EasyInner.dll`) | É da Topdata, e este repositório é público | Instale o SDK Inner Acesso, **ou** no assistente clique em **Localizar EasyInner.dll…** e escolha o arquivo (pasta do SDK, pendrive). Ele recusa a DLL de 64 bits |
-| .NET Framework 3.5 | É recurso do Windows, não arquivo | No assistente, **Habilitar .NET Framework 3.5** (pode precisar de internet) |
+| .NET Framework 3.5 | É recurso do Windows, não arquivo | O Setup **habilita sozinho** durante a instalação (DISM; pode precisar de internet). Se falhar, a instalação segue e o assistente tem o botão **Habilitar .NET Framework 3.5** |
+
+**Sem catraca física?** Marque **Modo simulação** no passo 2 do assistente: o SDK não é
+necessário e o painel ganha a tela **Simulador**. Ver [docs/23](../docs/23-modo-simulacao.md).
 
 ### Configurar — Assistente de configuração
 

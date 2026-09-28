@@ -17,6 +17,14 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      Telas NÃO podem rodar em globalização invariante (ligada para o resto da solução em
+      Directory.Build.props). No modo invariante o WPF lança "Cannot find non-neutral
+      culture related to 'en-us'" na primeira ligação que converte número em texto: o
+      painel caía ao abrir e o assistente, no Avançar para as catracas. Achado pelo
+      autoteste da CI.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>

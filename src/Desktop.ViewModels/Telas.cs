@@ -681,6 +681,102 @@ public sealed class DiagnosticoViewModel : TelaBase
         });
 }
 
+/// <summary>
+/// Simulador de catraca: "passa" um código numa catraca simulada, como se o leitor tivesse
+/// lido. Só funciona com a instalação em modo simulação.
+/// </summary>
+public sealed class SimuladorViewModel : TelaBase
+{
+    private string _catraca = "1";
+    private string _codigo = string.Empty;
+    private bool _naUrna;
+    private bool _girar = true;
+    private IReadOnlyList<LinhaDeAcesso> _resultados = [];
+
+    public SimuladorViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null, TimeSpan? esperaPeloResultado = null)
+        : base(cliente, relogio)
+    {
+        EsperaPeloResultado = esperaPeloResultado ?? TimeSpan.FromSeconds(1.5);
+        Passar = new ComandoAssincrono(PassarAsync, () => !string.IsNullOrWhiteSpace(Codigo));
+    }
+
+    public override string Titulo => "Simulador";
+
+    public ComandoAssincrono Passar { get; }
+
+    /// <summary>Quanto esperar a catraca simulada decidir antes de buscar o resultado.</summary>
+    public TimeSpan EsperaPeloResultado { get; }
+
+    public string Catraca { get => _catraca; set => Definir(ref _catraca, value ?? string.Empty); }
+
+    public string Codigo
+    {
+        get => _codigo;
+        set
+        {
+            if (Definir(ref _codigo, value ?? string.Empty))
+            {
+                Passar.ReavaliarDisponibilidade();
+            }
+        }
+    }
+
+    public bool NaUrna { get => _naUrna; set => Definir(ref _naUrna, value); }
+
+    public bool Girar { get => _girar; set => Definir(ref _girar, value); }
+
+    /// <summary>As últimas tentativas da catraca escolhida, depois de passar.</summary>
+    public IReadOnlyList<LinhaDeAcesso> Resultados { get => _resultados; private set => Definir(ref _resultados, value); }
+
+    /// <summary>Códigos de teste carregados no modo simulação (installer/simulacao.exemplo.json).</summary>
+    public IReadOnlyList<ParDeTexto> CodigosDeTeste { get; } =
+    [
+        new("1000000001", "QR online · inteira · 1 uso"),
+        new("1000000002", "QR online · meia · 1 uso"),
+        new("2000000004", "QR online · inteira · 2 usos"),
+        new("0000000101", "Cartão da bilheteria · inteira · só na urna"),
+        new("0000000102", "Cartão da bilheteria · meia · só na urna"),
+        new("9999999999", "Código que não existe"),
+    ];
+
+    public override Task AtualizarAsync(CancellationToken cancelamento = default) => Task.CompletedTask;
+
+    private async Task PassarAsync()
+    {
+        if (!int.TryParse(Catraca, NumberStyles.None, CultureInfo.InvariantCulture, out var inner) || inner < 1)
+        {
+            Mensagem = "Informe o número da catraca.";
+            return;
+        }
+
+        await Tentar(async () =>
+        {
+            var resposta = await Cliente.SimularLeituraAsync(new SimularLeituraRequest
+            {
+                Inner = inner,
+                Codigo = Codigo.Trim(),
+                NaUrna = NaUrna,
+                Girar = Girar,
+            });
+
+            Mensagem = resposta.Mensagem;
+
+            if (!resposta.Aceita)
+            {
+                return;
+            }
+
+            // A catraca simulada decide no laço do worker; o resultado chega em instantes.
+            await Task.Delay(EsperaPeloResultado);
+            var acessos = await Cliente.ListarAcessosAsync(new ListarAcessosRequest { Inner = inner, Limite = 5 });
+            Resultados = [.. acessos.Acessos.Select(LinhaDeAcesso.De)];
+            Mensagem = Resultados.Count > 0
+                ? $"Catraca {inner}: {Resultados[0].Mensagem}"
+                : "A catraca simulada ainda não respondeu. Veja o Painel ao vivo.";
+        }).ConfigureAwait(true);
+    }
+}
+
 /// <summary>A janela: menu lateral, tela atual e cabeçalho de estado.</summary>
 public sealed class JanelaViewModel : Notificavel
 {
@@ -701,6 +797,7 @@ public sealed class JanelaViewModel : Notificavel
             new ContasViewModel(cliente, relogio),
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
+            new SimuladorViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
     }

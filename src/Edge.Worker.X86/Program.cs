@@ -38,6 +38,17 @@ internal static class Program
             Console.WriteLine($"[{marca}] {item.Id}: {item.Mensagem}");
         }
 
+        // Modo simulação: catracas simuladas, sem EasyInner.dll e sem hardware. O resto —
+        // decisão, base, giro, envio à nuvem — é o caminho de verdade.
+        if (Array.IndexOf(args, "--simulador") >= 0 && Valor(args, "--banco") is { } bancoSimulado)
+        {
+            var portaSimulada = LerPorta(args);
+            using var simulador = new Simulator.InnerSimulator();
+            simulador.AbrirPorta(portaSimulada);
+            Console.WriteLine($"MODO SIMULAÇÃO: catracas simuladas na porta {portaSimulada}; nenhuma catraca física é acionada.");
+            return ExecutarOperacao(simulador, portaSimulada, bancoSimulado, args, simulador);
+        }
+
         var impeditivos = VerificadorDePreRequisitos.Impeditivos(preRequisitos);
         if (impeditivos.Count > 0)
         {
@@ -185,7 +196,12 @@ internal static class Program
     /// Operação: o laço de verdade, sem tela, decidindo pela base local compartilhada com o
     /// serviço. É como o serviço sobe o worker (ADR-0024).
     /// </summary>
-    private static int ExecutarOperacao(TopdataInnerAdapter adapter, int porta, string banco, string[] args)
+    private static int ExecutarOperacao(
+        ITopdataInnerAdapter adapter,
+        int porta,
+        string banco,
+        string[] args,
+        Simulator.InnerSimulator? simulador = null)
     {
         var nome = Valor(args, "--worker") ?? $"porta-{porta}";
         var pastaDeRegistros = Valor(args, "--registros")
@@ -255,7 +271,26 @@ internal static class Program
             cancelamento.Cancel();
         };
 
-        sessao.Executar(cancelamento.Token);
+        Action? aCadaVolta = null;
+
+        if (simulador is not null)
+        {
+            var leituras = new LeiturasSimuladas(fabrica);
+            var conducao = new Simulator.ConducaoDeLeituras(
+                simulador,
+                catracas => [.. leituras.Retirar(catracas, DateTimeOffset.UtcNow)
+                    .Select(l => new Simulator.LeituraParaSimular(l.Inner, l.Codigo, l.NaUrna, l.Girar))],
+                inners);
+
+            // O simulador responde na hora; sem pausa, o laço ocuparia um núcleo inteiro.
+            aCadaVolta = () =>
+            {
+                conducao.UmaVolta();
+                Thread.Sleep(20);
+            };
+        }
+
+        sessao.Executar(cancelamento.Token, aCadaVolta);
         Registrar("encerrado.");
         return 0;
     }

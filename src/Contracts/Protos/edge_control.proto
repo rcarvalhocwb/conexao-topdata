@@ -33,6 +33,9 @@ service EdgeControl {
   rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
   rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
   rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
+
+  // Modo simulação: "passa" um código numa catraca simulada. Recusado fora da simulação.
+  rpc SimularLeitura(SimularLeituraRequest) returns (SimularLeituraResponse);
 }
 
 message ObterEstadoRequest {}
@@ -66,6 +69,9 @@ message ObterEstadoResponse {
   // Verdadeiro quando o serviço subiu sem arquivo de configuração: falta rodar o
   // assistente de configuração. Falso (o padrão) em serviço configurado ou antigo.
   bool sem_configuracao = 15;
+
+  // Catracas simuladas: nenhuma catraca física é acionada.
+  bool simulacao = 16;
 }
 
 message ListarEquipamentosRequest {}
@@ -282,4 +288,16 @@ message DiagnosticoDeWorker {
   string detalhe = 3;
   int32 reinicios = 4;
   repeated string ultimas_linhas = 5;
+}
+
+message SimularLeituraRequest {
+  int32 inner = 1;
+  string codigo = 2;
+  bool na_urna = 3;       // fenda da urna (leitor 2) em vez do leitor da frente
+  bool girar = 4;         // se liberada, a pessoa gira
+}
+
+message SimularLeituraResponse {
+  bool aceita = 1;
+  string mensagem = 2;
 }

@@ -23,6 +23,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Ingressos de teste do modo simulação, carregados pelo serviço. -->
+    <None Include="../../installer/simulacao.exemplo.json"
+          Link="simulacao.exemplo.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- DPAPI: o cofre do segredo da nuvem. Só é usado no Windows. -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <!-- Sem isto o executável não responde ao gerenciador de serviços do Windows, que

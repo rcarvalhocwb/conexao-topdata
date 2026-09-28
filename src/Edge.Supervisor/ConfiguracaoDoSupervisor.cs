@@ -16,12 +16,17 @@ public sealed record GrupoConfigurado(string Nome, int Porta, IReadOnlyList<int>
 /// <param name="Banco">Caminho da base local; vazio usa o padrão, ver <see cref="CaminhoDoBanco"/>.</param>
 /// <param name="Nuvem">Painel na nuvem; ausente, a borda opera sem sincronizar.</param>
 /// <param name="NomesDasCatracas">Nome de cada catraca no painel, pelo número do Inner.</param>
+/// <param name="Simulacao">
+/// Catracas simuladas no lugar das físicas, sem EasyInner.dll. Para treinar e testar o
+/// sistema inteiro antes de ter catraca. Ver docs/23-modo-simulacao.md.
+/// </param>
 public sealed record ConfiguracaoDoSupervisor(
     string? Endereco,
     IReadOnlyList<GrupoConfigurado> Grupos,
     string? Banco = null,
     ConfiguracaoDaNuvem? Nuvem = null,
-    IReadOnlyDictionary<int, string>? NomesDasCatracas = null)
+    IReadOnlyDictionary<int, string>? NomesDasCatracas = null,
+    bool Simulacao = false)
 {
     /// <summary>
     /// Caminho relativo do executável é relativo à pasta do serviço, e não à pasta atual:

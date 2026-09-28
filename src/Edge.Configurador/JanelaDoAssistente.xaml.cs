@@ -89,6 +89,7 @@ public partial class JanelaDoAssistente : Window
         };
         CampoReuso.Text = dados.IntervaloDeReusoSegundos.ToString(CultureInfo.InvariantCulture);
         CaixaUrna.IsChecked = dados.SomenteNaUrna;
+        CaixaSimulacao.IsChecked = dados.Simulacao;
     }
 
     private DadosDaInstalacao Ler() => new()
@@ -101,6 +102,7 @@ public partial class JanelaDoAssistente : Window
         Perfil = (CampoPerfil.SelectedItem as ComboBoxItem)?.Content as string ?? "raw",
         IntervaloDeReusoSegundos = int.TryParse(CampoReuso.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var reuso) ? reuso : -1,
         SomenteNaUrna = CaixaUrna.IsChecked == true,
+        Simulacao = CaixaSimulacao.IsChecked == true,
         Segredo = string.IsNullOrEmpty(CampoSegredo.Password) ? null : CampoSegredo.Password,
     };
 
@@ -109,7 +111,8 @@ public partial class JanelaDoAssistente : Window
         var itens = AssistenteDeConfiguracao.VerificarAmbiente(
             File.Exists,
             Net35Instalado(),
-            PastaDoWorker);
+            PastaDoWorker,
+            CaixaSimulacao.IsChecked == true);
 
         ListaDoAmbiente.ItemsSource = itens.Select(i => i.Ok switch
         {
@@ -261,6 +264,7 @@ public partial class JanelaDoAssistente : Window
             : "Nuvem desligada.";
 
         TextoResumo.Text =
+            (dados.Simulacao ? "MODO SIMULAÇÃO: nenhuma catraca física será acionada." + Environment.NewLine : string.Empty) +
             $"{dados.Catracas.Count} catraca(s) na porta {dados.Porta}: {catracas}.{Environment.NewLine}{nuvem}";
 
         var problemas = AssistenteDeConfiguracao.Validar(dados);

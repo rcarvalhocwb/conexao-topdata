@@ -23,6 +23,8 @@
     <!-- Só o modo bancada usa: a base local onde o ensaio decide. -->
     <ProjectReference Include="../Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
     <ProjectReference Include="../Topdata.EasyInner.Adapter/Topdata.EasyInner.Adapter.csproj" />
+    <!-- Modo simulação: catracas simuladas no lugar da EasyInner.dll. -->
+    <ProjectReference Include="../Simulator/Simulator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

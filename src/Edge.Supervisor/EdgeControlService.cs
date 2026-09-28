@@ -36,6 +36,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly string _pastaDeDados;
     private readonly bool _semConfiguracao;
     private readonly IReadOnlyDictionary<int, string> _nomes;
+    private readonly Access.Infrastructure.SQLite.LeiturasSimuladas? _simulacao;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -50,6 +51,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="pastaDeDados">Onde ficam base, registros e segredos, para o diagnóstico.</param>
     /// <param name="semConfiguracao">O serviço subiu sem arquivo de configuração.</param>
     /// <param name="nomesDasCatracas">Nome de cada catraca no painel.</param>
+    /// <param name="simulacao">Fila de leituras simuladas; presente só no modo simulação.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -60,7 +62,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.ConfiguracoesDaBorda? configuracoes = null,
         string? pastaDeDados = null,
         bool semConfiguracao = false,
-        IReadOnlyDictionary<int, string>? nomesDasCatracas = null)
+        IReadOnlyDictionary<int, string>? nomesDasCatracas = null,
+        Access.Infrastructure.SQLite.LeiturasSimuladas? simulacao = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -73,6 +76,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         _pastaDeDados = pastaDeDados ?? string.Empty;
         _semConfiguracao = semConfiguracao;
         _nomes = nomesDasCatracas ?? new Dictionary<int, string>();
+        _simulacao = simulacao;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -100,6 +104,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
             Nivel = internet ? NivelDeDegradacao.T0Normal : NivelDeDegradacao.T1SemInternet,
             InternetDisponivel = internet,
             SemConfiguracao = _semConfiguracao,
+            Simulacao = _simulacao is not null,
         };
 
         if (ultimaSincronizacao is { } quando)
@@ -430,6 +435,34 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         }
 
         return Task.FromResult(resposta);
+    }
+
+    public override Task<SimularLeituraResponse> SimularLeitura(SimularLeituraRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (_simulacao is null)
+        {
+            // Sem isto, qualquer um com acesso ao painel poderia "passar" um ingresso numa
+            // catraca de verdade.
+            return Task.FromResult(new SimularLeituraResponse
+            {
+                Mensagem = "O modo simulação não está ligado nesta instalação.",
+            });
+        }
+
+        if (!_supervisor.Workers.Any(w => w.Inners.Contains(request.Inner)))
+        {
+            return Task.FromResult(new SimularLeituraResponse { Mensagem = $"A catraca {request.Inner} não está cadastrada." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Codigo) || request.Codigo.Trim().Length > 64)
+        {
+            return Task.FromResult(new SimularLeituraResponse { Mensagem = "Digite o código a passar (até 64 caracteres)." });
+        }
+
+        _simulacao.Pedir(request.Inner, request.Codigo, request.NaUrna, request.Girar, _relogio());
+        return Task.FromResult(new SimularLeituraResponse { Aceita = true, Mensagem = "Leitura enviada à catraca simulada." });
     }
 
     private static ConfiguracaoDoEvento Converter(Access.Infrastructure.SQLite.ConfiguracaoDaOperacao c) => new()

@@ -22,6 +22,32 @@
     <SummaryInformation Description="Gerenciamento de catracas, controladores e coletores da linha Inner" />
 
     <MajorUpgrade DowngradeErrorMessage="Já existe uma versão mais nova do Conexão Topdata instalada." />
+
+    <!--
+      .NET Framework 3.5: a EasyInner.dll falha com retorno 8 sem ele. É recurso do Windows,
+      não arquivo, então a instalação o habilita pelo DISM do próprio Windows — só se ainda
+      não estiver habilitado. Pode precisar de internet (Windows Update) e levar alguns
+      minutos. Falhar NÃO desfaz a instalação (Return="ignore"): o assistente mostra o item
+      em vermelho e tem o botão para tentar de novo.
+
+      Sysnative, e não System32: este MSI é de 32 bits, e um processo de 32 bits que abre
+      System32 cai em SysWOW64 — e o DISM de 32 bits se recusa a mexer num Windows de 64.
+    -->
+    <Property Id="NETFX35INSTALADO">
+      <RegistrySearch Id="BuscaNetFx35" Root="HKLM" Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5"
+                      Name="Install" Type="raw" Bitness="always64" />
+    </Property>
+
+    <SetProperty Id="HabilitarNetFx35" Sequence="execute" Before="HabilitarNetFx35"
+                 Value="&quot;[WindowsFolder]Sysnative\dism.exe&quot; /Online /Enable-Feature /FeatureName:NetFx3 /All /NoRestart /Quiet" />
+
+    <CustomAction Id="HabilitarNetFx35" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="HabilitarNetFx35" Before="InstallFinalize"
+              Condition="NOT Installed AND NETFX35INSTALADO &lt;&gt; &quot;#1&quot;" />
+    </InstallExecuteSequence>
     <MediaTemplate EmbedCab="yes" />
 
     <!-- ProgramFiles64Folder: o serviço e o painel são de 64 bits. O worker x86 mora

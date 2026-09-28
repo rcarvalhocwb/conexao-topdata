@@ -73,6 +73,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 20 | [Leitores de QR e cartão Mifare](docs/20-leitores-qr-e-cartao-mifare.md) | **Qual leitor comprar, o limite de 4 a 16 caracteres, e o risco do leitor do balcão** |
 | 21 | [Roteiro da bancada](docs/21-roteiro-da-bancada.md) | **Primeira TopFit 4 girando com um ingresso nosso — passo a passo, com critério de aprovação** |
 | 22 | [O sistema do Supabase](docs/22-sistema-supabase.md) | **Onde o sistema do Lovable entra, e o que preciso ver nele** |
+| 23 | [Modo simulação](docs/23-modo-simulacao.md) | O sistema inteiro sem catraca física |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |

@@ -13,8 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
-    <ProjectReference Include="../../src/Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../Access.Application/Access.Application.csproj" />
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
   </ItemGroup>
 
 </Project>
