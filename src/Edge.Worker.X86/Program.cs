@@ -43,7 +43,9 @@ internal static class Program
         if (Array.IndexOf(args, "--simulador") >= 0 && Valor(args, "--banco") is { } bancoSimulado)
         {
             var portaSimulada = LerPorta(args);
-            using var simulador = new Simulator.InnerSimulator();
+            // Relógio de verdade: sem ele o simulador usa a data fixa dos testes e o painel
+            // mostrava "último evento há 99 h" logo depois de uma passagem.
+            using var simulador = new Simulator.InnerSimulator(() => DateTimeOffset.UtcNow);
             simulador.AbrirPorta(portaSimulada);
             Console.WriteLine($"MODO SIMULAÇÃO: catracas simuladas na porta {portaSimulada}; nenhuma catraca física é acionada.");
             return ExecutarOperacao(simulador, portaSimulada, bancoSimulado, args, simulador);

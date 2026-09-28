@@ -63,7 +63,7 @@ internal static class CapturaDeTela
             var caminho = Path.Combine(
                 pasta,
                 string.Create(CultureInfo.InvariantCulture, $"{numero:D2}-{Arquivo(tela.Titulo)}-{Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant()}.png"));
-            Gravar(caminho, janela);
+            await GravarAsync(caminho, janela).ConfigureAwait(true);
             gravados.Add(caminho);
             numero++;
         }
@@ -73,7 +73,7 @@ internal static class CapturaDeTela
         return gravados;
     }
 
-    private static void Gravar(string caminho, JanelaViewModel vm)
+    private static async Task GravarAsync(string caminho, JanelaViewModel vm)
     {
         var janela = new JanelaPrincipal(vm);
 
@@ -98,6 +98,12 @@ internal static class CapturaDeTela
 
         moldura.Measure(new Size(Largura, Altura));
         moldura.Arrange(new Rect(0, 0, Largura, Altura));
+        moldura.UpdateLayout();
+
+        // A DataGrid calcula as colunas de largura proporcional (Width="*") num passo
+        // adiado do despachante. Sem deixá-lo rodar, a captura saía com essas colunas em
+        // largura zero — o aplicativo aberto não tem esse problema, só a foto.
+        await moldura.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
         moldura.UpdateLayout();
 
         var escala = Resolucao / 96.0;
