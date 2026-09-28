@@ -77,6 +77,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 24 | [Análise do primeiro teste e prompt de ajustes](docs/24-analise-e-prompt-de-ajustes.md) | O que o teste instalado mostrou, a causa de cada ponto e o plano com o time |
 | 25 | [Relatórios da prestação de contas](docs/25-relatorios-da-prestacao-de-contas.md) | Os relatórios que não podem faltar, e as definições por trás dos números |
 | 26 | [Modelo de planilha de cartões](docs/26-modelo-de-planilha-de-cartoes.md) | Tipos e cartões para cadastro e importação; o modelo está em `installer/modelos/` |
+| 27 | [Rayzer Design System](docs/27-rayzer-design-system.md) | A identidade Rayzer XAcess como código: estratégia, tokens, temas, componentes, voz, acessibilidade |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |
