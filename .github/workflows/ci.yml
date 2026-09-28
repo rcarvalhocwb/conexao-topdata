@@ -240,7 +240,10 @@ jobs:
         shell: pwsh
         run: |
           $versao = "0.1.$env:GITHUB_RUN_NUMBER"
-          wix build installer/wix/ConexaoTopdata.wxs -ext WixToolset.Util.wixext `
+          # -arch x64: sem ele o MSI sai de 32 bits e "ProgramFiles64Folder" vira
+          # C:\Program Files (x86) — o botão final do Setup, que aponta para
+          # C:\Program Files, abria um caminho que não existia.
+          wix build installer/wix/ConexaoTopdata.wxs -arch x64 -ext WixToolset.Util.wixext `
             -d Versao=$versao `
             -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
             -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
@@ -294,7 +297,12 @@ jobs:
 
           foreach ($f in 'Painel\Desktop.App.exe', 'Configurador\Edge.Configurador.exe', 'Servico\Edge.Supervisor.exe',
                          'Worker\Edge.Worker.X86.exe', 'Modelos\modelo-cadastro-de-cartoes.xlsx') {
-            if (-not (Test-Path (Join-Path $pasta $f))) { throw "Falta depois de instalar: $f" }
+            if (-not (Test-Path (Join-Path $pasta $f))) {
+              Write-Host 'Onde os arquivos foram parar:'
+              Get-ChildItem 'C:\Program Files', 'C:\Program Files (x86)' -Filter Desktop.App.exe -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host "  $($_.FullName)" }
+              throw "Falta depois de instalar: $f"
+            }
           }
 
           $painel = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -PassThru

@@ -31,8 +31,10 @@
       minutos. Falhar NÃO desfaz a instalação (Return="ignore"): o assistente mostra o item
       em vermelho e tem o botão para tentar de novo.
 
-      Sysnative, e não System32: este MSI é de 32 bits, e um processo de 32 bits que abre
-      System32 cai em SysWOW64 — e o DISM de 32 bits se recusa a mexer num Windows de 64.
+      Sysnative, e não System32: a ação (Wix4UtilCA_X86) roda num processo de 32 bits, e um
+      processo de 32 bits que abre System32 cai em SysWOW64 — e o DISM de 32 bits se recusa a
+      mexer num Windows de 64. O MSI em si é de 64 bits (wix build -arch x64): sem isso,
+      ProgramFiles64Folder virava "Program Files (x86)".
     -->
     <Property Id="NETFX35INSTALADO">
       <RegistrySearch Id="BuscaNetFx35" Root="HKLM" Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5"
