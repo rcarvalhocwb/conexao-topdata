@@ -160,6 +160,10 @@ jobs:
           $servico = Start-Process -FilePath publicado\Servico\Edge.Supervisor.exe -PassThru `
             -RedirectStandardOutput dados\servico.log -RedirectStandardError dados\servico-erro.log
           Start-Sleep -Seconds 10
+          if ($servico.HasExited) {
+            Get-Content dados\servico.log, dados\servico-erro.log -ErrorAction SilentlyContinue | Select-Object -Last 60
+            throw "O serviço parou ao subir (código $($servico.ExitCode))."
+          }
 
           function Autotestar($exe, $saida, $extra) {
             $argumentos = @('--autoteste', $saida) + $extra

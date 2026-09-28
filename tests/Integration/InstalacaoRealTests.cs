@@ -21,6 +21,30 @@ public sealed class InstalacaoRealTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// Com PipeSecurity e o CurrentUserOnly padrão do Kestrel, o serviço caía ao abrir o
+    /// canal. Achado pelo autoteste do CI com o serviço publicado.
+    /// </summary>
+    [Fact]
+    public void O_canal_com_acl_propria_desliga_o_somente_usuario_atual()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // PipeSecurity só existe no Windows; lá o teste roda no CI.
+        }
+
+        var construtor = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder();
+        SegurancaLocal.AplicarNoCanal(construtor.WebHost);
+        using var app = construtor.Build();
+
+        var opcoes = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<
+                Microsoft.AspNetCore.Server.Kestrel.Transport.NamedPipes.NamedPipeTransportOptions>>(app.Services).Value;
+
+        Assert.False(opcoes.CurrentUserOnly);
+        Assert.NotNull(opcoes.PipeSecurity);
+    }
+
     [Fact]
     public void O_token_e_gerado_na_primeira_subida_e_reaproveitado_nas_seguintes()
     {

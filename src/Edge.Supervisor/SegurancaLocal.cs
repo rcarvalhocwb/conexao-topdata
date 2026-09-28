@@ -66,7 +66,14 @@ public static class SegurancaLocal
         seguranca.AddAccessRule(new PipeAccessRule(
             new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null), PipeAccessRights.ReadWrite, AccessControlType.Allow));
 
-        construtor.UseNamedPipes(opcoes => opcoes.PipeSecurity = seguranca);
+        // CurrentUserOnly vem ligado no Kestrel e não convive com PipeSecurity: o serviço
+        // caía ao abrir o canal ("'pipeSecurity' must be null when 'options' contains
+        // 'PipeOptions.CurrentUserOnly'"). Quem pode entrar é a ACL acima que decide.
+        construtor.UseNamedPipes(opcoes =>
+        {
+            opcoes.CurrentUserOnly = false;
+            opcoes.PipeSecurity = seguranca;
+        });
     }
 
     [SupportedOSPlatform("windows")]
