@@ -16,6 +16,12 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
 
+    <!-- Autoria: sistema desenvolvido sob demanda por Rayzer Serviços e Tecnologia. -->
+    <Company>Rayzer Serviços e Tecnologia</Company>
+    <Authors>Rayzer Serviços e Tecnologia</Authors>
+    <Product>Conexão Topdata</Product>
+    <Copyright>© Rayzer Serviços e Tecnologia. Desenvolvido sob demanda.</Copyright>
+
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

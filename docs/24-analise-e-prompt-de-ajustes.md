@@ -28,13 +28,22 @@ fraude); catraca liberando sem girar repetidamente (travada); urna cheia (se o e
 informar — `A_CONFIRMAR_COM_TOPDATA`); PC em bateria/sem energia (se houver no-break
 monitorável).
 
-## 2. O que depende do usuário
+## 2. Decisões do usuário (28/09)
 
-- **Identidade visual**: logotipo, cores e fontes do evento, e os prints do sistema de nota fiscal.
-- **Relatórios**: quais números a prestação de contas precisa mostrar, e para quem (organização, patrocinador, prefeitura).
-- **Importação de cartões**: confirmar que as três planilhas já enviadas são os formatos a aceitar.
-- **Fuso do evento**: confirmar America/Sao_Paulo.
-- **Comandos da catraca**: quais o operador pode usar durante o evento. Os que não estão documentados pela Topdata só são liberados depois do teste de bancada.
+- **Autoria**: o sistema é identificado como desenvolvido **sob demanda por Rayzer
+  Serviços e Tecnologia** — fabricante no instalador, metadados dos executáveis, tela
+  "Sobre" e rodapé dos relatórios.
+- **Relatórios**: estudo feito em [`25`](25-relatorios-da-prestacao-de-contas.md). O
+  principal é o boletim do dia por tipo ("300 meias, 100 inteiras, 50 solidários").
+- **Cartões**: cada cartão é atrelado a uma pessoa ou a um tipo cadastrado pelo usuário.
+  O modelo de planilha está em [`26`](26-modelo-de-planilha-de-cartoes.md) e em
+  `installer/modelos/`.
+- **Fuso**: horário de Brasília (`America/Sao_Paulo`) em tudo — telas, relatórios, relógio
+  da catraca —, com aviso se o Windows estiver em outro fuso.
+
+Ainda com o usuário: identidade visual (logotipo, cores, prints do sistema de nota
+fiscal); hora de corte do dia de operação (padrão proposto 06:00); os pontos de
+`A_CONFIRMAR` do docs/25 §6.
 
 ## 3. Prompt
 
@@ -45,7 +54,9 @@ Você vai coordenar um time de especialistas para levar o sistema Conexão Topda
 (repositório rcarvalhocwb/conexao-topdata, branch claude/gallant-wright-pdloor, PR #1) do
 estado "funciona no simulador" para "pronto para operar a Rua Iluminada Família Moletta".
 Leia antes: README.md, docs/03, docs/10, docs/21, docs/22, docs/23, docs/24 (este
-diagnóstico) e os ADRs 0023 e 0024. Trabalhe em português.
+diagnóstico), docs/25 (relatórios), docs/26 (planilha de cartões) e os ADRs 0023 e 0024.
+O sistema é desenvolvido sob demanda por Rayzer Serviços e Tecnologia; o evento é no
+fuso de Brasília (America/Sao_Paulo). Trabalhe em português.
 
 ## O time (cada um assina a sua parte no PR e revisa a do outro)
 
@@ -129,8 +140,9 @@ Fase 2 — Guia visual e seletor de data e hora
   de ligação sem falhas; nenhum texto em inglês nas capturas.
 
 Fase 3 — Cartões
+- Cadastro de tipos (nome, ordem, ativo) e cartão atrelado a um tipo ou pessoa.
 - Tela de cadastro (um cartão, com leitura pelo leitor do balcão se houver) e de
-  importação (CSV nos três formatos recebidos): prévia, erros por linha, duplicados,
+  importação do modelo do docs/26 (.xlsx e .csv): prévia, erros por linha, duplicados,
   zeros à esquerda preservados, importação atômica, desfazer a última importação.
 - Aceite: testes com arquivos sintéticos (nunca os reais), incluindo zeros à esquerda,
   duplicados, linhas inválidas e arquivo grande (100 mil linhas) com tempo medido.
@@ -152,8 +164,8 @@ Fase 5 — Alertas e notificações
   mensagem; nenhum alerta com número de cartão completo.
 
 Fase 6 — Prestação de contas
-- Relatórios definidos pelo analista, com filtros de data e hora, corte fechado com
-  hash, exportação PDF e CSV.
+- Os relatórios R1 a R8 do docs/25, com dia de operação e fuso de Brasília, filtros de
+  data e hora, corte fechado com hash, exportação PDF e CSV com a autoria da Rayzer.
 - Aceite: testes com base sintética conferindo cada total contra uma contagem
   independente em SQL; corte reproduzível (mesma entrada, mesmo hash).
 
@@ -162,5 +174,5 @@ Fase 6 — Prestação de contas
 Ao fim de cada fase: o que mudou, os testes executados e os resultados (números), as
 capturas de tela, as limitações conhecidas, o link do Setup novo e o próximo teste que
 o usuário precisa fazer no PC ou na bancada. Pergunte ao usuário só o que for decisão
-dele (listado em docs/24 §2), e siga com o resto.
+dele (o que ainda está aberto em docs/24 §2), e siga com o resto.
 ```

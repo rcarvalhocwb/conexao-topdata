@@ -13,7 +13,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
   <Package Name="Conexão Topdata"
-           Manufacturer="Conexão Topdata"
+           Manufacturer="Rayzer Serviços e Tecnologia"
            Version="$(var.Versao)"
            UpgradeCode="5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5"
            Scope="perMachine"
@@ -59,6 +59,7 @@
         <Directory Id="DIR_PAINEL" Name="Painel" />
         <Directory Id="DIR_WORKER" Name="Worker" />
         <Directory Id="DIR_CONFIGURADOR" Name="Configurador" />
+        <Directory Id="DIR_MODELOS" Name="Modelos" />
       </Directory>
     </StandardDirectory>
 
@@ -71,6 +72,7 @@
       <ComponentGroupRef Id="Grupo_Painel" />
       <ComponentGroupRef Id="Grupo_Worker" />
       <ComponentGroupRef Id="Grupo_Configurador" />
+      <ComponentGroupRef Id="Grupo_Modelos" />
       <ComponentGroupRef Id="Grupo_Atalhos" />
     </Feature>
 
@@ -128,6 +130,12 @@
       <Files Include="$(var.PastaConfigurador)\*.json" />
     </ComponentGroup>
 
+    <!-- Modelos de planilha de cartões e tipos (docs/26). Só exemplos fictícios. -->
+    <ComponentGroup Id="Grupo_Modelos" Directory="DIR_MODELOS">
+      <Files Include="$(var.PastaModelos)\*.xlsx" />
+      <Files Include="$(var.PastaModelos)\*.csv" />
+    </ComponentGroup>
+
     <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
       <Component Id="AtalhoDoPainel">
         <Shortcut Id="AtalhoPainel"
@@ -141,6 +149,12 @@
                   Description="Catracas, nuvem e segredo de acesso (pede permissão de administrador)"
                   Target="[DIR_CONFIGURADOR]Edge.Configurador.exe"
                   WorkingDirectory="DIR_CONFIGURADOR" />
+
+        <Shortcut Id="AtalhoModeloDeCartoes"
+                  Name="Modelo de planilha de cartões"
+                  Description="Planilha para cadastrar tipos e cartões e importar no painel"
+                  Target="[DIR_MODELOS]modelo-cadastro-de-cartoes.xlsx"
+                  WorkingDirectory="DIR_MODELOS" />
 
         <RemoveFolder Id="RemoverPastaAtalhos" Directory="DIR_ATALHOS" On="uninstall" />
 

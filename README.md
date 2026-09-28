@@ -75,6 +75,8 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 22 | [O sistema do Supabase](docs/22-sistema-supabase.md) | **Onde o sistema do Lovable entra, e o que preciso ver nele** |
 | 23 | [Modo simulação](docs/23-modo-simulacao.md) | O sistema inteiro sem catraca física |
 | 24 | [Análise do primeiro teste e prompt de ajustes](docs/24-analise-e-prompt-de-ajustes.md) | O que o teste instalado mostrou, a causa de cada ponto e o plano com o time |
+| 25 | [Relatórios da prestação de contas](docs/25-relatorios-da-prestacao-de-contas.md) | Os relatórios que não podem faltar, e as definições por trás dos números |
+| 26 | [Modelo de planilha de cartões](docs/26-modelo-de-planilha-de-cartoes.md) | Tipos e cartões para cadastro e importação; o modelo está em `installer/modelos/` |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |

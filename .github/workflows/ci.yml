@@ -229,6 +229,7 @@ jobs:
             -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
             -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
             -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
+            -d PastaModelos=$((Resolve-Path installer/modelos).Path) `
             -o ConexaoTopdata-$versao.msi
 
       # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
@@ -252,7 +253,7 @@ jobs:
 
           $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
                           'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
-                          'Edge.Configurador.exe'
+                          'Edge.Configurador.exe', 'modelo-cadastro-de-cartoes.xlsx'
           $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
           if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
 

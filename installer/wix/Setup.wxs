@@ -16,7 +16,7 @@
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
 
   <Bundle Name="Conexão Topdata"
-          Manufacturer="Conexão Topdata"
+          Manufacturer="Rayzer Serviços e Tecnologia"
           Version="$(var.Versao)"
           UpgradeCode="8b0c64a6-2f6b-4a3e-9d0a-6d2f3c1a9e41">
 
