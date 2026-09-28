@@ -19,7 +19,7 @@ public partial class App : Application
         {
             _saidaDoAutoteste = autoteste + 1 < e.Args.Length ? e.Args[autoteste + 1] : "autoteste-painel.txt";
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            _ = AutotesteAsync(_saidaDoAutoteste);
+            _ = AutotesteAsync(_saidaDoAutoteste, e.Args.Contains("--com-simulacao"));
             return;
         }
 
@@ -96,12 +96,17 @@ public partial class App : Application
     /// Abre a janela de verdade, passa por todas as telas e sai: 0 se nada quebrou. Sem
     /// serviço, cada tela mostra "sem resposta" — que também precisa desenhar sem erro.
     /// </summary>
-    private static async Task AutotesteAsync(string saida)
+    private static async Task AutotesteAsync(string saida, bool comSimulacao)
     {
+        // Cada passo vai para o arquivo na hora: se travar, dá para ver onde.
+        void Passo(string texto) => File.AppendAllText(saida, texto + Environment.NewLine);
+
         try
         {
+            File.WriteAllText(saida, string.Empty);
             var janela = new JanelaPrincipal();
             janela.Show();
+            Passo("janela aberta");
 
             foreach (var tela in janela.Janela.Telas)
             {
@@ -109,15 +114,39 @@ public partial class App : Application
                 await janela.Janela.AtualizarAsync().ConfigureAwait(true);
                 await tela.AtualizarAsync().ConfigureAwait(true);
                 await janela.Dispatcher.InvokeAsync(janela.UpdateLayout, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                Passo($"tela {tela.Titulo}: ok");
+            }
+
+            if (comSimulacao)
+            {
+                // Com o serviço em modo simulação: passa um QR de teste e exige a liberação.
+                var simulador = janela.Janela.Telas.OfType<Desktop.ViewModels.SimuladorViewModel>().Single();
+                janela.Janela.TelaAtual = simulador;
+                simulador.Catraca = "1";
+                simulador.Codigo = "1000000001";
+                simulador.Girar = true;
+
+                for (var tentativa = 0; tentativa < 30 && !simulador.Resultados.Any(r => r.Liberado); tentativa++)
+                {
+                    await simulador.Passar.ExecutarAsync().ConfigureAwait(true);
+                    await Task.Delay(1000).ConfigureAwait(true);
+                }
+
+                if (!simulador.Resultados.Any(r => r.Liberado))
+                {
+                    throw new InvalidOperationException($"A catraca simulada não liberou o QR de teste: {simulador.Mensagem}");
+                }
+
+                Passo($"simulação: {simulador.Mensagem}");
             }
 
             janela.Close();
-            File.WriteAllText(saida, "ok");
+            Passo("ok");
             Environment.Exit(0);
         }
         catch (Exception erro)
         {
-            File.WriteAllText(saida, erro.ToString());
+            File.AppendAllText(saida, erro.ToString());
             Environment.Exit(1);
         }
     }

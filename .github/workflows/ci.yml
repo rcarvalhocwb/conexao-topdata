@@ -146,22 +146,51 @@ jobs:
       - name: Autoteste das telas
         shell: pwsh
         run: |
-          function Autotestar($exe, $saida) {
-            $p = Start-Process -FilePath $exe -ArgumentList '--autoteste', $saida -PassThru
-            if (-not $p.WaitForExit(120000)) {
-              $p.Kill()
-              throw "$exe travou no autoteste (2 minutos)."
-            }
+          # O serviço de verdade, publicado, em modo simulação, com o programa das catracas
+          # de 32 bits: o autoteste do painel conversa com ele e passa um QR no simulador.
+          New-Item -ItemType Directory -Force dados | Out-Null
+          $config = @{
+            banco = "$PWD\dados\acesso.db"
+            simulacao = $true
+            grupos = @(@{ nome = 'catracas'; porta = 3570; inners = @(1, 2); executavel = "$PWD\publicado\Worker\Edge.Worker.X86.exe" })
+            nomesDasCatracas = @{ '1' = 'Entrada 1'; '2' = 'Entrada 2' }
+          } | ConvertTo-Json -Depth 5
+          Set-Content -Path dados\workers.json -Value $config -Encoding utf8
+          $env:EDGE_CONFIG = "$PWD\dados\workers.json"
+          $servico = Start-Process -FilePath publicado\Servico\Edge.Supervisor.exe -PassThru `
+            -RedirectStandardOutput dados\servico.log -RedirectStandardError dados\servico-erro.log
+          Start-Sleep -Seconds 10
+
+          function Autotestar($exe, $saida, $extra) {
+            $argumentos = @('--autoteste', $saida) + $extra
+            $p = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru
+            $terminou = $p.WaitForExit(240000)
             $resultado = if (Test-Path $saida) { Get-Content $saida -Raw } else { '(sem arquivo de saída)' }
+            if (-not $terminou) {
+              $p.Kill()
+              Write-Host $resultado
+              throw "$exe travou no autoteste (4 minutos)."
+            }
             if ($p.ExitCode -ne 0) {
               Write-Host "::error::$exe falhou no autoteste (código $($p.ExitCode))"
               Write-Host $resultado
               throw "autoteste falhou"
             }
-            Write-Host "$exe : $resultado"
+            Write-Host "$exe :"
+            Write-Host $resultado
           }
-          Autotestar (Resolve-Path publicado/Painel/Desktop.App.exe) "$PWD\autoteste-painel.txt"
-          Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt"
+
+          try {
+            Autotestar (Resolve-Path publicado/Painel/Desktop.App.exe) "$PWD\autoteste-painel.txt" @('--com-simulacao')
+            Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt" @()
+          }
+          finally {
+            Stop-Process -Id $servico.Id -Force -ErrorAction SilentlyContinue
+            Get-Process Edge.Worker.X86 -ErrorAction SilentlyContinue | Stop-Process -Force
+            Write-Host '--- serviço ---'
+            Get-Content dados\servico.log -ErrorAction SilentlyContinue | Select-Object -Last 40
+            Get-Content dados\servico-erro.log -ErrorAction SilentlyContinue | Select-Object -Last 40
+          }
 
       # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
       # no cabecalho PE, e mais barato que descobrir na bancada.
