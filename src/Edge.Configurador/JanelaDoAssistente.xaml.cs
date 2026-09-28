@@ -184,6 +184,32 @@ public partial class JanelaDoAssistente : Window
         }
     }
 
+    /// <summary>
+    /// Autoteste: vai do primeiro ao último passo pelo botão Avançar e volta, deixando a
+    /// tela desenhar cada um. Não grava nada.
+    /// </summary>
+    internal async Task PercorrerPassosAsync()
+    {
+        for (var i = 0; i < Passos.Items.Count * 2; i++)
+        {
+            if (i < Passos.Items.Count - 1)
+            {
+                Avancar(this, new RoutedEventArgs());
+            }
+            else if (Passos.SelectedIndex > 0)
+            {
+                Voltar(this, new RoutedEventArgs());
+            }
+
+            await Dispatcher.InvokeAsync(UpdateLayout, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+
+        // Uma catraca digitada na grade, como o instalador faria, e o resumo de novo.
+        _catracas.Add(new LinhaDeCatraca { Inner = 1, Nome = "Entrada 1" });
+        Passos.SelectedIndex = Passos.Items.Count - 1;
+        await Dispatcher.InvokeAsync(UpdateLayout, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
     private static bool? Net35Instalado()
     {
         try

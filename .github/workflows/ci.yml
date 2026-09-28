@@ -139,6 +139,29 @@ jobs:
           dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -o publicado/Worker
           dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -o publicado/Configurador
 
+      # Abre as janelas de verdade, publicadas como vão para o Setup, e percorre cada tela
+      # e cada passo. Compilar não prova que a tela abre: o painel subia sem janela (App.xaml
+      # sem x:Class) e o assistente fechava no Avançar, e os dois compilavam.
+      - name: Autoteste das telas
+        shell: pwsh
+        run: |
+          function Autotestar($exe, $saida) {
+            $p = Start-Process -FilePath $exe -ArgumentList '--autoteste', $saida -PassThru
+            if (-not $p.WaitForExit(120000)) {
+              $p.Kill()
+              throw "$exe travou no autoteste (2 minutos)."
+            }
+            $resultado = if (Test-Path $saida) { Get-Content $saida -Raw } else { '(sem arquivo de saída)' }
+            if ($p.ExitCode -ne 0) {
+              Write-Host "::error::$exe falhou no autoteste (código $($p.ExitCode))"
+              Write-Host $resultado
+              throw "autoteste falhou"
+            }
+            Write-Host "$exe : $resultado"
+          }
+          Autotestar (Resolve-Path publicado/Painel/Desktop.App.exe) "$PWD\autoteste-painel.txt"
+          Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt"
+
       # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
       # no cabecalho PE, e mais barato que descobrir na bancada.
       - name: Conferir que o worker e de 32 bits

@@ -78,6 +78,19 @@ public sealed partial class LigacoesDasTelasTests
         }
     }
 
+    /// <summary>
+    /// Sem x:Class, o App.xaml vira um segundo aplicativo com Main próprio, que nunca abre
+    /// a janela. Foi assim que o painel "não abria" no primeiro Setup.
+    /// </summary>
+    [Theory]
+    [InlineData("src/Desktop.App/App.xaml", "Desktop.App.App")]
+    [InlineData("src/Edge.Configurador/App.xaml", "Edge.Configurador.App")]
+    public void O_App_xaml_esta_ligado_a_classe_do_aplicativo(string arquivo, string classe)
+    {
+        var xaml = File.ReadAllText(Path.Combine(PastaDoAplicativo(), "..", "..", arquivo));
+        Assert.Contains($"x:Class=\"{classe}\"", xaml, StringComparison.Ordinal);
+    }
+
     // Caminho pontilhado: cada trecho precisa existir no tipo do trecho anterior; o
     // primeiro, em algum dos tipos da tela.
     private static bool Resolve(string caminho, System.Type[] tipos)
