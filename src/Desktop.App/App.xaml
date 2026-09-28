@@ -43,6 +43,12 @@
         <Setter Property="HorizontalAlignment" Value="Left" />
       </Style>
 
+      <!-- InfoNotice: observação informativa no rodapé de uma área. -->
+      <Style x:Key="InfoNotice" TargetType="rz:RayzerAlert">
+        <Setter Property="Tom" Value="Info" />
+        <Setter Property="Margin" Value="0,12,0,0" />
+      </Style>
+
       <!-- Mensagem da tela (resultado de ação, falha de comunicação). -->
       <Style x:Key="Pagina.Mensagem" TargetType="rz:RayzerAlert">
         <Setter Property="Tom" Value="Neutro" />
@@ -60,42 +66,74 @@
       </DataTemplate>
 
       <!--
-        Cartão de dispositivo: CATRACA 01 · situação · nome · último evento · linha técnica ·
-        ação. O mesmo desenho no painel ao vivo e na tela de catracas.
+        TurnstileCard: miniatura · CATRACA 01 · Entrada 1 · situação · último evento ·
+        meta-itens (firmware, grupo, porta, reconexões) · ações. O mesmo desenho no painel ao
+        vivo e na tela de catracas. As ações são as que existem: ver os acessos daquela
+        catraca e abrir o diagnóstico.
       -->
       <DataTemplate x:Key="Cartao.Catraca" DataType="{x:Type vm:LinhaDeCatraca}">
-        <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,12,12" Padding="16,12">
+        <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,12,12" Padding="14,12,14,8">
           <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-              <TextBlock Style="{StaticResource Rayzer.Type.Overline}" Text="{Binding Rotulo}" />
-              <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,2,0,0" Text="{Binding Nome}" TextTrimming="CharacterEllipsis" />
+
+            <rz:RayzerTurnstileGlyph VerticalAlignment="Top" Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}" />
+
+            <StackPanel Grid.Column="1" Margin="14,0,0,0">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Style="{StaticResource Rayzer.Type.Overline}" Text="{Binding Rotulo}" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,2,0,0" Text="{Binding Nome}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <rz:RayzerStatusPill Grid.Column="1" VerticalAlignment="Top"
+                                     Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}"
+                                     Glifo="{Binding Sinal, Converter={StaticResource SinalParaGlifoDeDispositivo}}"
+                                     Texto="{Binding Situacao}" />
+              </Grid>
+              <TextBlock Margin="0,6,0,6" Style="{StaticResource Rayzer.Type.Body}">
+                <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="Último evento: " /><Run FontWeight="SemiBold" Text="{Binding UltimaDecisao, Mode=OneWay}" /><Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text=" · " /><Run Text="{Binding UltimoEvento, Mode=OneWay}" />
+              </TextBlock>
+              <WrapPanel>
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Settings}" Rotulo="Firmware" Valor="{Binding Firmware}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Folder}" Rotulo="Grupo" Valor="{Binding Grupo}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Ethernet}" Rotulo="Porta" Valor="{Binding Porta}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Sync}" Rotulo="Reconexões" Valor="{Binding Reconexoes}" />
+              </WrapPanel>
             </StackPanel>
-            <rz:RayzerStatus Grid.Column="1" Pilula="True" VerticalAlignment="Top"
-                             Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}"
-                             Glifo="{Binding Sinal, Converter={StaticResource SinalParaGlifoDeDispositivo}}"
-                             Texto="{Binding Situacao}" />
-            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,8,0,0" Style="{StaticResource Rayzer.Type.Body}">
-              <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="Último evento: " /><Run Text="{Binding UltimaDecisao, Mode=OneWay}" /><Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text=" · " /><Run Text="{Binding UltimoEvento, Mode=OneWay}" />
-            </TextBlock>
-            <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,6,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Style="{StaticResource Rayzer.Type.Caption}" VerticalAlignment="Center" Text="{Binding Tecnico}" />
-              <Button Grid.Column="1" Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
-                      Content="Diagnóstico" AutomationProperties.Name="Abrir diagnóstico"
-                      Command="{Binding DataContext.AbrirDiagnostico, RelativeSource={RelativeSource AncestorType=Window}}" />
-            </Grid>
+
+            <!-- TurnstileActionBar. -->
+            <Border Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,0" Padding="0,6,0,0" BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource Rayzer.Border.Subtle}">
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
+                        AutomationProperties.Name="Ver acessos desta catraca"
+                        Command="{Binding DataContext.VerAcessos, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding Inner}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.List}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Ver acessos" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
+                        AutomationProperties.Name="Abrir diagnóstico"
+                        Command="{Binding DataContext.AbrirDiagnostico, RelativeSource={RelativeSource AncestorType=Window}}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.Diagnostic}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Diagnóstico" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
           </Grid>
         </Border>
       </DataTemplate>

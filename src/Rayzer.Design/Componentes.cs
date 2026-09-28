@@ -158,8 +158,12 @@ public class RayzerAlert : ContentControl
 /// RayzerEmptyState: a lista vazia explica por que está vazia. O sistema nunca parece
 /// quebrado só porque ainda não há dado.
 /// </summary>
-public class RayzerEmptyState : Control
+public class RayzerEmptyState : ContentControl
 {
+    /// <summary>Observação complementar, abaixo do texto.</summary>
+    public static readonly DependencyProperty ObservacaoProperty = DependencyProperty.Register(
+        nameof(Observacao), typeof(string), typeof(RayzerEmptyState), new PropertyMetadata(string.Empty));
+
     public static readonly DependencyProperty IconeProperty = DependencyProperty.Register(
         nameof(Icone), typeof(string), typeof(RayzerEmptyState), new PropertyMetadata(string.Empty));
 
@@ -177,35 +181,82 @@ public class RayzerEmptyState : Control
     public string Titulo { get => (string)GetValue(TituloProperty); set => SetValue(TituloProperty, value); }
 
     public string Texto { get => (string)GetValue(TextoProperty); set => SetValue(TextoProperty, value); }
+
+    public string Observacao { get => (string)GetValue(ObservacaoProperty); set => SetValue(ObservacaoProperty, value); }
 }
 
-/// <summary>Como a marca aparece.</summary>
+/// <summary>Como a marca aparece (brand board, "logo principal" e variações).</summary>
 public enum VarianteDoLogo
 {
-    /// <summary>Símbolo, empresa e produto lado a lado.</summary>
+    /// <summary>Símbolo + RAYZER X acess numa linha: barra lateral, cabeçalhos.</summary>
     Horizontal,
 
-    /// <summary>Só o símbolo (barra recolhida, ícone).</summary>
+    /// <summary>Horizontal com a assinatura "CONTROLE DE ACESSO INTELIGENTE": telas de entrada.</summary>
+    Completo,
+
+    /// <summary>Só o símbolo: barra recolhida, ícone.</summary>
     Simbolo,
+
+    /// <summary>Símbolo + "XAcess" em duas linhas curtas: espaços estreitos.</summary>
+    Compacto,
 }
 
 /// <summary>
-/// RayzerLogo: o símbolo Rayzer (um X em que o fluxo atravessa a passagem) com o nome da
-/// empresa e do produto. Serve a qualquer produto Rayzer: muda só <see cref="Produto"/>.
+/// RayzerBrandMark: o X da marca. Duas faixas que se cruzam, com gradiente, realce vítreo
+/// no alto e, na variante <see cref="Brilho"/>, o glow azul controlado.
 /// </summary>
+public class RayzerBrandMark : Control
+{
+    public static readonly DependencyProperty TamanhoProperty = DependencyProperty.Register(
+        nameof(Tamanho), typeof(double), typeof(RayzerBrandMark), new PropertyMetadata(32.0));
+
+    public static readonly DependencyProperty BrilhoProperty = DependencyProperty.Register(
+        nameof(Brilho), typeof(bool), typeof(RayzerBrandMark), new PropertyMetadata(false));
+
+    /// <summary>Uma cor só (a do Foreground): fundo claro, impressão, marca-d'água.</summary>
+    public static readonly DependencyProperty MonocromaticoProperty = DependencyProperty.Register(
+        nameof(Monocromatico), typeof(bool), typeof(RayzerBrandMark), new PropertyMetadata(false));
+
+    static RayzerBrandMark() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerBrandMark), new FrameworkPropertyMetadata(typeof(RayzerBrandMark)));
+
+    public double Tamanho { get => (double)GetValue(TamanhoProperty); set => SetValue(TamanhoProperty, value); }
+
+    public bool Brilho { get => (bool)GetValue(BrilhoProperty); set => SetValue(BrilhoProperty, value); }
+
+    public bool Monocromatico { get => (bool)GetValue(MonocromaticoProperty); set => SetValue(MonocromaticoProperty, value); }
+}
+
+/// <summary>
+/// RayzerLogo: o símbolo com "RAYZER X acess". Serve a qualquer produto Rayzer: muda só
+/// <see cref="Produto"/> (o texto depois do X).
+/// </summary>
+/// <remarks>
+/// Área de respiro: metade da altura do símbolo em volta. Tamanho mínimo: símbolo de 16 px
+/// (só símbolo) e de 24 px (horizontal).
+/// </remarks>
 public class RayzerLogo : Control
 {
     public static readonly DependencyProperty ProdutoProperty = DependencyProperty.Register(
-        nameof(Produto), typeof(string), typeof(RayzerLogo), new PropertyMetadata(Marca.Produto));
+        nameof(Produto), typeof(string), typeof(RayzerLogo), new PropertyMetadata("acess"));
 
     public static readonly DependencyProperty EmpresaProperty = DependencyProperty.Register(
         nameof(Empresa), typeof(string), typeof(RayzerLogo), new PropertyMetadata("RAYZER"));
+
+    public static readonly DependencyProperty AssinaturaProperty = DependencyProperty.Register(
+        nameof(Assinatura), typeof(string), typeof(RayzerLogo), new PropertyMetadata("CONTROLE DE ACESSO INTELIGENTE"));
 
     public static readonly DependencyProperty VarianteProperty = DependencyProperty.Register(
         nameof(Variante), typeof(VarianteDoLogo), typeof(RayzerLogo), new PropertyMetadata(VarianteDoLogo.Horizontal));
 
     public static readonly DependencyProperty TamanhoDoSimboloProperty = DependencyProperty.Register(
         nameof(TamanhoDoSimbolo), typeof(double), typeof(RayzerLogo), new PropertyMetadata(32.0));
+
+    public static readonly DependencyProperty BrilhoProperty = DependencyProperty.Register(
+        nameof(Brilho), typeof(bool), typeof(RayzerLogo), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty MonocromaticoProperty = DependencyProperty.Register(
+        nameof(Monocromatico), typeof(bool), typeof(RayzerLogo), new PropertyMetadata(false));
 
     static RayzerLogo() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerLogo), new FrameworkPropertyMetadata(typeof(RayzerLogo)));
@@ -214,9 +265,151 @@ public class RayzerLogo : Control
 
     public string Empresa { get => (string)GetValue(EmpresaProperty); set => SetValue(EmpresaProperty, value); }
 
+    public string Assinatura { get => (string)GetValue(AssinaturaProperty); set => SetValue(AssinaturaProperty, value); }
+
     public VarianteDoLogo Variante { get => (VarianteDoLogo)GetValue(VarianteProperty); set => SetValue(VarianteProperty, value); }
 
     public double TamanhoDoSimbolo { get => (double)GetValue(TamanhoDoSimboloProperty); set => SetValue(TamanhoDoSimboloProperty, value); }
+
+    public bool Brilho { get => (bool)GetValue(BrilhoProperty); set => SetValue(BrilhoProperty, value); }
+
+    public bool Monocromatico { get => (bool)GetValue(MonocromaticoProperty); set => SetValue(MonocromaticoProperty, value); }
+}
+
+/// <summary>StatusPill: RayzerStatus já em forma de pílula (Operacional, Online, Simulação…).</summary>
+public class RayzerStatusPill : RayzerStatus
+{
+    static RayzerStatusPill()
+    {
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerStatusPill), new FrameworkPropertyMetadata(typeof(RayzerStatusPill)));
+        PilulaProperty.OverrideMetadata(typeof(RayzerStatusPill), new PropertyMetadata(true));
+    }
+}
+
+/// <summary>
+/// StatusCard: bloco da barra operacional — ícone tingido, título e descrição curta, com a
+/// linha de energia na cor da situação.
+/// </summary>
+public class RayzerStatusCard : Control
+{
+    public static readonly DependencyProperty IconeProperty = DependencyProperty.Register(
+        nameof(Icone), typeof(string), typeof(RayzerStatusCard), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty TituloProperty = DependencyProperty.Register(
+        nameof(Titulo), typeof(string), typeof(RayzerStatusCard), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty DescricaoProperty = DependencyProperty.Register(
+        nameof(Descricao), typeof(string), typeof(RayzerStatusCard), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty TomProperty = DependencyProperty.Register(
+        nameof(Tom), typeof(Tom), typeof(RayzerStatusCard), new PropertyMetadata(Tom.Neutro));
+
+    static RayzerStatusCard() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerStatusCard), new FrameworkPropertyMetadata(typeof(RayzerStatusCard)));
+
+    public string Icone { get => (string)GetValue(IconeProperty); set => SetValue(IconeProperty, value); }
+
+    public string Titulo { get => (string)GetValue(TituloProperty); set => SetValue(TituloProperty, value); }
+
+    public string Descricao { get => (string)GetValue(DescricaoProperty); set => SetValue(DescricaoProperty, value); }
+
+    public Tom Tom { get => (Tom)GetValue(TomProperty); set => SetValue(TomProperty, value); }
+}
+
+/// <summary>PageHeader: título da página, descrição curta e ação opcional à direita (o conteúdo).</summary>
+public class RayzerPageHeader : ContentControl
+{
+    public static readonly DependencyProperty TituloProperty = DependencyProperty.Register(
+        nameof(Titulo), typeof(string), typeof(RayzerPageHeader), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty DescricaoProperty = DependencyProperty.Register(
+        nameof(Descricao), typeof(string), typeof(RayzerPageHeader), new PropertyMetadata(string.Empty));
+
+    static RayzerPageHeader() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerPageHeader), new FrameworkPropertyMetadata(typeof(RayzerPageHeader)));
+
+    public string Titulo { get => (string)GetValue(TituloProperty); set => SetValue(TituloProperty, value); }
+
+    public string Descricao { get => (string)GetValue(DescricaoProperty); set => SetValue(DescricaoProperty, value); }
+}
+
+/// <summary>SectionHeader: título de seção ("Catracas", "Acessos em tempo real"), subtítulo e ação.</summary>
+public class RayzerSectionHeader : ContentControl
+{
+    public static readonly DependencyProperty TituloProperty = DependencyProperty.Register(
+        nameof(Titulo), typeof(string), typeof(RayzerSectionHeader), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty SubtituloProperty = DependencyProperty.Register(
+        nameof(Subtitulo), typeof(string), typeof(RayzerSectionHeader), new PropertyMetadata(string.Empty));
+
+    static RayzerSectionHeader() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerSectionHeader), new FrameworkPropertyMetadata(typeof(RayzerSectionHeader)));
+
+    public string Titulo { get => (string)GetValue(TituloProperty); set => SetValue(TituloProperty, value); }
+
+    public string Subtitulo { get => (string)GetValue(SubtituloProperty); set => SetValue(SubtituloProperty, value); }
+}
+
+/// <summary>
+/// DataPanel: cartão de dados com cabeçalho (título, subtítulo), barra de ferramentas
+/// opcional e o conteúdo (normalmente uma DataTable e o seu EmptyState).
+/// </summary>
+public class RayzerDataPanel : ContentControl
+{
+    public static readonly DependencyProperty TituloProperty = DependencyProperty.Register(
+        nameof(Titulo), typeof(string), typeof(RayzerDataPanel), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty SubtituloProperty = DependencyProperty.Register(
+        nameof(Subtitulo), typeof(string), typeof(RayzerDataPanel), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty FerramentasProperty = DependencyProperty.Register(
+        nameof(Ferramentas), typeof(object), typeof(RayzerDataPanel), new PropertyMetadata(null));
+
+    static RayzerDataPanel() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerDataPanel), new FrameworkPropertyMetadata(typeof(RayzerDataPanel)));
+
+    public string Titulo { get => (string)GetValue(TituloProperty); set => SetValue(TituloProperty, value); }
+
+    public string Subtitulo { get => (string)GetValue(SubtituloProperty); set => SetValue(SubtituloProperty, value); }
+
+    public object? Ferramentas { get => GetValue(FerramentasProperty); set => SetValue(FerramentasProperty, value); }
+}
+
+/// <summary>MetaItem: ícone, rótulo e valor — a linha técnica do cartão de catraca.</summary>
+public class RayzerMetaItem : Control
+{
+    public static readonly DependencyProperty IconeProperty = DependencyProperty.Register(
+        nameof(Icone), typeof(string), typeof(RayzerMetaItem), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty RotuloProperty = DependencyProperty.Register(
+        nameof(Rotulo), typeof(string), typeof(RayzerMetaItem), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty ValorProperty = DependencyProperty.Register(
+        nameof(Valor), typeof(object), typeof(RayzerMetaItem), new PropertyMetadata(null));
+
+    static RayzerMetaItem() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerMetaItem), new FrameworkPropertyMetadata(typeof(RayzerMetaItem)));
+
+    public string Icone { get => (string)GetValue(IconeProperty); set => SetValue(IconeProperty, value); }
+
+    public string Rotulo { get => (string)GetValue(RotuloProperty); set => SetValue(RotuloProperty, value); }
+
+    public object? Valor { get => GetValue(ValorProperty); set => SetValue(ValorProperty, value); }
+}
+
+/// <summary>
+/// A miniatura da catraca (tripé com leitor), desenhada em vetor. A luz do leitor acende na
+/// cor da situação. É ilustração, não foto do modelo.
+/// </summary>
+public class RayzerTurnstileGlyph : Control
+{
+    public static readonly DependencyProperty TomProperty = DependencyProperty.Register(
+        nameof(Tom), typeof(Tom), typeof(RayzerTurnstileGlyph), new PropertyMetadata(Tom.Neutro));
+
+    static RayzerTurnstileGlyph() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerTurnstileGlyph), new FrameworkPropertyMetadata(typeof(RayzerTurnstileGlyph)));
+
+    public Tom Tom { get => (Tom)GetValue(TomProperty); set => SetValue(TomProperty, value); }
 }
 
 /// <summary>

@@ -245,6 +245,37 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
+    public async Task Barra_operacional_resume_servico_catracas_e_nuvem()
+    {
+        var painel = new PainelAoVivoViewModel(Cliente());
+        await painel.AtualizarAsync();
+
+        Assert.Equal(("Operacional", Sinal.Bom), (painel.ServicoResumo, painel.ServicoSinal));
+        Assert.Equal(("1/2 online", Sinal.Atencao), (painel.CatracasResumo, painel.CatracasSinal));
+        Assert.Equal(("Sem sincronização", Sinal.Neutro), (painel.NuvemResumo, painel.NuvemSinal));
+
+        // Sem serviço: o bloco do serviço diz na hora, sem esperar outra tela.
+        var semServico = new PainelAoVivoViewModel(Cliente(TransporteLocal.EnderecoPadrao($"inexistente-{Guid.NewGuid():N}")));
+        await semServico.AtualizarAsync();
+        Assert.Equal(("Sem resposta", Sinal.Problema), (semServico.ServicoResumo, semServico.ServicoSinal));
+    }
+
+    [Fact]
+    public async Task Ver_acessos_do_cartao_abre_os_acessos_daquela_catraca()
+    {
+        _repositorio.TentarUsar(Qr, "p1", "inner-1", DateTimeOffset.UtcNow);
+        _repositorio.TentarUsar("5555555555", "p1", "inner-2", DateTimeOffset.UtcNow);
+
+        var janela = new JanelaViewModel(Cliente());
+        await janela.VerAcessos.ExecutarAsync(1);
+
+        var acessos = Assert.IsType<AcessosViewModel>(janela.TelaAtual);
+        Assert.Equal("1", acessos.Catraca);
+        await acessos.AtualizarAsync();
+        Assert.Equal(1, Assert.Single(acessos.Linhas).Inner);
+    }
+
+    [Fact]
     public async Task Consulta_apaga_o_codigo_digitado_e_mostra_so_a_mascara()
     {
         _repositorio.TentarUsar(Qr, "p1", "inner-1", DateTimeOffset.UtcNow);

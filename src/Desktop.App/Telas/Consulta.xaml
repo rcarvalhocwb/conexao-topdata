@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Consultar código">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Consultar código" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Digite o número do cartão ou do ingresso, ou passe no leitor do balcão. O número não fica guardado na tela: aparece só mascarado." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Consultar código"
+                         Descricao="Digite o número do cartão ou do ingresso, ou passe no leitor do balcão. O número não fica guardado na tela: aparece só mascarado." />
 
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
       <StackPanel Orientation="Horizontal">
@@ -45,7 +42,7 @@
       </ItemsControl>
     </Border>
 
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Últimas tentativas com este código" />
+    <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Últimas tentativas com este código" />
     <Grid>
       <DataGrid ItemsSource="{Binding Historico}" AutomationProperties.Name="Histórico do código">
         <DataGrid.Columns>

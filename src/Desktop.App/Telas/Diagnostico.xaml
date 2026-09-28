@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Diagnóstico">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Diagnóstico" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Para o suporte: versão, pasta de dados e as últimas linhas de cada programa das catracas. Nenhum número de cartão aparece aqui." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Diagnóstico"
+                         Descricao="Para o suporte: versão, pasta de dados e as últimas linhas de cada programa das catracas. Nenhum número de cartão aparece aqui." />
 
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />

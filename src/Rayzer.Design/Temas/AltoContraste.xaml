@@ -8,13 +8,13 @@
     chave aponta para as cores de sistema escolhidas pela pessoa. A situação continua
     legível porque nunca depende só da cor (sempre ícone + texto).
   -->
-  <!-- Fundo da janela, atrás de tudo -->
+  <!-- Fundo: Branco Rayzer (claro) / azul profundo (escuro) -->
   <SolidColorBrush x:Key="Rayzer.Background" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Superfície de conteúdo: cartões, tabelas -->
   <SolidColorBrush x:Key="Rayzer.Surface" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Superfície elevada: menus, popups, dicas -->
   <SolidColorBrush x:Key="Rayzer.Surface.Elevated" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
-  <!-- Superfície rebaixada: cabeçalho de tabela, linha alternada -->
+  <!-- Superfície rebaixada: cabeçalho de tabela, bloco técnico -->
   <SolidColorBrush x:Key="Rayzer.Surface.Sunken" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Item sob o mouse -->
   <SolidColorBrush x:Key="Rayzer.Surface.Hover" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
@@ -24,39 +24,51 @@
   <SolidColorBrush x:Key="Rayzer.Border" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- Borda de destaque -->
   <SolidColorBrush x:Key="Rayzer.Border.Strong" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
+  <!-- Divisória entre grupos -->
+  <SolidColorBrush x:Key="Rayzer.Border.Subtle" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- Fundo de campo -->
   <SolidColorBrush x:Key="Rayzer.Input.Background" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Borda de campo (contraste mínimo 3:1) -->
   <SolidColorBrush x:Key="Rayzer.Input.Border" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- Anel de foco do teclado -->
   <SolidColorBrush x:Key="Rayzer.Focus" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
+  <!-- Véu atrás de diálogo -->
+  <SolidColorBrush x:Key="Rayzer.Overlay" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Texto principal -->
   <SolidColorBrush x:Key="Rayzer.Text.Primary" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- Texto de apoio (contraste mínimo 4,5:1) -->
   <SolidColorBrush x:Key="Rayzer.Text.Secondary" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
+  <!-- Texto técnico e legenda longa (só tamanho 12+) -->
+  <SolidColorBrush x:Key="Rayzer.Text.Tertiary" Color="{x:Static SystemColors.GrayTextColor}" po:Freeze="True" />
   <!-- Texto desabilitado -->
   <SolidColorBrush x:Key="Rayzer.Text.Disabled" Color="{x:Static SystemColors.GrayTextColor}" po:Freeze="True" />
   <!-- Texto sobre a cor da marca -->
   <SolidColorBrush x:Key="Rayzer.Text.OnBrand" Color="{x:Static SystemColors.HighlightTextColor}" po:Freeze="True" />
-  <!-- Azul Fluxo: preenchimento da ação principal -->
+  <!-- Azul Principal #0066FF: preenchimento da ação principal -->
   <SolidColorBrush x:Key="Rayzer.Brand.Primary" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
   <!-- Ação principal sob o mouse -->
   <SolidColorBrush x:Key="Rayzer.Brand.Primary.Hover" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
   <!-- Ação principal pressionada -->
   <SolidColorBrush x:Key="Rayzer.Brand.Primary.Pressed" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
-  <!-- Azul Fluxo como texto ou ícone sobre superfície -->
+  <!-- Azul como texto ou ícone sobre superfície -->
   <SolidColorBrush x:Key="Rayzer.Brand.Primary.Foreground" Color="{x:Static SystemColors.HotTrackColor}" po:Freeze="True" />
   <!-- Fundo tingido da marca -->
   <SolidColorBrush x:Key="Rayzer.Brand.Primary.Subtle" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
-  <!-- Azul Noite: a base institucional -->
+  <!-- Azul Escuro #0B1A33: a base institucional -->
   <SolidColorBrush x:Key="Rayzer.Brand.Secondary" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
-  <!-- Verde Passagem: o acento do fluxo -->
+  <!-- Ciano como texto/ícone (escurecido no claro para contraste) -->
   <SolidColorBrush x:Key="Rayzer.Brand.Accent" Color="{x:Static SystemColors.HotTrackColor}" po:Freeze="True" />
+  <!-- Ciano #00D5FF: brilho, linha de energia, indicador -->
+  <SolidColorBrush x:Key="Rayzer.Brand.Cyan" Color="{x:Static SystemColors.HotTrackColor}" po:Freeze="True" />
+  <!-- Grafite #1A2332: equilíbrio e interface -->
+  <SolidColorBrush x:Key="Rayzer.Graphite" Color="{x:Static SystemColors.ControlDarkColor}" po:Freeze="True" />
+  <!-- Brilho azul sutil (fundo translúcido) -->
+  <SolidColorBrush x:Key="Rayzer.Glow.Blue" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
   <!-- Sucesso -->
   <SolidColorBrush x:Key="Rayzer.Success" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- Fundo de sucesso -->
   <SolidColorBrush x:Key="Rayzer.Success.Subtle" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
-  <!-- Atenção -->
+  <!-- Atenção, modo simulação -->
   <SolidColorBrush x:Key="Rayzer.Warning" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- Fundo de atenção -->
   <SolidColorBrush x:Key="Rayzer.Warning.Subtle" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
@@ -70,7 +82,7 @@
   <SolidColorBrush x:Key="Rayzer.Info.Subtle" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Neutro: parado, desligado, sem dado -->
   <SolidColorBrush x:Key="Rayzer.Neutral" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
-  <!-- Fundo neutro -->
+  <!-- Fundo neutro (Grafite no escuro) -->
   <SolidColorBrush x:Key="Rayzer.Neutral.Subtle" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- ✓ Acesso autorizado -->
   <SolidColorBrush x:Key="Rayzer.Access.Granted" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
@@ -84,28 +96,30 @@
   <SolidColorBrush x:Key="Rayzer.Device.Warning" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
   <!-- ↻ Sincronizando -->
   <SolidColorBrush x:Key="Rayzer.Syncing" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
-  <!-- Barra lateral: Azul Noite nos dois temas -->
+  <!-- Barra lateral: Azul Escuro nos dois temas -->
   <SolidColorBrush x:Key="Rayzer.Nav.Background" Color="{x:Static SystemColors.ControlColor}" po:Freeze="True" />
   <!-- Texto da barra lateral -->
   <SolidColorBrush x:Key="Rayzer.Nav.Text" Color="{x:Static SystemColors.ControlTextColor}" po:Freeze="True" />
   <!-- Texto do item ativo -->
   <SolidColorBrush x:Key="Rayzer.Nav.Text.Active" Color="{x:Static SystemColors.HighlightTextColor}" po:Freeze="True" />
-  <!-- Legenda na barra lateral -->
+  <!-- Legenda na barra lateral (Cinza #8A9BB0) -->
   <SolidColorBrush x:Key="Rayzer.Nav.Text.Muted" Color="{x:Static SystemColors.GrayTextColor}" po:Freeze="True" />
   <!-- Item da barra sob o mouse -->
   <SolidColorBrush x:Key="Rayzer.Nav.Item.Hover" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
   <!-- Item ativo da barra -->
   <SolidColorBrush x:Key="Rayzer.Nav.Item.Active" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
-  <!-- Linha de fluxo do item ativo -->
+  <!-- Linha de energia do item ativo (Ciano) -->
   <SolidColorBrush x:Key="Rayzer.Nav.Indicator" Color="{x:Static SystemColors.HighlightTextColor}" po:Freeze="True" />
   <!-- Divisória da barra lateral -->
   <SolidColorBrush x:Key="Rayzer.Nav.Divider" Color="{x:Static SystemColors.ControlTextColor}" po:Freeze="True" />
-  <!-- Símbolo: a barra do fluxo -->
+  <!-- Símbolo: a faixa do fluxo (Azul Principal) -->
   <SolidColorBrush x:Key="Rayzer.Logo.Flow" Color="{x:Static SystemColors.HotTrackColor}" po:Freeze="True" />
-  <!-- Símbolo: a passagem -->
+  <!-- Símbolo: a faixa da passagem (Ciano) -->
   <SolidColorBrush x:Key="Rayzer.Logo.Gate" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
   <!-- Barra de rolagem -->
   <SolidColorBrush x:Key="Rayzer.Scrollbar.Thumb" Color="{x:Static SystemColors.ControlDarkColor}" po:Freeze="True" />
   <!-- Cor da sombra -->
   <SolidColorBrush x:Key="Rayzer.Shadow" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
+  <!-- Linha de energia: gradiente Azul Principal → Ciano (indicadores, KPI, barra de carregamento) -->
+  <SolidColorBrush x:Key="Rayzer.Energy" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
 </ResourceDictionary>

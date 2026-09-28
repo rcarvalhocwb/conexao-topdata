@@ -76,6 +76,35 @@ public sealed class ComandoAssincrono : ICommand
     public void ReavaliarDisponibilidade() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
+/// <summary>
+/// Botão de uma linha de lista (o cartão de uma catraca, por exemplo): recebe o item como
+/// parâmetro.
+/// </summary>
+public sealed class ComandoComParametro : ICommand
+{
+    private readonly Func<object?, Task> _executar;
+
+    public ComandoComParametro(Func<object?, Task> executar)
+    {
+        ArgumentNullException.ThrowIfNull(executar);
+        _executar = executar;
+    }
+
+    // Sempre disponível: não há estado que o desabilite.
+    public event EventHandler? CanExecuteChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public bool CanExecute(object? parameter) => true;
+
+    public async void Execute(object? parameter) => await ExecutarAsync(parameter).ConfigureAwait(true);
+
+    /// <summary>Executa aguardando; é o que os testes chamam.</summary>
+    public Task ExecutarAsync(object? parameter) => _executar(parameter);
+}
+
 /// <summary>Uma tela do menu lateral.</summary>
 public interface ITela
 {

@@ -5,13 +5,12 @@
              AutomationProperties.Name="Configurações">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel MaxWidth="720" HorizontalAlignment="Left">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Configurações do evento" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Valem para todas as catracas. Elas passam a usar a nova configuração quando o serviço for reiniciado." />
+      <rz:RayzerPageHeader Titulo="Configurações do evento"
+                           Descricao="Valem para todas as catracas. Elas passam a usar a nova configuração quando o serviço for reiniciado." />
 
       <Border Style="{StaticResource Rayzer.Card}" Padding="20,18">
         <StackPanel>
-          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Catracas" />
+          <rz:RayzerSectionHeader Titulo="Catracas" />
 
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Mensagem no visor da catraca (até 32 letras)" />
           <TextBox MaxLength="32" Text="{Binding MensagemPadrao, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Mensagem do display" />
@@ -25,7 +24,7 @@
           <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding TipoDeLeitor, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tipo de leitor" />
 
           <Border Style="{StaticResource Rayzer.Divider}" Margin="0,20,0,16" />
-          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Nuvem" />
+          <rz:RayzerSectionHeader Titulo="Nuvem" />
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Segundos que a liberação espera o giro antes de subir para a nuvem" />
           <TextBox Width="120" HorizontalAlignment="Left" IsEnabled="{Binding NuvemLigada}"
                    Text="{Binding EsperaPeloGiro, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Espera pelo giro" />

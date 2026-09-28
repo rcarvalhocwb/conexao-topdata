@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Simulador de catraca">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Simulador de catraca" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Passa um código numa catraca simulada, como se o leitor tivesse lido. Só funciona com a instalação em modo simulação (Assistente de configuração, passo 2). O resultado também aparece no Painel ao vivo." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Simulador de catraca"
+                         Descricao="Passa um código numa catraca simulada, como se o leitor tivesse lido. Só funciona com a instalação em modo simulação (Assistente de configuração, passo 2). O resultado também aparece no Painel ao vivo." />
 
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
@@ -37,6 +34,9 @@
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
 
+    <rz:RayzerAlert DockPanel.Dock="Bottom" Style="{StaticResource InfoNotice}" Titulo="Como a simulação funciona"
+                    Texto="No modo simulação, os acessos são processados normalmente: a decisão, o registro e a prestação de contas são os de verdade. Só a catraca é simulada — nenhum equipamento é acionado." />
+
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
@@ -45,7 +45,7 @@
       </Grid.ColumnDefinitions>
 
       <DockPanel Grid.Column="0">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Últimas tentativas nesta catraca" />
+        <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Últimas tentativas nesta catraca" />
         <Grid>
           <DataGrid ItemsSource="{Binding Resultados}" AutomationProperties.Name="Resultados">
             <DataGrid.Columns>
@@ -61,7 +61,7 @@
       </DockPanel>
 
       <DockPanel Grid.Column="2">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Códigos de teste" />
+        <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Códigos de teste" />
         <DataGrid ItemsSource="{Binding CodigosDeTeste}" AutomationProperties.Name="Códigos de teste">
           <DataGrid.Columns>
             <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Rotulo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />

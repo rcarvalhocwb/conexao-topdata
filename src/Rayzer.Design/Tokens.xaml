@@ -23,6 +23,7 @@
 
   <!-- Escala tipográfica (px) -->
   <sys:Double x:Key="Rayzer.FontSize.Metric">32</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Wordmark">20</sys:Double>
   <sys:Double x:Key="Rayzer.FontSize.Display">26</sys:Double>
   <sys:Double x:Key="Rayzer.FontSize.Title">20</sys:Double>
   <sys:Double x:Key="Rayzer.FontSize.Section">15</sys:Double>
@@ -38,6 +39,7 @@
   <sys:Double x:Key="Rayzer.Space.4">16</sys:Double>
   <sys:Double x:Key="Rayzer.Space.5">24</sys:Double>
   <sys:Double x:Key="Rayzer.Space.6">32</sys:Double>
+  <sys:Double x:Key="Rayzer.Space.7">40</sys:Double>
   <Thickness x:Key="Rayzer.Padding.Page">28,20,28,20</Thickness>
   <Thickness x:Key="Rayzer.Padding.Card">16,14,16,14</Thickness>
   <Thickness x:Key="Rayzer.Padding.Control">12,0,12,0</Thickness>
@@ -59,9 +61,9 @@
     Elevação. Sombra custa renderização no WPF: só em superfície flutuante (popup, dica)
     e no cartão de métrica. O resto da hierarquia é feito com fundo e borda.
   -->
-  <DropShadowEffect x:Key="Rayzer.Shadow.Sm" BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.08" Color="#0F1B2D" po:Freeze="True" />
-  <DropShadowEffect x:Key="Rayzer.Shadow.Md" BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.12" Color="#0F1B2D" po:Freeze="True" />
-  <DropShadowEffect x:Key="Rayzer.Shadow.Lg" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0F1B2D" po:Freeze="True" />
+  <DropShadowEffect x:Key="Rayzer.Shadow.Sm" BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.08" Color="#0B1A33" po:Freeze="True" />
+  <DropShadowEffect x:Key="Rayzer.Shadow.Md" BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.12" Color="#0B1A33" po:Freeze="True" />
+  <DropShadowEffect x:Key="Rayzer.Shadow.Lg" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0B1A33" po:Freeze="True" />
 
   <!--
     Movimento: a linguagem é fluxo — entrar, atravessar, conectar. Curto e sem quique.
@@ -102,6 +104,9 @@
   <sys:String x:Key="Rayzer.Icon.Card">&#xE8C7;</sys:String>
   <sys:String x:Key="Rayzer.Icon.Download">&#xE896;</sys:String>
   <sys:String x:Key="Rayzer.Icon.History">&#xE81C;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Clock">&#xE823;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Ethernet">&#xE839;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Folder">&#xE8B7;</sys:String>
 
   <!--
     Símbolos de situação: nunca só cor. Cada situação tem cor + símbolo + texto.
@@ -116,9 +121,47 @@
   <sys:String x:Key="Rayzer.Glyph.Synced">✓</sys:String>
 
   <!--
-    O símbolo Rayzer: um X em que uma barra (o fluxo) atravessa a abertura da outra (a
-    passagem). "Access is a flow, not a door." Grade de 32 × 32.
+    O símbolo Rayzer (brand board, "construção do símbolo"): duas faixas em fluxo que se
+    encontram e formam o X. A faixa do fluxo (\) é contínua e passa por cima; a faixa da
+    passagem (/) se abre para ela passar. "Acesso é um fluxo, não uma porta." Grade 32 × 32,
+    terminais horizontais.
   -->
-  <Geometry x:Key="Rayzer.Logo.Flow.Geometry">M4,7.5 L7.5,4 L28,24.5 L24.5,28 Z</Geometry>
-  <Geometry x:Key="Rayzer.Logo.Gate.Geometry">M4,24.5 L7.5,28 L13.6,21.9 L10.1,18.4 Z M18.4,10.1 L21.9,13.6 L28,7.5 L24.5,4 Z</Geometry>
+  <Geometry x:Key="Rayzer.Mark.FlowUpper.Geometry">M3,4 L11,4 L20,16 L12,16 Z</Geometry>
+  <Geometry x:Key="Rayzer.Mark.FlowLower.Geometry">M12,16 L20,16 L29,28 L21,28 Z</Geometry>
+  <Geometry x:Key="Rayzer.Mark.GateUpper.Geometry">M21,4 L29,4 L20.75,15 L16.75,9.67 Z</Geometry>
+  <Geometry x:Key="Rayzer.Mark.GateLower.Geometry">M11,28 L3,28 L11.25,17 L15.25,22.33 Z</Geometry>
+  <Geometry x:Key="Rayzer.Logo.Flow.Geometry">M3,4 L11,4 L29,28 L21,28 Z</Geometry>
+  <Geometry x:Key="Rayzer.Logo.Gate.Geometry">M21,4 L29,4 L20.75,15 L16.75,9.67 Z M11,28 L3,28 L11.25,17 L15.25,22.33 Z</Geometry>
+
+  <!--
+    Material do X: vítreo e tecnológico, sem plástico. Cada braço com o seu gradiente
+    (o azul do fluxo escurece para baixo; a passagem vai do ciano ao prata), um realce de
+    bevel no alto e o brilho azul só na variante "glow". Cores de marca: iguais nos dois
+    temas.
+  -->
+  <LinearGradientBrush x:Key="Rayzer.Mark.FlowUpper" StartPoint="0,0" EndPoint="1,1" po:Freeze="True">
+    <GradientStop Offset="0" Color="#4D94FF" />
+    <GradientStop Offset="1" Color="#0066FF" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Rayzer.Mark.FlowLower" StartPoint="0,0" EndPoint="1,1" po:Freeze="True">
+    <GradientStop Offset="0" Color="#0066FF" />
+    <GradientStop Offset="1" Color="#003FBF" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Rayzer.Mark.GateUpper" StartPoint="1,0" EndPoint="0,1" po:Freeze="True">
+    <GradientStop Offset="0" Color="#8AF0FF" />
+    <GradientStop Offset="0.55" Color="#00D5FF" />
+    <GradientStop Offset="1" Color="#009FE0" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Rayzer.Mark.GateLower" StartPoint="1,0" EndPoint="0,1" po:Freeze="True">
+    <GradientStop Offset="0" Color="#F4F7FB" />
+    <GradientStop Offset="1" Color="#8A9BB0" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Rayzer.Mark.Highlight" StartPoint="0,0" EndPoint="0,1" po:Freeze="True">
+    <GradientStop Offset="0" Color="#66FFFFFF" />
+    <GradientStop Offset="0.45" Color="#00FFFFFF" />
+  </LinearGradientBrush>
+
+  <!-- Brilho azul controlado: corporativo, nunca neon. -->
+  <DropShadowEffect x:Key="Rayzer.Glow.Sm" BlurRadius="10" ShadowDepth="0" Opacity="0.35" Color="#0066FF" po:Freeze="True" />
+  <DropShadowEffect x:Key="Rayzer.Glow.Md" BlurRadius="18" ShadowDepth="0" Opacity="0.45" Color="#0066FF" po:Freeze="True" />
 </ResourceDictionary>

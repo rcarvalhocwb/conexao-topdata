@@ -109,6 +109,12 @@ public sealed class PainelAoVivoViewModel : TelaBase
     private IReadOnlyList<LinhaDeCatraca> _catracas = [];
     private string _resumo = string.Empty;
     private string _horaDoEvento = "—";
+    private string _servicoResumo = "Conectando…";
+    private Sinal _servicoSinal = Sinal.Neutro;
+    private string _catracasResumo = "—";
+    private Sinal _catracasSinal = Sinal.Neutro;
+    private string _nuvemResumo = "—";
+    private Sinal _nuvemSinal = Sinal.Neutro;
     private string _internet = string.Empty;
     private long _liberados;
     private long _negados;
@@ -143,6 +149,21 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
     public string Internet { get => _internet; private set => Definir(ref _internet, value); }
 
+    /// <summary>Barra operacional: o serviço local ("Operacional", "Sem resposta").</summary>
+    public string ServicoResumo { get => _servicoResumo; private set => Definir(ref _servicoResumo, value); }
+
+    public Sinal ServicoSinal { get => _servicoSinal; private set => Definir(ref _servicoSinal, value); }
+
+    /// <summary>Barra operacional: "2/2 online".</summary>
+    public string CatracasResumo { get => _catracasResumo; private set => Definir(ref _catracasResumo, value); }
+
+    public Sinal CatracasSinal { get => _catracasSinal; private set => Definir(ref _catracasSinal, value); }
+
+    /// <summary>Barra operacional: a nuvem ("Online", "Offline", "Sem sincronização").</summary>
+    public string NuvemResumo { get => _nuvemResumo; private set => Definir(ref _nuvemResumo, value); }
+
+    public Sinal NuvemSinal { get => _nuvemSinal; private set => Definir(ref _nuvemSinal, value); }
+
     /// <summary>Hora da última atualização, no relógio do evento (Brasília).</summary>
     public string HoraDoEvento { get => _horaDoEvento; private set => Definir(ref _horaDoEvento, value); }
 
@@ -171,11 +192,28 @@ public sealed class PainelAoVivoViewModel : TelaBase
                     ? "Nuvem: sem sincronização — as catracas funcionam normalmente"
                     : $"Nuvem: sem internet desde {Textos.Ha(estado.UltimaSincronizacao.ToDateTimeOffset(), agora)} — as catracas funcionam normalmente";
             Mensagem = string.Empty;
+
+            ServicoResumo = "Operacional";
+            ServicoSinal = Sinal.Bom;
+            (CatracasResumo, CatracasSinal) = (estado.EquipamentosCadastrados, estado.EquipamentosConectados) switch
+            {
+                (0, _) => ("Nenhuma cadastrada", Sinal.Neutro),
+                (var total, var conectadas) when conectadas >= total => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Bom),
+                (var total, 0) => (string.Create(CultureInfo.InvariantCulture, $"0/{total} online"), Sinal.Problema),
+                (var total, var conectadas) => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Atencao),
+            };
+            (NuvemResumo, NuvemSinal) = estado.InternetDisponivel
+                ? ("Online", Sinal.Bom)
+                : estado.UltimaSincronizacao is null
+                    ? ("Sem sincronização", Sinal.Neutro)
+                    : ("Offline — catracas seguem", Sinal.Atencao);
         }).ConfigureAwait(true);
 
         if (!ok)
         {
             Estado = Estado.ComFalhaDeComunicacao(Mensagem, Relogio());
+            ServicoResumo = "Sem resposta";
+            ServicoSinal = Sinal.Problema;
         }
     }
 
@@ -861,10 +899,32 @@ public sealed class JanelaViewModel : Notificavel
             TelaAtual = Telas.OfType<DiagnosticoViewModel>().First();
             return Task.CompletedTask;
         });
+        VerAcessos = new ComandoComParametro(async parametro =>
+        {
+            if (parametro is not int inner)
+            {
+                return;
+            }
+
+            var acessos = Telas.OfType<AcessosViewModel>().First();
+            acessos.Catraca = inner.ToString(CultureInfo.InvariantCulture);
+
+            if (ReferenceEquals(TelaAtual, acessos))
+            {
+                await acessos.AtualizarAsync().ConfigureAwait(true);
+            }
+            else
+            {
+                TelaAtual = acessos;
+            }
+        });
     }
 
     /// <summary>A ação dos cartões de catraca: ir direto ao diagnóstico.</summary>
     public ComandoAssincrono AbrirDiagnostico { get; }
+
+    /// <summary>A outra ação do cartão: os acessos daquela catraca (parâmetro: o número do Inner).</summary>
+    public ComandoComParametro VerAcessos { get; }
 
     /// <summary>O painel ao vivo também alimenta o cabeçalho, em qualquer tela.</summary>
     public PainelAoVivoViewModel Painel { get; }

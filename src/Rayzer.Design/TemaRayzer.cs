@@ -34,7 +34,7 @@ public static class TemaRayzer
     private static string? _pastaDePreferencias;
 
     /// <summary>Preferência atual.</summary>
-    public static Tema Preferencia { get; private set; } = Tema.Sistema;
+    public static Tema Preferencia { get; private set; } = Tema.Escuro;
 
     /// <summary>O tema de fato aplicado: "Claro", "Escuro" ou "AltoContraste".</summary>
     public static string Aplicado { get; private set; } = "Claro";
@@ -168,13 +168,14 @@ public static class TemaRayzer
         try
         {
             var arquivo = Path.Combine(_pastaDePreferencias!, "tema.txt");
+            // Sem preferência gravada: o escuro, a expressão principal da marca (brand board).
             return File.Exists(arquivo) && Enum.TryParse<Tema>(File.ReadAllText(arquivo).Trim(), ignoreCase: true, out var tema)
                 ? tema
-                : Tema.Sistema;
+                : Tema.Escuro;
         }
         catch (Exception erro) when (erro is IOException or UnauthorizedAccessException)
         {
-            return Tema.Sistema;
+            return Tema.Escuro;
         }
     }
 

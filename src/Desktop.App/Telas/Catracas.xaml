@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Catracas">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Catracas" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Cada catraca com a sua situação, o último evento e a linha técnica. Para incluir ou tirar catracas, use o Assistente de configuração (passo 2)." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Catracas"
+                         Descricao="Cada catraca com a sua situação, o último evento e a linha técnica. Para incluir ou tirar catracas, use o Assistente de configuração (passo 2)." />
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
     <Grid>

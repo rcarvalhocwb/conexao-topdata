@@ -14,10 +14,7 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <StackPanel Grid.Row="0">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Painel ao vivo" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}" Text="{Binding Resumo}" />
-    </StackPanel>
+    <rz:RayzerPageHeader Grid.Row="0" Titulo="Painel ao vivo" Descricao="{Binding Resumo}" />
 
     <!-- Os números da operação, desde o início desta base local. -->
     <UniformGrid Grid.Row="1" Rows="1" Margin="0,0,-12,12">
@@ -47,7 +44,7 @@
       </Grid.ColumnDefinitions>
 
       <DockPanel Grid.Column="0">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Catracas" />
+        <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Catracas" />
         <Grid>
           <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,-12,0">
             <ItemsControl ItemsSource="{Binding Catracas}" ItemTemplate="{StaticResource Cartao.Catraca}"
@@ -59,10 +56,9 @@
         </Grid>
       </DockPanel>
 
-      <DockPanel Grid.Column="2">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Acessos em tempo real" />
+      <rz:RayzerDataPanel Grid.Column="2" Titulo="Acessos em tempo real" Subtitulo="Cada leitura aparece aqui na hora, autorizada ou negada">
         <Grid>
-          <DataGrid ItemsSource="{Binding UltimosAcessos}" AutomationProperties.Name="Últimos acessos">
+          <DataGrid ItemsSource="{Binding UltimosAcessos}" BorderThickness="0,1,0,0" AutomationProperties.Name="Últimos acessos">
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="84" ElementStyle="{StaticResource Celula.Mono}" />
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="76" />
@@ -72,9 +68,10 @@
           </DataGrid>
           <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.List}" Titulo="Aguardando o primeiro acesso"
                                Texto="Cada leitura nas catracas aparece aqui na hora, autorizada ou negada."
+                               Observacao="Sem catraca física? Com a instalação em modo simulação, passe um código de teste na tela Simulador."
                                Visibility="{Binding UltimosAcessos.Count, Converter={StaticResource ZeroParaVisivel}}" />
         </Grid>
-      </DockPanel>
+      </rz:RayzerDataPanel>
     </Grid>
   </Grid>
 </UserControl>

@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Prestação de contas">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Prestação de contas" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="O que aconteceu nas catracas no período, no horário de Brasília. Autorizado = a catraca liberou; com giro = a pessoa passou. Os relatórios completos (docs/25) estão em desenvolvimento." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Prestação de contas"
+                         Descricao="O que aconteceu nas catracas no período, no horário de Brasília. Autorizado = a catraca liberou; com giro = a pessoa passou. Os relatórios completos (docs/25) estão em desenvolvimento." />
 
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
@@ -60,7 +57,7 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <StackPanel>
-          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Por categoria" />
+          <rz:RayzerSectionHeader Titulo="Por categoria" />
           <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="*" />
@@ -68,7 +65,7 @@
               <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="100" />
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Por catraca" />
+          <rz:RayzerSectionHeader Titulo="Por catraca" />
           <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="*" />
@@ -79,7 +76,7 @@
           </DataGrid>
         </StackPanel>
         <StackPanel Grid.Column="2">
-          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Por hora" />
+          <rz:RayzerSectionHeader Titulo="Por hora" />
           <DataGrid ItemsSource="{Binding PorHora}" AutomationProperties.Name="Por hora" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Width="*" ElementStyle="{StaticResource Celula.Mono}"
@@ -88,7 +85,7 @@
               <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="90" />
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Motivos de negativa" />
+          <rz:RayzerSectionHeader Titulo="Motivos de negativa" />
           <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="MOTIVO" Binding="{Binding Mensagem}" Width="*" />

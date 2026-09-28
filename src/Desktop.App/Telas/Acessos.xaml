@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Acessos">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Acessos" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Toda tentativa fica registrada, autorizada ou negada. Datas e horas no horário de Brasília; sem hora, vale o dia inteiro." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Acessos"
+                         Descricao="Toda tentativa fica registrada, autorizada ou negada. Datas e horas no horário de Brasília; sem hora, vale o dia inteiro." />
 
     <!-- Filtros: todos os campos com a mesma altura, alinhados pela base. -->
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">

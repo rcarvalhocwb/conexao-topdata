@@ -4,11 +4,8 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Sincronização">
   <DockPanel>
-    <StackPanel DockPanel.Dock="Top">
-      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Sincronização" />
-      <TextBlock Style="{StaticResource Pagina.Descricao}"
-                 Text="Sem internet, as catracas continuam funcionando. O que não foi enviado espera aqui e sobe sozinho quando a conexão voltar." />
-    </StackPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Sincronização"
+                         Descricao="Sem internet, as catracas continuam funcionando. O que não foi enviado espera aqui e sobe sozinho quando a conexão voltar." />
 
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
@@ -35,7 +32,7 @@
       </StackPanel>
     </Border>
 
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Origens dos códigos" />
+    <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Origens dos códigos" />
     <Grid>
       <DataGrid ItemsSource="{Binding Provedores}" AutomationProperties.Name="Origens dos códigos">
         <DataGrid.Columns>

@@ -27,7 +27,7 @@
     <Border x:Name="BarraLateral" Grid.Column="0" Width="248" Background="{DynamicResource Rayzer.Nav.Background}">
       <DockPanel>
         <Grid DockPanel.Dock="Top" Margin="18,20,12,20">
-          <rz:RayzerLogo x:Name="Logo" TamanhoDoSimbolo="34" HorizontalAlignment="Left" />
+          <rz:RayzerLogo x:Name="Logo" TamanhoDoSimbolo="30" Brilho="True" HorizontalAlignment="Left" />
         </Grid>
 
         <StackPanel DockPanel.Dock="Bottom" Margin="8,8,8,16">
@@ -89,37 +89,54 @@
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <!-- Barra superior: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO. -->
-      <Border Grid.Row="0" Padding="24,14" Background="{DynamicResource Rayzer.Surface}"
+      <!--
+        TopOperationalBar: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO, em qualquer tela.
+        Blocos modulares (StatusCard) com o que existe hoje: serviço local, catracas, nuvem
+        e o modo simulação; relógio de Brasília à direita. (Perfil de usuário: não há login
+        — proposta futura, docs/27 §11.)
+      -->
+      <Border Grid.Row="0" Padding="24,12,24,10" Background="{DynamicResource Rayzer.Surface}"
               BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1" DataContext="{Binding Painel}">
         <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
-          <StackPanel VerticalAlignment="Center">
-            <rz:RayzerStatus FontSize="16" Tom="{Binding Estado.Saude, Converter={StaticResource SaudeParaTom}}"
-                             Texto="{Binding Estado.Mensagem}"
-                             AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="Estado da operação" />
-            <TextBlock Margin="22,2,0,0" Style="{StaticResource Rayzer.Type.Caption}" Text="{Binding Internet}" />
-          </StackPanel>
+          <WrapPanel VerticalAlignment="Center">
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Diagnostic}" Titulo="Serviço local"
+                                 Descricao="{Binding ServicoResumo}" Tom="{Binding ServicoSinal, Converter={StaticResource SinalParaTom}}"
+                                 AutomationProperties.Name="Serviço local" />
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="Catracas"
+                                 Descricao="{Binding CatracasResumo}" Tom="{Binding CatracasSinal, Converter={StaticResource SinalParaTom}}"
+                                 AutomationProperties.Name="Catracas" />
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Cloud}" Titulo="Nuvem"
+                                 Descricao="{Binding NuvemResumo}" Tom="{Binding NuvemSinal, Converter={StaticResource SinalParaTom}}"
+                                 AutomationProperties.Name="Nuvem" />
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Play}" Titulo="Modo simulação"
+                                 Descricao="sem catraca física" Tom="Atencao"
+                                 Visibility="{Binding Estado.Simulacao, Converter={StaticResource BoolParaVisibilidade}}" />
+          </WrapPanel>
 
-          <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" HorizontalAlignment="Right">
-            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Mono}" FontSize="15"
-                       Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
-            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Caption}" Text="Horário de Brasília" />
-          </StackPanel>
-
-          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,12,0" Content="Abrir _assistente de configuração"
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,16,0" Content="Abrir _assistente de configuração"
                     Click="AbrirAssistente" AutomationProperties.Name="Abrir assistente de configuração"
                     Visibility="{Binding Estado.SugerirAssistente, Converter={StaticResource BoolParaVisibilidade}}" />
-            <Border Padding="12,6" CornerRadius="{DynamicResource Rayzer.Radius.Md}" Background="{DynamicResource Rayzer.Surface.Sunken}">
-              <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding Resumo}" />
-            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Mono}" FontSize="18" FontWeight="SemiBold"
+                         Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
+              <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Caption}" Text="Horário de Brasília" />
+            </StackPanel>
           </StackPanel>
+
+          <!-- A frase da situação: o que aconteceu, desde quando, o que fazer. -->
+          <rz:RayzerStatus Grid.Row="1" Grid.ColumnSpan="2" Margin="2,8,0,0" FontSize="13"
+                           Tom="{Binding Estado.Saude, Converter={StaticResource SaudeParaTom}}" Texto="{Binding Estado.Mensagem}"
+                           AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="Estado da operação" />
         </Grid>
       </Border>
 
