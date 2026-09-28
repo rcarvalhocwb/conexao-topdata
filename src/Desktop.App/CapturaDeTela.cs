@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Contracts;
@@ -24,8 +25,8 @@ namespace Desktop.App;
 /// Limitação honesta: renderiza o <b>conteúdo</b> da janela, não a moldura do Windows.
 /// </para>
 /// <para>
-/// <b>Não funciona na CI.</b> O runner do Windows do GitHub não tem sessão gráfica e o
-/// WPF não inicializa. Precisa de uma máquina Windows de verdade.
+/// Roda no CI do Windows (o runner tem sessão de desktop) com o serviço em modo simulação:
+/// as imagens dos dois temas saem como artefato e no pré-lançamento, para revisão visual.
 /// </para>
 /// </remarks>
 internal static class CapturaDeTela
@@ -61,7 +62,7 @@ internal static class CapturaDeTela
 
             var caminho = Path.Combine(
                 pasta,
-                string.Create(CultureInfo.InvariantCulture, $"{numero:D2}-{Arquivo(tela.Titulo)}.png"));
+                string.Create(CultureInfo.InvariantCulture, $"{numero:D2}-{Arquivo(tela.Titulo)}-{Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant()}.png"));
             Gravar(caminho, janela);
             gravados.Add(caminho);
             numero++;
@@ -87,8 +88,13 @@ internal static class CapturaDeTela
             Width = Largura,
             Height = Altura,
             DataContext = vm,
-            Background = SystemColors.WindowBrush,
         };
+
+        // As mesmas chaves que a janela usa (Rayzer.Janela), para a captura sair no tema.
+        moldura.SetResourceReference(Border.BackgroundProperty, "Rayzer.Background");
+        moldura.SetResourceReference(TextElement.ForegroundProperty, "Rayzer.Text.Primary");
+        moldura.SetResourceReference(TextElement.FontFamilyProperty, "Rayzer.Font.Text");
+        moldura.SetResourceReference(TextElement.FontSizeProperty, "Rayzer.FontSize.Body");
 
         moldura.Measure(new Size(Largura, Altura));
         moldura.Arrange(new Rect(0, 0, Largura, Altura));

@@ -16,6 +16,7 @@
     <RootNamespace>Desktop.App</RootNamespace>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\Rayzer.Design\Marca\rayzer-xacess.ico</ApplicationIcon>
     <!--
       Telas NÃO podem rodar em globalização invariante (ligada para o resto da solução em
       Directory.Build.props). No modo invariante o WPF lança "Cannot find non-neutral
@@ -29,6 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="../Contracts/Contracts.csproj" />
     <ProjectReference Include="../Desktop.ViewModels/Desktop.ViewModels.csproj" />
+    <ProjectReference Include="../Rayzer.Design/Rayzer.Design.csproj" />
   </ItemGroup>
 
 </Project>

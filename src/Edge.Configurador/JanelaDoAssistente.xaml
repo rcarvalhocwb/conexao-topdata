@@ -1,33 +1,61 @@
 <Window x:Class="Edge.Configurador.JanelaDoAssistente"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Conexão Topdata — Assistente de configuração"
-        Height="700" Width="1000" MinHeight="600" MinWidth="900"
+        xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+        Title="Rayzer XAcess — Assistente de configuração"
+        Height="720" Width="1040" MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}">
+        Icon="pack://application:,,,/Rayzer.Design;component/Marca/rayzer-xacess.ico"
+        Style="{StaticResource Rayzer.Janela}">
 
-  <DockPanel Margin="16">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-      <Button x:Name="BotaoVoltar" Content="_Voltar" Click="Voltar" />
-      <Button x:Name="BotaoAvancar" Content="_Avançar" Click="Avancar" />
-    </StackPanel>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
 
-    <TabControl x:Name="Passos" TabStripPlacement="Left" SelectionChanged="PassoMudou">
+    <!-- Cabeçalho da marca. -->
+    <Border Grid.Row="0" Padding="24,16" Background="{DynamicResource Rayzer.Nav.Background}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <rz:RayzerLogo TamanhoDoSimbolo="32" />
+        <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Center">
+          <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Section}" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Rayzer.Nav.Text.Active}" Text="Assistente de configuração" />
+          <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" Foreground="{DynamicResource Rayzer.Nav.Text}"
+                     Text="Quatro passos: o computador, as catracas, a nuvem e gravar." />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="Passos" Grid.Row="1" Margin="24,20,24,0" SelectionChanged="PassoMudou">
 
       <!-- 1. O PC tem o que precisa? -->
-      <TabItem Header="1. Ambiente">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="16">
+      <TabItem Header="1  ·  Ambiente">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
           <StackPanel>
             <TextBlock Style="{StaticResource Titulo}" Text="Este computador tem o que precisa?" />
-            <TextBlock Text="Itens em vermelho impedem as catracas de funcionar. Instale o que faltar e clique em Verificar de novo." />
-            <ItemsControl x:Name="ListaDoAmbiente" Margin="0,16,0,16" AutomationProperties.Name="Verificação do ambiente">
+            <TextBlock Style="{StaticResource Descricao}" Text="Itens com × impedem as catracas de funcionar. Instale o que faltar e clique em Verificar de novo." />
+            <ItemsControl x:Name="ListaDoAmbiente" Margin="0,12,0,16" AutomationProperties.Name="Verificação do ambiente">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border BorderThickness="6,1,1,1" CornerRadius="4" Padding="12,8" Margin="0,0,0,8" BorderBrush="{Binding Cor}">
-                    <StackPanel>
-                      <TextBlock FontWeight="SemiBold"><Run Text="{Binding Marca, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding Item, Mode=OneWay}" /></TextBlock>
-                      <TextBlock Text="{Binding Orientacao}" />
-                    </StackPanel>
+                  <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,8" Padding="14,10">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel>
+                        <TextBlock FontWeight="SemiBold" Text="{Binding Item}" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource Rayzer.Text.Secondary}" Margin="0,2,0,0" Text="{Binding Orientacao}" />
+                      </StackPanel>
+                      <rz:RayzerStatus Grid.Column="1" Margin="12,0,0,0" Pilula="True" VerticalAlignment="Top"
+                                       Tom="{Binding Tom}" Texto="{Binding Situacao}" />
+                    </Grid>
                   </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -37,82 +65,91 @@
               <Button Content="_Localizar EasyInner.dll…" Click="LocalizarEasyInner" Margin="0,0,8,8" />
               <Button x:Name="BotaoNet35" Content="Habilitar .NET _Framework 3.5" Click="HabilitarNet35" Margin="0,0,8,8" />
             </WrapPanel>
-            <TextBlock x:Name="TextoDoAmbiente" FontSize="14" Margin="0,8,0,0" AutomationProperties.LiveSetting="Assertive" />
+            <TextBlock x:Name="TextoDoAmbiente" Style="{StaticResource Rayzer.Text.Body}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Assertive" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
       <!-- 2. Quais catracas? -->
-      <TabItem Header="2. Catracas">
+      <TabItem Header="2  ·  Catracas">
         <DockPanel Margin="16">
           <StackPanel DockPanel.Dock="Top">
             <TextBlock Style="{StaticResource Titulo}" Text="Quais catracas este computador atende?" />
-            <TextBlock Text="O número é o do Inner configurado em cada catraca. O nome é o que aparece no painel. Em cada catraca, aponte o servidor para o IP deste computador e para a porta abaixo." />
-            <CheckBox x:Name="CaixaSimulacao" Click="VerificarAmbiente" Margin="0,12,0,0" MinHeight="32" VerticalContentAlignment="Center"
+            <TextBlock Style="{StaticResource Descricao}" Text="O número é o do Inner configurado em cada catraca. O nome é o que aparece no painel. Em cada catraca, aponte o servidor para o IP deste computador e para a porta abaixo." />
+            <CheckBox x:Name="CaixaSimulacao" Click="VerificarAmbiente" Margin="0,8,0,0"
                       Content="Modo simulação: catracas simuladas, sem catraca física (para treinar e testar)" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Porta (padrão 3570)" />
             <TextBox x:Name="CampoPorta" Width="120" HorizontalAlignment="Left" AutomationProperties.Name="Porta" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Catracas (clique na última linha para incluir; selecione e tecle Delete para tirar)" />
           </StackPanel>
-          <DataGrid x:Name="GradeDeCatracas" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
-                    HeadersVisibility="Column" RowHeight="34" FontSize="14" AutomationProperties.Name="Catracas">
+          <DataGrid x:Name="GradeDeCatracas" IsReadOnly="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                    AutomationProperties.Name="Catracas">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Número do Inner" Binding="{Binding Inner}" Width="160" />
-              <DataGridTextColumn Header="Nome no painel" Binding="{Binding Nome}" Width="*" />
+              <DataGridTextColumn Header="NÚMERO DO INNER" Binding="{Binding Inner}" Width="170" />
+              <DataGridTextColumn Header="NOME NO PAINEL" Binding="{Binding Nome}" Width="*" />
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
       </TabItem>
 
       <!-- 3. Nuvem -->
-      <TabItem Header="3. Nuvem">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="16">
+      <TabItem Header="3  ·  Nuvem">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
           <StackPanel MaxWidth="640" HorizontalAlignment="Left">
             <TextBlock Style="{StaticResource Titulo}" Text="Painel na nuvem" />
-            <TextBlock Text="Opcional. Sem a nuvem, as catracas funcionam do mesmo jeito; só não recebem os cartões cadastrados lá nem enviam os acessos." />
-            <CheckBox x:Name="CaixaNuvem" Margin="0,16,0,0" MinHeight="32" VerticalContentAlignment="Center"
-                      Content="Sincronizar com o painel na nuvem" />
+            <TextBlock Style="{StaticResource Descricao}" Text="Opcional. Sem a nuvem, as catracas funcionam do mesmo jeito; só não recebem os cartões cadastrados lá nem enviam os acessos." />
+            <CheckBox x:Name="CaixaNuvem" Margin="0,8,0,0" Content="Sincronizar com o painel na nuvem" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Endereço das funções (https://…/functions/v1/)" />
             <TextBox x:Name="CampoBase" AutomationProperties.Name="Endereço da nuvem" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Identificador deste computador no painel" />
             <TextBox x:Name="CampoDispositivo" Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Identificador do computador" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Formato do número do cartão (confirmar na bancada — docs/21)" />
-            <ComboBox x:Name="CampoPerfil" Width="240" HorizontalAlignment="Left" MinHeight="36" AutomationProperties.Name="Formato do cartão">
+            <ComboBox x:Name="CampoPerfil" Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Formato do cartão">
               <ComboBoxItem Content="raw" />
               <ComboBoxItem Content="mifare-catraca4" />
               <ComboBoxItem Content="qr-catraca4" />
             </ComboBox>
             <TextBlock Style="{StaticResource Rotulo}" Text="Intervalo mínimo para o mesmo cartão voltar (segundos; 240 = 4 minutos)" />
             <TextBox x:Name="CampoReuso" Width="120" HorizontalAlignment="Left" AutomationProperties.Name="Intervalo de reuso" />
-            <CheckBox x:Name="CaixaUrna" Margin="0,16,0,0" MinHeight="32" VerticalContentAlignment="Center"
-                      Content="Cartão da bilheteria só vale na fenda da urna" />
+            <CheckBox x:Name="CaixaUrna" Margin="0,16,0,0" Content="Cartão da bilheteria só vale na fenda da urna" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Segredo de acesso à nuvem (deixe em branco para manter o atual)" />
             <PasswordBox x:Name="CampoSegredo" AutomationProperties.Name="Segredo da nuvem" />
-            <TextBlock Style="{StaticResource Rotulo}" Text="O segredo fica guardado no cofre do Windows deste computador. Ele nunca é gravado em arquivo." />
+            <TextBlock Style="{StaticResource Rayzer.Text.Caption}" Margin="0,6,0,0"
+                       Text="O segredo fica guardado no cofre do Windows deste computador. Ele nunca é gravado em arquivo." />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
       <!-- 4. Gravar -->
-      <TabItem Header="4. Gravar">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="16">
+      <TabItem Header="4  ·  Gravar">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
           <StackPanel>
             <TextBlock Style="{StaticResource Titulo}" Text="Conferir e gravar" />
-            <TextBlock x:Name="TextoResumo" FontSize="14" />
+            <TextBlock x:Name="TextoResumo" Style="{StaticResource Rayzer.Text.Body}" />
             <ItemsControl x:Name="ListaDeProblemas" Margin="0,12,0,12" AutomationProperties.Name="Problemas">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Margin="0,2" Text="{Binding StringFormat='• {0}'}" />
+                  <rz:RayzerAlert Margin="0,0,0,8" Tom="Perigo" Titulo="{Binding}" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <StackPanel Orientation="Horizontal">
-              <Button x:Name="BotaoGravar" Content="_Gravar e iniciar o serviço" Click="Gravar" />
-            </StackPanel>
-            <TextBlock x:Name="TextoResultado" FontSize="14" Margin="0,16,0,0" AutomationProperties.LiveSetting="Assertive" />
+            <Button x:Name="BotaoGravar" Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left"
+                    Content="_Gravar e iniciar o serviço" Click="Gravar" />
+            <TextBlock x:Name="TextoResultado" Style="{StaticResource Rayzer.Text.Body}" Margin="0,16,0,0" AutomationProperties.LiveSetting="Assertive" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
     </TabControl>
-  </DockPanel>
+
+    <Border Grid.Row="2" Margin="24,16,24,20">
+      <Grid>
+        <TextBlock VerticalAlignment="Center" Style="{StaticResource Rayzer.Text.Caption}"
+                   Text="Rayzer Serviços e Tecnologia · desenvolvido sob demanda" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="BotaoVoltar" Margin="0,0,8,0" Content="_Voltar" Click="Voltar" />
+          <Button x:Name="BotaoAvancar" Style="{StaticResource Rayzer.Button.Primary}" Content="_Avançar" Click="Avancar" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
 </Window>

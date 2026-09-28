@@ -82,6 +82,9 @@ public interface ITela
     /// <summary>Nome no menu.</summary>
     string Titulo { get; }
 
+    /// <summary>Verdadeiro enquanto a tela busca dados (a barra de carregamento aparece).</summary>
+    bool Ocupada { get; }
+
     /// <summary>Busca de novo o que a tela mostra. Nunca lança: falha vira mensagem.</summary>
     Task AtualizarAsync(CancellationToken cancelamento = default);
 }

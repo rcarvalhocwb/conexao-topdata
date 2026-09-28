@@ -1,86 +1,132 @@
 <Window x:Class="Desktop.App.JanelaPrincipal"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Conexão Topdata — Painel do evento"
-        Height="768" Width="1366"
+        xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+        Title="Rayzer XAcess — Painel do evento"
+        Height="800" Width="1366"
         MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}">
+        Icon="pack://application:,,,/Rayzer.Design;component/Marca/rayzer-xacess.ico"
+        Style="{StaticResource Rayzer.Janela}">
 
   <!--
-    1366x768 é a resolução mínima suportada (docs/10). Nada de fonte fixa no layout: o
-    escalonamento do Windows manda. Menu lateral navegável por teclado (setas e Tab).
+    Rayzer XAcess — a janela do operador.
+    Barra lateral: Azul Noite nos dois temas (a âncora da marca), menu com ícone + nome e a
+    linha do fluxo no item ativo; recolhe para só ícones (botão ou janela estreita).
+    Barra superior: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO, em qualquer tela.
+    1366 × 768 é a resolução mínima suportada (docs/10); navegável por teclado.
   -->
 
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="230" />
+      <ColumnDefinition Width="Auto" />
       <ColumnDefinition Width="*" />
     </Grid.ColumnDefinitions>
 
-    <!-- Menu lateral. -->
-    <Border Grid.Column="0" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
-            BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" BorderThickness="0,0,1,0">
+    <!-- ===== Barra lateral ===== -->
+    <Border x:Name="BarraLateral" Grid.Column="0" Width="248" Background="{DynamicResource Rayzer.Nav.Background}">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Margin="20,20,16,20">
-          <TextBlock FontSize="18" FontWeight="Bold" Text="Conexão Topdata" />
-          <TextBlock Style="{StaticResource Rotulo}" Text="Controle de acesso" />
+        <Grid DockPanel.Dock="Top" Margin="18,20,12,20">
+          <rz:RayzerLogo x:Name="Logo" TamanhoDoSimbolo="34" HorizontalAlignment="Left" />
+        </Grid>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="8,8,8,16">
+          <Border Style="{StaticResource Rayzer.Divider}" Background="{DynamicResource Rayzer.Nav.Divider}" Margin="8,0,8,8" />
+
+          <!-- Selo permanente do modo simulação. -->
+          <Border x:Name="SeloSimulacao" Margin="8,0,8,8" Padding="10,6" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                  Background="{DynamicResource Rayzer.Warning.Subtle}" DataContext="{Binding Painel.Estado}"
+                  Visibility="{Binding Simulacao, Converter={StaticResource BoolParaVisibilidade}}">
+            <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Rayzer.Warning}" TextWrapping="Wrap"
+                       Text="! MODO SIMULAÇÃO — sem catraca física" />
+          </Border>
+
+          <Button x:Name="BotaoTema" Style="{StaticResource Rayzer.Button.Nav}" Click="AlternarTema"
+                  AutomationProperties.Name="Alternar tema claro e escuro">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="IconeTema" Style="{StaticResource Rayzer.Icon}" Width="20" Text="{DynamicResource Rayzer.Icon.Moon}" />
+              <TextBlock x:Name="TextoTema" Margin="12,0,0,0" VerticalAlignment="Center" Text="Tema escuro" />
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="BotaoRecolher" Style="{StaticResource Rayzer.Button.Nav}" Click="AlternarBarra"
+                  AutomationProperties.Name="Recolher ou expandir o menu">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Rayzer.Icon}" Width="20" Text="{DynamicResource Rayzer.Icon.Collapse}" />
+              <TextBlock x:Name="TextoRecolher" Margin="12,0,0,0" VerticalAlignment="Center" Text="Recolher menu" />
+            </StackPanel>
+          </Button>
+
+          <StackPanel x:Name="Autoria" Margin="12,12,8,0">
+            <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" Foreground="{DynamicResource Rayzer.Nav.Text.Muted}"
+                       TextWrapping="Wrap" Text="Rayzer Serviços e Tecnologia" />
+            <TextBlock x:Name="TextoVersao" FontSize="{DynamicResource Rayzer.FontSize.Caption}"
+                       Foreground="{DynamicResource Rayzer.Nav.Text.Muted}" />
+          </StackPanel>
         </StackPanel>
 
-        <ListBox x:Name="Menu" BorderThickness="0" Background="Transparent"
-                 ItemsSource="{Binding Telas}" SelectedItem="{Binding TelaAtual}"
-                 AutomationProperties.Name="Menu">
-          <ListBox.ItemContainerStyle>
-            <Style TargetType="ListBoxItem">
-              <Setter Property="MinHeight" Value="44" />
-              <Setter Property="Padding" Value="20,0" />
-              <Setter Property="VerticalContentAlignment" Value="Center" />
-              <Setter Property="FontSize" Value="15" />
-            </Style>
-          </ListBox.ItemContainerStyle>
+        <ListBox x:Name="Menu" Style="{StaticResource Rayzer.Nav.List}" ItemContainerStyle="{StaticResource Rayzer.Nav.Item}"
+                 ItemsSource="{Binding Telas}" SelectedItem="{Binding TelaAtual}" Tag="aberto" AutomationProperties.Name="Menu">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <TextBlock Text="{Binding Titulo}" />
+              <StackPanel Orientation="Horizontal" ToolTip="{Binding Titulo}">
+                <TextBlock Style="{StaticResource Rayzer.Icon}" Width="20" Text="{Binding Converter={StaticResource TelaParaIcone}}" />
+                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding Titulo}"
+                           Visibility="{Binding Tag, ElementName=Menu, Converter={StaticResource VazioSome}}" />
+              </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
       </DockPanel>
     </Border>
 
-    <Grid Grid.Column="1" Margin="24,16,24,16">
+    <!-- ===== Conteúdo ===== -->
+    <Grid Grid.Column="1">
       <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <!-- Cabeçalho: o estado geral, em qualquer tela. -->
-      <Border Grid.Row="0" Margin="0,0,0,16" Padding="16,10" CornerRadius="6" BorderThickness="6,1,1,1"
-              DataContext="{Binding Painel}"
-              BorderBrush="{Binding Estado.Saude, Converter={StaticResource SaudeParaPincel}}">
+      <!-- Barra superior: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO. -->
+      <Border Grid.Row="0" Padding="24,14" Background="{DynamicResource Rayzer.Surface}"
+              BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1" DataContext="{Binding Painel}">
         <Grid>
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
-          <Ellipse Width="18" Height="18" Margin="0,0,12,0" VerticalAlignment="Center"
-                   Fill="{Binding Estado.Saude, Converter={StaticResource SaudeParaPincel}}" />
-          <StackPanel Grid.Column="1">
-            <TextBlock FontSize="18" FontWeight="SemiBold" Text="{Binding Estado.Mensagem}"
-                       AutomationProperties.LiveSetting="Assertive"
-                       AutomationProperties.Name="Estado da operação" />
-            <TextBlock Style="{StaticResource Rotulo}" Text="{Binding Internet}" />
+
+          <StackPanel VerticalAlignment="Center">
+            <rz:RayzerStatus FontSize="16" Tom="{Binding Estado.Saude, Converter={StaticResource SaudeParaTom}}"
+                             Texto="{Binding Estado.Mensagem}"
+                             AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="Estado da operação" />
+            <TextBlock Margin="22,2,0,0" Style="{StaticResource Rayzer.Text.Caption}" Text="{Binding Internet}" />
           </StackPanel>
+
+          <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" HorizontalAlignment="Right">
+            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Text.Mono}" FontSize="15"
+                       Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
+            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Text.Caption}" Text="Horário de Brasília" />
+          </StackPanel>
+
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Margin="0,0,16,0" Content="Abrir _assistente de configuração" Click="AbrirAssistente"
-                    Visibility="{Binding Estado.SugerirAssistente, Converter={StaticResource BoolParaVisibilidade}}"
-                    AutomationProperties.Name="Abrir assistente de configuração" />
-            <TextBlock VerticalAlignment="Center" FontSize="14" Text="{Binding Resumo}" />
+            <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,12,0" Content="Abrir _assistente de configuração"
+                    Click="AbrirAssistente" AutomationProperties.Name="Abrir assistente de configuração"
+                    Visibility="{Binding Estado.SugerirAssistente, Converter={StaticResource BoolParaVisibilidade}}" />
+            <Border Padding="12,6" CornerRadius="{DynamicResource Rayzer.Radius.Md}" Background="{DynamicResource Rayzer.Surface.Sunken}">
+              <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding Resumo}" />
+            </Border>
           </StackPanel>
         </Grid>
       </Border>
 
-      <ContentControl Grid.Row="1" Content="{Binding TelaAtual}" Focusable="False" />
+      <!-- Carregando: o traço atravessa a linha enquanto a tela busca dados. -->
+      <rz:RayzerFlowBar Grid.Row="1" Ativa="{Binding TelaAtual.Ocupada}" />
+
+      <ContentControl Grid.Row="2" Margin="{DynamicResource Rayzer.Padding.Page}" Content="{Binding TelaAtual}" Focusable="False" />
     </Grid>
   </Grid>
 </Window>

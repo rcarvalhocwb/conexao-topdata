@@ -13,6 +13,7 @@ public partial class App : Application
         ArgumentNullException.ThrowIfNull(e);
         base.OnStartup(e);
         Portugues.Aplicar();
+        Rayzer.Design.TemaRayzer.Instalar(this, "XAcess");
         TratarErrosInesperados("painel");
 
         var autoteste = Array.IndexOf(e.Args, "--autoteste");
@@ -38,6 +39,14 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             var pasta = indice + 1 < e.Args.Length ? e.Args[indice + 1] : "capturas";
+
+            // --tema escuro | claro: a captura de cada tema, sem mexer na preferência gravada.
+            var indiceDoTema = Array.IndexOf(e.Args, "--tema");
+            if (indiceDoTema >= 0 && indiceDoTema + 1 < e.Args.Length
+                && Enum.TryParse<Rayzer.Design.Tema>(e.Args[indiceDoTema + 1], ignoreCase: true, out var tema))
+            {
+                Rayzer.Design.TemaRayzer.Aplicar(tema, gravar: false);
+            }
 
             // Assíncrono de propósito: o laço de mensagens precisa rodar para as telas
             // receberem as respostas do serviço.
@@ -70,7 +79,7 @@ public partial class App : Application
                 $"Aconteceu um erro inesperado e a tela continuou aberta.{Environment.NewLine}{Environment.NewLine}" +
                 $"{e.Exception.GetType().Name}: {e.Exception.Message}{Environment.NewLine}{Environment.NewLine}" +
                 (arquivo is null ? "Não foi possível gravar o detalhe." : $"Detalhe gravado em:{Environment.NewLine}{arquivo}"),
-                "Conexão Topdata",
+                "Rayzer XAcess",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             e.Handled = true;
@@ -109,13 +118,20 @@ public partial class App : Application
             janela.Show();
             Passo("janela aberta");
 
-            foreach (var tela in janela.Janela.Telas)
+            // Nos dois temas: recurso de tema com nome errado ou template quebrado só aparece
+            // quando a tela é desenhada com aquele dicionário.
+            foreach (var tema in new[] { Rayzer.Design.Tema.Claro, Rayzer.Design.Tema.Escuro })
             {
-                janela.Janela.TelaAtual = tela;
-                await janela.Janela.AtualizarAsync().ConfigureAwait(true);
-                await tela.AtualizarAsync().ConfigureAwait(true);
-                await janela.Dispatcher.InvokeAsync(janela.UpdateLayout, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-                Passo($"tela {tela.Titulo}: ok");
+                Rayzer.Design.TemaRayzer.Aplicar(tema, gravar: false);
+
+                foreach (var tela in janela.Janela.Telas)
+                {
+                    janela.Janela.TelaAtual = tela;
+                    await janela.Janela.AtualizarAsync().ConfigureAwait(true);
+                    await tela.AtualizarAsync().ConfigureAwait(true);
+                    await janela.Dispatcher.InvokeAsync(janela.UpdateLayout, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                    Passo($"tema {tema} · tela {tela.Titulo}: ok");
+                }
             }
 
             if (comSimulacao)

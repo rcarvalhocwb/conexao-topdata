@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Rayzer Design System: a identidade da Rayzer Serviços e Tecnologia como código.
+    Tokens (cor, tipo, espaço, raio, sombra, movimento), temas claro/escuro/alto contraste,
+    estilos dos controles e os componentes Rayzer*. Compartilhado por todo produto Rayzer —
+    hoje o painel e o assistente do Rayzer XAcess. Ver docs/27-rayzer-design-system.md.
+
+    Sem dependência de ViewModel nem de regra de negócio: um produto Rayzer novo referencia
+    este projeto e herda a marca inteira.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>Rayzer.Design</RootNamespace>
+    <AssemblyName>Rayzer.Design</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Ícone e logo do Rayzer XAcess: janelas (pack://), executáveis e instalador. -->
+    <Resource Include="Marca\rayzer-xacess.ico" />
+  </ItemGroup>
+
+</Project>

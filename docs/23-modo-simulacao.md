@@ -4,7 +4,7 @@ Para treinar a equipe e testar o sistema antes de ter catraca instalada.
 
 ## Como ligar
 
-1. Instale com o `ConexaoTopdata-Setup.exe`.
+1. Instale com o `RayzerXAcess-Setup.exe`.
 2. No **Assistente de configuração**, passo 2, marque **Modo simulação** e informe as
    catracas (número e nome), como se fossem reais.
 3. **Gravar e iniciar o serviço.**

@@ -1,68 +1,129 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Media;
 using Desktop.ViewModels;
 using Google.Protobuf.WellKnownTypes;
+using Rayzer.Design;
 
 namespace Desktop.App;
 
 /// <summary>
-/// Cor do sinal de situação. A cor nunca vem sozinha: toda tela põe o texto ao lado
-/// (docs/10-interface.md, acessibilidade).
+/// Sinal da ViewModel vira o tom Rayzer. A cor sai do tema; o símbolo e o texto vão juntos
+/// (RayzerStatus), porque a situação nunca depende só da cor.
 /// </summary>
-public sealed class SinalParaPincel : IValueConverter
+public sealed class SinalParaTom : IValueConverter
 {
-    // Verde, âmbar e vermelho escolhidos para continuar distinguíveis em daltonismo
-    // vermelho-verde pela luminosidade, além do texto.
-    private static readonly SolidColorBrush Bom = Congelado(0x1B, 0x7F, 0x3B);
-    private static readonly SolidColorBrush Atencao = Congelado(0xB2, 0x6A, 0x00);
-    private static readonly SolidColorBrush Problema = Congelado(0xC0, 0x1F, 0x1F);
-    private static readonly SolidColorBrush Neutro = Congelado(0x6B, 0x72, 0x80);
+    public static Tom De(Sinal sinal) => sinal switch
+    {
+        Sinal.Bom => Tom.Sucesso,
+        Sinal.Atencao => Tom.Atencao,
+        Sinal.Problema => Tom.Perigo,
+        _ => Tom.Neutro,
+    };
 
+    public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        value is Sinal sinal ? De(sinal) : Tom.Neutro;
+
+    public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// Símbolo de dispositivo: ● online, ! atenção, ○ offline ou parado. (O de acesso é o
+/// padrão do tom: ✓ autorizado, × negado.)
+/// </summary>
+public sealed class SinalParaGlifoDeDispositivo : IValueConverter
+{
     public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
         value switch
         {
-            Sinal.Bom => Bom,
-            Sinal.Atencao => Atencao,
-            Sinal.Problema => Problema,
-            _ => Neutro,
+            Sinal.Bom => "●",
+            Sinal.Atencao => "!",
+            _ => "○",
         };
 
     public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();
-
-    private static SolidColorBrush Congelado(byte r, byte g, byte b)
-    {
-        var pincel = new SolidColorBrush(Color.FromRgb(r, g, b));
-        pincel.Freeze();
-        return pincel;
-    }
 }
 
-/// <summary>Saúde do cabeçalho vira sinal.</summary>
-public sealed class SaudeParaPincel : IValueConverter
+/// <summary>Saúde do cabeçalho vira o tom Rayzer.</summary>
+public sealed class SaudeParaTom : IValueConverter
 {
-    private static readonly SinalParaPincel Sinais = new();
-
     public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
-        Sinais.Convert(
-            value switch
-            {
-                SaudeDoPainel.Normal => Sinal.Bom,
-                SaudeDoPainel.Atencao => Sinal.Atencao,
-                SaudeDoPainel.Acao => Sinal.Problema,
-                _ => Sinal.Neutro,
-            },
-            targetType,
-            parameter,
-            culture);
+        value switch
+        {
+            SaudeDoPainel.Normal => Tom.Sucesso,
+            SaudeDoPainel.Atencao => Tom.Atencao,
+            SaudeDoPainel.Acao => Tom.Perigo,
+            _ => Tom.Info,
+        };
 
     public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
 
-/// <summary>Instante do contrato em hora local; o parâmetro é o formato.</summary>
+/// <summary>Fila de envio: vazia é sincronizado (✓); com itens, sincronizando (↻).</summary>
+public sealed class PendenciaParaTom : IValueConverter
+{
+    public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        value is long n && n > 0 ? Tom.Info : Tom.Sucesso;
+
+    public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// Lista vazia (ou quantidade zero) mostra o estado vazio; o parâmetro "inverso" faz o
+/// contrário.
+/// </summary>
+/// <remarks>
+/// Recebe a própria lista, e não "Lista.Count": as listas somente leitura das ViewModels
+/// implementam Count de forma explícita, e a ligação do WPF não o enxerga — o estado vazio
+/// apareceria por cima dos dados. ObservableCollection, que avisa ao mudar, liga em
+/// "Count" mesmo.
+/// </remarks>
+public sealed class ZeroParaVisivel : IValueConverter
+{
+    public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture)
+    {
+        var zero = value switch
+        {
+            int n => n == 0,
+            System.Collections.ICollection colecao => colecao.Count == 0,
+            System.Collections.IEnumerable itens => !itens.GetEnumerator().MoveNext(),
+            _ => true,
+        };
+        var inverso = parameter as string == "inverso";
+        return zero != inverso ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>Ícone de cada tela no menu lateral.</summary>
+public sealed class TelaParaIcone : IValueConverter
+{
+    public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        value switch
+        {
+            PainelAoVivoViewModel => "\uE80F",
+            CatracasViewModel => "\uE772",
+            AcessosViewModel => "\uE8FD",
+            ConsultaViewModel => "\uE721",
+            SincronizacaoViewModel => "\uE895",
+            ContasViewModel => "\uE8A5",
+            ConfiguracoesViewModel => "\uE713",
+            DiagnosticoViewModel => "\uE9D9",
+            SimuladorViewModel => "\uE768",
+            _ => "\uE8FD",
+        };
+
+    public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>Instante do contrato no relógio do evento (Brasília); o parâmetro é o formato.</summary>
 public sealed class InstanteParaTexto : IValueConverter
 {
     public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>

@@ -1,65 +1,68 @@
 <UserControl x:Class="Desktop.App.Telas.Acessos"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Acessos">
   <DockPanel>
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Acessos" />
+    <StackPanel DockPanel.Dock="Top">
+      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Acessos" />
+      <TextBlock Style="{StaticResource Pagina.Descricao}"
+                 Text="Toda tentativa fica registrada, autorizada ou negada. Datas e horas no horário de Brasília; sem hora, vale o dia inteiro." />
+    </StackPanel>
 
-    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="Catraca (vazio = todas)" />
-        <TextBox Width="120" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Catraca" />
-      </StackPanel>
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="Resultado" />
-        <ComboBox Width="140" MinHeight="36" ItemsSource="{Binding OpcoesDeResultado}"
-                  SelectedIndex="{Binding Resultado}" AutomationProperties.Name="Resultado" />
-      </StackPanel>
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="Categoria" />
-        <TextBox Width="140" Text="{Binding Categoria, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Categoria" />
-      </StackPanel>
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="De (data · hora)" />
-        <StackPanel Orientation="Horizontal">
-          <DatePicker MinHeight="36" SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
-          <TextBox Width="64" Margin="4,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
+    <!-- Filtros: todos os campos com a mesma altura, alinhados pela base. -->
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
+      <WrapPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Catraca" />
+          <TextBox Width="96" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" ToolTip="Vazio = todas" AutomationProperties.Name="Catraca" />
         </StackPanel>
-      </StackPanel>
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="Até (data · hora)" />
-        <StackPanel Orientation="Horizontal">
-          <DatePicker MinHeight="36" SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
-          <TextBox Width="64" Margin="4,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Resultado" />
+          <ComboBox Width="140" ItemsSource="{Binding OpcoesDeResultado}" SelectedIndex="{Binding Resultado}" AutomationProperties.Name="Resultado" />
         </StackPanel>
-      </StackPanel>
-      <Button VerticalAlignment="Bottom" Margin="0,0,0,8" Content="_Buscar" IsDefault="True" Command="{Binding Buscar}" />
-    </WrapPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Categoria" />
+          <TextBox Width="140" Text="{Binding Categoria, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Categoria" />
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="De (data · hora)" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Até (data · hora)" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
+          </StackPanel>
+        </StackPanel>
+        <Button Style="{StaticResource Rayzer.Button.Primary}" VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}"
+                Content="_Buscar" IsDefault="True" Command="{Binding Buscar}" />
+      </WrapPanel>
+    </Border>
 
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
-               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
 
-    <DataGrid ItemsSource="{Binding Linhas}" AutomationProperties.Name="Acessos encontrados">
-      <DataGrid.Columns>
-        <DataGridTextColumn Header="Hora" Binding="{Binding Hora}" Width="80" />
-        <DataGridTextColumn Header="Catraca" Binding="{Binding Inner}" Width="70" />
-        <DataGridTemplateColumn Header="Resultado" Width="*">
-          <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate>
-              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Ellipse Width="10" Height="10" Margin="0,0,6,0"
-                         Fill="{Binding Sinal, Converter={StaticResource SinalParaPincel}}" />
-                <TextBlock Text="{Binding Mensagem}" />
-              </StackPanel>
-            </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
-        <DataGridTextColumn Header="Categoria" Binding="{Binding Categoria}" Width="110" />
-        <DataGridTextColumn Header="Girou" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="60" />
-        <DataGridTextColumn Header="Código" Binding="{Binding Codigo}" Width="130" />
-      </DataGrid.Columns>
-    </DataGrid>
+    <Grid>
+      <DataGrid ItemsSource="{Binding Linhas}" AutomationProperties.Name="Acessos encontrados">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="84" ElementStyle="{StaticResource Celula.Mono}" />
+          <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="76" />
+          <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
+          <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="120" />
+          <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="70" />
+          <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Search}" Titulo="Nenhum acesso para mostrar"
+                           Texto="Ajuste os filtros e clique em Buscar. Sem filtro, aparecem os 500 mais recentes."
+                           Visibility="{Binding Linhas, Converter={StaticResource ZeroParaVisivel}}" />
+    </Grid>
   </DockPanel>
 </UserControl>

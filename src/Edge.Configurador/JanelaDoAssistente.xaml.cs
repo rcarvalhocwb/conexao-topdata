@@ -5,11 +5,11 @@ using System.IO;
 using System.ServiceProcess;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Contracts;
 using Edge.Supervisor;
 using Edge.Supervisor.Instalacao;
 using Microsoft.Win32;
+using Rayzer.Design;
 
 namespace Edge.Configurador;
 
@@ -62,8 +62,8 @@ public partial class JanelaDoAssistente : Window
         }
     }
 
-    /// <summary>Item da verificação do ambiente, com marca e cor (nunca só cor).</summary>
-    public sealed record LinhaDoAmbiente(string Item, string Orientacao, string Marca, Brush Cor);
+    /// <summary>Item da verificação do ambiente: símbolo, texto e tom (nunca só cor).</summary>
+    public sealed record LinhaDoAmbiente(string Item, string Orientacao, string Situacao, Tom Tom);
 
     private static string PastaDoWorker =>
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Worker"));
@@ -116,9 +116,9 @@ public partial class JanelaDoAssistente : Window
 
         ListaDoAmbiente.ItemsSource = itens.Select(i => i.Ok switch
         {
-            true => new LinhaDoAmbiente(i.Item, i.Orientacao, "✔ OK", Brushes.SeaGreen),
-            false => new LinhaDoAmbiente(i.Item, i.Orientacao, "✖ FALTA", Brushes.Firebrick),
-            _ => new LinhaDoAmbiente(i.Item, i.Orientacao, "? CONFERIR", Brushes.DarkGoldenrod),
+            true => new LinhaDoAmbiente(i.Item, i.Orientacao, "OK", Tom.Sucesso),
+            false => new LinhaDoAmbiente(i.Item, i.Orientacao, "FALTA", Tom.Perigo),
+            _ => new LinhaDoAmbiente(i.Item, i.Orientacao, "CONFERIR", Tom.Atencao),
         }).ToList();
     }
 

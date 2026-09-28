@@ -1,0 +1,124 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+                    xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    mc:Ignorable="po">
+  <!--
+    Rayzer — tokens que não mudam com o tema: tipografia, espaçamento, raio, elevação,
+    movimento, pontos de quebra e ícones. As cores estão em Temas/*.xaml.
+
+    Tipografia: Segoe UI Variable (Windows 11) com Segoe UI de reserva (Windows 10). Fonte do
+    sistema de propósito: nada para baixar, nada para licenciar, renderização nativa e
+    rápida. Números e horas em Cascadia Mono/Consolas: dígitos de largura fixa não "dançam"
+    quando o contador muda.
+  -->
+
+  <!-- Famílias -->
+  <FontFamily x:Key="Rayzer.Font.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
+  <FontFamily x:Key="Rayzer.Font.Text">Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="Rayzer.Font.Mono">Cascadia Mono, Consolas</FontFamily>
+  <FontFamily x:Key="Rayzer.Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+  <FontFamily x:Key="Rayzer.Font.Symbols">Segoe UI Symbol, Segoe UI</FontFamily>
+
+  <!-- Escala tipográfica (px) -->
+  <sys:Double x:Key="Rayzer.FontSize.Metric">32</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Display">26</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Title">20</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Section">15</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Body">14</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Small">13</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Caption">12</sys:Double>
+  <sys:Double x:Key="Rayzer.FontSize.Overline">11</sys:Double>
+
+  <!-- Espaçamento: grade de 4 px -->
+  <sys:Double x:Key="Rayzer.Space.1">4</sys:Double>
+  <sys:Double x:Key="Rayzer.Space.2">8</sys:Double>
+  <sys:Double x:Key="Rayzer.Space.3">12</sys:Double>
+  <sys:Double x:Key="Rayzer.Space.4">16</sys:Double>
+  <sys:Double x:Key="Rayzer.Space.5">24</sys:Double>
+  <sys:Double x:Key="Rayzer.Space.6">32</sys:Double>
+  <Thickness x:Key="Rayzer.Padding.Page">28,20,28,20</Thickness>
+  <Thickness x:Key="Rayzer.Padding.Card">16,14,16,14</Thickness>
+  <Thickness x:Key="Rayzer.Padding.Control">12,0,12,0</Thickness>
+  <Thickness x:Key="Rayzer.Margin.Section">0,0,0,16</Thickness>
+  <Thickness x:Key="Rayzer.Margin.Field">0,0,12,12</Thickness>
+
+  <!-- Alturas: campos e botões da mesma linha com 40 px (alinham); 44 px no menu, alvo de toque -->
+  <sys:Double x:Key="Rayzer.Height.Control">40</sys:Double>
+  <sys:Double x:Key="Rayzer.Height.Touch">44</sys:Double>
+  <sys:Double x:Key="Rayzer.Height.Row">36</sys:Double>
+
+  <!-- Raio -->
+  <CornerRadius x:Key="Rayzer.Radius.Sm">4</CornerRadius>
+  <CornerRadius x:Key="Rayzer.Radius.Md">8</CornerRadius>
+  <CornerRadius x:Key="Rayzer.Radius.Lg">12</CornerRadius>
+  <CornerRadius x:Key="Rayzer.Radius.Pill">999</CornerRadius>
+
+  <!--
+    Elevação. Sombra custa renderização no WPF: só em superfície flutuante (popup, dica)
+    e no cartão de métrica. O resto da hierarquia é feito com fundo e borda.
+  -->
+  <DropShadowEffect x:Key="Rayzer.Shadow.Sm" BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.08" Color="#0F1B2D" po:Freeze="True" />
+  <DropShadowEffect x:Key="Rayzer.Shadow.Md" BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.12" Color="#0F1B2D" po:Freeze="True" />
+  <DropShadowEffect x:Key="Rayzer.Shadow.Lg" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0F1B2D" po:Freeze="True" />
+
+  <!--
+    Movimento: a linguagem é fluxo — entrar, atravessar, conectar. Curto e sem quique.
+    Nada de animação que atrase a operação: o estado muda na hora e o movimento só
+    acompanha.
+  -->
+  <Duration x:Key="Rayzer.Motion.Fast">0:0:0.12</Duration>
+  <Duration x:Key="Rayzer.Motion.Normal">0:0:0.20</Duration>
+  <Duration x:Key="Rayzer.Motion.Flow">0:0:1.40</Duration>
+  <Duration x:Key="Rayzer.Motion.Pulse">0:0:1.60</Duration>
+  <CubicEase x:Key="Rayzer.Motion.Ease" EasingMode="EaseOut" po:Freeze="True" />
+
+  <!-- Pontos de quebra (largura da janela, px) -->
+  <sys:Double x:Key="Rayzer.Breakpoint.Compact">1200</sys:Double>
+  <sys:Double x:Key="Rayzer.Breakpoint.Wide">1600</sys:Double>
+
+  <!-- Ícones (Segoe Fluent Icons / Segoe MDL2 Assets, presentes no Windows 10 e 11) -->
+  <sys:String x:Key="Rayzer.Icon.Home">&#xE80F;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Devices">&#xE772;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.List">&#xE8FD;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Search">&#xE721;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Sync">&#xE895;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Report">&#xE8A5;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Settings">&#xE713;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Diagnostic">&#xE9D9;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Play">&#xE768;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Calendar">&#xE787;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.ChevronDown">&#xE70D;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Check">&#xE73E;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Denied">&#xE711;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Collapse">&#xE700;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Sun">&#xE706;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Moon">&#xE708;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Cloud">&#xE753;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Info">&#xE946;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Warning">&#xE7BA;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.People">&#xE716;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Card">&#xE8C7;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.Download">&#xE896;</sys:String>
+  <sys:String x:Key="Rayzer.Icon.History">&#xE81C;</sys:String>
+
+  <!--
+    Símbolos de situação: nunca só cor. Cada situação tem cor + símbolo + texto.
+    ✓ autorizado · × negado · ● online · ○ offline · ! atenção · ↻ sincronizando
+  -->
+  <sys:String x:Key="Rayzer.Glyph.Granted">✓</sys:String>
+  <sys:String x:Key="Rayzer.Glyph.Denied">×</sys:String>
+  <sys:String x:Key="Rayzer.Glyph.Online">●</sys:String>
+  <sys:String x:Key="Rayzer.Glyph.Offline">○</sys:String>
+  <sys:String x:Key="Rayzer.Glyph.Attention">!</sys:String>
+  <sys:String x:Key="Rayzer.Glyph.Syncing">↻</sys:String>
+  <sys:String x:Key="Rayzer.Glyph.Synced">✓</sys:String>
+
+  <!--
+    O símbolo Rayzer: um X em que uma barra (o fluxo) atravessa a abertura da outra (a
+    passagem). "Access is a flow, not a door." Grade de 32 × 32.
+  -->
+  <Geometry x:Key="Rayzer.Logo.Flow.Geometry">M4,7.5 L7.5,4 L28,24.5 L24.5,28 Z</Geometry>
+  <Geometry x:Key="Rayzer.Logo.Gate.Geometry">M4,24.5 L7.5,28 L13.6,21.9 L10.1,18.4 Z M18.4,10.1 L21.9,13.6 L28,7.5 L24.5,4 Z</Geometry>
+</ResourceDictionary>

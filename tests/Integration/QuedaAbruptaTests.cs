@@ -32,11 +32,13 @@ public sealed class QuedaAbruptaTests
             },
         };
 
+        var erros = new System.Text.StringBuilder();
         Assert.True(processo.Start(), "não foi possível iniciar o processo-cobaia");
+        LerErros(processo, erros);
 
         // Espera o sinal de que os acessos já foram commitados.
         var pronto = await EsperarPeloSinalAsync(processo, TimeSpan.FromMinutes(2)).ConfigureAwait(true);
-        Assert.True(pronto, "o processo-cobaia não sinalizou que terminou de gravar");
+        Assert.True(pronto, $"o processo-cobaia não sinalizou que terminou de gravar{Situacao(processo, erros)}");
 
         // SIGKILL. Não há chance de limpeza.
         processo.Kill(entireProcessTree: true);
@@ -77,10 +79,12 @@ public sealed class QuedaAbruptaTests
                 },
             };
 
+            var erros = new System.Text.StringBuilder();
             processo.Start();
+            LerErros(processo, erros);
             Assert.True(
                 await EsperarPeloSinalAsync(processo, TimeSpan.FromMinutes(2)).ConfigureAwait(true),
-                $"tentativa {tentativa}: o processo-cobaia não sinalizou");
+                $"tentativa {tentativa}: o processo-cobaia não sinalizou{Situacao(processo, erros)}");
 
             processo.Kill(entireProcessTree: true);
             await processo.WaitForExitAsync().ConfigureAwait(true);
@@ -91,6 +95,38 @@ public sealed class QuedaAbruptaTests
         Assert.Equal("ok", fabrica.VerificarIntegridade());
         Assert.Equal(QuantidadeDeAcessos, new AccessJournal(fabrica).ContarEventos("catraca-08"));
         Assert.Equal(QuantidadeDeAcessos, ContarOutbox(fabrica));
+    }
+
+    /// <summary>
+    /// Esvazia a saída de erro enquanto o processo roda. Redirecionada e nunca lida, ela
+    /// enche o pipe e trava a cobaia antes do "PRONTO" — o teste reprovava por tempo sem
+    /// dizer por quê.
+    /// </summary>
+    private static void LerErros(Process processo, System.Text.StringBuilder erros)
+    {
+        processo.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is { } linha)
+            {
+                lock (erros)
+                {
+                    erros.AppendLine(linha);
+                }
+            }
+        };
+        processo.BeginErrorReadLine();
+    }
+
+    private static string Situacao(Process processo, System.Text.StringBuilder erros)
+    {
+        string texto;
+        lock (erros)
+        {
+            texto = erros.ToString();
+        }
+
+        var saiu = processo.HasExited ? $" (saiu com código {processo.ExitCode})" : " (ainda rodando)";
+        return string.IsNullOrWhiteSpace(texto) ? saiu : $"{saiu}; erros: {texto[^Math.Min(texto.Length, 2000)..]}";
     }
 
     private static async Task<bool> EsperarPeloSinalAsync(Process processo, TimeSpan limite)

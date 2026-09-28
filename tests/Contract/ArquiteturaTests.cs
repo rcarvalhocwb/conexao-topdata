@@ -129,7 +129,9 @@ public sealed class ArquiteturaTests
             return; // Ainda não criado nesta fase.
         }
 
-        var permitidas = new[] { "Contracts", "Desktop.ViewModels", "Shared.Observability" };
+        // Rayzer.Design é só apresentação (tokens, estilos, componentes) e não referencia
+        // nada — ver o teste seguinte.
+        var permitidas = new[] { "Contracts", "Desktop.ViewModels", "Shared.Observability", "Rayzer.Design" };
 
         var indevidas = ReferenciasDe(projeto.Caminho)
             .Where(r => !permitidas.Contains(r, StringComparer.Ordinal))
@@ -139,6 +141,18 @@ public sealed class ArquiteturaTests
             indevidas.Count == 0,
             $"Desktop.App referencia indevidamente: {string.Join(", ", indevidas)}. " +
             "A interface fala só com o serviço local, pelo IPC.");
+    }
+
+    /// <summary>
+    /// O Rayzer Design System é a marca como código, compartilhado por todo produto Rayzer:
+    /// não pode depender de contrato, ViewModel nem regra de negócio de nenhum deles.
+    /// </summary>
+    [Fact]
+    public void O_design_system_nao_depende_de_nenhum_projeto()
+    {
+        var projeto = Projetos().FirstOrDefault(p => p.Nome == "Rayzer.Design");
+        Assert.NotNull(projeto.Caminho);
+        Assert.Empty(ReferenciasDe(projeto.Caminho));
     }
 
     /// <summary>

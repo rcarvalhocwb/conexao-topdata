@@ -189,11 +189,13 @@ jobs:
             Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt" @()
 
             # Capturas de todas as telas, com o serviço em simulação, para revisão visual.
-            $captura = Start-Process -FilePath (Resolve-Path publicado/Painel/Desktop.App.exe) `
-              -ArgumentList @('--capturar', "$PWD\capturas") -PassThru
-            if (-not $captura.WaitForExit(180000)) {
-              $captura.Kill()
-              Write-Host '::warning::A captura das telas não terminou em 3 minutos.'
+            foreach ($tema in 'claro', 'escuro') {
+              $captura = Start-Process -FilePath (Resolve-Path publicado/Painel/Desktop.App.exe) `
+                -ArgumentList @('--capturar', "$PWD\capturas", '--tema', $tema) -PassThru
+              if (-not $captura.WaitForExit(180000)) {
+                $captura.Kill()
+                Write-Host "::warning::A captura das telas (tema $tema) não terminou em 3 minutos."
+              }
             }
             Get-ChildItem capturas -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "captura: $($_.Name)" }
           }
@@ -250,7 +252,7 @@ jobs:
             -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
             -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
             -d PastaModelos=$((Resolve-Path installer/modelos).Path) `
-            -o ConexaoTopdata-$versao.msi
+            -o RayzerXAcess-$versao.msi
 
       # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
       # a tabela File tem que ter o que o operador precisa, e não pode ter a EasyInner.dll,
@@ -258,7 +260,7 @@ jobs:
       - name: Conferir o conteúdo do MSI
         shell: pwsh
         run: |
-          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
           $instalador = New-Object -ComObject WindowsInstaller.Installer
           $banco = $instalador.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $instalador, @($msi, 0))
           $consulta = $banco.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $banco, @('SELECT `FileName` FROM `File`'))
@@ -288,8 +290,8 @@ jobs:
         shell: pwsh
         timeout-minutes: 15
         run: |
-          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
-          $pasta = 'C:\Program Files\Conexao Topdata'
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+          $pasta = 'C:\Program Files\Rayzer\XAcess'
           Get-Process Desktop.App, Edge.Configurador, Edge.Supervisor, Edge.Worker.X86 -ErrorAction SilentlyContinue | Stop-Process -Force
 
           $p = Start-Process msiexec -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart', 'PULAR_NETFX35=1', '/l*v', "`"$PWD\instalar.log`"") -Wait -PassThru
@@ -331,17 +333,17 @@ jobs:
       - name: Construir o Setup.exe
         shell: pwsh
         run: |
-          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
           $versao = "0.1.$env:GITHUB_RUN_NUMBER"
           wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
-            -d Versao=$versao -d Msi=$msi -o ConexaoTopdata-Setup.exe
-          Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item ConexaoTopdata-Setup.exe).Length / 1MB))
+            -d Versao=$versao -d Msi=$msi -o RayzerXAcess-Setup.exe
+          Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item RayzerXAcess-Setup.exe).Length / 1MB))
 
       - name: Publicar o Setup.exe
         uses: actions/upload-artifact@v4
         with:
           name: setup-exe
-          path: ConexaoTopdata-Setup.exe
+          path: RayzerXAcess-Setup.exe
           if-no-files-found: error
 
       # Artefato do Actions sempre baixa em zip. A pré-release "instalador-de-teste" dá um
@@ -356,8 +358,13 @@ jobs:
           $tag = 'instalador-de-teste'
           gh release delete $tag --yes --cleanup-tag 2>$null
           $notas = "Instalador de teste gerado automaticamente a partir do commit $env:COMMIT. " +
-                   "Não é versão de produção. Baixe ConexaoTopdata-Setup.exe e execute como administrador."
-          gh release create $tag ConexaoTopdata-Setup.exe --prerelease --target $env:COMMIT `
+                   "Não é versão de produção. Baixe RayzerXAcess-Setup.exe e execute como administrador. capturas-das-telas.zip traz as telas nos temas claro e escuro."
+          $arquivos = @('RayzerXAcess-Setup.exe')
+          if (Test-Path capturas\*.png) {
+            Compress-Archive -Path capturas\*.png -DestinationPath capturas-das-telas.zip -Force
+            $arquivos += 'capturas-das-telas.zip'
+          }
+          gh release create $tag @arquivos --prerelease --target $env:COMMIT `
             --title "Instalador de teste" --notes $notas
 
       # Para a bancada (docs/21) não é preciso instalar nada: o worker vai num zip,

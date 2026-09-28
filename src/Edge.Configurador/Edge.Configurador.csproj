@@ -16,6 +16,7 @@
     <RootNamespace>Edge.Configurador</RootNamespace>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\Rayzer.Design\Marca\rayzer-xacess.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!--
       Telas NÃO podem rodar em globalização invariante (ligada para o resto da solução em
@@ -29,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Edge.Supervisor/Edge.Supervisor.csproj" />
+    <ProjectReference Include="../Rayzer.Design/Rayzer.Design.csproj" />
   </ItemGroup>
 
   <ItemGroup>

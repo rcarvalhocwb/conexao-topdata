@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Contracts;
 using Contracts.Edge.V1;
 using Desktop.ViewModels;
+using Rayzer.Design;
 
 namespace Desktop.App;
 
@@ -28,6 +29,20 @@ public partial class JanelaPrincipal : Window
         InitializeComponent();
         DataContext = janela;
         Janela = janela;
+
+        TextoVersao.Text = "Versão " + (typeof(JanelaPrincipal).Assembly.GetName().Version?.ToString(3) ?? "—");
+        MostrarTema();
+        TemaRayzer.Mudou += (_, _) => MostrarTema();
+
+        // Janela estreita (notebook, tela dividida): o menu recolhe sozinho para só ícones.
+        SizeChanged += (_, e) =>
+        {
+            var compacta = e.NewSize.Width < (double)FindResource("Rayzer.Breakpoint.Compact");
+            if (e.PreviousSize.Width == 0 || compacta != (e.PreviousSize.Width < (double)FindResource("Rayzer.Breakpoint.Compact")))
+            {
+                Recolher(compacta);
+            }
+        };
     }
 
     internal JanelaViewModel Janela { get; }
@@ -58,6 +73,30 @@ public partial class JanelaPrincipal : Window
             fechando.Cancel();
             fechando.Dispose();
         };
+    }
+
+    private void AlternarTema(object sender, RoutedEventArgs e) => TemaRayzer.Alternar();
+
+    private void AlternarBarra(object sender, RoutedEventArgs e) => Recolher(BarraLateral.Width > 100);
+
+    private void Recolher(bool recolher)
+    {
+        BarraLateral.Width = recolher ? 72 : 248;
+        Menu.Tag = recolher ? string.Empty : "aberto";
+        Logo.Variante = recolher ? VarianteDoLogo.Simbolo : VarianteDoLogo.Horizontal;
+        var textos = recolher ? Visibility.Collapsed : Visibility.Visible;
+        TextoTema.Visibility = textos;
+        TextoRecolher.Visibility = textos;
+        Autoria.Visibility = textos;
+        SeloSimulacao.Margin = recolher ? new Thickness(4, 0, 4, 8) : new Thickness(8, 0, 8, 8);
+        TextoRecolher.Text = recolher ? "Expandir menu" : "Recolher menu";
+    }
+
+    private void MostrarTema()
+    {
+        var escuro = TemaRayzer.EscuroAplicado;
+        TextoTema.Text = escuro ? "Tema claro" : "Tema escuro";
+        IconeTema.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, escuro ? "Rayzer.Icon.Sun" : "Rayzer.Icon.Moon");
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Setup.exe do Conexão Topdata: um arquivo só, que instala tudo.
+  Setup.exe do Rayzer XAcess (Rayzer Serviços e Tecnologia): um arquivo só, que instala tudo.
 
   É um "bundle" do WiX (Burn) em volta do MSI. O MSI já traz o .NET embutido em cada
   componente (publicação self-contained), então não há pré-requisito de runtime para
@@ -16,7 +16,8 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
 
-  <Bundle Name="Conexão Topdata"
+  <Bundle Name="Rayzer XAcess"
+          IconSourceFile="$(sys.SOURCEFILEDIR)..\..\src\Rayzer.Design\Marca\rayzer-xacess.ico"
           Manufacturer="Rayzer Serviços e Tecnologia"
           Version="$(var.Versao)"
           UpgradeCode="8b0c64a6-2f6b-4a3e-9d0a-6d2f3c1a9e41">
@@ -26,6 +27,7 @@
       <!-- Textos em português (tema-pt-BR.wxl): sem ele, o Setup inteiro fala inglês. -->
       <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense"
                                               LocalizationFile="$(sys.SOURCEFILEDIR)tema-pt-BR.wxl"
+                                              LogoFile="$(sys.SOURCEFILEDIR)..\..\src\Rayzer.Design\Marca\rayzer-xacess-64.png"
                                               ShowVersion="yes" />
     </BootstrapperApplication>
 
@@ -35,8 +37,8 @@
       conseguia abri-lo: o botão não fazia nada. Com a instalação ainda sem configuração, o
       painel mostra o botão "Abrir assistente de configuração", que pede a permissão.
     -->
-    <Variable Name="LaunchTarget" Type="formatted" Value="[ProgramFiles64Folder]Conexao Topdata\Painel\Desktop.App.exe" />
-    <Variable Name="LaunchWorkingFolder" Type="formatted" Value="[ProgramFiles64Folder]Conexao Topdata\Painel" />
+    <Variable Name="LaunchTarget" Type="formatted" Value="[ProgramFiles64Folder]Rayzer\XAcess\Painel\Desktop.App.exe" />
+    <Variable Name="LaunchWorkingFolder" Type="formatted" Value="[ProgramFiles64Folder]Rayzer\XAcess\Painel" />
 
     <Chain>
       <MsiPackage SourceFile="$(var.Msi)" Vital="yes" />

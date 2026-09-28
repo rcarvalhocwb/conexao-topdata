@@ -1,44 +1,27 @@
 <Application x:Class="Edge.Configurador.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Rayzer XAcess — Assistente de configuração. Mesma identidade do painel: tokens, tema e
+    estilos do Rayzer Design System (src/Rayzer.Design, docs/27).
+  -->
   <Application.Resources>
-    <Style TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
-    <Style x:Key="Titulo" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-      <Setter Property="FontSize" Value="22" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Margin" Value="0,0,0,12" />
-    </Style>
-    <Style x:Key="Rotulo" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-      <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
-      <Setter Property="Margin" Value="0,12,0,4" />
-    </Style>
-    <Style TargetType="Button">
-      <Setter Property="MinHeight" Value="44" />
-      <Setter Property="MinWidth" Value="140" />
-      <Setter Property="Padding" Value="16,6" />
-      <Setter Property="Margin" Value="0,0,8,0" />
-      <Setter Property="FontSize" Value="14" />
-    </Style>
-    <Style TargetType="TextBox">
-      <Setter Property="MinHeight" Value="36" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Padding" Value="6,2" />
-      <Setter Property="FontSize" Value="14" />
-    </Style>
-    <Style TargetType="PasswordBox">
-      <Setter Property="MinHeight" Value="36" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Padding" Value="6,2" />
-      <Setter Property="FontSize" Value="14" />
-    </Style>
-    <Style TargetType="TabItem">
-      <Setter Property="MinHeight" Value="44" />
-      <Setter Property="MinWidth" Value="200" />
-      <Setter Property="FontSize" Value="15" />
-      <Setter Property="Padding" Value="16,8" />
-    </Style>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Tokens.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Temas/Claro.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Controles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <Style x:Key="Titulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Title}">
+        <Setter Property="Margin" Value="0,0,0,6" />
+      </Style>
+      <Style x:Key="Descricao" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Secondary}">
+        <Setter Property="Margin" Value="0,0,0,8" />
+      </Style>
+      <Style x:Key="Rotulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Label}">
+        <Setter Property="Margin" Value="0,16,0,6" />
+      </Style>
+    </ResourceDictionary>
   </Application.Resources>
 </Application>

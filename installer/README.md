@@ -70,7 +70,7 @@ $env:EDGE_TOKEN = Get-Content "$env:LOCALAPPDATA\ConexaoTopdata\token"
 
 ## Setup.exe — o caminho de produção
 
-Um arquivo só: **`ConexaoTopdata-Setup.exe`**, com o .NET embutido (uns 240 MB). Link
+Um arquivo só: **`RayzerXAcess-Setup.exe`**, com o .NET embutido (uns 240 MB). Link
 direto, sempre do último commit, na pré-release **Instalador de teste**:
 
 https://github.com/rcarvalhocwb/conexao-topdata/releases/tag/instalador-de-teste
@@ -83,7 +83,7 @@ sempre baixa em zip.)
 Execute como administrador. Ele:
 
 - instala o serviço, o painel, o programa das catracas e o assistente em
-  `C:\Program Files\Conexao Topdata`, cada um com o seu .NET — nada para instalar antes;
+  `C:\Program Files\Rayzer\XAcess`, cada um com o seu .NET — nada para instalar antes;
 - registra o serviço **ConexaoTopdataEdge** com partida **automática** (não o inicia
   durante a instalação: quem inicia é o assistente, depois de gravar a configuração);
 - cria no menu Iniciar o **Painel do evento**, o **Assistente de configuração** e o
@@ -142,7 +142,7 @@ configuração".
 Numa máquina Windows, com o serviço rodando:
 
 ```powershell
-& "C:\Program Files\Conexao Topdata\Painel\Desktop.App.exe" --capturar capturas
+& "C:\Program Files\Rayzer\XAcess\Painel\Desktop.App.exe" --capturar capturas
 ```
 
 Fotografa as oito telas do painel com os dados reais do serviço e grava

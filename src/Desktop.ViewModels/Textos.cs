@@ -81,7 +81,16 @@ public sealed record LinhaDeCatraca(
     string Firmware,
     string Grupo,
     int Porta,
-    int Reconexoes);
+    int Reconexoes)
+{
+    /// <summary>"CATRACA 01": como a catraca é chamada no cartão do dispositivo.</summary>
+    public string Rotulo => string.Create(CultureInfo.InvariantCulture, $"CATRACA {Inner:D2}");
+
+    /// <summary>A linha técnica do cartão: firmware, grupo, porta e reconexões.</summary>
+    public string Tecnico => string.Create(
+        CultureInfo.InvariantCulture,
+        $"Firmware {(string.IsNullOrWhiteSpace(Firmware) ? "—" : Firmware)} · grupo {Grupo} · porta {Porta} · {Reconexoes} reconex{(Reconexoes == 1 ? "ão" : "ões")}");
+}
 
 /// <summary>Um acesso, pronto para a tela. O código já vem mascarado do serviço.</summary>
 public sealed record LinhaDeAcesso(

@@ -1,0 +1,258 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Rayzer.Design">
+  <!--
+    Aparência padrão dos componentes Rayzer*. Só DynamicResource Rayzer.*: trocam de tema
+    ao vivo e herdam o alto contraste.
+  -->
+
+  <!-- ===== RayzerStatus ===== -->
+  <Style TargetType="{x:Type local:RayzerStatus}">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Neutral}" />
+    <Setter Property="Background" Value="{DynamicResource Rayzer.Neutral.Subtle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerStatus}">
+          <Border x:Name="Pilula" Background="Transparent" CornerRadius="{DynamicResource Rayzer.Radius.Pill}"
+                  HorizontalAlignment="Left" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" FontFamily="{DynamicResource Rayzer.Font.Symbols}"
+                         FontWeight="Bold" Foreground="{TemplateBinding Foreground}"
+                         Text="{Binding GlifoEfetivo, RelativeSource={RelativeSource TemplatedParent}}" />
+              <TextBlock VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}"
+                         Text="{TemplateBinding Texto}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Pilula" Value="True">
+              <Setter TargetName="Pilula" Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}" />
+              <Setter TargetName="Pilula" Property="Padding" Value="10,3" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tom" Value="Sucesso">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Success}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Success.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Atencao">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Warning}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Warning.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Perigo">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Danger}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Danger.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Info">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Info}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Info.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Marca">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Brand.Primary.Foreground}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Brand.Primary.Subtle}" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ===== RayzerMetricCard ===== -->
+  <Style TargetType="{x:Type local:RayzerMetricCard}">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Neutral}" />
+    <Setter Property="Background" Value="{DynamicResource Rayzer.Neutral.Subtle}" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="MinWidth" Value="170" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerMetricCard}">
+          <Border Background="{DynamicResource Rayzer.Surface}" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="1"
+                  CornerRadius="{DynamicResource Rayzer.Radius.Lg}" Padding="{DynamicResource Rayzer.Padding.Card}">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource Rayzer.FontSize.Small}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{TemplateBinding Rotulo}" TextWrapping="Wrap" />
+              <Border Grid.Column="1" Width="30" Height="30" Margin="8,0,0,0" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                      Background="{TemplateBinding Background}">
+                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"
+                           FontFamily="{DynamicResource Rayzer.Font.Icons}" Foreground="{TemplateBinding Foreground}"
+                           Text="{TemplateBinding Icone}" />
+              </Border>
+              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0" FontFamily="{DynamicResource Rayzer.Font.Display}"
+                         FontSize="{DynamicResource Rayzer.FontSize.Metric}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Rayzer.Text.Primary}"
+                         Text="{Binding Valor, RelativeSource={RelativeSource TemplatedParent}}" />
+              <TextBlock Grid.Row="2" Grid.ColumnSpan="2" FontSize="{DynamicResource Rayzer.FontSize.Caption}"
+                         Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{TemplateBinding Detalhe}" TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tom" Value="Sucesso">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Success}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Success.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Atencao">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Warning}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Warning.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Perigo">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Danger}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Danger.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Info">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Info}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Info.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Marca">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Brand.Primary.Foreground}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Brand.Primary.Subtle}" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ===== RayzerAlert ===== -->
+  <Style TargetType="{x:Type local:RayzerAlert}">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Info}" />
+    <Setter Property="Background" Value="{DynamicResource Rayzer.Info.Subtle}" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerAlert}">
+          <Border Background="{TemplateBinding Background}" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                  BorderBrush="{TemplateBinding Foreground}" BorderThickness="4,0,0,0" Padding="14,10">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Margin="0,0,10,0" VerticalAlignment="Top" FontFamily="{DynamicResource Rayzer.Font.Symbols}"
+                         FontSize="16" FontWeight="Bold" Foreground="{TemplateBinding Foreground}"
+                         Text="{Binding Glifo, RelativeSource={RelativeSource TemplatedParent}}" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource Rayzer.Text.Primary}" Text="{TemplateBinding Titulo}"
+                           TextWrapping="Wrap" />
+                <TextBlock Margin="0,2,0,0" FontSize="{DynamicResource Rayzer.FontSize.Small}" Foreground="{DynamicResource Rayzer.Text.Secondary}"
+                           Text="{TemplateBinding Texto}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ContentPresenter Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tom" Value="Sucesso">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Success}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Success.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Atencao">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Warning}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Warning.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Perigo">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Danger}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Danger.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Neutro">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Neutral}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Neutral.Subtle}" />
+      </Trigger>
+      <Trigger Property="Tom" Value="Marca">
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Brand.Primary.Foreground}" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Brand.Primary.Subtle}" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ===== RayzerEmptyState ===== -->
+  <Style TargetType="{x:Type local:RayzerEmptyState}">
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerEmptyState}">
+          <StackPanel MaxWidth="380" Margin="24">
+            <Border Width="52" Height="52" HorizontalAlignment="Center" CornerRadius="26"
+                    Background="{DynamicResource Rayzer.Neutral.Subtle}">
+              <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="22"
+                         FontFamily="{DynamicResource Rayzer.Font.Icons}" Foreground="{DynamicResource Rayzer.Text.Secondary}"
+                         Text="{TemplateBinding Icone}" />
+            </Border>
+            <TextBlock Margin="0,12,0,4" HorizontalAlignment="Center" FontWeight="SemiBold" TextAlignment="Center"
+                       Foreground="{DynamicResource Rayzer.Text.Primary}" Text="{TemplateBinding Titulo}" TextWrapping="Wrap" />
+            <TextBlock HorizontalAlignment="Center" TextAlignment="Center" FontSize="{DynamicResource Rayzer.FontSize.Small}"
+                       Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{TemplateBinding Texto}" TextWrapping="Wrap" />
+          </StackPanel>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== RayzerLogo ===== -->
+  <Style TargetType="{x:Type local:RayzerLogo}">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Nav.Text.Active}" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerLogo}">
+          <StackPanel Orientation="Horizontal" AutomationProperties.Name="Rayzer XAcess">
+            <Viewbox Width="{TemplateBinding TamanhoDoSimbolo}" Height="{TemplateBinding TamanhoDoSimbolo}" VerticalAlignment="Center">
+              <Canvas Width="32" Height="32">
+                <Path Data="{DynamicResource Rayzer.Logo.Gate.Geometry}" Fill="{DynamicResource Rayzer.Logo.Gate}" />
+                <Path Data="{DynamicResource Rayzer.Logo.Flow.Geometry}" Fill="{DynamicResource Rayzer.Logo.Flow}" />
+              </Canvas>
+            </Viewbox>
+            <StackPanel x:Name="Nomes" Margin="10,0,0,0" VerticalAlignment="Center">
+              <TextBlock FontSize="10" FontWeight="Bold" Foreground="{TemplateBinding Foreground}" Opacity="0.75"
+                         Text="{TemplateBinding Empresa}" />
+              <TextBlock Margin="0,-3,0,0" FontFamily="{DynamicResource Rayzer.Font.Display}" FontSize="20" FontWeight="SemiBold"
+                         Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Produto}" />
+            </StackPanel>
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Variante" Value="Simbolo">
+              <Setter TargetName="Nomes" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== RayzerFlowBar ===== -->
+  <Style TargetType="{x:Type local:RayzerFlowBar}">
+    <Setter Property="Height" Value="3" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerFlowBar}">
+          <Grid ClipToBounds="True">
+            <Border x:Name="PART_Traco" HorizontalAlignment="Left" CornerRadius="2" Visibility="Hidden"
+                    Background="{DynamicResource Rayzer.Brand.Primary}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

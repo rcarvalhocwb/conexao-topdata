@@ -108,6 +108,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
     private EstadoDoPainel _estado = EstadoDoPainel.Carregando();
     private IReadOnlyList<LinhaDeCatraca> _catracas = [];
     private string _resumo = string.Empty;
+    private string _horaDoEvento = "—";
     private string _internet = string.Empty;
     private long _liberados;
     private long _negados;
@@ -142,6 +143,9 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
     public string Internet { get => _internet; private set => Definir(ref _internet, value); }
 
+    /// <summary>Hora da última atualização, no relógio do evento (Brasília).</summary>
+    public string HoraDoEvento { get => _horaDoEvento; private set => Definir(ref _horaDoEvento, value); }
+
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)
     {
         var ok = await Tentar(async () =>
@@ -151,6 +155,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
             var agora = Relogio();
 
             Estado = EstadoDoPainel.De(estado, agora);
+            HoraDoEvento = Textos.Hora(agora);
             Liberados = estado.Liberados;
             Negados = estado.Negados;
             Giros = estado.Giros;
@@ -851,7 +856,15 @@ public sealed class JanelaViewModel : Notificavel
             new SimuladorViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
+        AbrirDiagnostico = new ComandoAssincrono(() =>
+        {
+            TelaAtual = Telas.OfType<DiagnosticoViewModel>().First();
+            return Task.CompletedTask;
+        });
     }
+
+    /// <summary>A ação dos cartões de catraca: ir direto ao diagnóstico.</summary>
+    public ComandoAssincrono AbrirDiagnostico { get; }
 
     /// <summary>O painel ao vivo também alimenta o cabeçalho, em qualquer tela.</summary>
     public PainelAoVivoViewModel Painel { get; }

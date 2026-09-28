@@ -23,6 +23,7 @@ public partial class App : Application
 
         TratarErrosInesperados("assistente");
         base.OnStartup(e);
+        Rayzer.Design.TemaRayzer.Instalar(this, "XAcess");
 
         // Português do Brasil em qualquer Windows: o WPF nasce em "en-US" (ver o Portugues.cs
         // do painel).
@@ -82,7 +83,7 @@ public partial class App : Application
                 $"Aconteceu um erro inesperado e a tela continuou aberta.{Environment.NewLine}{Environment.NewLine}" +
                 $"{e.Exception.GetType().Name}: {e.Exception.Message}{Environment.NewLine}{Environment.NewLine}" +
                 (arquivo is null ? "Não foi possível gravar o detalhe." : $"Detalhe gravado em:{Environment.NewLine}{arquivo}"),
-                "Conexão Topdata",
+                "Rayzer XAcess",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             e.Handled = true;

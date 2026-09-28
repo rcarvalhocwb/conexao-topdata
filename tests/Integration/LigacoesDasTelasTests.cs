@@ -53,6 +53,13 @@ public sealed partial class LigacoesDasTelasTests
         {
             var caminho = m.Groups[1].Value;
 
+            // Ligação a outro elemento da tela, não à ViewModel.
+            var expressao = xaml[m.Index..Math.Min(xaml.Length, xaml.IndexOf('}', m.Index) + 1)];
+            if (expressao.Contains("ElementName", StringComparison.Ordinal) || expressao.Contains("RelativeSource", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             // {Binding} sozinho, ou só com StringFormat/Converter: liga ao próprio item.
             if (string.IsNullOrEmpty(caminho) || caminho is "StringFormat" or "Converter" or "Mode")
             {
@@ -62,6 +69,12 @@ public sealed partial class LigacoesDasTelasTests
             if (!Resolve(caminho, tipos))
             {
                 faltando.Add(caminho);
+            }
+            else if (caminho.EndsWith(".Count", StringComparison.Ordinal) && !ContagemVisivelAoWpf(caminho[..^6], tipos))
+            {
+                // Lista somente leitura: Count é implementado de forma explícita e a ligação
+                // do WPF não o enxerga. Ligue na lista (ZeroParaVisivel conta sozinho).
+                faltando.Add($"{caminho} (Count invisível ao WPF)");
             }
         }
 
@@ -137,6 +150,10 @@ public sealed partial class LigacoesDasTelasTests
 
         return false;
     }
+
+    private static bool ContagemVisivelAoWpf(string caminhoDaLista, System.Type[] tipos) =>
+        tipos.Select(t => Propriedade(t, caminhoDaLista)?.PropertyType)
+            .Any(t => t is not null && t.GetProperty("Count", BindingFlags.Public | BindingFlags.Instance) is not null && !t.IsInterface);
 
     private static PropertyInfo? Propriedade(System.Type tipo, string nome) =>
         tipo.GetProperty(nome, BindingFlags.Public | BindingFlags.Instance)

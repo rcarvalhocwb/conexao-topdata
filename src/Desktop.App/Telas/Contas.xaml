@@ -1,93 +1,102 @@
 <UserControl x:Class="Desktop.App.Telas.Contas"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              AutomationProperties.Name="Prestação de contas">
   <DockPanel>
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Titulo}" Text="Prestação de contas" />
+    <StackPanel DockPanel.Dock="Top">
+      <TextBlock Style="{StaticResource Pagina.Titulo}" Text="Prestação de contas" />
+      <TextBlock Style="{StaticResource Pagina.Descricao}"
+                 Text="O que aconteceu nas catracas no período, no horário de Brasília. Autorizado = a catraca liberou; com giro = a pessoa passou. Os relatórios completos (docs/25) estão em desenvolvimento." />
+    </StackPanel>
 
-    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="De (data · hora)" />
-        <StackPanel Orientation="Horizontal">
-          <DatePicker MinHeight="36" SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
-          <TextBox Width="64" Margin="4,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
+      <WrapPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="De (data · hora)" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
+          </StackPanel>
         </StackPanel>
-      </StackPanel>
-      <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="Até (data · hora; vazio = agora)" />
-        <StackPanel Orientation="Horizontal">
-          <DatePicker MinHeight="36" SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
-          <TextBox Width="64" Margin="4,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Até (data · hora; vazio = agora)" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
+          </StackPanel>
         </StackPanel>
-      </StackPanel>
-      <Button VerticalAlignment="Bottom" Margin="0,0,8,8" Content="_Gerar" IsDefault="True" Command="{Binding Gerar}" />
-      <Button VerticalAlignment="Bottom" Margin="0,0,0,8" Content="_Exportar para Excel" Click="Exportar" />
-    </WrapPanel>
+        <Button Style="{StaticResource Rayzer.Button.Primary}" VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}"
+                Content="_Gerar" IsDefault="True" Command="{Binding Gerar}" />
+        <Button VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}" Click="Exportar"
+                AutomationProperties.Name="Exportar para Excel">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="14" Text="{DynamicResource Rayzer.Icon.Download}" />
+            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Exportar para Excel" />
+          </StackPanel>
+        </Button>
+      </WrapPanel>
+    </Border>
 
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Aviso}" Text="{Binding Mensagem}"
-               Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
 
-    <WrapPanel DockPanel.Dock="Top" DataContext="{Binding Contas}">
-      <Border Style="{StaticResource Cartao}">
-        <StackPanel>
-          <TextBlock Style="{StaticResource Rotulo}" Text="Liberados" />
-          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Liberados}" />
-        </StackPanel>
-      </Border>
-      <Border Style="{StaticResource Cartao}">
-        <StackPanel>
-          <TextBlock Style="{StaticResource Rotulo}" Text="Com giro confirmado" />
-          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Giros}" />
-        </StackPanel>
-      </Border>
-      <Border Style="{StaticResource Cartao}">
-        <StackPanel>
-          <TextBlock Style="{StaticResource Rotulo}" Text="Negados" />
-          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Negados}" />
-        </StackPanel>
-      </Border>
-    </WrapPanel>
+    <UniformGrid DockPanel.Dock="Top" Rows="1" Margin="0,0,-12,12" DataContext="{Binding Contas}">
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Autorizados" Valor="{Binding Liberados}" Tom="Sucesso"
+                           Icone="{DynamicResource Rayzer.Icon.Check}" Detalhe="✓ a catraca liberou" />
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Com giro confirmado" Valor="{Binding Giros}" Tom="Marca"
+                           Icone="{DynamicResource Rayzer.Icon.People}" Detalhe="a pessoa passou" />
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Negados" Valor="{Binding Negados}" Tom="Perigo"
+                           Icone="{DynamicResource Rayzer.Icon.Denied}" Detalhe="× veja os motivos abaixo" />
+    </UniformGrid>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding Contas}">
-      <StackPanel>
-        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,8" Text="Por categoria" />
-        <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Categoria" Binding="{Binding Categoria}" Width="*" />
-            <DataGridTextColumn Header="Liberados" Binding="{Binding Liberados}" Width="120" />
-            <DataGridTextColumn Header="Com giro" Binding="{Binding Giros}" Width="120" />
-          </DataGrid.Columns>
-        </DataGrid>
-
-        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" Text="Por catraca" />
-        <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Catraca" Binding="{Binding Inner}" Width="*" />
-            <DataGridTextColumn Header="Liberados" Binding="{Binding Liberados}" Width="120" />
-            <DataGridTextColumn Header="Com giro" Binding="{Binding Giros}" Width="120" />
-            <DataGridTextColumn Header="Negados" Binding="{Binding Negados}" Width="120" />
-          </DataGrid.Columns>
-        </DataGrid>
-
-        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" Text="Por hora" />
-        <DataGrid ItemsSource="{Binding PorHora}" AutomationProperties.Name="Por hora">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Hora" Binding="{Binding Hora, Converter={StaticResource InstanteParaTexto}, ConverterParameter='dd/MM HH:00'}" Width="*" />
-            <DataGridTextColumn Header="Liberados" Binding="{Binding Liberados}" Width="120" />
-            <DataGridTextColumn Header="Negados" Binding="{Binding Negados}" Width="120" />
-          </DataGrid.Columns>
-        </DataGrid>
-
-        <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" Text="Motivos de negativa" />
-        <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Motivo" Binding="{Binding Mensagem}" Width="*" />
-            <DataGridTextColumn Header="Quantidade" Binding="{Binding Quantidade}" Width="120" />
-          </DataGrid.Columns>
-        </DataGrid>
-      </StackPanel>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="16" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Por categoria" />
+          <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria" Margin="0,0,0,16">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="*" />
+              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="110" />
+              <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="100" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Por catraca" />
+          <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca" Margin="0,0,0,16">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="*" />
+              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="110" />
+              <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="100" />
+              <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="90" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Por hora" />
+          <DataGrid ItemsSource="{Binding PorHora}" AutomationProperties.Name="Por hora" Margin="0,0,0,16">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="HORA" Width="*" ElementStyle="{StaticResource Celula.Mono}"
+                                  Binding="{Binding Hora, Converter={StaticResource InstanteParaTexto}, ConverterParameter='dd/MM HH:00'}" />
+              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="110" />
+              <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="90" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Motivos de negativa" />
+          <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa" Margin="0,0,0,16">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="MOTIVO" Binding="{Binding Mensagem}" Width="*" />
+              <DataGridTextColumn Header="QUANTIDADE" Binding="{Binding Quantidade}" Width="110" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </Grid>
     </ScrollViewer>
   </DockPanel>
 </UserControl>

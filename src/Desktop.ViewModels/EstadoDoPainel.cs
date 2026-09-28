@@ -43,6 +43,9 @@ public sealed record EstadoDoPainel
     /// </summary>
     public bool SugerirAssistente { get; init; }
 
+    /// <summary>Instalação em modo simulação: a tela mostra o selo o tempo todo.</summary>
+    public bool Simulacao { get; init; }
+
     public int WorkersAtivos { get; init; }
 
     public int EquipamentosConectados { get; init; }
@@ -115,6 +118,7 @@ public sealed record EstadoDoPainel
             Saude = saude,
             Mensagem = mensagem,
             SugerirAssistente = resposta.SemConfiguracao,
+            Simulacao = resposta.Simulacao,
             Detalhe = string.Create(
                 CultureInfo.InvariantCulture,
                 $"versão {resposta.Versao} · nível {resposta.Nivel} · outbox {resposta.OutboxPendente}"),
