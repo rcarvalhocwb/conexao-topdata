@@ -47,7 +47,7 @@
       </Grid.ColumnDefinitions>
 
       <DockPanel Grid.Column="0">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Text.Section}" Text="Catracas" />
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Catracas" />
         <Grid>
           <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,-12,0">
             <ItemsControl ItemsSource="{Binding Catracas}" ItemTemplate="{StaticResource Cartao.Catraca}"
@@ -60,7 +60,7 @@
       </DockPanel>
 
       <DockPanel Grid.Column="2">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Text.Section}" Text="Acessos em tempo real" />
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Acessos em tempo real" />
         <Grid>
           <DataGrid ItemsSource="{Binding UltimosAcessos}" AutomationProperties.Name="Últimos acessos">
             <DataGrid.Columns>

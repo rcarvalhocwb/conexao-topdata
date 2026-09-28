@@ -14,19 +14,19 @@
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Catraca" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
           <TextBox Width="96" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" ToolTip="Vazio = todas" AutomationProperties.Name="Catraca" />
         </StackPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Resultado" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Resultado" />
           <ComboBox Width="140" ItemsSource="{Binding OpcoesDeResultado}" SelectedIndex="{Binding Resultado}" AutomationProperties.Name="Resultado" />
         </StackPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Categoria" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Categoria" />
           <TextBox Width="140" Text="{Binding Categoria, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Categoria" />
         </StackPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="De (data · hora)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="De (data · hora)" />
           <StackPanel Orientation="Horizontal">
             <DatePicker SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
             <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
@@ -34,7 +34,7 @@
           </StackPanel>
         </StackPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Até (data · hora)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Até (data · hora)" />
           <StackPanel Orientation="Horizontal">
             <DatePicker SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
             <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"

@@ -13,13 +13,13 @@
         <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Controles.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
-      <Style x:Key="Titulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Title}">
+      <Style x:Key="Titulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Title}">
         <Setter Property="Margin" Value="0,0,0,6" />
       </Style>
-      <Style x:Key="Descricao" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Secondary}">
+      <Style x:Key="Descricao" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Secondary}">
         <Setter Property="Margin" Value="0,0,0,8" />
       </Style>
-      <Style x:Key="Rotulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Label}">
+      <Style x:Key="Rotulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Label}">
         <Setter Property="Margin" Value="0,16,0,6" />
       </Style>
     </ResourceDictionary>

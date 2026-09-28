@@ -30,6 +30,31 @@ public sealed partial class RayzerDesignTests
         Assert.Equal(claro.Order(StringComparer.Ordinal), contraste.Order(StringComparer.Ordinal));
     }
 
+    /// <summary>
+    /// A mesma chave em dois dicionários faz o último vencer: "Rayzer.Text.Secondary" era
+    /// cor no tema e estilo nos controles, e o WPF entregou o estilo onde esperava a cor —
+    /// o painel caiu ao abrir. Achado pelo autoteste do CI.
+    /// </summary>
+    [Fact]
+    public void Nenhuma_chave_se_repete_entre_os_dicionarios()
+    {
+        var vistas = new Dictionary<string, string>(StringComparer.Ordinal);
+        var repetidas = new List<string>();
+
+        foreach (var dicionario in new[] { "Tokens.xaml", "Temas/Claro.xaml", "Controles.xaml", "Themes/Generic.xaml" })
+        {
+            foreach (var chave in Chaves(Arquivo($"src/Rayzer.Design/{dicionario}")))
+            {
+                if (!vistas.TryAdd(chave, dicionario))
+                {
+                    repetidas.Add($"{chave} ({vistas[chave]} e {dicionario})");
+                }
+            }
+        }
+
+        Assert.True(repetidas.Count == 0, $"Chaves repetidas: {string.Join(", ", repetidas)}");
+    }
+
     [Fact]
     public void Os_tokens_semanticos_pedidos_pela_marca_existem()
     {

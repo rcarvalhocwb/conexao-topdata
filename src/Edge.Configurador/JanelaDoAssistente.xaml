@@ -51,7 +51,7 @@
                       </Grid.ColumnDefinitions>
                       <StackPanel>
                         <TextBlock FontWeight="SemiBold" Text="{Binding Item}" TextWrapping="Wrap" />
-                        <TextBlock Style="{StaticResource Rayzer.Text.Secondary}" Margin="0,2,0,0" Text="{Binding Orientacao}" />
+                        <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,2,0,0" Text="{Binding Orientacao}" />
                       </StackPanel>
                       <rz:RayzerStatus Grid.Column="1" Margin="12,0,0,0" Pilula="True" VerticalAlignment="Top"
                                        Tom="{Binding Tom}" Texto="{Binding Situacao}" />
@@ -65,7 +65,7 @@
               <Button Content="_Localizar EasyInner.dll…" Click="LocalizarEasyInner" Margin="0,0,8,8" />
               <Button x:Name="BotaoNet35" Content="Habilitar .NET _Framework 3.5" Click="HabilitarNet35" Margin="0,0,8,8" />
             </WrapPanel>
-            <TextBlock x:Name="TextoDoAmbiente" Style="{StaticResource Rayzer.Text.Body}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Assertive" />
+            <TextBlock x:Name="TextoDoAmbiente" Style="{StaticResource Rayzer.Type.Body}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Assertive" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -114,7 +114,7 @@
             <CheckBox x:Name="CaixaUrna" Margin="0,16,0,0" Content="Cartão da bilheteria só vale na fenda da urna" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Segredo de acesso à nuvem (deixe em branco para manter o atual)" />
             <PasswordBox x:Name="CampoSegredo" AutomationProperties.Name="Segredo da nuvem" />
-            <TextBlock Style="{StaticResource Rayzer.Text.Caption}" Margin="0,6,0,0"
+            <TextBlock Style="{StaticResource Rayzer.Type.Caption}" Margin="0,6,0,0"
                        Text="O segredo fica guardado no cofre do Windows deste computador. Ele nunca é gravado em arquivo." />
           </StackPanel>
         </ScrollViewer>
@@ -125,7 +125,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
           <StackPanel>
             <TextBlock Style="{StaticResource Titulo}" Text="Conferir e gravar" />
-            <TextBlock x:Name="TextoResumo" Style="{StaticResource Rayzer.Text.Body}" />
+            <TextBlock x:Name="TextoResumo" Style="{StaticResource Rayzer.Type.Body}" />
             <ItemsControl x:Name="ListaDeProblemas" Margin="0,12,0,12" AutomationProperties.Name="Problemas">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -135,7 +135,7 @@
             </ItemsControl>
             <Button x:Name="BotaoGravar" Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left"
                     Content="_Gravar e iniciar o serviço" Click="Gravar" />
-            <TextBlock x:Name="TextoResultado" Style="{StaticResource Rayzer.Text.Body}" Margin="0,16,0,0" AutomationProperties.LiveSetting="Assertive" />
+            <TextBlock x:Name="TextoResultado" Style="{StaticResource Rayzer.Type.Body}" Margin="0,16,0,0" AutomationProperties.LiveSetting="Assertive" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -143,7 +143,7 @@
 
     <Border Grid.Row="2" Margin="24,16,24,20">
       <Grid>
-        <TextBlock VerticalAlignment="Center" Style="{StaticResource Rayzer.Text.Caption}"
+        <TextBlock VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Caption}"
                    Text="Rayzer Serviços e Tecnologia · desenvolvido sob demanda" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
           <Button x:Name="BotaoVoltar" Margin="0,0,8,0" Content="_Voltar" Click="Voltar" />

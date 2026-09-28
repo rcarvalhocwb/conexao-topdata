@@ -26,8 +26,8 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <StackPanel Margin="0,4,16,8">
-                <TextBlock Style="{StaticResource Rayzer.Text.Label}" Margin="0,0,0,2" Text="{Binding Rotulo}" />
-                <TextBlock Style="{StaticResource Rayzer.Text.Body}" Text="{Binding Valor}" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="{Binding Rotulo}" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" Text="{Binding Valor}" />
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -35,7 +35,7 @@
       </StackPanel>
     </Border>
 
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Text.Section}" Text="Origens dos códigos" />
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Origens dos códigos" />
     <Grid>
       <DataGrid ItemsSource="{Binding Provedores}" AutomationProperties.Name="Origens dos códigos">
         <DataGrid.Columns>

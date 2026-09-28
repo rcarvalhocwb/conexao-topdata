@@ -11,27 +11,27 @@
 
       <Border Style="{StaticResource Rayzer.Card}" Padding="20,18">
         <StackPanel>
-          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Catracas" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Catracas" />
 
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Mensagem no visor da catraca (até 32 letras)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Mensagem no visor da catraca (até 32 letras)" />
           <TextBox MaxLength="32" Text="{Binding MensagemPadrao, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Mensagem do display" />
 
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Margin="0,16,0,6" Text="Segundos que a catraca fica liberada esperando o giro (1 a 50)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,16,0,6" Text="Segundos que a catraca fica liberada esperando o giro (1 a 50)" />
           <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding TempoDeAcionamento, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tempo de acionamento" />
 
           <CheckBox Margin="0,16,0,0" IsChecked="{Binding LeitorDaUrna}" Content="Leitor da urna ligado (o cartão da bilheteria entra pela fenda)" />
 
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Margin="0,16,0,6" Text="Tipo de leitor (técnico — 8 na bancada; 5 se o QR não for lido)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,16,0,6" Text="Tipo de leitor (técnico — 8 na bancada; 5 se o QR não for lido)" />
           <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding TipoDeLeitor, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tipo de leitor" />
 
           <Border Style="{StaticResource Rayzer.Divider}" Margin="0,20,0,16" />
-          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Nuvem" />
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Segundos que a liberação espera o giro antes de subir para a nuvem" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Nuvem" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Segundos que a liberação espera o giro antes de subir para a nuvem" />
           <TextBox Width="120" HorizontalAlignment="Left" IsEnabled="{Binding NuvemLigada}"
                    Text="{Binding EsperaPeloGiro, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Espera pelo giro" />
 
           <Border Style="{StaticResource Rayzer.Divider}" Margin="0,20,0,16" />
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Seu nome (fica registrado junto da mudança)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado junto da mudança)" />
           <TextBox Width="320" HorizontalAlignment="Left" Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador" />
 
           <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left" Margin="0,20,0,0"

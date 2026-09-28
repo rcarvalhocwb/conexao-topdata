@@ -34,7 +34,7 @@
   </Style>
 
   <!-- ===== Texto ===== -->
-  <Style x:Key="Rayzer.Text.Title" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Title" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{DynamicResource Rayzer.Font.Display}" />
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Title}" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -42,7 +42,7 @@
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
-  <Style x:Key="Rayzer.Text.Section" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Section" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{DynamicResource Rayzer.Font.Display}" />
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Section}" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -50,39 +50,39 @@
     <Setter Property="Margin" Value="0,0,0,10" />
   </Style>
 
-  <Style x:Key="Rayzer.Text.Body" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Body" TargetType="TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Body}" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
-  <Style x:Key="Rayzer.Text.Secondary" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Secondary" TargetType="TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Secondary}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
-  <Style x:Key="Rayzer.Text.Caption" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Caption" TargetType="TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Secondary}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
-  <Style x:Key="Rayzer.Text.Overline" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Overline" TargetType="TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Overline}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Secondary}" />
   </Style>
 
   <!-- Rótulo de campo de formulário. -->
-  <Style x:Key="Rayzer.Text.Label" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Label" TargetType="TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Small}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Secondary}" />
     <Setter Property="Margin" Value="0,0,0,6" />
   </Style>
 
-  <Style x:Key="Rayzer.Text.Metric" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Metric" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{DynamicResource Rayzer.Font.Display}" />
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Metric}" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -90,7 +90,7 @@
   </Style>
 
   <!-- Horas, códigos mascarados e linhas de registro: dígitos de largura fixa. -->
-  <Style x:Key="Rayzer.Text.Mono" TargetType="TextBlock">
+  <Style x:Key="Rayzer.Type.Mono" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{DynamicResource Rayzer.Font.Mono}" />
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />

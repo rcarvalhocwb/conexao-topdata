@@ -37,15 +37,15 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <StackPanel Margin="0,4,16,8">
-              <TextBlock Style="{StaticResource Rayzer.Text.Label}" Margin="0,0,0,2" Text="{Binding Rotulo}" />
-              <TextBlock Style="{StaticResource Rayzer.Text.Body}" FontWeight="SemiBold" Text="{Binding Valor}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="{Binding Rotulo}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" Text="{Binding Valor}" />
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </Border>
 
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Text.Section}" Text="Últimas tentativas com este código" />
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Últimas tentativas com este código" />
     <Grid>
       <DataGrid ItemsSource="{Binding Historico}" AutomationProperties.Name="Histórico do código">
         <DataGrid.Columns>

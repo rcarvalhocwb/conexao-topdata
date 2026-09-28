@@ -16,12 +16,12 @@
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" DataContext="{Binding Diagnostico}">
       <UniformGrid Columns="2">
         <StackPanel Margin="0,0,16,0">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Margin="0,0,0,2" Text="Versão do serviço" />
-          <TextBlock Style="{StaticResource Rayzer.Text.Mono}" Text="{Binding Versao}" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="Versão do serviço" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Mono}" Text="{Binding Versao}" />
         </StackPanel>
         <StackPanel>
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Margin="0,0,0,2" Text="Pasta de dados e registros" />
-          <TextBlock Style="{StaticResource Rayzer.Text.Mono}" Text="{Binding PastaDeDados}" TextWrapping="Wrap" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="Pasta de dados e registros" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Mono}" Text="{Binding PastaDeDados}" TextWrapping="Wrap" />
         </StackPanel>
       </UniformGrid>
     </Border>
@@ -37,17 +37,17 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Style="{StaticResource Rayzer.Text.Section}" Margin="0" Text="{Binding Nome}" />
-                  <TextBlock Grid.Column="1" Style="{StaticResource Rayzer.Text.Caption}" VerticalAlignment="Center">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" Text="{Binding Nome}" />
+                  <TextBlock Grid.Column="1" Style="{StaticResource Rayzer.Type.Caption}" VerticalAlignment="Center">
                     <Run Text="Situação: " /><Run FontWeight="SemiBold" Text="{Binding Situacao, Mode=OneWay}" /><Run Text="  ·  reinícios: " /><Run FontWeight="SemiBold" Text="{Binding Reinicios, Mode=OneWay}" />
                   </TextBlock>
                 </Grid>
-                <TextBlock Style="{StaticResource Rayzer.Text.Secondary}" Margin="0,4,0,8" Text="{Binding Detalhe}" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,4,0,8" Text="{Binding Detalhe}" />
                 <Border Padding="12,8" CornerRadius="{DynamicResource Rayzer.Radius.Md}" Background="{DynamicResource Rayzer.Surface.Sunken}">
                   <ItemsControl ItemsSource="{Binding UltimasLinhas}" AutomationProperties.Name="Últimas linhas do programa">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <TextBlock Style="{StaticResource Rayzer.Text.Mono}" FontSize="{DynamicResource Rayzer.FontSize.Caption}"
+                        <TextBlock Style="{StaticResource Rayzer.Type.Mono}" FontSize="{DynamicResource Rayzer.FontSize.Caption}"
                                    Text="{Binding}" TextWrapping="Wrap" />
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>

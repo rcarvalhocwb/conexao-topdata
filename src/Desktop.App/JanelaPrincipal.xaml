@@ -103,13 +103,13 @@
             <rz:RayzerStatus FontSize="16" Tom="{Binding Estado.Saude, Converter={StaticResource SaudeParaTom}}"
                              Texto="{Binding Estado.Mensagem}"
                              AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="Estado da operação" />
-            <TextBlock Margin="22,2,0,0" Style="{StaticResource Rayzer.Text.Caption}" Text="{Binding Internet}" />
+            <TextBlock Margin="22,2,0,0" Style="{StaticResource Rayzer.Type.Caption}" Text="{Binding Internet}" />
           </StackPanel>
 
           <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" HorizontalAlignment="Right">
-            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Text.Mono}" FontSize="15"
+            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Mono}" FontSize="15"
                        Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
-            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Text.Caption}" Text="Horário de Brasília" />
+            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Caption}" Text="Horário de Brasília" />
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">

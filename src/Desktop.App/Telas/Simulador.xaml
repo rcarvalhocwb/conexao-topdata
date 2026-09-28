@@ -13,11 +13,11 @@
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Catraca" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
           <TextBox Width="96" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Catraca" />
         </StackPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Código lido" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Código lido" />
           <TextBox Width="260" FontFamily="{DynamicResource Rayzer.Font.Mono}" Text="{Binding Codigo, UpdateSourceTrigger=PropertyChanged}"
                    AutomationProperties.Name="Código lido">
             <TextBox.InputBindings>
@@ -45,7 +45,7 @@
       </Grid.ColumnDefinitions>
 
       <DockPanel Grid.Column="0">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Text.Section}" Text="Últimas tentativas nesta catraca" />
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Últimas tentativas nesta catraca" />
         <Grid>
           <DataGrid ItemsSource="{Binding Resultados}" AutomationProperties.Name="Resultados">
             <DataGrid.Columns>
@@ -61,7 +61,7 @@
       </DockPanel>
 
       <DockPanel Grid.Column="2">
-        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Text.Section}" Text="Códigos de teste" />
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Rayzer.Type.Section}" Text="Códigos de teste" />
         <DataGrid ItemsSource="{Binding CodigosDeTeste}" AutomationProperties.Name="Códigos de teste">
           <DataGrid.Columns>
             <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Rotulo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />

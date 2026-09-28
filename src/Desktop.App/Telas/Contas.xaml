@@ -13,7 +13,7 @@
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="De (data · hora)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="De (data · hora)" />
           <StackPanel Orientation="Horizontal">
             <DatePicker SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
             <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
@@ -21,7 +21,7 @@
           </StackPanel>
         </StackPanel>
         <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-          <TextBlock Style="{StaticResource Rayzer.Text.Label}" Text="Até (data · hora; vazio = agora)" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Até (data · hora; vazio = agora)" />
           <StackPanel Orientation="Horizontal">
             <DatePicker SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
             <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
@@ -60,7 +60,7 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <StackPanel>
-          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Por categoria" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Por categoria" />
           <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="*" />
@@ -68,7 +68,7 @@
               <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="100" />
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Por catraca" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Por catraca" />
           <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="*" />
@@ -79,7 +79,7 @@
           </DataGrid>
         </StackPanel>
         <StackPanel Grid.Column="2">
-          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Por hora" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Por hora" />
           <DataGrid ItemsSource="{Binding PorHora}" AutomationProperties.Name="Por hora" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Width="*" ElementStyle="{StaticResource Celula.Mono}"
@@ -88,7 +88,7 @@
               <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="90" />
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Style="{StaticResource Rayzer.Text.Section}" Text="Motivos de negativa" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Text="Motivos de negativa" />
           <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="MOTIVO" Binding="{Binding Mensagem}" Width="*" />

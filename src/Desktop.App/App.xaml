@@ -34,10 +34,10 @@
       <BooleanToVisibilityConverter x:Key="BoolParaVisibilidade" />
 
       <!-- Cabeçalho de página: título + frase de contexto. -->
-      <Style x:Key="Pagina.Titulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Title}">
+      <Style x:Key="Pagina.Titulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Title}">
         <Setter Property="Margin" Value="0,0,0,4" />
       </Style>
-      <Style x:Key="Pagina.Descricao" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Secondary}">
+      <Style x:Key="Pagina.Descricao" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Secondary}">
         <Setter Property="Margin" Value="0,0,0,16" />
         <Setter Property="MaxWidth" Value="880" />
         <Setter Property="HorizontalAlignment" Value="Left" />
@@ -50,7 +50,7 @@
       </Style>
 
       <!-- Hora e código: dígitos de largura fixa na tabela. -->
-      <Style x:Key="Celula.Mono" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Text.Mono}">
+      <Style x:Key="Celula.Mono" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Mono}">
         <Setter Property="VerticalAlignment" Value="Center" />
       </Style>
 
@@ -76,14 +76,14 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-              <TextBlock Style="{StaticResource Rayzer.Text.Overline}" Text="{Binding Rotulo}" />
-              <TextBlock Style="{StaticResource Rayzer.Text.Section}" Margin="0,2,0,0" Text="{Binding Nome}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Overline}" Text="{Binding Rotulo}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,2,0,0" Text="{Binding Nome}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
             <rz:RayzerStatus Grid.Column="1" Pilula="True" VerticalAlignment="Top"
                              Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}"
                              Glifo="{Binding Sinal, Converter={StaticResource SinalParaGlifoDeDispositivo}}"
                              Texto="{Binding Situacao}" />
-            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,8,0,0" Style="{StaticResource Rayzer.Text.Body}">
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,8,0,0" Style="{StaticResource Rayzer.Type.Body}">
               <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="Último evento: " /><Run Text="{Binding UltimaDecisao, Mode=OneWay}" /><Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text=" · " /><Run Text="{Binding UltimoEvento, Mode=OneWay}" />
             </TextBlock>
             <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,6,0,0">
@@ -91,7 +91,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <TextBlock Style="{StaticResource Rayzer.Text.Caption}" VerticalAlignment="Center" Text="{Binding Tecnico}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Caption}" VerticalAlignment="Center" Text="{Binding Tecnico}" />
               <Button Grid.Column="1" Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
                       Content="Diagnóstico" AutomationProperties.Name="Abrir diagnóstico"
                       Command="{Binding DataContext.AbrirDiagnostico, RelativeSource={RelativeSource AncestorType=Window}}" />
