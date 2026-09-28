@@ -194,6 +194,56 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal("O número da catraca precisa ser um número inteiro.", acessos.Mensagem);
     }
 
+    /// <summary>
+    /// "Até hoje" sem hora inclui o dia de hoje inteiro. Antes, virava hoje 00:00 e o acesso
+    /// de agora ficava de fora ("Nenhum acesso com esses filtros").
+    /// </summary>
+    [Fact]
+    public async Task Acessos_ate_hoje_sem_hora_inclui_o_dia_inteiro_no_fuso_do_evento()
+    {
+        var agora = DateTimeOffset.UtcNow;
+        _repositorio.TentarUsar(Qr, "p1", "inner-1", agora);
+        var hoje = FusoDoEvento.NoEvento(agora).Date;
+
+        var acessos = new AcessosViewModel(Cliente(), () => agora) { Desde = hoje, Ate = hoje };
+        await acessos.Buscar.ExecutarAsync();
+        Assert.Single(acessos.Linhas);
+
+        // Com hora final antes do acesso, ele sai; com a hora do acesso (inclusive), volta.
+        var horaDoAcesso = FusoDoEvento.NoEvento(agora);
+        if (horaDoAcesso.Hour > 0 || horaDoAcesso.Minute > 0)
+        {
+            acessos.HoraAte = horaDoAcesso.AddMinutes(-1).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            await acessos.Buscar.ExecutarAsync();
+            Assert.Empty(acessos.Linhas);
+        }
+
+        acessos.HoraAte = horaDoAcesso.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        await acessos.Buscar.ExecutarAsync();
+        Assert.Single(acessos.Linhas);
+
+        acessos.HoraAte = "25:00";
+        await acessos.Buscar.ExecutarAsync();
+        Assert.Equal("Hora no formato hh:mm, de 00:00 a 23:59 — ou deixe vazio.", acessos.Mensagem);
+    }
+
+    [Fact]
+    public async Task Prestacao_de_contas_de_hoje_ate_hoje_conta_o_dia_inteiro()
+    {
+        var agora = DateTimeOffset.UtcNow;
+        _repositorio.TentarUsar(Qr, "p1", "inner-1", agora);
+        var hoje = FusoDoEvento.NoEvento(agora).Date;
+
+        var contas = new ContasViewModel(Cliente(), () => agora) { Ate = hoje };
+        Assert.Equal(hoje, contas.Desde);
+        await contas.Gerar.ExecutarAsync();
+        Assert.Equal(1, contas.Contas!.Liberados);
+
+        contas.Ate = hoje.AddDays(-1);
+        await contas.Gerar.ExecutarAsync();
+        Assert.Equal("O fim do período é antes do começo.", contas.Mensagem);
+    }
+
     [Fact]
     public async Task Consulta_apaga_o_codigo_digitado_e_mostra_so_a_mascara()
     {

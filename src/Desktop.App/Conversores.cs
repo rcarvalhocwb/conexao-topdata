@@ -67,7 +67,7 @@ public sealed class InstanteParaTexto : IValueConverter
 {
     public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
         value is Timestamp t
-            ? t.ToDateTimeOffset().ToLocalTime().ToString(parameter as string ?? "dd/MM HH:mm", CultureInfo.CurrentCulture)
+            ? Desktop.ViewModels.FusoDoEvento.NoEvento(t.ToDateTimeOffset()).ToString(parameter as string ?? "dd/MM HH:mm", CultureInfo.CurrentCulture)
             : "—";
 
     public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>

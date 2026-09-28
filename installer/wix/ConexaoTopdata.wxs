@@ -10,7 +10,8 @@
   falharia e o Windows Installer desfaria a instalação inteira. O assistente confere o
   ambiente e inicia o serviço. Ver installer/README.md.
 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Package Name="Conexão Topdata"
            Manufacturer="Rayzer Serviços e Tecnologia"
@@ -46,8 +47,29 @@
 
     <InstallExecuteSequence>
       <Custom Action="HabilitarNetFx35" Before="InstallFinalize"
-              Condition="NOT Installed AND NETFX35INSTALADO &lt;&gt; &quot;#1&quot;" />
+              Condition="NOT Installed AND NETFX35INSTALADO &lt;&gt; &quot;#1&quot; AND NOT PULAR_NETFX35" />
     </InstallExecuteSequence>
+
+    <!--
+      Painel e assistente abertos durante a atualização ou a desinstalação: o instalador
+      os fecha sozinho (pede para fechar e, se não fecharem em 10 s, encerra), em vez de
+      mostrar a tela "arquivos em uso" e pedir reinício. O assistente roda como
+      administrador, por isso a mensagem de fechar também sai elevada.
+
+      O serviço não entra aqui: ele é parado pelo ServiceControl e, ao parar, encerra o
+      programa das catracas (WorkerSupervisor.Encerrar). Com o Restart Manager desligado, o
+      Windows Installer não lista o serviço como "programa aberto" antes de pará-lo.
+
+      PULAR_NETFX35=1 existe só para o teste do instalador no CI, que não pode esperar o
+      Windows Update.
+    -->
+    <util:CloseApplication Id="FecharPainel" Target="Desktop.App.exe" CloseMessage="yes"
+                           RebootPrompt="no" TerminateProcess="1" Timeout="10"
+                           Description="Fechando o Painel do evento" />
+    <util:CloseApplication Id="FecharAssistente" Target="Edge.Configurador.exe" CloseMessage="yes"
+                           ElevatedCloseMessage="yes" RebootPrompt="no" TerminateProcess="1" Timeout="10"
+                           Description="Fechando o Assistente de configuração" />
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
     <MediaTemplate EmbedCab="yes" />
 
     <!-- ProgramFiles64Folder: o serviço e o painel são de 64 bits. O worker x86 mora

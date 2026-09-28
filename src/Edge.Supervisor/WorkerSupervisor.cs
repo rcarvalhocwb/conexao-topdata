@@ -33,6 +33,8 @@ public sealed class WorkerSupervisor
     private readonly BackoffComJitter _backoff;
     private readonly int _reiniciosMaximos;
     private readonly TimeSpan _janelaDeReinicios;
+    private readonly Lock _trava = new();
+    private bool _encerrado;
 
     public WorkerSupervisor(
         IEnumerable<IWorkerHost> workers,
@@ -104,6 +106,42 @@ public sealed class WorkerSupervisor
     /// mantém os demais grupos operando.
     /// </remarks>
     public IReadOnlyList<AcaoDeSupervisao> Supervisionar()
+    {
+        lock (_trava)
+        {
+            return _encerrado ? [] : SupervisionarTodos();
+        }
+    }
+
+    /// <summary>
+    /// Mata todos os workers e não sobe mais nenhum. O serviço chama ao parar.
+    /// </summary>
+    /// <remarks>
+    /// No Windows o processo filho não morre com o pai: sem isto, parar o serviço deixava o
+    /// programa das catracas rodando sozinho — segurando os arquivos na atualização e a
+    /// porta TCP na próxima partida.
+    /// </remarks>
+    public void Encerrar()
+    {
+        lock (_trava)
+        {
+            _encerrado = true;
+
+            foreach (var worker in _workers)
+            {
+                try
+                {
+                    worker.Matar();
+                }
+                catch (Exception erro) when (erro is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // Já tinha saído: nada a matar.
+                }
+            }
+        }
+    }
+
+    private List<AcaoDeSupervisao> SupervisionarTodos()
     {
         var acoes = new List<AcaoDeSupervisao>(_workers.Count);
         var agora = _relogio();

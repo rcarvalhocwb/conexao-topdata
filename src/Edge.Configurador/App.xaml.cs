@@ -24,6 +24,17 @@ public partial class App : Application
         TratarErrosInesperados("assistente");
         base.OnStartup(e);
 
+        // Português do Brasil em qualquer Windows: o WPF nasce em "en-US" (ver o Portugues.cs
+        // do painel).
+        var cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture = cultura;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = cultura;
+        System.Globalization.CultureInfo.CurrentCulture = cultura;
+        System.Globalization.CultureInfo.CurrentUICulture = cultura;
+        FrameworkElement.LanguageProperty.OverrideMetadata(
+            typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(System.Windows.Markup.XmlLanguage.GetLanguage(cultura.IetfLanguageTag)));
+
         if (_saidaDoAutoteste is not null)
         {
             _ = AutotesteAsync(_saidaDoAutoteste);

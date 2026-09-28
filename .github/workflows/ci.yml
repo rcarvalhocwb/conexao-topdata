@@ -187,6 +187,15 @@ jobs:
           try {
             Autotestar (Resolve-Path publicado/Painel/Desktop.App.exe) "$PWD\autoteste-painel.txt" @('--com-simulacao')
             Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt" @()
+
+            # Capturas de todas as telas, com o serviço em simulação, para revisão visual.
+            $captura = Start-Process -FilePath (Resolve-Path publicado/Painel/Desktop.App.exe) `
+              -ArgumentList @('--capturar', "$PWD\capturas") -PassThru
+            if (-not $captura.WaitForExit(180000)) {
+              $captura.Kill()
+              Write-Host '::warning::A captura das telas não terminou em 3 minutos.'
+            }
+            Get-ChildItem capturas -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "captura: $($_.Name)" }
           }
           finally {
             Stop-Process -Id $servico.Id -Force -ErrorAction SilentlyContinue
@@ -195,6 +204,14 @@ jobs:
             Get-Content dados\servico.log -ErrorAction SilentlyContinue | Select-Object -Last 40
             Get-Content dados\servico-erro.log -ErrorAction SilentlyContinue | Select-Object -Last 40
           }
+
+      - name: Publicar capturas das telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-das-telas
+          path: capturas/
+          if-no-files-found: warn
 
       # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
       # no cabecalho PE, e mais barato que descobrir na bancada.
@@ -259,6 +276,49 @@ jobs:
 
           if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI.' }
           Write-Host 'Conteúdo do MSI: ok'
+
+      # O teste que faltava: instalar de verdade, abrir o painel instalado e desinstalar
+      # com ele aberto. Prova que o botão final do Setup aponta para um arquivo que existe,
+      # que o painel instalado abre, e que o instalador fecha o painel sozinho em vez de
+      # pedir reinício (código 3010) ou falhar.
+      - name: Instalar, abrir o painel e desinstalar com ele aberto
+        shell: pwsh
+        timeout-minutes: 15
+        run: |
+          $msi = (Get-ChildItem ConexaoTopdata-*.msi | Select-Object -First 1).FullName
+          $pasta = 'C:\Program Files\Conexao Topdata'
+          Get-Process Desktop.App, Edge.Configurador, Edge.Supervisor, Edge.Worker.X86 -ErrorAction SilentlyContinue | Stop-Process -Force
+
+          $p = Start-Process msiexec -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart', 'PULAR_NETFX35=1', '/l*v', "`"$PWD\instalar.log`"") -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content instalar.log -Tail 80; throw "A instalação falhou (código $($p.ExitCode))." }
+
+          foreach ($f in 'Painel\Desktop.App.exe', 'Configurador\Edge.Configurador.exe', 'Servico\Edge.Supervisor.exe',
+                         'Worker\Edge.Worker.X86.exe', 'Modelos\modelo-cadastro-de-cartoes.xlsx') {
+            if (-not (Test-Path (Join-Path $pasta $f))) { throw "Falta depois de instalar: $f" }
+          }
+
+          $painel = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -PassThru
+          Start-Sleep -Seconds 10
+          if ($painel.HasExited) { throw "O painel instalado não abriu (saiu com código $($painel.ExitCode))." }
+
+          $p = Start-Process msiexec -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart', '/l*v', "`"$PWD\desinstalar.log`"") -Wait -PassThru
+          if ($p.ExitCode -ne 0) {
+            Get-Content desinstalar.log -Tail 80
+            throw "A desinstalação com o painel aberto falhou (código $($p.ExitCode); 3010 = pediu reinício)."
+          }
+          if (-not $painel.WaitForExit(5000)) { throw 'O painel continuou aberto: o instalador não o fechou.' }
+          if (Test-Path (Join-Path $pasta 'Painel\Desktop.App.exe')) { throw 'O painel ficou no disco depois de desinstalar.' }
+          Write-Host 'Instalar, abrir o painel e desinstalar com ele aberto: ok'
+
+      - name: Registros do teste do instalador
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: registros-do-instalador
+          path: |
+            instalar.log
+            desinstalar.log
+          if-no-files-found: ignore
 
       - name: Construir o Setup.exe
         shell: pwsh

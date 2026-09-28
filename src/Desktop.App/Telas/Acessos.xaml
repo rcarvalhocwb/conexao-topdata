@@ -20,12 +20,20 @@
         <TextBox Width="140" Text="{Binding Categoria, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Categoria" />
       </StackPanel>
       <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="De" />
-        <DatePicker MinHeight="36" SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+        <TextBlock Style="{StaticResource Rotulo}" Text="De (data · hora)" />
+        <StackPanel Orientation="Horizontal">
+          <DatePicker MinHeight="36" SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+          <TextBox Width="64" Margin="4,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
+                   ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
+        </StackPanel>
       </StackPanel>
       <StackPanel Margin="0,0,12,8">
-        <TextBlock Style="{StaticResource Rotulo}" Text="Até" />
-        <DatePicker MinHeight="36" SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+        <TextBlock Style="{StaticResource Rotulo}" Text="Até (data · hora)" />
+        <StackPanel Orientation="Horizontal">
+          <DatePicker MinHeight="36" SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+          <TextBox Width="64" Margin="4,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
+                   ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
+        </StackPanel>
       </StackPanel>
       <Button VerticalAlignment="Bottom" Margin="0,0,0,8" Content="_Buscar" IsDefault="True" Command="{Binding Buscar}" />
     </WrapPanel>

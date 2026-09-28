@@ -197,6 +197,9 @@ if (sincronizacao is not null)
 var aplicacao = construtor.Build();
 aplicacao.MapGrpcService<EdgeControlService>();
 
+// Parar o serviço (inclusive na atualização pelo instalador) encerra os workers junto.
+aplicacao.Lifetime.ApplicationStopping.Register(supervisor.Encerrar);
+
 Console.WriteLine(string.Create(
     CultureInfo.InvariantCulture,
     $"Serviço local em {endereco} · {workers.Count} grupo(s) · {workers.Sum(w => w.Inners.Count)} equipamento(s) · base {caminhoDoBanco}"));

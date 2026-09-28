@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Contracts;
@@ -55,6 +58,30 @@ public partial class JanelaPrincipal : Window
             fechando.Cancel();
             fechando.Dispose();
         };
+    }
+
+    /// <summary>
+    /// O assistente mora ao lado do painel (..\Configurador) e pede administrador: abre pelo
+    /// shell com "runas", que mostra o aviso do Windows em vez de falhar calado.
+    /// </summary>
+    private void AbrirAssistente(object sender, RoutedEventArgs e)
+    {
+        var assistente = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Configurador", "Edge.Configurador.exe"));
+
+        if (!File.Exists(assistente))
+        {
+            MessageBox.Show(this, $"O assistente não foi encontrado em:{Environment.NewLine}{assistente}", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(assistente) { UseShellExecute = true, Verb = "runas" })?.Dispose();
+        }
+        catch (Win32Exception)
+        {
+            // O operador recusou a permissão de administrador: nada a fazer.
+        }
     }
 
     private static JanelaViewModel ConectarAoServico()

@@ -4,8 +4,9 @@
 
   É um "bundle" do WiX (Burn) em volta do MSI. O MSI já traz o .NET embutido em cada
   componente (publicação self-contained), então não há pré-requisito de runtime para
-  baixar nem versão para casar. Ao terminar, o botão "Abrir" abre o Assistente de
-  configuração, que confere o SDK da Topdata e grava catracas e nuvem.
+  baixar nem versão para casar. Ao terminar, o botão "Abrir o painel" abre o Painel; sem
+  configuração, ele oferece o Assistente, que confere o SDK da Topdata e grava catracas e
+  nuvem.
 
   O que continua fora, de propósito:
   - a EasyInner.dll e o SDK da Topdata: são da Topdata e este repositório é público. O
@@ -22,11 +23,20 @@
 
     <BootstrapperApplication>
       <!-- Sem licença a aceitar: é um sistema do próprio evento. -->
-      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense" />
+      <!-- Textos em português (tema-pt-BR.wxl): sem ele, o Setup inteiro fala inglês. -->
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense"
+                                              LocalizationFile="$(sys.SOURCEFILEDIR)tema-pt-BR.wxl"
+                                              ShowVersion="yes" />
     </BootstrapperApplication>
 
-    <!-- O botão "Abrir" da última tela abre o assistente, que pede administrador. -->
-    <Variable Name="LaunchTarget" Value="[ProgramFiles64Folder]Conexao Topdata\Configurador\Edge.Configurador.exe" />
+    <!--
+      O botão "Abrir o painel" da última tela abre o Painel, que não pede administrador.
+      Antes abria o assistente, que exige administrador, e o Setup (sem elevação) não
+      conseguia abri-lo: o botão não fazia nada. Com a instalação ainda sem configuração, o
+      painel mostra o botão "Abrir assistente de configuração", que pede a permissão.
+    -->
+    <Variable Name="LaunchTarget" Type="formatted" Value="[ProgramFiles64Folder]Conexao Topdata\Painel\Desktop.App.exe" />
+    <Variable Name="LaunchWorkingFolder" Type="formatted" Value="[ProgramFiles64Folder]Conexao Topdata\Painel" />
 
     <Chain>
       <MsiPackage SourceFile="$(var.Msi)" Vital="yes" />

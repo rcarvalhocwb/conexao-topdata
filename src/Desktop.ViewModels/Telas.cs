@@ -66,8 +66,37 @@ public abstract class TelaBase : Notificavel, ITela
         }
     }
 
-    protected static Timestamp? Instante(DateTime? local) =>
-        local is { } l ? Timestamp.FromDateTimeOffset(new DateTimeOffset(DateTime.SpecifyKind(l, DateTimeKind.Local))) : null;
+    /// <summary>
+    /// Lê o período da tela (data e hora opcionais, fuso do evento). Falha vira mensagem.
+    /// </summary>
+    protected bool LerPeriodo(
+        DateTime? desde, string horaDesde, DateTime? ate, string horaAte,
+        out DateTimeOffset? inicio, out DateTimeOffset? fim)
+    {
+        inicio = null;
+        fim = null;
+
+        if (!Periodo.TentarLerHora(horaDesde, out var hDesde) || !Periodo.TentarLerHora(horaAte, out var hAte))
+        {
+            Mensagem = "Hora no formato hh:mm, de 00:00 a 23:59 — ou deixe vazio.";
+            return false;
+        }
+
+        var agora = Relogio();
+        inicio = Periodo.Inicio(desde, hDesde, agora);
+        fim = Periodo.Fim(ate, hAte, agora);
+
+        if (inicio is { } i && fim is { } f && f < i)
+        {
+            Mensagem = "O fim do período é antes do começo.";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Hoje, no relógio do evento.</summary>
+    protected DateTime HojeNoEvento() => FusoDoEvento.NoEvento(Relogio()).Date;
 }
 
 /// <summary>Painel ao vivo: o evento num relance.</summary>
@@ -260,6 +289,8 @@ public sealed class AcessosViewModel : TelaBase
     private string _categoria = string.Empty;
     private DateTime? _desde;
     private DateTime? _ate;
+    private string _horaDesde = string.Empty;
+    private string _horaAte = string.Empty;
 
     public AcessosViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
@@ -282,9 +313,17 @@ public sealed class AcessosViewModel : TelaBase
 
     public string Categoria { get => _categoria; set => Definir(ref _categoria, value ?? string.Empty); }
 
+    /// <summary>Primeiro dia do período, no fuso do evento. Vazio = sem limite.</summary>
     public DateTime? Desde { get => _desde; set => Definir(ref _desde, value); }
 
+    /// <summary>"hh:mm"; vazio = começo do dia.</summary>
+    public string HoraDesde { get => _horaDesde; set => Definir(ref _horaDesde, value ?? string.Empty); }
+
+    /// <summary>Último dia do período, inclusive. Vazio = sem limite.</summary>
     public DateTime? Ate { get => _ate; set => Definir(ref _ate, value); }
+
+    /// <summary>"hh:mm", inclusive; vazio = fim do dia.</summary>
+    public string HoraAte { get => _horaAte; set => Definir(ref _horaAte, value ?? string.Empty); }
 
     public IReadOnlyList<LinhaDeAcesso> Linhas { get => _linhas; private set => Definir(ref _linhas, value); }
 
@@ -300,6 +339,11 @@ public sealed class AcessosViewModel : TelaBase
             return;
         }
 
+        if (!LerPeriodo(Desde, HoraDesde, Ate, HoraAte, out var inicio, out var fim))
+        {
+            return;
+        }
+
         await Tentar(async () =>
         {
             var pedido = new ListarAcessosRequest
@@ -310,14 +354,14 @@ public sealed class AcessosViewModel : TelaBase
                 Limite = 500,
             };
 
-            if (Instante(Desde) is { } desde)
+            if (inicio is { } desde)
             {
-                pedido.Desde = desde;
+                pedido.Desde = Timestamp.FromDateTimeOffset(desde);
             }
 
-            if (Instante(Ate) is { } ate)
+            if (fim is { } ate)
             {
-                pedido.Ate = ate;
+                pedido.Ate = Timestamp.FromDateTimeOffset(ate);
             }
 
             var resposta = await Cliente.ListarAcessosAsync(pedido, cancellationToken: cancelamento);
@@ -467,32 +511,39 @@ public sealed class ContasViewModel : TelaBase
 {
     private DateTime? _desde;
     private DateTime? _ate;
+    private string _horaDesde = string.Empty;
+    private string _horaAte = string.Empty;
     private PrestacaoDeContas? _contas;
 
     public ContasViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
     {
         Gerar = new ComandoAssincrono(() => AtualizarAsync());
-        var hoje = Relogio().LocalDateTime.Date;
-        _desde = hoje;
+        _desde = HojeNoEvento();
     }
 
     public override string Titulo => "Prestação de contas";
 
     public ComandoAssincrono Gerar { get; }
 
+    /// <summary>Primeiro dia do período, no fuso do evento. Começa em hoje.</summary>
     public DateTime? Desde { get => _desde; set => Definir(ref _desde, value); }
 
-    /// <summary>Vazio = até agora.</summary>
+    /// <summary>"hh:mm"; vazio = começo do dia.</summary>
+    public string HoraDesde { get => _horaDesde; set => Definir(ref _horaDesde, value ?? string.Empty); }
+
+    /// <summary>Último dia, inclusive. Vazio = até agora.</summary>
     public DateTime? Ate { get => _ate; set => Definir(ref _ate, value); }
+
+    /// <summary>"hh:mm", inclusive; vazio = fim do dia.</summary>
+    public string HoraAte { get => _horaAte; set => Definir(ref _horaAte, value ?? string.Empty); }
 
     public PrestacaoDeContas? Contas { get => _contas; private set => Definir(ref _contas, value); }
 
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)
     {
-        if (Desde is { } d && Ate is { } a && a < d)
+        if (!LerPeriodo(Desde, HoraDesde, Ate, HoraAte, out var inicio, out var fim))
         {
-            Mensagem = "O fim do período é antes do começo.";
             return;
         }
 
@@ -500,12 +551,12 @@ public sealed class ContasViewModel : TelaBase
         {
             var pedido = new ObterPrestacaoDeContasRequest();
 
-            if (Instante(Desde) is { } desde)
+            if (inicio is { } desde)
             {
-                pedido.Desde = desde;
+                pedido.Desde = Timestamp.FromDateTimeOffset(desde);
             }
 
-            pedido.Ate = Instante(Ate) ?? Timestamp.FromDateTimeOffset(Relogio());
+            pedido.Ate = Timestamp.FromDateTimeOffset(fim ?? Relogio());
             Contas = await Cliente.ObterPrestacaoDeContasAsync(pedido, cancellationToken: cancelamento);
             Mensagem = Contas.Liberados + Contas.Negados == 0 ? "Nenhuma tentativa no período." : string.Empty;
         }).ConfigureAwait(true);
@@ -524,7 +575,7 @@ public sealed class ContasViewModel : TelaBase
         var csv = new StringBuilder();
         var cultura = CultureInfo.InvariantCulture;
 
-        csv.AppendLine(string.Create(cultura, $"Prestação de contas;gerada em {c.GeradaEm.ToDateTimeOffset().ToLocalTime():dd/MM/yyyy HH:mm:ss}"));
+        csv.AppendLine(string.Create(cultura, $"Prestação de contas;gerada em {FusoDoEvento.NoEvento(c.GeradaEm.ToDateTimeOffset()):dd/MM/yyyy HH:mm:ss} (horário de Brasília)"));
         csv.AppendLine(string.Create(cultura, $"Liberados;{c.Liberados}"));
         csv.AppendLine(string.Create(cultura, $"Com giro confirmado;{c.Giros}"));
         csv.AppendLine(string.Create(cultura, $"Negados;{c.Negados}"));
@@ -546,7 +597,7 @@ public sealed class ContasViewModel : TelaBase
         csv.AppendLine("Hora;Liberados;Negados");
         foreach (var l in c.PorHora)
         {
-            csv.AppendLine(string.Create(cultura, $"{l.Hora.ToDateTimeOffset().ToLocalTime():dd/MM/yyyy HH}:00;{l.Liberados};{l.Negados}"));
+            csv.AppendLine(string.Create(cultura, $"{FusoDoEvento.NoEvento(l.Hora.ToDateTimeOffset()):dd/MM/yyyy HH}:00;{l.Liberados};{l.Negados}"));
         }
 
         csv.AppendLine();

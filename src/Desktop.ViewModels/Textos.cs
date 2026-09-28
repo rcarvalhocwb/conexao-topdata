@@ -65,9 +65,9 @@ public static class Textos
                 : string.Create(CultureInfo.InvariantCulture, $"há {passou.TotalHours:F0} h");
     }
 
-    /// <summary>Hora local no formato do painel.</summary>
+    /// <summary>Hora no relógio do evento (Brasília), no formato do painel.</summary>
     public static string Hora(DateTimeOffset quando) =>
-        quando.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        FusoDoEvento.NoEvento(quando).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
 }
 
 /// <summary>Uma catraca, pronta para a tela.</summary>

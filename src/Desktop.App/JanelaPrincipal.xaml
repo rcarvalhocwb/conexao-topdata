@@ -71,7 +71,12 @@
                        AutomationProperties.Name="Estado da operação" />
             <TextBlock Style="{StaticResource Rotulo}" Text="{Binding Internet}" />
           </StackPanel>
-          <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="14" Text="{Binding Resumo}" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Margin="0,0,16,0" Content="Abrir _assistente de configuração" Click="AbrirAssistente"
+                    Visibility="{Binding Estado.SugerirAssistente, Converter={StaticResource BoolParaVisibilidade}}"
+                    AutomationProperties.Name="Abrir assistente de configuração" />
+            <TextBlock VerticalAlignment="Center" FontSize="14" Text="{Binding Resumo}" />
+          </StackPanel>
         </Grid>
       </Border>
 

@@ -37,6 +37,12 @@ public sealed record EstadoDoPainel
     /// <summary>Detalhe técnico, para o modo avançado. Fica escondido por padrão.</summary>
     public string? Detalhe { get; init; }
 
+    /// <summary>
+    /// A tela mostra o botão "Abrir assistente de configuração": instalação sem
+    /// configuração, ou serviço que nunca respondeu (logo depois de instalar).
+    /// </summary>
+    public bool SugerirAssistente { get; init; }
+
     public int WorkersAtivos { get; init; }
 
     public int EquipamentosConectados { get; init; }
@@ -108,6 +114,7 @@ public sealed record EstadoDoPainel
         {
             Saude = saude,
             Mensagem = mensagem,
+            SugerirAssistente = resposta.SemConfiguracao,
             Detalhe = string.Create(
                 CultureInfo.InvariantCulture,
                 $"versão {resposta.Versao} · nível {resposta.Nivel} · outbox {resposta.OutboxPendente}"),
@@ -132,7 +139,7 @@ public sealed record EstadoDoPainel
 
         var mensagem = idade is { } tempo
             ? $"Sem resposta do serviço local — mostrando dados de {Descrever(tempo)} atrás"
-            : "Sem resposta do serviço local — verifique se o serviço está em execução";
+            : "Sem resposta do serviço local — abra o Assistente de configuração para iniciá-lo";
 
         return this with
         {
@@ -140,6 +147,7 @@ public sealed record EstadoDoPainel
             Mensagem = mensagem,
             Detalhe = detalhe,
             Desatualizado = true,
+            SugerirAssistente = idade is null || SugerirAssistente,
         };
     }
 

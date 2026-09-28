@@ -86,9 +86,16 @@ Execute como administrador. Ele:
   `C:\Program Files\Conexao Topdata`, cada um com o seu .NET — nada para instalar antes;
 - registra o serviço **ConexaoTopdataEdge** com partida **automática** (não o inicia
   durante a instalação: quem inicia é o assistente, depois de gravar a configuração);
-- cria no menu Iniciar o **Painel do evento** e o **Assistente de configuração**;
-- ao terminar, o botão **Abrir** abre o assistente;
-- desinstala limpo por "Aplicativos instalados" do Windows.
+- cria no menu Iniciar o **Painel do evento**, o **Assistente de configuração** e o
+  **Modelo de planilha de cartões** (`docs/26`);
+- ao terminar, o botão **Abrir o painel** abre o painel. Enquanto a instalação não estiver
+  configurada, o painel mostra o botão **Abrir assistente de configuração** (que pede a
+  permissão de administrador);
+- fala português em todas as telas, inclusive "Programas abertos";
+- **atualiza** rodando o Setup novo por cima, e **desinstala** por "Aplicativos instalados"
+  do Windows. Nos dois casos, fecha sozinho o painel e o assistente se estiverem abertos, e
+  o serviço, ao parar, encerra o programa das catracas. Os dados em
+  `C:\ProgramData\ConexaoTopdata` ficam.
 
 ### O que fica de fora, e como o assistente resolve
 

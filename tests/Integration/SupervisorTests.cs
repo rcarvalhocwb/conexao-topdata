@@ -86,6 +86,25 @@ public sealed class SupervisorTests
         return (supervisor, a, b);
     }
 
+    /// <summary>
+    /// Parar o serviço mata os workers e o laço não os sobe de novo. Sem isto, o programa
+    /// das catracas ficava rodando depois do serviço parado e segurava os arquivos na
+    /// atualização.
+    /// </summary>
+    [Fact]
+    public void Encerrar_mata_todos_e_o_laco_nao_sobe_de_novo()
+    {
+        var (supervisor, a, b) = Montar();
+
+        supervisor.Encerrar();
+
+        Assert.False(a.EstaVivo);
+        Assert.False(b.EstaVivo);
+        Assert.Empty(supervisor.Supervisionar());
+        Assert.Equal(1, a.Iniciadas);
+        Assert.Equal(1, b.Iniciadas);
+    }
+
     [Fact]
     public void Workers_saudaveis_nao_sao_tocados()
     {

@@ -12,6 +12,7 @@ public partial class App : Application
     {
         ArgumentNullException.ThrowIfNull(e);
         base.OnStartup(e);
+        Portugues.Aplicar();
         TratarErrosInesperados("painel");
 
         var autoteste = Array.IndexOf(e.Args, "--autoteste");
