@@ -387,28 +387,52 @@ jobs:
         timeout-minutes: 3
         continue-on-error: true
         run: |
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type -AssemblyName System.Drawing
           New-Item -ItemType Directory -Force capturas | Out-Null
-          # O Setup (Burn) se relança num processo filho com o mesmo nome: a janela é dele.
-          Start-Process (Resolve-Path RayzerXAcess-Setup.exe) | Out-Null
-          Start-Sleep -Seconds 15
-          $aberto = Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
-          if (-not $aberto) {
-            Write-Host "::warning::A janela do Setup não apareceu para a foto."
-          } else {
-            # PrintWindow desenha a própria janela, mesmo com o terminal do runner por cima
-            # (CopyFromScreen fotografava o terminal).
-            Add-Type -Namespace Foto -Name Janela -MemberDefinition @'
-              [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool GetWindowRect(System.IntPtr h, out RECT r);
-              [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool PrintWindow(System.IntPtr h, System.IntPtr dc, uint f);
+          # A janela é achada pelo título, e não pelo processo: o Setup (Burn) se relança num
+          # processo filho, e o MainWindowHandle dele nem sempre aponta a janela. PrintWindow
+          # desenha a própria janela, mesmo com o terminal do runner por cima.
+          Add-Type -TypeDefinition @'
+          using System;
+          using System.Runtime.InteropServices;
+          using System.Text;
+          public static class FotoDoSetup {
               public struct RECT { public int Left, Top, Right, Bottom; }
+              delegate bool Visitar(IntPtr h, IntPtr p);
+              [DllImport("user32.dll")] static extern bool EnumWindows(Visitar v, IntPtr p);
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder t, int n);
+              [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+              [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+              [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);
+              public static IntPtr Achar(string trecho) {
+                  IntPtr achada = IntPtr.Zero;
+                  EnumWindows((h, p) => {
+                      var t = new StringBuilder(256);
+                      GetWindowText(h, t, t.Capacity);
+                      if (IsWindowVisible(h) && t.ToString().Contains(trecho)) { achada = h; return false; }
+                      return true;
+                  }, IntPtr.Zero);
+                  return achada;
+              }
+          }
           '@
-            $r = New-Object Foto.Janela+RECT
-            [Foto.Janela]::GetWindowRect($aberto.MainWindowHandle, [ref]$r) | Out-Null
+          Start-Process (Resolve-Path RayzerXAcess-Setup.exe) | Out-Null
+          $janela = [IntPtr]::Zero
+          for ($i = 0; $i -lt 40 -and $janela -eq [IntPtr]::Zero; $i++) {
+            Start-Sleep -Seconds 1
+            $janela = [FotoDoSetup]::Achar('Rayzer XAcess')
+          }
+          if ($janela -eq [IntPtr]::Zero) {
+            Write-Host "::warning::A janela do Setup não apareceu em 40 s para a foto."
+            Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host "  janela: $($_.ProcessName) — $($_.MainWindowTitle)" }
+          } else {
+            Start-Sleep -Seconds 2   # a arte termina de desenhar
+            $r = New-Object FotoDoSetup+RECT
+            [FotoDoSetup]::GetWindowRect($janela, [ref]$r) | Out-Null
             $foto = New-Object System.Drawing.Bitmap ($r.Right - $r.Left), ($r.Bottom - $r.Top)
             $g = [System.Drawing.Graphics]::FromImage($foto)
             $dc = $g.GetHdc()
-            [Foto.Janela]::PrintWindow($aberto.MainWindowHandle, $dc, 2) | Out-Null
+            [FotoDoSetup]::PrintWindow($janela, $dc, 2) | Out-Null
             $g.ReleaseHdc($dc)
             $foto.Save("$PWD\capturas\00-setup.png", [System.Drawing.Imaging.ImageFormat]::Png)
             $g.Dispose(); $foto.Dispose()
