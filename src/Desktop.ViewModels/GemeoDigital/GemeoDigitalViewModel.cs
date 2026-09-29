@@ -503,6 +503,10 @@ public sealed class GemeoDigitalViewModel : TelaBase
             _equipamentos = [.. lista.Equipamentos];
             Catracas = [.. lista.Equipamentos.Select(e => PainelAoVivoViewModel.Linha(e, agora))];
 
+            // A lista nova esvazia a escolha do seletor, que tentava gravar "nenhuma" no número
+            // (borda vermelha, seletor vazio). Avisar o número de novo faz o seletor reencontrá-la.
+            Avisar(nameof(Catraca));
+
             if (Catraca == 0 && Catracas.Count > 0)
             {
                 Catraca = Catracas[0].Inner;

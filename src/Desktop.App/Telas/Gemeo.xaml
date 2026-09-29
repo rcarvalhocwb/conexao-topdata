@@ -2,12 +2,15 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             xmlns:gd="clr-namespace:Desktop.ViewModels.GemeoDigital;assembly=Desktop.ViewModels"
              AutomationProperties.Name="Gêmeo digital da catraca">
   <!--
     Gêmeo digital da TopFit 4 (docs/33). O desenho 3D é montado no código por trás, a partir
     da geometria da ViewModel; aqui ficam a moldura e os painéis. Tudo o que se faz com o
     mouse no desenho também dá para fazer pelo teclado, na lista de peças à direita.
   -->
+  <!-- A página inteira rola: em 1366 x 768 o desenho mantém uma altura útil em vez de encolher. -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -19,15 +22,18 @@
 
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" MinWidth="420" />
+        <ColumnDefinition Width="*" MinWidth="380" />
         <ColumnDefinition Width="12" />
-        <ColumnDefinition Width="400" />
+        <ColumnDefinition Width="360" />
       </Grid.ColumnDefinitions>
 
       <!-- O desenho. -->
-      <Border Style="{StaticResource Rayzer.Card}" Padding="0" ClipToBounds="True">
+      <!-- Alinhado em cima e com o desenho em altura fixa: esticado até a altura dos painéis
+           à direita, o desenho ficava alto e estreito, e a câmera cortava a catraca. -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="0" ClipToBounds="True" VerticalAlignment="Top">
         <Grid>
           <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -35,18 +41,31 @@
 
           <!-- De onde vem o que se vê. Sempre visível: demonstração e ao vivo nunca se confundem. -->
           <Border Padding="14,10" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1">
-            <DockPanel>
-              <rz:RayzerStatusPill DockPanel.Dock="Left" Tom="{Binding SeloDoModoSinal, Converter={StaticResource SinalParaTom}}"
-                                   Texto="{Binding SeloDoModo}" AutomationProperties.Name="Modo do gêmeo digital" />
-              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" Content="Peças _separadas" IsChecked="{Binding PecasSeparadas}" />
-                <CheckBox VerticalAlignment="Center" Content="Leitor _facial (variante)" IsChecked="{Binding MostrarLeitorFacial}"
-                          ToolTip="A variante Facial tem um leitor sobre uma haste. Fora do escopo do sistema hoje (fase 5)." />
-              </StackPanel>
-            </DockPanel>
+            <rz:RayzerStatusPill HorizontalAlignment="Left" Tom="{Binding SeloDoModoSinal, Converter={StaticResource SinalParaTom}}"
+                                 Texto="{Binding SeloDoModo}" AutomationProperties.Name="Modo do gêmeo digital" />
           </Border>
 
-          <Grid Grid.Row="1" x:Name="Palco" Background="{DynamicResource Rayzer.Surface.Sunken}" MinHeight="360"
+          <!-- Vistas prontas e opções do desenho: numa faixa própria, fora do 3D, para não cobrir a catraca. -->
+          <Border Grid.Row="1" Padding="10,8,10,2" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1">
+            <WrapPanel>
+              <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,12,6" Content="_Testar giro" Command="{Binding TestarGiro}"
+                      ToolTip="Libera e gira um terço de volta, só no desenho." />
+              <TextBlock Margin="0,0,6,6" VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Label}" Text="Vista" />
+              <ComboBox Margin="0,0,14,6" Width="120" SelectedValuePath="Tag" SelectedValue="{Binding Vista}" AutomationProperties.Name="Vista da câmera">
+                <ComboBoxItem Content="Inicial" Tag="{x:Static gd:VistaDaCamera.Inicial}" />
+                <ComboBoxItem Content="Frente" Tag="{x:Static gd:VistaDaCamera.Frente}" />
+                <ComboBoxItem Content="Painel" Tag="{x:Static gd:VistaDaCamera.Painel}" />
+                <ComboBoxItem Content="Braços" Tag="{x:Static gd:VistaDaCamera.Bracos}" />
+                <ComboBoxItem Content="Trás" Tag="{x:Static gd:VistaDaCamera.Tras}" />
+                <ComboBoxItem Content="Cima" Tag="{x:Static gd:VistaDaCamera.Cima}" />
+              </ComboBox>
+              <CheckBox Margin="0,0,14,6" VerticalAlignment="Center" Content="Peças _separadas" IsChecked="{Binding PecasSeparadas}" />
+              <CheckBox Margin="0,0,0,6" VerticalAlignment="Center" Content="Leitor _facial (variante)" IsChecked="{Binding MostrarLeitorFacial}"
+                        ToolTip="A variante Facial tem um leitor sobre uma haste. Fora do escopo do sistema hoje (fase 5)." />
+            </WrapPanel>
+          </Border>
+
+          <Grid Grid.Row="2" x:Name="Palco" Background="{DynamicResource Rayzer.Surface.Sunken}" Height="460"
                 Focusable="True" AutomationProperties.Name="Desenho 3D da catraca"
                 AutomationProperties.HelpText="Arraste para girar, roda do mouse para aproximar, clique numa peça para escolher. Pelo teclado, use a lista de peças.">
             <Viewport3D x:Name="Vista3D" ClipToBounds="True" IsHitTestVisible="True" />
@@ -58,28 +77,14 @@
                     Visibility="{Binding PecaApontada, Converter={StaticResource VazioSome}}">
               <TextBlock Style="{StaticResource Rayzer.Type.Body}" Text="{Binding PecaApontada.Nome}" />
             </Border>
-
-            <!-- Vistas prontas. -->
-            <WrapPanel HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10">
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Inicial" Command="{Binding MudarVista}" CommandParameter="Inicial" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Frente" Command="{Binding MudarVista}" CommandParameter="Frente" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Painel" Command="{Binding MudarVista}" CommandParameter="Painel" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Braços" Command="{Binding MudarVista}" CommandParameter="Bracos" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Trás" Command="{Binding MudarVista}" CommandParameter="Tras" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Cima" Command="{Binding MudarVista}" CommandParameter="Cima" />
-              <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="6,0,0,6" Content="_Testar giro" Command="{Binding TestarGiro}"
-                      ToolTip="Libera e gira um terço de volta, só no desenho." />
-            </WrapPanel>
           </Grid>
 
-          <!-- O que a catraca desenhada está fazendo. -->
-          <Border Grid.Row="2" Padding="14,10" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,1,0,0">
+          <!-- O que a catraca desenhada está fazendo. Em linhas separadas: lado a lado, os dois textos se cobriam em 1366 px. -->
+          <Border Grid.Row="3" Padding="14,10" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,1,0,0">
             <StackPanel>
-              <DockPanel>
-                <rz:RayzerStatus DockPanel.Dock="Left" Tom="{Binding EstadoSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding EstadoTexto}"
-                                 AutomationProperties.LiveSetting="Polite" />
-                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Mono}" Text="{Binding Contadores}" />
-              </DockPanel>
+              <rz:RayzerStatus HorizontalAlignment="Left" Tom="{Binding EstadoSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding EstadoTexto}"
+                               AutomationProperties.LiveSetting="Polite" />
+              <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Mono}" TextWrapping="Wrap" Text="{Binding Contadores}" />
               <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding AvisoDasMedidas}" />
             </StackPanel>
           </Border>
@@ -87,8 +92,7 @@
       </Border>
 
       <!-- Painéis. -->
-      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
-        <StackPanel>
+      <StackPanel Grid.Column="2">
           <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}" Margin="0,0,0,12"
                           Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
 
@@ -98,9 +102,14 @@
               <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
               <ComboBox ItemsSource="{Binding Catracas}" DisplayMemberPath="Nome" SelectedValuePath="Inner"
                         SelectedValue="{Binding Catraca}" AutomationProperties.Name="Catraca" />
+              <!--
+                Sem GroupName, de propósito: o grupo fica sendo o painel. Com GroupName, telas
+                desenhadas fora de janela (a captura) viravam um grupo só, e os botões de uma
+                desmarcavam os da outra sem parar, até estourar a pilha.
+              -->
               <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                <RadioButton GroupName="ModoDoGemeo" Margin="0,0,16,0" Content="_Demonstração" IsChecked="{Binding ModoDemonstracao}" />
-                <RadioButton GroupName="ModoDoGemeo" Content="_Ao vivo" IsChecked="{Binding ModoAoVivo}" />
+                <RadioButton Margin="0,0,16,0" Content="_Demonstração" IsChecked="{Binding ModoDemonstracao}" />
+                <RadioButton Content="_Ao vivo" IsChecked="{Binding ModoAoVivo}" />
               </StackPanel>
               <TextBlock Margin="0,8,0,0" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap"
                          Visibility="{Binding ModoAoVivo, Converter={StaticResource BoolParaVisibilidade}}">
@@ -241,8 +250,8 @@
               </ItemsControl>
             </StackPanel>
           </Border>
-        </StackPanel>
-      </ScrollViewer>
+      </StackPanel>
     </Grid>
   </Grid>
+  </ScrollViewer>
 </UserControl>
