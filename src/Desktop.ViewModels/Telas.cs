@@ -695,7 +695,14 @@ public sealed class ConfiguracoesViewModel : TelaBase
         : base(cliente, relogio)
     {
         Salvar = new ComandoAssincrono(SalvarAsync);
+        AplicarAgora = new ComandoAssincrono(AplicarAgoraAsync);
     }
+
+    /// <summary>
+    /// Pede a cada catraca que reconecte com a configuração gravada. Cada uma fica alguns
+    /// segundos sem atender enquanto reconecta.
+    /// </summary>
+    public ComandoAssincrono AplicarAgora { get; }
 
     public override string Titulo => "Configurações";
 
@@ -751,8 +758,24 @@ public sealed class ConfiguracoesViewModel : TelaBase
             Mensagem = !r.Gravada
                 ? "Não foi gravado. Corrija os itens abaixo."
                 : r.ExigeReinicio
-                    ? "Gravado. As catracas passam a usar a nova configuração quando o serviço for reiniciado."
+                    ? "Gravado. Use \"Aplicar agora nas catracas\" para as catracas passarem a usar a nova configuração, ou reinicie o serviço."
                     : "Nada mudou.";
+        }).ConfigureAwait(true);
+
+    private async Task AplicarAgoraAsync() =>
+        await Tentar(async () =>
+        {
+            var r = await Cliente.EnviarComandoAsync(new EnviarComandoRequest
+            {
+                Inner = 0,
+                Tipo = TipoDeComando.AplicarConfiguracao,
+                Operador = Operador.Trim(),
+            });
+
+            Problemas = [.. r.Problemas];
+            Mensagem = r.Aceito
+                ? $"Pedido a {r.Ids.Count} catraca(s). Cada uma reconecta e fica alguns segundos sem atender. Acompanhe em Gerenciar catraca."
+                : "Não foi pedido. Corrija os itens abaixo.";
         }).ConfigureAwait(true);
 }
 
@@ -892,6 +915,7 @@ public sealed class JanelaViewModel : Notificavel
             new ConsultaViewModel(cliente, relogio),
             new SincronizacaoViewModel(cliente, relogio),
             new ContasViewModel(cliente, relogio),
+            new GerenciarCatracaViewModel(cliente, relogio),
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
             new SimuladorViewModel(cliente, relogio),
@@ -901,6 +925,25 @@ public sealed class JanelaViewModel : Notificavel
         {
             TelaAtual = Telas.OfType<DiagnosticoViewModel>().First();
             return Task.CompletedTask;
+        });
+        Gerenciar = new ComandoComParametro(async parametro =>
+        {
+            if (parametro is not int inner)
+            {
+                return;
+            }
+
+            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+            gerenciar.Catraca = inner;
+
+            if (ReferenceEquals(TelaAtual, gerenciar))
+            {
+                await gerenciar.AtualizarAsync().ConfigureAwait(true);
+            }
+            else
+            {
+                TelaAtual = gerenciar;
+            }
         });
         VerAcessos = new ComandoComParametro(async parametro =>
         {
@@ -922,6 +965,9 @@ public sealed class JanelaViewModel : Notificavel
             }
         });
     }
+
+    /// <summary>A ação "Gerenciar" do cartão da catraca (parâmetro: o número do Inner).</summary>
+    public ComandoComParametro Gerenciar { get; }
 
     /// <summary>A ação dos cartões de catraca: ir direto ao diagnóstico.</summary>
     public ComandoAssincrono AbrirDiagnostico { get; }
@@ -954,7 +1000,7 @@ public sealed class JanelaViewModel : Notificavel
     {
         await Painel.AtualizarAsync(cancelamento).ConfigureAwait(true);
 
-        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel)
+        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GerenciarCatracaViewModel)
         {
             await TelaAtual.AtualizarAsync(cancelamento).ConfigureAwait(true);
         }

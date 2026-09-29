@@ -210,6 +210,25 @@ operação está **desligado** até esta tabela voltar preenchida.
 
 ---
 
+## 6B. Gerenciar catraca pelo painel (sistema instalado)
+
+Este passo precisa do **sistema instalado** (serviço + painel), não do modo `--bancada`: os
+pedidos passam pelo serviço ([`32`](32-gerenciar-catraca.md)). Abra **Gerenciar catraca**,
+escolha a catraca e digite seu nome.
+
+| # | Faça | Deve acontecer | Anote |
+|---|---|---|---|
+| 1 | Mensagem "TESTE 123", 10 s | Aparece no display e some depois de ~10 s; histórico "Feito" | Tempo real que ficou |
+| 2 | Mensagem "AÇÃO É ÓTIMA" | Veja como os acentos aparecem | Aparece certo? |
+| 3 | Liberação manual, motivo "teste de bancada", e **gire** | Libera no sentido de entrada; histórico "liberada; girou" | Sentido certo? |
+| 4 | Liberação manual, e **não gire** | Depois do tempo de acionamento: "liberada; ninguém girou" | Veio em quantos s? |
+| 5 | Mostre um QR, **não gire**, tire o cabo antes do fim do tempo; ponha de volta; libere à mão e gire | A prestação de contas mostra o QR **sem giro** | Confere? |
+| 6 | Acertar o relógio agora | "Feito"; passo 6A de novo dá 0 s | — |
+| 7 | Refazer a conexão | A catraca some e volta a "Atendendo"; "reconectada" | Quantos s sem atender? |
+| 8 | Configurações → mude a mensagem → Salvar → Aplicar agora | A mensagem nova aparece no display sem reiniciar o serviço | Quantos s sem atender? |
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
@@ -252,7 +271,8 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 4: cartão libera
 - [ ] Passo 5: as seis regras se comportam como a tabela diz
 - [ ] Passo 6A: relógio conferido com no máximo ±1 s, e o QR logo após o reacerto libera
+- [ ] Passo 6B: os oito pedidos se comportam como a tabela diz; linha 5 com o QR sem giro
 - [ ] Passo 7: o resumo bate com o que foi feito
 
-**Mande a tabela do passo 3, a do passo 6A e o resumo do passo 7.** São eles que fecham as perguntas
+**Mande a tabela do passo 3, as dos passos 6A e 6B e o resumo do passo 7.** São eles que fecham as perguntas
 em aberto sobre leitor, QR e cartão.

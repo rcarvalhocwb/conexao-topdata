@@ -101,6 +101,28 @@ public static class Textos
                 ? string.Create(CultureInfo.InvariantCulture, $"{segundos / 60} min {segundos % 60} s")
                 : string.Create(CultureInfo.InvariantCulture, $"{segundos / 3600} h {segundos % 3600 / 60} min");
 
+    /// <summary>O nome de um comando, como o operador o reconhece.</summary>
+    public static string NomeDoComando(TipoDeComando tipo) => tipo switch
+    {
+        TipoDeComando.AcertarRelogio => "Acertar relógio",
+        TipoDeComando.MensagemTemporaria => "Mensagem no display",
+        TipoDeComando.LiberacaoManual => "Liberação manual",
+        TipoDeComando.ReiniciarConexao => "Refazer conexão",
+        TipoDeComando.AplicarConfiguracao => "Aplicar configuração",
+        _ => "Comando",
+    };
+
+    /// <summary>Em que pé está um comando, e a cor.</summary>
+    public static (string Texto, Sinal Sinal) SituacaoDoComando(SituacaoDoComando situacao) => situacao switch
+    {
+        Contracts.Edge.V1.SituacaoDoComando.Pendente => ("Aguardando a catraca", Sinal.Neutro),
+        Contracts.Edge.V1.SituacaoDoComando.Recebido => ("Na fila da catraca", Sinal.Atencao),
+        Contracts.Edge.V1.SituacaoDoComando.Concluido => ("Feito", Sinal.Bom),
+        Contracts.Edge.V1.SituacaoDoComando.Falhou => ("Falhou", Sinal.Problema),
+        Contracts.Edge.V1.SituacaoDoComando.Expirado => ("Não executado a tempo", Sinal.Atencao),
+        _ => ("—", Sinal.Neutro),
+    };
+
     /// <summary>Hora no relógio do evento (Brasília), no formato do painel.</summary>
     public static string Hora(DateTimeOffset quando) =>
         FusoDoEvento.NoEvento(quando).ToString("HH:mm:ss", CultureInfo.InvariantCulture);

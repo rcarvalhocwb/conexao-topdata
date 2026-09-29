@@ -113,6 +113,7 @@ public sealed class TelaParaIcone : IValueConverter
             ConsultaViewModel => "\uE721",
             SincronizacaoViewModel => "\uE895",
             ContasViewModel => "\uE8A5",
+            GerenciarCatracaViewModel => "\uE90F",
             ConfiguracoesViewModel => "\uE713",
             DiagnosticoViewModel => "\uE9D9",
             SimuladorViewModel => "\uE768",
@@ -149,7 +150,14 @@ public sealed class SimOuTraco : IValueConverter
 public sealed class VazioSome : IValueConverter
 {
     public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture) =>
-        value is string { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+        value switch
+        {
+            string texto => texto.Length > 0 ? Visibility.Visible : Visibility.Collapsed,
+            null => Visibility.Collapsed,
+
+            // Objeto presente (a catraca escolhida, por exemplo): aparece.
+            _ => Visibility.Visible,
+        };
 
     public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();

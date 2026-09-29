@@ -73,7 +73,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
             nuvem: new EstadoDaNuvem(),
             consultas: new ConsultasDaOperacao(_banco.Fabrica),
             configuracoes: new ConfiguracoesDaBorda(_banco.Fabrica),
-            pastaDeDados: "dados");
+            pastaDeDados: "dados",
+            comandos: new FilaDeComandosSqlite(_banco.Fabrica));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"telas-{Guid.NewGuid():N}");
@@ -357,7 +358,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     public async Task Janela_troca_de_tela_e_o_cabecalho_continua_atualizando()
     {
         var janela = new JanelaViewModel(Cliente());
-        Assert.Equal(9, janela.Telas.Count);
+        Assert.Equal(10, janela.Telas.Count);
         Assert.Same(janela.Painel, janela.TelaAtual);
 
         janela.TelaAtual = janela.Telas.OfType<SincronizacaoViewModel>().Single();
@@ -367,6 +368,63 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         var sincronizacao = (SincronizacaoViewModel)janela.TelaAtual;
         Assert.Contains(new ParDeTexto("Nuvem", "Não configurada nesta instalação"), sincronizacao.Situacao);
         Assert.Equal(2, Assert.Single(sincronizacao.Provedores).Codigos);
+    }
+
+    /// <summary>
+    /// Gerenciar catraca: a liberação manual só fica disponível com nome e motivo, o pedido
+    /// vira linha no histórico, e o motivo não fica preenchido para a próxima.
+    /// </summary>
+    [Fact]
+    public async Task Gerenciar_catraca_so_libera_com_nome_e_motivo_e_mostra_o_pedido_no_historico()
+    {
+        var tela = new GerenciarCatracaViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+
+        Assert.Equal(1, tela.Catraca);
+        Assert.Equal(("Atendendo", Sinal.Bom), (tela.Selecionada!.Situacao, tela.Selecionada.Sinal));
+        Assert.False(tela.LiberarManualmente.CanExecute(null));
+
+        tela.Operador = "Ana";
+        tela.Motivo = "ok";
+        Assert.False(tela.LiberarManualmente.CanExecute(null));
+
+        tela.Motivo = "Criança de colo sem ingresso";
+        Assert.True(tela.LiberarManualmente.CanExecute(null));
+        await tela.LiberarManualmente.ExecutarAsync();
+
+        var linha = Assert.Single(tela.Historico);
+        Assert.Equal(("Liberação manual", "Criança de colo sem ingresso", "Ana"), (linha.Comando, linha.Detalhe, linha.Operador));
+        Assert.Equal(("Aguardando a catraca", Sinal.Neutro), (linha.Situacao, linha.Sinal));
+        Assert.Equal(string.Empty, tela.Motivo);
+        Assert.StartsWith("Liberação manual: pedido à catraca 1.", tela.Mensagem, StringComparison.Ordinal);
+
+        // O que não existe não se finge: aparece como aguardando confirmação.
+        Assert.Contains(tela.AguardandoConfirmacao, p => p.Rotulo == "Recolher cartão na urna");
+    }
+
+    [Fact]
+    public async Task Gerenciar_no_cartao_da_catraca_abre_a_tela_naquela_catraca()
+    {
+        var janela = new JanelaViewModel(Cliente());
+
+        await janela.Gerenciar.ExecutarAsync(2);
+
+        var tela = Assert.IsType<GerenciarCatracaViewModel>(janela.TelaAtual);
+        Assert.Equal(2, tela.Catraca);
+    }
+
+    [Fact]
+    public async Task Aplicar_agora_pede_a_todas_as_catracas_e_exige_o_nome()
+    {
+        var tela = new ConfiguracoesViewModel(Cliente());
+
+        await tela.AplicarAgora.ExecutarAsync();
+        Assert.Equal("Não foi pedido. Corrija os itens abaixo.", tela.Mensagem);
+        Assert.Contains("Informe o nome de quem está pedindo (2 a 80 caracteres).", tela.Problemas);
+
+        tela.Operador = "Ana";
+        await tela.AplicarAgora.ExecutarAsync();
+        Assert.StartsWith("Pedido a 2 catraca(s).", tela.Mensagem, StringComparison.Ordinal);
     }
 
     [Fact]

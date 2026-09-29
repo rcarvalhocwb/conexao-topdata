@@ -13,11 +13,12 @@
 - sincronização de cartões com o painel na nuvem;
 - modo simulação;
 - painel e assistente com o Rayzer Design System;
+- gerenciar catraca (fase 4): relógio acertado e conferido, liberação manual com motivo, mensagem no display, refazer a conexão, aplicar agora — tudo auditado ([docs/32](32-gerenciar-catraca.md));
 - MSI e Setup em português;
 - prestação de contas atual (totais e CSV);
 - pacote web `rayzer-ui`.
 
-580 testes .NET e 24 da web.
+642 testes .NET e 24 da web (29/09, depois da fase 4).
 
 **Pronto, mas nunca exercitado:** o caminho completo da catraca (leitura → decisão → liberação → giro), o recolhimento pela urna e a liberação por sentido.
 
@@ -80,12 +81,8 @@ As fases do docs/24 §3, em ordem de impacto para o evento.
 
 ### Fase 4 — Gerenciar catraca (alta)
 - ~~Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.~~ **Feito (fase 4a):** acerto a cada conexão, conferência 1 min depois e a cada hora, aviso no cartão da catraca. O acerto automático durante a operação fica desligado até o passo 6A do docs/21.
-- Tela por catraca:
-  - mensagem padrão e temporária no visor;
-  - reiniciar a conexão;
-  - liberação manual com motivo e auditoria;
-  - bip e relés.
-- Só o documentado; o resto desabilitado com o selo "aguardando Topdata" e o item correspondente escrito no docs/21.
+- ~~Tela por catraca~~ **Feito (fase 4b/4c, [docs/32](32-gerenciar-catraca.md)):** mensagem temporária, refazer a conexão, acertar o relógio, liberação manual com motivo e auditoria, e "Aplicar agora" em Configurações. Bip, relés, urna e sentido aparecem desabilitados com o selo "Aguardando confirmação"; bancada no passo 6B do docs/21.
+- Falta: somar as liberações manuais nos relatórios da fase 6.
 
 ### Fase 5 — Alertas e notificações (alta)
 Catálogo do docs/24 §1:

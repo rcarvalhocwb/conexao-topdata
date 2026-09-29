@@ -68,8 +68,8 @@
       <!--
         TurnstileCard: miniatura · CATRACA 01 · Entrada 1 · situação · último evento ·
         meta-itens (firmware, grupo, porta, reconexões) · ações. O mesmo desenho no painel ao
-        vivo e na tela de catracas. As ações são as que existem: ver os acessos daquela
-        catraca e abrir o diagnóstico.
+        vivo e na tela de catracas. As ações são as que existem: gerenciar a catraca, ver os
+        acessos dela e abrir o diagnóstico.
       -->
       <DataTemplate x:Key="Cartao.Catraca" DataType="{x:Type vm:LinhaDeCatraca}">
         <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,12,12" Padding="14,12,14,8">
@@ -132,6 +132,15 @@
                     BorderBrush="{DynamicResource Rayzer.Border.Subtle}">
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
+                        AutomationProperties.Name="Gerenciar esta catraca"
+                        Command="{Binding DataContext.Gerenciar, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding Inner}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.Settings}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Gerenciar" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
                         AutomationProperties.Name="Ver acessos desta catraca"
                         Command="{Binding DataContext.VerAcessos, RelativeSource={RelativeSource AncestorType=Window}}"
                         CommandParameter="{Binding Inner}">
@@ -161,6 +170,7 @@
       <DataTemplate DataType="{x:Type vm:ConsultaViewModel}"><telas:Consulta /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:SincronizacaoViewModel}"><telas:Sincronizacao /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ContasViewModel}"><telas:Contas /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:GerenciarCatracaViewModel}"><telas:GerenciarCatraca /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ConfiguracoesViewModel}"><telas:Configuracoes /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:DiagnosticoViewModel}"><telas:Diagnostico /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:SimuladorViewModel}"><telas:Simulador /></DataTemplate>

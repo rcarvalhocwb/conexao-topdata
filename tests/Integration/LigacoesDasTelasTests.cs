@@ -30,6 +30,7 @@ public sealed partial class LigacoesDasTelasTests
             typeof(ContasViewModel), typeof(PrestacaoDeContas), typeof(LinhaPorCategoria), typeof(LinhaPorCatraca),
             typeof(LinhaPorHora), typeof(LinhaDeNegativa),
         ],
+        ["Telas/GerenciarCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeComando), typeof(ParDeTexto)],
         ["Telas/Configuracoes.xaml"] = [typeof(ConfiguracoesViewModel)],
         ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker)],
         ["Telas/Simulador.xaml"] = [typeof(SimuladorViewModel), typeof(LinhaDeAcesso), typeof(ParDeTexto)],
