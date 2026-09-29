@@ -37,10 +37,10 @@
       <DataGrid ItemsSource="{Binding Provedores}" AutomationProperties.Name="Origens dos códigos">
         <DataGrid.Columns>
           <DataGridTextColumn Header="ORIGEM" Binding="{Binding Nome}" Width="*" />
-          <DataGridTextColumn Header="CÓDIGOS" Binding="{Binding Codigos}" Width="100" />
-          <DataGridTextColumn Header="REUTILIZÁVEL" Binding="{Binding Reutilizavel, Converter={StaticResource SimOuTraco}}" Width="110" />
-          <DataGridTextColumn Header="REUSO (S)" Binding="{Binding IntervaloDeReusoSegundos}" Width="100" />
-          <DataGridTextColumn Header="SÓ NA URNA" Binding="{Binding SomenteNaUrna, Converter={StaticResource SimOuTraco}}" Width="100" />
+          <DataGridTextColumn Header="CÓDIGOS" Binding="{Binding Codigos}" Width="104" />
+          <DataGridTextColumn Header="REUTILIZÁVEL" Binding="{Binding Reutilizavel, Converter={StaticResource SimOuTraco}}" Width="136" />
+          <DataGridTextColumn Header="REUSO (S)" Binding="{Binding IntervaloDeReusoSegundos}" Width="108" />
+          <DataGridTextColumn Header="SÓ NA URNA" Binding="{Binding SomenteNaUrna, Converter={StaticResource SimOuTraco}}" Width="116" />
         </DataGrid.Columns>
       </DataGrid>
       <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Cloud}" Titulo="Nenhuma origem cadastrada"

@@ -31,9 +31,9 @@
           produto em uso logo abaixo — XAcess, controle de acesso. Um bloco de contexto, não
           um seletor: hoje há um produto só.
         -->
-        <StackPanel x:Name="Cabecalho" DockPanel.Dock="Top" Margin="18,20,12,14">
+        <StackPanel x:Name="Cabecalho" DockPanel.Dock="Top" Margin="18,14,12,8">
           <rz:RayzerLogo x:Name="Logo" Height="30" Descritor="False" Brilho="True" HorizontalAlignment="Left" />
-          <Border x:Name="Produto" Margin="0,18,0,0" Padding="10,8" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+          <Border x:Name="Produto" Margin="0,12,0,0" Padding="10,6" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
                   Background="{DynamicResource Rayzer.Nav.Item.Hover}" BorderBrush="{DynamicResource Rayzer.Nav.Divider}" BorderThickness="1"
                   ToolTip="XAcess — Controle de acesso inteligente">
             <StackPanel Orientation="Horizontal">
@@ -48,7 +48,7 @@
           </Border>
         </StackPanel>
 
-        <StackPanel DockPanel.Dock="Bottom" Margin="8,8,8,16">
+        <StackPanel DockPanel.Dock="Bottom" Margin="8,4,8,10">
           <Border Style="{StaticResource Rayzer.Divider}" Background="{DynamicResource Rayzer.Nav.Divider}" Margin="8,0,8,8" />
 
           <!-- Selo permanente do modo simulação. -->
@@ -76,7 +76,7 @@
             </StackPanel>
           </Button>
 
-          <StackPanel x:Name="Autoria" Margin="12,12,8,0">
+          <StackPanel x:Name="Autoria" Margin="12,6,8,0">
             <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" Foreground="{DynamicResource Rayzer.Nav.Text.Muted}"
                        TextWrapping="Wrap" Text="Rayzer Serviços e Tecnologia" />
             <TextBlock x:Name="TextoVersao" FontSize="{DynamicResource Rayzer.FontSize.Caption}"

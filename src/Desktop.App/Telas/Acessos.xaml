@@ -49,12 +49,12 @@
     <Grid>
       <DataGrid ItemsSource="{Binding Linhas}" AutomationProperties.Name="Acessos encontrados">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="84" ElementStyle="{StaticResource Celula.Mono}" />
-          <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="76" />
+          <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+          <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
           <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
-          <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="120" />
-          <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="70" />
-          <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+          <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="128" />
+          <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="76" />
+          <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
         </DataGrid.Columns>
       </DataGrid>
       <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Search}" Titulo="Nenhum acesso para mostrar"

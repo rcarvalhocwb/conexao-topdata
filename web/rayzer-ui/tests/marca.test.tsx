@@ -53,7 +53,7 @@ describe("arquitetura de marca", () => {
   it("os letreiros são os mesmos do desktop (Tokens.xaml)", () => {
     const tokens = ler("src/Rayzer.Design/Tokens.xaml");
     for (const [nome, { d }] of Object.entries(LETREIROS)) {
-      expect(tokens).toContain(`<Geometry x:Key="Rayzer.Letreiro.${nome}">${d}</Geometry>`);
+      expect(tokens).toContain(`<Geometry x:Key="Rayzer.Letreiro.${nome}">F1 ${d}</Geometry>`);
     }
   });
 });

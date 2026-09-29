@@ -278,7 +278,9 @@ def xaml_geometrias() -> str:
     linhas = []
     for nome, (d, w) in GEO.items():
         linhas.append(f'  <!-- "{LETREIROS[nome][1]}" em {LETREIROS[nome][0]}, corpo 100, largura {w} -->')
-        linhas.append(f'  <Geometry x:Key="Rayzer.Letreiro.{nome}">{d}</Geometry>')
+        # F1 = preenchimento NonZero, como no SVG. O padrão do WPF é EvenOdd, e os contornos
+        # da Sora se sobrepõem: com EvenOdd, a sobreposição vira furo dentro da letra.
+        linhas.append(f'  <Geometry x:Key="Rayzer.Letreiro.{nome}">F1 {d}</Geometry>')
     return "\n".join(linhas)
 
 

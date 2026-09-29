@@ -61,17 +61,17 @@
           <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="*" />
-              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="110" />
-              <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="100" />
+              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
+              <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="104" />
             </DataGrid.Columns>
           </DataGrid>
           <rz:RayzerSectionHeader Titulo="Por catraca" />
           <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="*" />
-              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="110" />
-              <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="100" />
-              <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="90" />
+              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
+              <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="104" />
+              <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="96" />
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
@@ -81,15 +81,15 @@
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Width="*" ElementStyle="{StaticResource Celula.Mono}"
                                   Binding="{Binding Hora, Converter={StaticResource InstanteParaTexto}, ConverterParameter='dd/MM HH:00'}" />
-              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="110" />
-              <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="90" />
+              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
+              <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="96" />
             </DataGrid.Columns>
           </DataGrid>
           <rz:RayzerSectionHeader Titulo="Motivos de negativa" />
           <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="MOTIVO" Binding="{Binding Mensagem}" Width="*" />
-              <DataGridTextColumn Header="QUANTIDADE" Binding="{Binding Quantidade}" Width="110" />
+              <DataGridTextColumn Header="QUANTIDADE" Binding="{Binding Quantidade}" Width="124" />
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>

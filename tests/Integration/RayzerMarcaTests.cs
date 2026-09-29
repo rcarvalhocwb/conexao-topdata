@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace Integration.Tests;
@@ -59,6 +60,11 @@ public sealed partial class RayzerDesignTests
         var tokens = XDocument.Load(Arquivo("src/Rayzer.Design/Tokens.xaml")).Root!.Elements()
             .Where(e => ((string?)e.Attribute(X + "Key"))?.StartsWith("Rayzer.Letreiro.", StringComparison.Ordinal) == true)
             .ToDictionary(e => ((string)e.Attribute(X + "Key")!)["Rayzer.Letreiro.".Length..], e => e.Value.Trim(), StringComparer.Ordinal);
+
+        // Todo letreiro preenche em NonZero (F1): em EvenOdd, o padrão do WPF, a sobreposição
+        // de contornos da Sora vira furo dentro da letra — visto na captura do CI.
+        Assert.All(tokens.Values, caminho => Assert.StartsWith("F1 ", caminho, StringComparison.Ordinal));
+        tokens = tokens.ToDictionary(p => p.Key, p => p.Value["F1 ".Length..], StringComparer.Ordinal);
         var ts = File.ReadAllText(Arquivo("web/rayzer-ui/src/components/brand/letreiros.ts"));
 
         Assert.Equal(["Acess", "By", "Descritor", "Rayzer", "Tagline"], tokens.Keys.Order(StringComparer.Ordinal));
@@ -85,6 +91,35 @@ public sealed partial class RayzerDesignTests
         }
 
         Assert.Contains(@"<Resource Include=""Fontes\*.ttf"" />", File.ReadAllText(Arquivo("src/Rayzer.Design/Rayzer.Design.csproj")), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A Inter e a JetBrains Mono são mais largas que a Segoe: com elas, "CATRACA" virou
+    /// "CATRAC/" e a hora perdeu o último dígito na captura do CI. Coluna de largura fixa
+    /// precisa caber o cabeçalho (≈ 9 px por letra em versalete de 12 px, mais 24 de recuo).
+    /// </summary>
+    [Fact]
+    public void Coluna_de_largura_fixa_cabe_o_cabecalho()
+    {
+        var curtas = new List<string>();
+        foreach (var arquivo in ArquivosXaml())
+        {
+            foreach (Match m in Regex.Matches(File.ReadAllText(arquivo), @"<DataGrid(?:Text|Template)Column\b[^>]*>"))
+            {
+                var cabecalho = Regex.Match(m.Value, "Header=\"([^\"]*)\"");
+                var largura = Regex.Match(m.Value, "Width=\"(\\d+)\"");
+                if (cabecalho.Success && largura.Success)
+                {
+                    var minimo = (cabecalho.Groups[1].Value.Length * 9) + 24;
+                    if (int.Parse(largura.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) < minimo)
+                    {
+                        curtas.Add($"{Path.GetFileName(arquivo)}: {cabecalho.Groups[1].Value} ({largura.Groups[1].Value} < {minimo})");
+                    }
+                }
+            }
+        }
+
+        Assert.True(curtas.Count == 0, $"Colunas estreitas demais: {string.Join(", ", curtas)}");
     }
 
     private static string Estilo(string xaml, string tipo)

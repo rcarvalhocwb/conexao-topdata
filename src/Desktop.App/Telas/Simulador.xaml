@@ -49,9 +49,9 @@
         <Grid>
           <DataGrid ItemsSource="{Binding Resultados}" AutomationProperties.Name="Resultados">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="84" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
               <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
-              <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="70" />
+              <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="76" />
             </DataGrid.Columns>
           </DataGrid>
           <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Play}" Titulo="Nenhuma passagem simulada"
@@ -64,7 +64,7 @@
         <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Códigos de teste" />
         <DataGrid ItemsSource="{Binding CodigosDeTeste}" AutomationProperties.Name="Códigos de teste">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Rotulo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+            <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Rotulo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
             <DataGridTextColumn Header="O QUE É" Binding="{Binding Valor}" Width="*" />
           </DataGrid.Columns>
         </DataGrid>

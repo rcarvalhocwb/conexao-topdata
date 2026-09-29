@@ -60,10 +60,10 @@
         <Grid>
           <DataGrid ItemsSource="{Binding UltimosAcessos}" BorderThickness="0,1,0,0" AutomationProperties.Name="Últimos acessos">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="84" ElementStyle="{StaticResource Celula.Mono}" />
-              <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="76" />
+              <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
               <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
-              <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
             </DataGrid.Columns>
           </DataGrid>
           <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.List}" Titulo="Aguardando o primeiro acesso"

@@ -46,10 +46,10 @@
     <Grid>
       <DataGrid ItemsSource="{Binding Historico}" AutomationProperties.Name="Histórico do código">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="84" ElementStyle="{StaticResource Celula.Mono}" />
-          <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="76" />
+          <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+          <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
           <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
-          <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="70" />
+          <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="76" />
         </DataGrid.Columns>
       </DataGrid>
       <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Card}" Titulo="Nenhuma consulta ainda"
