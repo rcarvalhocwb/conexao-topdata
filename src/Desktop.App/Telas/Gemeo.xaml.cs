@@ -29,6 +29,9 @@ public partial class Gemeo : UserControl
 {
     private const double Graus = Math.PI / 180;
 
+    /// <summary>Campo de visão vertical da câmera, em graus.</summary>
+    private const double CampoDeVisaoVertical = 30;
+
     private readonly Dictionary<GeometryModel3D, PecaDaCatraca> _pecaDoModelo = [];
     private readonly Dictionary<PecaDaCatraca, List<(GeometryModel3D Modelo, Material Normal)>> _modelosDaPeca = [];
     private readonly Dictionary<PecaDaCatraca, TranslateTransform3D> _separacaoDaPeca = [];
@@ -780,6 +783,16 @@ public partial class Gemeo : UserControl
         var elevacao = _elevacao * Graus;
         var direcao = new Ponto3(Math.Cos(elevacao) * Math.Sin(rumo), Math.Sin(elevacao), Math.Cos(elevacao) * Math.Cos(rumo));
         var posicao = _alvo + (direcao * _distancia);
+
+        // O WPF mede o campo de visão na horizontal. Fixando o vertical, a catraca cabe inteira
+        // na altura do desenho seja qual for a largura da janela.
+        var largura = Vista3D.ActualWidth;
+        var altura = Vista3D.ActualHeight;
+        if (largura > 1 && altura > 1)
+        {
+            var meiaVertical = CampoDeVisaoVertical / 2 * Graus;
+            _camera.FieldOfView = 2 * Math.Atan(Math.Tan(meiaVertical) * largura / altura) / Graus;
+        }
 
         _camera.Position = Ponto(posicao);
         _camera.LookDirection = Vetor(-direcao * _distancia);
