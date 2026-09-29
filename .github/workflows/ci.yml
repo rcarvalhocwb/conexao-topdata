@@ -197,8 +197,16 @@ jobs:
                 $captura.Kill()
                 Write-Host "::warning::A captura das telas (tema $tema) não terminou em 3 minutos."
               }
+              elseif ($captura.ExitCode -ne 0) {
+                Write-Host "::warning::A captura das telas (tema $tema) saiu com código $($captura.ExitCode)."
+              }
             }
             Get-ChildItem capturas -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "captura: $($_.Name)" }
+            # Tela que falhou na captura deixa o erro num .txt ao lado das imagens.
+            Get-ChildItem capturas -Filter '*erro*.txt' -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "::warning::A captura da tela $($_.BaseName) falhou (detalhe abaixo)."
+              Get-Content $_.FullName | Select-Object -First 40 | ForEach-Object { Write-Host "  $_" }
+            }
           }
           finally {
             Stop-Process -Id $servico.Id -Force -ErrorAction SilentlyContinue

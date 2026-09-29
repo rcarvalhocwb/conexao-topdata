@@ -64,25 +64,41 @@ internal static class CapturaDeTela
             Rayzer.Design.RayzerAbertura.SomenteQuadroFinal = false;
         }
 
+        var falhas = new List<string>();
+
         foreach (var tela in janela.Telas)
         {
-            janela.TelaAtual = tela;
-
-            // Com await, e nunca .GetResult(): as telas voltam para a thread da interface,
-            // e bloqueá-la esperando por elas trava o processo para sempre.
-            await janela.AtualizarAsync().ConfigureAwait(true);
-            await tela.AtualizarAsync().ConfigureAwait(true);
-
-            var caminho = Path.Combine(
-                pasta,
-                string.Create(CultureInfo.InvariantCulture, $"{numero:D2}-{Arquivo(tela.Titulo)}-{Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant()}.png"));
-            await GravarAsync(caminho, janela).ConfigureAwait(true);
-            gravados.Add(caminho);
+            var nome = string.Create(
+                CultureInfo.InvariantCulture,
+                $"{numero:D2}-{Arquivo(tela.Titulo)}-{Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant()}");
             numero++;
+
+            // Uma tela que falha não leva as seguintes junto: o erro vai para um arquivo ao
+            // lado das imagens e a captura segue. Antes, a primeira falha encerrava tudo, e
+            // o erro ia para a saída de console, que num WinExe se perde.
+            try
+            {
+                janela.TelaAtual = tela;
+
+                // Com await, e nunca .GetResult(): as telas voltam para a thread da interface,
+                // e bloqueá-la esperando por elas trava o processo para sempre.
+                await janela.AtualizarAsync().ConfigureAwait(true);
+                await tela.AtualizarAsync().ConfigureAwait(true);
+
+                var caminho = Path.Combine(pasta, nome + ".png");
+                await GravarAsync(caminho, janela).ConfigureAwait(true);
+                gravados.Add(caminho);
+            }
+            catch (Exception erro) when (erro is not OutOfMemoryException)
+            {
+                var caminho = Path.Combine(pasta, nome + "-erro.txt");
+                File.WriteAllText(caminho, erro.ToString());
+                falhas.Add(caminho);
+            }
         }
 
         // Relatório em arquivo porque num WinExe a saída de console não é confiável.
-        File.WriteAllText(Path.Combine(pasta, "relatorio.txt"), Resumir(gravados));
+        File.WriteAllText(Path.Combine(pasta, "relatorio.txt"), Resumir(gravados, falhas));
         return gravados;
     }
 
@@ -147,9 +163,16 @@ internal static class CapturaDeTela
             .Where(c => char.IsAsciiLetterOrDigit(c) || c == ' ')])
         .Replace(' ', '-');
 
-    internal static string Resumir(IReadOnlyList<string> arquivos) =>
-        string.Create(
+    internal static string Resumir(IReadOnlyList<string> arquivos, IReadOnlyList<string>? falhas = null)
+    {
+        var resumo = string.Create(
             CultureInfo.InvariantCulture,
-            $"{arquivos.Count} imagem(ns) gravada(s):{Environment.NewLine}" +
-            $"{string.Join(Environment.NewLine, arquivos)}");
+            $"{arquivos.Count} imagem(ns) gravada(s):{Environment.NewLine}{string.Join(Environment.NewLine, arquivos)}");
+
+        return falhas is { Count: > 0 }
+            ? resumo + string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Environment.NewLine}{falhas.Count} tela(s) com erro:{Environment.NewLine}{string.Join(Environment.NewLine, falhas)}")
+            : resumo;
+    }
 }

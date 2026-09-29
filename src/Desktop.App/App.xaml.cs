@@ -228,6 +228,20 @@ public partial class App : Application
             // se funciona, e um processo que sai calado não responde nada.
             Console.Error.WriteLine($"A captura falhou: {erro}");
             Console.Error.Flush();
+
+            // Também em arquivo, ao lado das imagens: num WinExe a saída de console se perde.
+            try
+            {
+                Directory.CreateDirectory(pasta);
+                File.WriteAllText(Path.Combine(pasta, "captura-erro.txt"), erro.ToString());
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
             Environment.Exit(1);
         }
 
