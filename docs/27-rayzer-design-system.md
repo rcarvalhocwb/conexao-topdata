@@ -266,4 +266,4 @@ Essas escolhas se repetem no painel, no assistente e no instalador.
   - autoteste do assistente;
   - instalação real, abertura do painel e desinstalação com ele aberto;
   - capturas das telas nos dois temas, publicadas em `capturas-das-telas.zip` no
-    pré-lançamento `instalador-de-teste`.
+    pré-lançamento "Instalador de teste 0.1.N" (página de versões).

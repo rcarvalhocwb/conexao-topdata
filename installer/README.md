@@ -70,13 +70,20 @@ $env:EDGE_TOKEN = Get-Content "$env:LOCALAPPDATA\ConexaoTopdata\token"
 
 ## Setup.exe — o caminho de produção
 
-Um arquivo só: **`RayzerXAcess-Setup.exe`**, com o .NET embutido (uns 240 MB). Link
-direto, sempre do último commit, na pré-release **Instalador de teste**:
+Um arquivo só: **`RayzerXAcess-Setup.exe`**, com o .NET embutido (uns 180 MB). Cada
+commit publica uma pré-release própria, **"Instalador de teste 0.1.N"** (ficam as 5
+últimas), na página de versões:
 
-https://github.com/rcarvalhocwb/conexao-topdata/releases/tag/instalador-de-teste
+https://github.com/rcarvalhocwb/conexao-topdata/releases
 
-(O mesmo arquivo também sai como artefato `setup-exe` da CI, mas artefato do Actions
-sempre baixa em zip.)
+**Baixe o `RayzerXAcess-Setup-0.1.N.zip`**, extraia e execute o `.exe` como administrador.
+O `.exe` solto também está lá, mas Chrome e Edge costumam segurar download de `.exe`
+grande sem assinatura digital ("não é baixado com frequência") e às vezes não terminam; o
+`.zip` passa. Ao abrir, o Windows pode mostrar "O Windows protegeu o computador": clique em
+**Mais informações → Executar assim mesmo**. As duas coisas somem com o certificado de
+assinatura de código (ainda não existe).
+
+`RayzerXAcess-MSI-0.1.N.zip` traz o mesmo sistema como MSI, sem a tela de boas-vindas.
 
 ### O que ele faz
 

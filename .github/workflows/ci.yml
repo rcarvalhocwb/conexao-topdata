@@ -451,26 +451,53 @@ jobs:
           path: RayzerXAcess-Setup.exe
           if-no-files-found: error
 
-      # Artefato do Actions sempre baixa em zip. A pré-release "instalador-de-teste" dá um
-      # link direto para o .exe, sempre com o do último commit.
-      - name: Atualizar a pré-release de teste
+      # Uma pré-release por versão ("teste-0.1.N"), que não é apagada quando sai a seguinte:
+      # antes, cada push apagava e recriava a mesma, e cortava no meio o download de quem
+      # estava baixando. Ficam as 5 últimas.
+      #
+      # Além do .exe, vai um .zip com ele: navegadores seguram .exe grande sem assinatura
+      # digital ("não é baixado com frequência") e às vezes não terminam o download; .zip
+      # passa. O MSI vai zipado também, como alternativa ao Setup.
+      - name: Publicar a pré-release de teste
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          $tag = 'instalador-de-teste'
-          gh release delete $tag --yes --cleanup-tag 2>$null
-          $notas = "Instalador de teste gerado automaticamente a partir do commit $env:COMMIT. " +
-                   "Não é versão de produção. Baixe RayzerXAcess-Setup.exe e execute como administrador. capturas-das-telas.zip traz as telas nos temas claro e escuro."
-          $arquivos = @('RayzerXAcess-Setup.exe')
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          $tag = "teste-$versao"
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+
+          Compress-Archive -Path RayzerXAcess-Setup.exe -DestinationPath "RayzerXAcess-Setup-$versao.zip" -Force
+          Compress-Archive -Path $msi -DestinationPath "RayzerXAcess-MSI-$versao.zip" -Force
+          $arquivos = @("RayzerXAcess-Setup-$versao.zip", 'RayzerXAcess-Setup.exe', "RayzerXAcess-MSI-$versao.zip")
           if (Test-Path capturas\*.png) {
             Compress-Archive -Path capturas\*.png -DestinationPath capturas-das-telas.zip -Force
             $arquivos += 'capturas-das-telas.zip'
           }
-          gh release create $tag @arquivos --prerelease --target $env:COMMIT `
-            --title "Instalador de teste" --notes $notas
+
+          $notas = @"
+          Instalador de teste $versao, gerado automaticamente do commit $env:COMMIT. Não é versão de produção.
+
+          **Baixe o RayzerXAcess-Setup-$versao.zip**, extraia e execute RayzerXAcess-Setup.exe como administrador.
+          O .exe solto também está aqui, mas o navegador pode segurar o download (arquivo grande sem assinatura digital).
+
+          - RayzerXAcess-MSI-$versao.zip: o mesmo sistema, instalado pelo MSI direto (sem a tela de boas-vindas).
+          - capturas-das-telas.zip: as telas do painel nos temas claro e escuro.
+
+          O Windows pode mostrar "O Windows protegeu o computador": clique em "Mais informações" e "Executar assim mesmo". Isso acontece porque o instalador ainda não tem certificado de assinatura.
+          "@
+          gh release create $tag @arquivos --prerelease --target $env:COMMIT --title "Instalador de teste $versao" --notes $notas
+
+          # A antiga, que era apagada e recriada a cada push, sai de vez.
+          gh release delete instalador-de-teste --yes --cleanup-tag 2>$null
+
+          # Guarda só as 5 últimas de teste.
+          $antigas = gh release list --limit 100 --json tagName,createdAt | ConvertFrom-Json |
+            Where-Object { $_.tagName -like 'teste-*' } | Sort-Object createdAt -Descending | Select-Object -Skip 5
+          foreach ($r in $antigas) { gh release delete $r.tagName --yes --cleanup-tag }
+          Write-Host "Publicado: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
 
       # Para a bancada (docs/21) não é preciso instalar nada: o worker vai num zip,
       # autocontido, sem exigir o .NET instalado no PC. A EasyInner.dll continua vindo do
