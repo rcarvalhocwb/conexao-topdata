@@ -195,7 +195,8 @@ caminho A):
 
 ```js
 // depois de validar o JSON e antes de responder à Zet
-ctx.waitUntil(fetch(RELE_XACESS_URL, {            // https://<relé>/webhook/<token>
+const corpoOriginal = await request.clone().arrayBuffer();
+ctx.waitUntil(fetch(env.RELE_XACESS_URL, {            // https://<relé>/webhook/<token>
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: corpoOriginal,                             // os bytes exatos que a Zet mandou
