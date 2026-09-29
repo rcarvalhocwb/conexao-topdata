@@ -101,7 +101,7 @@ public sealed class PainelTests
     {
         // 2.243 cartões no cadastro real: com a contagem exata do servidor, não há por que
         // suspeitar de corte só por passar de 1.000.
-        var corpo = $$"""{"success":true,"cards":[{{Muitos(1200)}}],"removed_cards":[],"total_cards":1200,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
+        var corpo = $$"""{"success":true,"cards":[{{Muitos(1200)}}],"removed_cards":[],"contract_version":1,"total_cards":1200,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
         var suspeitas = new List<int>();
         var fonte = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, corpo)), "bilheteria-local", "borda-01",
             CredentialNormalization.Raw, aoSuspeitarDeCorte: suspeitas.Add);
@@ -116,7 +116,7 @@ public sealed class PainelTests
     [Fact]
     public async Task Com_total_cards_maior_que_o_recebido_a_lista_esta_cortada_e_o_cursor_nao_anda()
     {
-        var corpo = $$"""{"success":true,"cards":[{{Muitos(1000)}}],"removed_cards":[],"total_cards":2243,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
+        var corpo = $$"""{"success":true,"cards":[{{Muitos(1000)}}],"removed_cards":[],"contract_version":1,"total_cards":2243,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
         var suspeitas = new List<int>();
         var fonte = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, corpo)), "bilheteria-local", "borda-01",
             CredentialNormalization.Raw, aoSuspeitarDeCorte: suspeitas.Add);
@@ -124,6 +124,20 @@ public sealed class PainelTests
         var pagina = await fonte.LerAsync(null, CancellationToken.None);
 
         Assert.Null(pagina.ProximoCursor);
+        Assert.Equal([1000], suspeitas);
+    }
+
+    [Fact]
+    public async Task Total_cards_sem_a_versao_do_contrato_nao_e_confiavel()
+    {
+        // A função de hoje já manda total_cards, possivelmente = tamanho da lista que veio.
+        // Numa lista cortada em 1.000, diria 1.000: confiar esconderia o corte.
+        var corpo = $$"""{"success":true,"cards":[{{Muitos(1000)}}],"removed_cards":[],"total_cards":1000,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
+        var suspeitas = new List<int>();
+        var fonte = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, corpo)), "bilheteria-local", "borda-01",
+            CredentialNormalization.Raw, aoSuspeitarDeCorte: suspeitas.Add);
+
+        Assert.Null((await fonte.LerAsync(null, CancellationToken.None)).ProximoCursor);
         Assert.Equal([1000], suspeitas);
     }
 

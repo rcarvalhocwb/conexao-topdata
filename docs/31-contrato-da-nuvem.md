@@ -103,6 +103,7 @@ Nas rodadas seguintes, a cada 30 segundos:
       "valid_from": null, "valid_until": null, "max_uses": null, "times_used": null }
   ],
   "removed_cards": ["100000000099"],
+  "contract_version": 1,
   "total_cards": 1,
   "sync_timestamp": "2026-11-14T20:00:00.000+00:00"
 }
@@ -111,6 +112,7 @@ Nas rodadas seguintes, a cada 30 segundos:
 | Campo | Regra | O que acontece se quebrar |
 |---|---|---|
 | `cards` | **Todos** os cartões que a consulta encontrou: sem o limite padrão de 1.000. Na completa, os ativos; na incremental, os alterados desde `last_sync_at` | — |
+| `contract_version` | **Novo, obrigatório:** `1`. Diz que esta resposta segue este contrato, em especial o `total_cards` abaixo | Sem ele, não confiamos em `total_cards` (a função de hoje já manda esse campo, com outro sentido possível) |
 | `total_cards` | **Novo significado, obrigatório:** a contagem exata (`count(*)`) do que a consulta encontrou, sem limite. Se vierem menos cartões do que `total_cards`, tratamos a lista como cortada | Sem o campo, 1.000 ou mais é tratado como corte, e a sincronização não avança |
 | `card_number` | **Texto**, exatamente como cadastrado: sem tirar zeros, sem espaços, sem máscara. Nunca número JSON | Número JSON é recusado, porque já perdeu os zeros à esquerda |
 | `active` | `true` em `cards`; os desativados vão em `removed_cards` | — |
@@ -232,7 +234,7 @@ de uma exportação ou API **com o voucher** desses ingressos (docs/30, Z1).
 | 1 | Chamar as funções sem `Authorization` | `401` |
 | 2 | Chamar com o segredo de outro `device_id` | `401` |
 | 3 | Ler `authorizations` com a chave `anon` pela API REST | Recusado |
-| 4 | `full_sync` com 2.500 cartões fictícios | 2.500 em `cards` e `total_cards = 2500` |
+| 4 | `full_sync` com 2.500 cartões fictícios | 2.500 em `cards`, `total_cards = 2500` e `contract_version = 1` |
 | 5 | Cartão `"00000000000014"` | Volta idêntico, como texto |
 | 6 | Desativar um cartão e pedir a incremental | Aparece em `removed_cards` |
 | 7 | Enviar o mesmo evento duas vezes | Segunda vez em `duplicates_ignored` |

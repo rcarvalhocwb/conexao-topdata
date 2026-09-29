@@ -176,9 +176,15 @@ public sealed class FonteDeCartoesDoPainel : IFonteDeIngressos
 
             // Contrato da nuvem v1 (docs/31 §3): total_cards é a contagem exata do que a
             // consulta encontrou. Com ele, a lista está completa se vieram todos — mesmo
-            // acima de 1.000 — e cortada se vieram menos. Sem ele, vale a suspeita antiga:
-            // 1.000 ou mais pode ser o limite do servidor cortando sem avisar.
-            var total = raiz.TryGetProperty("total_cards", out var t)
+            // acima de 1.000 — e cortada se vieram menos.
+            //
+            // Só vale quando o servidor declara contract_version >= 1. A função de hoje já
+            // manda total_cards, mas pode ser o tamanho da lista que veio: numa lista
+            // cortada em 1.000 ele diria 1.000, e confiar nele esconderia o corte. Sem a
+            // versão, vale a suspeita antiga: 1.000 ou mais pode ser corte.
+            var versao = raiz.TryGetProperty("contract_version", out var v)
+                         && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var nv) ? nv : 0;
+            var total = versao >= 1 && raiz.TryGetProperty("total_cards", out var t)
                         && t.ValueKind == JsonValueKind.Number && t.TryGetInt32(out var n) && n >= 0
                 ? n
                 : (int?)null;
