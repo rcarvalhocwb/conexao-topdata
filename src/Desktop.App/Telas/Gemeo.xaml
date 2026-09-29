@@ -28,7 +28,9 @@
       </Grid.ColumnDefinitions>
 
       <!-- O desenho. -->
-      <Border Style="{StaticResource Rayzer.Card}" Padding="0" ClipToBounds="True">
+      <!-- Alinhado em cima e com o desenho em altura fixa: esticado até a altura dos painéis
+           à direita, o desenho ficava alto e estreito, e a câmera cortava a catraca. -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="0" ClipToBounds="True" VerticalAlignment="Top">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -63,7 +65,7 @@
             </WrapPanel>
           </Border>
 
-          <Grid Grid.Row="2" x:Name="Palco" Background="{DynamicResource Rayzer.Surface.Sunken}" MinHeight="420"
+          <Grid Grid.Row="2" x:Name="Palco" Background="{DynamicResource Rayzer.Surface.Sunken}" Height="460"
                 Focusable="True" AutomationProperties.Name="Desenho 3D da catraca"
                 AutomationProperties.HelpText="Arraste para girar, roda do mouse para aproximar, clique numa peça para escolher. Pelo teclado, use a lista de peças.">
             <Viewport3D x:Name="Vista3D" ClipToBounds="True" IsHitTestVisible="True" />
