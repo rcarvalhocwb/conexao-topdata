@@ -29,7 +29,12 @@
         Tema próprio (tema-rayzer.xml): a arte da marca de fundo, com os textos e botões na
         faixa escura da direita. Os nomes dos controles são os do tema padrão do WiX.
       -->
-      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="none"
+      <!--
+        Theme="hyperlinkLicense", e NÃO "none": com "none" o WiX não grava a configuração do
+        WixStdBA no Setup, e ele fecha sem abrir janela ("manifest is missing wixstdba
+        information", visto no registro do Burn). O ThemeFile substitui só o desenho.
+      -->
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense"
                                               ThemeFile="$(sys.SOURCEFILEDIR)tema-rayzer.xml"
                                               LocalizationFile="$(sys.SOURCEFILEDIR)tema-pt-BR.wxl"
                                               ShowVersion="yes" />

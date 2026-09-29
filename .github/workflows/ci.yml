@@ -380,12 +380,13 @@ jobs:
             -d Versao=$versao -d Msi=$msi -o RayzerXAcess-Setup.exe
           Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item RayzerXAcess-Setup.exe).Length / 1MB))
 
-      # Foto da primeira tela do Setup (tema com a arte da marca), junto das capturas do
-      # painel. Se a janela não abrir, é aviso — o Setup já foi construído e o MSI testado.
-      - name: Fotografar a tela do Setup
+      # O Setup precisa ABRIR: se a janela não aparecer, o Setup publicado está quebrado para
+      # quem baixa (foi o que aconteceu com Theme="none", e este passo só avisava). Reprova o
+      # job e imprime o registro do Burn com o motivo. De quebra, fotografa a primeira tela
+      # (tema com a arte da marca) para as capturas.
+      - name: Abrir e fotografar a tela do Setup
         shell: pwsh
         timeout-minutes: 3
-        continue-on-error: true
         run: |
           Add-Type -AssemblyName System.Drawing
           New-Item -ItemType Directory -Force capturas | Out-Null
@@ -424,11 +425,13 @@ jobs:
             $janela = [FotoDoSetup]::Achar('Rayzer XAcess')
           }
           if ($janela -eq [IntPtr]::Zero) {
-            Write-Host "::warning::A janela do Setup não apareceu em 40 s para a foto."
+            Write-Host "::error::A janela do Setup não apareceu em 40 s."
             Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host "  janela: $($_.ProcessName) — $($_.MainWindowTitle)" }
             Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  processo do Setup: $($_.Id), janela '$($_.MainWindowTitle)'" }
             Write-Host '--- registro do Setup (Burn) ---'
             Get-ChildItem "$PWD\setup-burn*.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_ -Tail 60 }
+            Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
+            throw 'O Setup não abriu a janela: quem baixar não consegue instalar. Veja o registro do Burn acima.'
           } else {
             Start-Sleep -Seconds 2   # a arte termina de desenhar
             $r = New-Object FotoDoSetup+RECT
