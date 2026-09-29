@@ -191,14 +191,18 @@ jobs:
 
             # Capturas de todas as telas, com o serviço em simulação, para revisão visual.
             foreach ($tema in 'claro', 'escuro') {
+              # Saídas redirecionadas: num estouro de pilha o .NET só diz onde foi na saída
+              # de erro, e sem redirecionar ela se perde (o painel é um WinExe).
               $captura = Start-Process -FilePath (Resolve-Path publicado/Painel/Desktop.App.exe) `
-                -ArgumentList @('--capturar', "$PWD\capturas", '--tema', $tema) -PassThru
+                -ArgumentList @('--capturar', "$PWD\capturas", '--tema', $tema) -PassThru `
+                -RedirectStandardOutput "$PWD\captura-$tema-saida.log" -RedirectStandardError "$PWD\captura-$tema-falha.log"
               if (-not $captura.WaitForExit(180000)) {
                 $captura.Kill()
                 Write-Host "::warning::A captura das telas (tema $tema) não terminou em 3 minutos."
               }
               elseif ($captura.ExitCode -ne 0) {
                 Write-Host "::warning::A captura das telas (tema $tema) saiu com código $($captura.ExitCode)."
+                Get-Content "$PWD\captura-$tema-falha.log" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "  $_" }
               }
             }
             Get-ChildItem capturas -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "captura: $($_.Name)" }
