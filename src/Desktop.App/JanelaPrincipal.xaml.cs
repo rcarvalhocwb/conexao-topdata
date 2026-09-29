@@ -47,25 +47,48 @@ public partial class JanelaPrincipal : Window
 
     internal JanelaViewModel Janela { get; }
 
-    /// <summary>Liga o relógio e o fluxo ao vivo. A captura de tela não chama isto.</summary>
+    /// <summary>
+    /// Fechar (o X, Alt+F4) só esconde a janela: o painel fica na bandeja, perto do relógio.
+    /// Desligado na captura e no autoteste, que precisam fechar de verdade.
+    /// </summary>
+    internal bool FecharVaiParaBandeja { get; set; }
+
+    /// <summary>Depois de cada atualização periódica, mesmo com a janela escondida.</summary>
+    internal event EventHandler? Atualizada;
+
+    /// <summary>A janela foi para a bandeja.</summary>
+    internal event EventHandler? FoiParaBandeja;
+
+    private bool _saindo;
+
+    /// <summary>
+    /// Liga o relógio e o fluxo ao vivo, com a janela aberta ou não: na bandeja, o ícone
+    /// também precisa saber das catracas. A captura de tela não chama isto.
+    /// </summary>
     internal void Iniciar()
     {
-        // Vive enquanto a janela vive; é descartado quando ela fecha.
+        // Vive enquanto a janela vive; é descartado quando ela fecha de verdade.
         var fechando = new CancellationTokenSource();
 
-        _relogio.Tick += async (_, _) => await Janela.AtualizarAsync().ConfigureAwait(true);
-
-        Loaded += async (_, _) =>
+        async Task AtualizarAsync()
         {
-            Menu.Focus();
             await Janela.AtualizarAsync().ConfigureAwait(true);
+            Atualizada?.Invoke(this, EventArgs.Empty);
+        }
+
+        _relogio.Tick += async (_, _) => await AtualizarAsync().ConfigureAwait(true);
+        Loaded += (_, _) => Menu.Focus();
+
+        Dispatcher.BeginInvoke(async () =>
+        {
+            await AtualizarAsync().ConfigureAwait(true);
             _relogio.Start();
 
             // Os acessos ao vivo chegam numa thread do gRPC; a lista é da tela.
             _ = Janela.Painel.AcompanharAsync(
                 acao => Dispatcher.BeginInvoke(acao),
                 fechando.Token);
-        };
+        });
 
         Closed += (_, _) =>
         {
@@ -73,6 +96,45 @@ public partial class JanelaPrincipal : Window
             fechando.Cancel();
             fechando.Dispose();
         };
+    }
+
+    /// <summary>Traz a janela de volta (da bandeja, minimizada ou atrás de outra).</summary>
+    internal void Mostrar()
+    {
+        Show();
+
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
+    }
+
+    /// <summary>Fecha de verdade (sair do painel, desligar o Windows).</summary>
+    internal void SairDeVez()
+    {
+        _saindo = true;
+        Close();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        if (FecharVaiParaBandeja && !_saindo)
+        {
+            // Fechar o painel nunca para as catracas: quem as atende é o serviço.
+            e.Cancel = true;
+            Hide();
+            FoiParaBandeja?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        base.OnClosing(e);
     }
 
     private void AlternarTema(object sender, RoutedEventArgs e) => TemaRayzer.Alternar();

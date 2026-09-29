@@ -25,10 +25,15 @@
     <BootstrapperApplication>
       <!-- Sem licença a aceitar: é um sistema do próprio evento. -->
       <!-- Textos em português (tema-pt-BR.wxl): sem ele, o Setup inteiro fala inglês. -->
-      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense"
+      <!--
+        Tema próprio (tema-rayzer.xml): a arte da marca de fundo, com os textos e botões na
+        faixa escura da direita. Os nomes dos controles são os do tema padrão do WiX.
+      -->
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="none"
+                                              ThemeFile="$(sys.SOURCEFILEDIR)tema-rayzer.xml"
                                               LocalizationFile="$(sys.SOURCEFILEDIR)tema-pt-BR.wxl"
-                                              LogoFile="$(sys.SOURCEFILEDIR)..\..\src\Rayzer.Design\Marca\rayzer-xacess-64.png"
                                               ShowVersion="yes" />
+      <Payload SourceFile="$(sys.SOURCEFILEDIR)fundo-setup.png" Name="fundo-setup.png" />
     </BootstrapperApplication>
 
     <!--

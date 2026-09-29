@@ -129,6 +129,7 @@ jobs:
           dotnet tool install --global wix --version 6.0.2
           wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
           wix extension add --global WixToolset.Util.wixext/6.0.2
+          wix extension add --global WixToolset.Firewall.wixext/6.0.2
 
       # Self-contained: cada componente leva o seu .NET. O Setup.exe instala e funciona
       # sem pedir runtime nenhum ao operador; o custo é o tamanho (uns 240 MB).
@@ -245,7 +246,7 @@ jobs:
           # -arch x64: sem ele o MSI sai de 32 bits e "ProgramFiles64Folder" vira
           # C:\Program Files (x86) — o botão final do Setup, que aponta para
           # C:\Program Files, abria um caminho que não existia.
-          wix build installer/wix/ConexaoTopdata.wxs -arch x64 -ext WixToolset.Util.wixext `
+          wix build installer/wix/ConexaoTopdata.wxs -arch x64 -ext WixToolset.Util.wixext -ext WixToolset.Firewall.wixext `
             -d Versao=$versao `
             -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
             -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
@@ -307,9 +308,43 @@ jobs:
             }
           }
 
-          $painel = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -PassThru
+          # Firewall: a regra de entrada do programa das catracas, só da sub-rede local.
+          $regra = Get-NetFirewallRule -Direction Inbound -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -like 'Rayzer XAcess*catracas*' }
+          if (-not $regra) { throw 'A regra de firewall das catracas não foi criada.' }
+          $programa = ($regra | Get-NetFirewallApplicationFilter).Program
+          $remoto = ($regra | Get-NetFirewallAddressFilter).RemoteAddress
+          $protocolo = ($regra | Get-NetFirewallPortFilter).Protocol
+          Write-Host "Firewall: $($regra.DisplayName) · $programa · $protocolo · remoto $remoto · $($regra.Action)"
+          if ($programa -notlike '*\Worker\Edge.Worker.X86.exe') { throw "A regra aponta para outro programa: $programa" }
+          if ($remoto -ne 'LocalSubnet') { throw "A regra deveria aceitar só a sub-rede local, e aceita: $remoto" }
+          if ($protocolo -ne 'TCP') { throw "A regra deveria ser TCP, e é: $protocolo" }
+          if ($regra.Action -ne 'Allow' -or $regra.Enabled -ne 'True') { throw 'A regra existe, mas não está liberando.' }
+
+          # Recuperação do serviço: o Windows o sobe de novo se ele cair.
+          $falhas = sc.exe qfailure ConexaoTopdataEdge | Out-String
+          Write-Host $falhas
+          if (([regex]::Matches($falhas, 'RESTART')).Count -lt 3) { throw 'O serviço não está configurado para reiniciar sozinho.' }
+          if ((Get-Service ConexaoTopdataEdge).StartType -ne 'Automatic') { throw 'O serviço não inicia com o Windows.' }
+
+          # Painel na bandeja ao entrar no Windows.
+          $executar = Get-ItemPropertyValue 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -Name RayzerXAcess
+          if ($executar -notlike '*Desktop.App.exe*--bandeja') { throw "Início na bandeja errado: $executar" }
+
+          # Na bandeja: o processo fica vivo, sem janela.
+          $painel = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -ArgumentList '--bandeja' -PassThru
           Start-Sleep -Seconds 10
-          if ($painel.HasExited) { throw "O painel instalado não abriu (saiu com código $($painel.ExitCode))." }
+          if ($painel.HasExited) { throw "O painel na bandeja não ficou aberto (saiu com código $($painel.ExitCode))." }
+          $painel.Refresh()
+          if ($painel.MainWindowHandle -ne 0) { throw 'Com --bandeja, o painel não devia mostrar janela.' }
+
+          # Instância única: abrir de novo só traz a janela da que já está na bandeja.
+          $segundo = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -PassThru
+          if (-not $segundo.WaitForExit(15000)) { throw 'O segundo painel não saiu: a instância única não funcionou.' }
+          Start-Sleep -Seconds 3
+          $painel.Refresh()
+          if ($painel.MainWindowHandle -eq 0) { throw 'Abrir de novo não mostrou a janela do painel que estava na bandeja.' }
+          Write-Host 'Bandeja e instância única: ok'
 
           $p = Start-Process msiexec -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart', '/l*v', "`"$PWD\desinstalar.log`"") -Wait -PassThru
           if ($p.ExitCode -ne 0) {
@@ -318,6 +353,12 @@ jobs:
           }
           if (-not $painel.WaitForExit(5000)) { throw 'O painel continuou aberto: o instalador não o fechou.' }
           if (Test-Path (Join-Path $pasta 'Painel\Desktop.App.exe')) { throw 'O painel ficou no disco depois de desinstalar.' }
+          if (Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like 'Rayzer XAcess*catracas*' }) {
+            throw 'A regra de firewall ficou depois de desinstalar.'
+          }
+          if (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -Name RayzerXAcess -ErrorAction SilentlyContinue) {
+            throw 'O início na bandeja ficou depois de desinstalar.'
+          }
           Write-Host 'Instalar, abrir o painel e desinstalar com ele aberto: ok'
 
       - name: Registros do teste do instalador
@@ -338,6 +379,29 @@ jobs:
           wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
             -d Versao=$versao -d Msi=$msi -o RayzerXAcess-Setup.exe
           Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item RayzerXAcess-Setup.exe).Length / 1MB))
+
+      # Foto da primeira tela do Setup (tema com a arte da marca), junto das capturas do
+      # painel. Se a janela não abrir, é aviso — o Setup já foi construído e o MSI testado.
+      - name: Fotografar a tela do Setup
+        shell: pwsh
+        timeout-minutes: 3
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory -Force capturas | Out-Null
+          # O Setup (Burn) se relança num processo filho com o mesmo nome: a janela é dele.
+          Start-Process (Resolve-Path RayzerXAcess-Setup.exe) | Out-Null
+          Start-Sleep -Seconds 15
+          $abertos = Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
+          if (-not $abertos) { Write-Host "::warning::A janela do Setup não apareceu; a foto mostra a tela como estiver." }
+          $tela = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $foto = New-Object System.Drawing.Bitmap $tela.Width, $tela.Height
+          $g = [System.Drawing.Graphics]::FromImage($foto)
+          $g.CopyFromScreen($tela.Location, [System.Drawing.Point]::Empty, $tela.Size)
+          $foto.Save("$PWD\capturas\00-setup.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          $g.Dispose(); $foto.Dispose()
+          Write-Host "Foto do Setup: capturas\00-setup.png"
+          Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Publicar o Setup.exe
         uses: actions/upload-artifact@v4

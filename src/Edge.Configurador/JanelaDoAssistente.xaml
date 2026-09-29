@@ -65,6 +65,8 @@
               <Button Content="Verificar de _novo" Click="VerificarAmbiente" Margin="0,0,8,8" />
               <Button Content="_Localizar EasyInner.dll…" Click="LocalizarEasyInner" Margin="0,0,8,8" />
               <Button x:Name="BotaoNet35" Content="Habilitar .NET _Framework 3.5" Click="HabilitarNet35" Margin="0,0,8,8" />
+              <Button Content="Liberar no _firewall" Click="LiberarFirewall" Margin="0,0,8,8"
+                      ToolTip="Deixa as catracas da rede local conectarem a este PC (entrada TCP). Nunca abre para a internet." />
             </WrapPanel>
             <TextBlock x:Name="TextoDoAmbiente" Style="{StaticResource Rayzer.Type.Body}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Assertive" />
           </StackPanel>

@@ -11,7 +11,8 @@
   ambiente e inicia o serviço. Ver installer/README.md.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
 
   <Package Name="Rayzer XAcess"
            Manufacturer="Rayzer Serviços e Tecnologia"
@@ -106,6 +107,8 @@
       <ComponentGroupRef Id="Grupo_Configurador" />
       <ComponentGroupRef Id="Grupo_Modelos" />
       <ComponentGroupRef Id="Grupo_Atalhos" />
+      <ComponentGroupRef Id="Grupo_Firewall" />
+      <ComponentGroupRef Id="Grupo_Bandeja" />
     </Feature>
 
     <ComponentGroup Id="Grupo_Servico" Directory="DIR_SUPERVISOR">
@@ -132,7 +135,18 @@
                         Type="ownProcess"
                         Start="auto"
                         ErrorControl="normal"
-                        Vital="yes" />
+                        Vital="yes">
+          <!--
+            Se o serviço cair, o Windows o sobe de novo: 5 s na primeira e na segunda falha,
+            e continua tentando depois. Sem isto, um travamento parava as catracas até
+            alguém reiniciar o PC. A contagem zera depois de um dia sem falhas.
+          -->
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              RestartServiceDelayInSeconds="5"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
 
         <ServiceControl Id="ControlarServico"
                         Name="ConexaoTopdataEdge"
@@ -154,6 +168,45 @@
       <Files Include="$(var.PastaWorker)\*.dll" />
       <Files Include="$(var.PastaWorker)\*.json" />
       <Files Include="$(var.PastaWorker)\*.pdb" />
+    </ComponentGroup>
+
+    <!--
+      Firewall do Windows: a catraca é o cliente TCP e o programa das catracas é quem escuta
+      (docs/03). Sem esta regra de entrada, o Windows descarta a conexão e a catraca fica
+      presa em "Conectar".
+
+      A regra é por programa (Edge.Worker.X86.exe), e não por porta: vale para a porta que o
+      assistente escolher, sem reinstalar. Escopo "sub-rede local": só equipamentos da
+      mesma rede do PC conseguem conectar — nunca a internet. Catracas numa VLAN roteada,
+      em outra sub-rede, pedem ampliar o endereço remoto da regra (RB-02).
+      Sai junto na desinstalação.
+    -->
+    <ComponentGroup Id="Grupo_Firewall" Directory="DIR_WORKER">
+      <Component Id="RegraDeFirewall" Guid="4b7f2e61-9c3d-4a58-b0e2-7d1c5f8a3e94">
+        <fw:FirewallException Id="EntradaDasCatracas"
+                              Name="Rayzer XAcess — catracas (entrada TCP)"
+                              Description="Deixa as catracas da rede local conectarem ao programa das catracas do Rayzer XAcess."
+                              Program="[DIR_WORKER]Edge.Worker.X86.exe"
+                              Protocol="tcp"
+                              Scope="localSubnet"
+                              Profile="all" />
+        <RegistryValue Root="HKLM" Key="Software\Rayzer\XAcess" Name="RegraDeFirewall" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      O painel abre na bandeja (perto do relógio) quando alguém entra no Windows: o ícone
+      mostra se as catracas estão atendendo sem ninguém abrir nada. As catracas não dependem
+      disso — quem as atende é o serviço, que sobe com o Windows mesmo sem ninguém entrar.
+      INICIAR_NA_BANDEJA=0 na linha de comando desliga.
+    -->
+    <Property Id="INICIAR_NA_BANDEJA" Value="1" />
+    <ComponentGroup Id="Grupo_Bandeja" Directory="DIR_PAINEL">
+      <Component Id="PainelNaBandeja" Guid="8e2c9a47-1b6d-4f30-a5c8-3d9e7b0f1a26" Condition="INICIAR_NA_BANDEJA = 1">
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                       Name="RayzerXAcess" Type="string"
+                       Value="&quot;[DIR_PAINEL]Desktop.App.exe&quot; --bandeja" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="Grupo_Configurador" Directory="DIR_CONFIGURADOR">

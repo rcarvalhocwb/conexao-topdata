@@ -45,6 +45,7 @@
   <String Id="SuccessRepairHeader" Value="Reparo concluído" />
   <String Id="SuccessUninstallHeader" Value="Desinstalação concluída" />
   <String Id="SuccessUnsafeUninstallHeader" Value="Desinstalação concluída" />
+  <String Id="SuccessInstallText" Value="O serviço das catracas inicia com o Windows, o firewall já está liberado para as catracas da rede local e o painel fica perto do relógio.&#xA;&#xA;Abra o painel e siga o assistente de configuração para cadastrar as catracas." />
   <String Id="SuccessLaunchButton" Value="&amp;Abrir o painel" />
   <String Id="SuccessRestartText" Value="É preciso reiniciar o computador antes de usar o sistema." />
   <String Id="SuccessUninstallRestartText" Value="É preciso reiniciar o computador para terminar a remoção." />

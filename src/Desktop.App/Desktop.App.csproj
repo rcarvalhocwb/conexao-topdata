@@ -11,6 +11,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Só pelo ícone da bandeja (NotifyIcon): o WPF não tem um. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>Desktop.App</AssemblyName>
     <RootNamespace>Desktop.App</RootNamespace>
@@ -26,6 +28,12 @@
     -->
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
+
+  <!-- Os nomes do WinForms (Application, MessageBox, Color…) não podem disputar com os do WPF. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Contracts/Contracts.csproj" />

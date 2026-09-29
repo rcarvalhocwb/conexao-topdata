@@ -147,8 +147,31 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
         var achou = AssistenteDeConfiguracao.VerificarAmbiente(
             existeArquivo: caminho => caminho == Path.Combine(_pasta, "EasyInner.dll"),
             net35Instalado: true,
-            pastaDoWorker: _pasta);
+            pastaDoWorker: _pasta,
+            firewallLiberado: true);
         Assert.All(achou, i => Assert.Equal(true, i.Ok));
+
+        // Sem a regra do firewall, a catraca nem conecta: é falta, não detalhe.
+        var semFirewall = AssistenteDeConfiguracao.VerificarAmbiente(_ => true, true, _pasta, firewallLiberado: false);
+        var firewall = semFirewall.Single(i => i.Item.StartsWith("Firewall", StringComparison.Ordinal));
+        Assert.Equal(false, firewall.Ok);
+        Assert.Contains("Liberar no firewall", firewall.Orientacao, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Regra_de_firewall_e_so_de_entrada_tcp_da_rede_local_para_o_programa_das_catracas()
+    {
+        var argumentos = FirewallDasCatracas.ArgumentosParaCriar(@"C:\Program Files\Rayzer\XAcess\Worker\Edge.Worker.X86.exe");
+
+        Assert.Contains("dir=in", argumentos, StringComparison.Ordinal);
+        Assert.Contains("action=allow", argumentos, StringComparison.Ordinal);
+        Assert.Contains("protocol=TCP", argumentos, StringComparison.Ordinal);
+        Assert.Contains("remoteip=localsubnet", argumentos, StringComparison.Ordinal);
+        Assert.Contains(@"program=""C:\Program Files\Rayzer\XAcess\Worker\Edge.Worker.X86.exe""", argumentos, StringComparison.Ordinal);
+        Assert.Contains($"name=\"{FirewallDasCatracas.NomeDaRegra}\"", FirewallDasCatracas.ArgumentosParaConferir, StringComparison.Ordinal);
+
+        // Aspas no caminho quebrariam o comando: recusado.
+        Assert.Throws<ArgumentException>(() => FirewallDasCatracas.ArgumentosParaCriar("C:\\x\" localport=any"));
     }
 
     [Fact]

@@ -188,6 +188,7 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     comandos: new FilaDeComandosSqlite(fabrica)));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
+construtor.Services.AddHostedService<ImpedirSuspensao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
 
 if (sincronizacao is not null)

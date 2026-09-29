@@ -57,9 +57,53 @@ public partial class App : Application
             return;
         }
 
-        var janela = new JanelaPrincipal();
+        AbrirComBandeja(naBandeja: e.Args.Contains(ArgumentoDaBandeja));
+    }
+
+    /// <summary>Abre escondido, só com o ícone perto do relógio (início com o Windows).</summary>
+    private const string ArgumentoDaBandeja = "--bandeja";
+
+    /// <summary>
+    /// O jeito normal de abrir: uma instância por sessão, ícone perto do relógio, e fechar a
+    /// janela só a esconde. As catracas não dependem de nada disto (quem as atende é o
+    /// serviço), mas o operador vê a situação sem abrir nada.
+    /// </summary>
+    private void AbrirComBandeja(bool naBandeja)
+    {
+        var instancia = InstanciaUnica.Tentar();
+        if (instancia is null)
+        {
+            // Já há um painel nesta sessão: ele foi avisado para aparecer.
+            Shutdown();
+            return;
+        }
+
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+        var janela = new JanelaPrincipal { FecharVaiParaBandeja = true };
         janela.Iniciar();
-        janela.Show();
+
+        var bandeja = new BandejaDoSistema(janela, sair: () =>
+        {
+            janela.SairDeVez();
+            Shutdown();
+        });
+        janela.Atualizada += (_, _) => bandeja.Atualizar(janela.Janela.Painel);
+        janela.FoiParaBandeja += (_, _) => bandeja.AvisarQueContinua();
+        instancia.AoPedirParaMostrar(() => Dispatcher.BeginInvoke(janela.Mostrar));
+
+        // Desligar ou sair do Windows fecha de verdade, sem ficar esperando a bandeja.
+        SessionEnding += (_, _) => janela.SairDeVez();
+        Exit += (_, _) =>
+        {
+            bandeja.Dispose();
+            instancia.Dispose();
+        };
+
+        if (!naBandeja)
+        {
+            janela.Show();
+        }
     }
 
     /// <summary>

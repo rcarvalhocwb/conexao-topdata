@@ -112,7 +112,8 @@ public partial class JanelaDoAssistente : Window
             File.Exists,
             Net35Instalado(),
             PastaDoWorker,
-            CaixaSimulacao.IsChecked == true);
+            CaixaSimulacao.IsChecked == true,
+            ControleDaOperacao.FirewallLiberado());
 
         ListaDoAmbiente.ItemsSource = itens.Select(i => i.Ok switch
         {
@@ -145,6 +146,14 @@ public partial class JanelaDoAssistente : Window
             TextoDoAmbiente.Text = $"Não foi possível copiar: {erro.Message}";
         }
 
+        VerificarAmbiente(this, e);
+    }
+
+    private void LiberarFirewall(object sender, RoutedEventArgs e)
+    {
+        TextoDoAmbiente.Text = ControleDaOperacao.LiberarFirewall(Path.Combine(PastaDoWorker, "Edge.Worker.X86.exe"))
+            ? "Firewall liberado para as catracas da rede local (entrada TCP)."
+            : "O Windows não aceitou criar a regra. Veja o RB-02 ou libere a porta das catracas no firewall à mão.";
         VerificarAmbiente(this, e);
     }
 

@@ -427,6 +427,58 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.StartsWith("Pedido a 2 catraca(s).", tela.Mensagem, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// O ícone perto do relógio avisa só quando algo muda: a catraca que para, o serviço que
+    /// some e o serviço que volta. Catraca parada há horas não gera aviso a cada 2 s.
+    /// </summary>
+    [Fact]
+    public async Task Bandeja_avisa_so_quando_uma_catraca_para_ou_o_servico_some_e_volta()
+    {
+        var resumo = new ResumoDaBandeja();
+        var painel = new PainelAoVivoViewModel(Cliente());
+        await painel.AtualizarAsync();
+
+        Assert.Null(resumo.Observar(painel));
+        Assert.StartsWith("Rayzer XAcess · catracas 1/2", ResumoDaBandeja.Dica(painel), StringComparison.Ordinal);
+        Assert.True(ResumoDaBandeja.Dica(painel).Length <= ResumoDaBandeja.LimiteDaDica);
+
+        // A catraca 1 cai.
+        new Operacao(_banco.Fabrica).GravarSituacao(
+        [
+            new SituacaoDoEquipamento("inner-1", 1, "setor-a", "Reconectar", false, "4.2.0", 3, null, null, DateTimeOffset.UtcNow),
+        ]);
+        await painel.AtualizarAsync();
+
+        var aviso = resumo.Observar(painel);
+        Assert.NotNull(aviso);
+        Assert.Equal("Catraca parou de atender", aviso.Titulo);
+        Assert.True(aviso.Problema);
+
+        // Continua caída: sem aviso repetido.
+        await painel.AtualizarAsync();
+        Assert.Null(resumo.Observar(painel));
+
+        // O serviço some, e depois volta.
+        var semServico = new PainelAoVivoViewModel(Cliente(TransporteLocal.EnderecoPadrao($"inexistente-{Guid.NewGuid():N}")));
+        await semServico.AtualizarAsync();
+        Assert.Equal("Serviço local sem resposta", resumo.Observar(semServico)!.Titulo);
+        Assert.StartsWith("Rayzer XAcess · serviço local: Sem resposta", ResumoDaBandeja.Dica(semServico), StringComparison.Ordinal);
+        Assert.Null(resumo.Observar(semServico));
+
+        var volta = resumo.Observar(painel);
+        Assert.Equal(("Serviço local de volta", false), (volta!.Titulo, volta.Problema));
+    }
+
+    [Fact]
+    public void Resultado_de_parar_ou_iniciar_a_operacao_diz_o_que_aconteceu()
+    {
+        Assert.StartsWith("Operação encerrada", ResumoDaBandeja.ResultadoDoControle(parar: true, 0), StringComparison.Ordinal);
+        Assert.StartsWith("Operação iniciada", ResumoDaBandeja.ResultadoDoControle(parar: false, 0), StringComparison.Ordinal);
+        Assert.StartsWith("Nada mudou", ResumoDaBandeja.ResultadoDoControle(parar: true, null), StringComparison.Ordinal);
+        Assert.Contains("não está instalado", ResumoDaBandeja.ResultadoDoControle(parar: false, 2), StringComparison.Ordinal);
+        Assert.StartsWith("Não foi possível encerrar", ResumoDaBandeja.ResultadoDoControle(parar: true, 1), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Servico_fora_do_ar_vira_mensagem_e_nunca_excecao()
     {

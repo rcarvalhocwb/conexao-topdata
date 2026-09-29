@@ -208,11 +208,16 @@ public static class AssistenteDeConfiguracao
     /// <param name="net35Instalado">Se o .NET Framework 3.5 está habilitado; nulo se não dá para saber.</param>
     /// <param name="pastaDoWorker">Pasta onde o worker foi instalado.</param>
     /// <param name="simulacao">Modo simulação: a EasyInner.dll não é necessária.</param>
+    /// <param name="firewallLiberado">
+    /// Se a regra de entrada das catracas existe (<see cref="FirewallDasCatracas"/>); nulo se
+    /// não deu para conferir.
+    /// </param>
     public static IReadOnlyList<ItemDoAmbiente> VerificarAmbiente(
         Func<string, bool> existeArquivo,
         bool? net35Instalado,
         string pastaDoWorker,
-        bool simulacao = false)
+        bool simulacao = false,
+        bool? firewallLiberado = null)
     {
         ArgumentNullException.ThrowIfNull(existeArquivo);
 
@@ -251,6 +256,17 @@ public static class AssistenteDeConfiguracao
                 ".NET 10",
                 true,
                 "Vem junto com o instalador; não é preciso instalar nada."),
+            new ItemDoAmbiente(
+                "Firewall do Windows (entrada das catracas)",
+                simulacao ? true : firewallLiberado,
+                simulacao
+                    ? "Não é necessário no modo simulação."
+                    : firewallLiberado switch
+                    {
+                        true => "Liberado para as catracas da rede local.",
+                        false => "Bloqueado: as catracas não vão conseguir conectar. Clique em \"Liberar no firewall\".",
+                        _ => "Não foi possível conferir. Clique em \"Liberar no firewall\" por garantia.",
+                    }),
         ];
     }
 

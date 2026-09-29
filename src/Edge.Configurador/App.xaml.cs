@@ -13,6 +13,14 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
+
+        // Pedido do painel (parar/iniciar a operação, liberar o firewall): faz e sai, sem janela.
+        if (ControleDaOperacao.Executar(e.Args) is { } codigo)
+        {
+            Shutdown(codigo);
+            return;
+        }
+
         var indice = Array.IndexOf(e.Args, ArgumentoDeAutoteste);
 
         if (indice >= 0)

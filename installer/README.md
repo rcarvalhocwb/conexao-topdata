@@ -46,7 +46,7 @@ Sendo direto, porque a diferença decide se vale agendar bancada:
 | Componente | Sobe? | O que acontece |
 |---|---|---|
 | `Edge.Supervisor` | **Sim** | Lê `workers.json`, sobe os workers com a base local, supervisiona com reinício e quarentena, sincroniza com a nuvem e atende o painel pelo IPC (ADR-0024) |
-| `Desktop.App` | **Sim** | Painel do evento com oito telas, lendo o serviço |
+| `Desktop.App` | **Sim** | Painel do evento, lendo o serviço |
 | `Edge.Worker.X86` | **Tenta** | Confere os pré-requisitos e chama a DLL de verdade. É aqui que o ensaio **HIL-STACK-01** responde: código 0 se a porta abriu, 2 se a DLL não carregou ou devolveu GPF |
 
 O caminho painel → serviço → supervisão funciona ponta a ponta, e desde 24/09 o worker tem
@@ -85,7 +85,17 @@ Execute como administrador. Ele:
 - instala o serviço, o painel, o programa das catracas e o assistente em
   `C:\Program Files\Rayzer\XAcess`, cada um com o seu .NET — nada para instalar antes;
 - registra o serviço **ConexaoTopdataEdge** com partida **automática** (não o inicia
-  durante a instalação: quem inicia é o assistente, depois de gravar a configuração);
+  durante a instalação: quem inicia é o assistente, depois de gravar a configuração). Se o
+  serviço cair, o Windows o sobe de novo em 5 s (recuperação configurada pelo instalador);
+- cria no **Firewall do Windows** a regra de entrada **"Rayzer XAcess — catracas (entrada
+  TCP)"** para o programa das catracas: vale para qualquer porta que o assistente escolher,
+  mas **só para a sub-rede local**, nunca para a internet. Catracas numa VLAN roteada, em
+  outra sub-rede, pedem ampliar o endereço remoto da regra (RB-02). A regra sai na
+  desinstalação;
+- põe o **painel perto do relógio** (bandeja do sistema) quando alguém entra no Windows —
+  `INICIAR_NA_BANDEJA=0` na linha de comando do MSI desliga;
+- enquanto o serviço roda, o Windows **não suspende** o computador por inatividade (a tela
+  pode apagar; o plano de energia não é alterado);
 - cria no menu Iniciar o **Painel do evento**, o **Assistente de configuração** e o
   **Modelo de planilha de cartões** (`docs/26`);
 - ao terminar, o botão **Abrir o painel** abre o painel. Enquanto a instalação não estiver
@@ -131,6 +141,26 @@ Onde fica cada coisa, em `%ProgramData%\ConexaoTopdata`:
 Reabrir o assistente traz a configuração atual preenchida; o segredo nunca é mostrado, e
 deixar o campo em branco mantém o que está no cofre.
 
+### Segundo plano e o ícone perto do relógio
+
+As catracas são atendidas pelo **serviço**, não pelo painel. O serviço sobe com o Windows,
+mesmo sem ninguém entrar, e continua com o painel fechado.
+
+- **Fechar o painel** (o X) só o esconde: ele fica no ícone perto do relógio. Na primeira
+  vez, um aviso explica que as catracas continuam atendendo.
+- **Ícone:** passar o mouse mostra "catracas 3/4 · serviço operacional". Um aviso do Windows
+  aparece quando uma catraca para de atender, e quando o serviço some ou volta. Clique
+  duas vezes para abrir o painel.
+- **Menu do ícone (botão direito):**
+  - **Abrir o painel**;
+  - **Gerenciar catraca**;
+  - **Iniciar a operação**;
+  - **Encerrar a operação (parar as catracas)…**: pede confirmação e a permissão de
+    administrador, e para o serviço — as catracas deixam de ser atendidas;
+  - **Fechar o painel (as catracas continuam)**.
+- Abrir o painel pelo menu Iniciar com ele já na bandeja só traz a janela: um painel por
+  sessão do Windows.
+
 ### Usar — Painel do evento
 
 Abre pelo menu Iniciar, sem senha: o token é lido de `%ProgramData%`. Recém-instalado e
@@ -145,10 +175,16 @@ Numa máquina Windows, com o serviço rodando:
 & "C:\Program Files\Rayzer\XAcess\Painel\Desktop.App.exe" --capturar capturas
 ```
 
-Fotografa as oito telas do painel com os dados reais do serviço e grava
+Fotografa todas as telas do painel com os dados reais do serviço e grava
 `capturas\relatorio.txt`. Sem serviço, as telas saem com "sem resposta do serviço local".
-Renderiza o **conteúdo** da janela, sem a barra de título, e **não funciona na integração
-contínua**: o runner não tem sessão gráfica.
+Renderiza o **conteúdo** da janela, sem a barra de título. O CI roda o mesmo modo no job
+do instalador e fotografa também a primeira tela do Setup (`00-setup.png`).
+
+## A arte do Setup
+
+O Setup tem tema próprio (`installer/wix/tema-rayzer.xml`): a arte da marca
+(`marca/arte-rayzer-x.jpg`) de fundo, com os textos e botões numa faixa escura à direita.
+O fundo é gerado por `python tools/gerar-fundo-do-setup.py`: troque a arte e rode de novo.
 
 ## Antes de encostar em hardware
 
