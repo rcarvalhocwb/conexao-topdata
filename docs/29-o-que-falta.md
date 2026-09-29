@@ -38,12 +38,21 @@
 | E11 | Renomear o repositório `conexao-topdata` | você | só organização |
 | E12 | Prints do sistema de nota fiscal (referência visual pedida no início) | você | já superado pelo brand board, confirmar se ainda vale |
 
+## 2A. Urgente na nuvem (segurança e LGPD) — docs/22 §9.2
+
+Pela descrição recebida em 29/09, `authorizations` (com o nome do titular e possivelmente
+o CPF) pode ser lida, e `access_events` pode ser gravada, com a chave pública `anon`.
+Qualquer pessoa leria os titulares e forjaria acessos. A correção é do dono do painel:
+1. tirar as políticas de `anon`;
+2. servir a catraca só pelas funções, com segredo por equipamento;
+3. se precisar de leitura direta, usar uma view sem dado pessoal.
+
 ## 3. Depende da bancada (uma TopFit 4 + PC + SDK)
 
 Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado pelo CI.
 
 1. **HIL-STACK-01 — antes de tudo:** o worker .NET 10 x86 carrega a `EasyInner.dll`? Se não carregar, o worker volta para .NET Framework 4.8 atrás do mesmo IPC (ADR-0016).
-2. Tabela de leituras 1–12 do docs/21: origem, código e número de caracteres que a catraca entrega. As linhas 8–12 decidem os zeros à esquerda dos cartões reais.
+2. **O maior risco físico:** o painel guarda cartões de 12 e 14 dígitos, e um leitor Mifare "ABA 10 dígitos" entrega no máximo 10 (docs/22 §9.4). Tabela de leituras 1–12 do docs/21: origem, código e número de caracteres que a catraca entrega. As linhas 8–12 decidem os zeros à esquerda dos cartões reais.
 3. Qual `TipoLeitor` o QR aceita (5 ou 8) e se passam letras e 20 caracteres.
 4. Recolhimento pela urna: relé 2 → origem 7 → liberar → origem 6; qual variante de `LiberarCatracaEntrada*`; capacidade da urna.
 5. A TopFit 4 distingue o sentido do giro? Sem isso não há lotação, só entradas (docs/25 §6).

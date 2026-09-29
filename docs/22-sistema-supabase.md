@@ -415,3 +415,84 @@ A chave anônima ser pública é normal no Supabase; o problema são as permiss�
 ela. **Não verificado no banco em produção** — permissões podem ter sido mudadas pelo
 painel do Supabase sem migration. A correção é tirar essas permissões do papel `anon` e
 fazer a borda falar só pelas funções, com segredo.
+
+## 9. A descrição do sistema e os backups de cartões (29/09)
+
+Recebidos em 29/09: uma descrição de como o middleware atual conversa com a nuvem e três
+CSVs exportados do painel:
+- `autorizacoes-catraca-backup`;
+- `cartoes-autorizados-backup`;
+- `cartoes-rfid-backup`.
+
+Os CSVs têm o nome do titular em 2.240 linhas, então ficam **fora do repositório**. Abaixo
+só há contagens.
+
+### 9.1 Duas maneiras de falar com a nuvem
+
+A descrição mostra um middleware que fala **direto com as tabelas**:
+- `GET /rest/v1/authorizations`;
+- a view `offline_cards` a cada 5 minutos;
+- `POST /rest/v1/access_events`.
+
+Ele usa a `SUPABASE_ANON_KEY`, com políticas RLS que liberam leitura e escrita para essa
+chave. O que este projeto consome são as **funções** `middleware-sync-cards` e
+`middleware-sync-events` (§8). As duas coisas convivem no mesmo projeto.
+
+**Este projeto não vai usar o acesso direto às tabelas.** A regra do projeto é nunca expor
+o banco da nuvem à rede das catracas (docs/03, ADR-0023).
+
+### 9.2 Segurança — mais urgente que o §8.1
+
+A chave `anon` não é segredo: ela vai dentro do site do painel e qualquer navegador a
+enxerga. Se as políticas forem as descritas ("Middleware can read authorizations" e
+"Middleware can insert access events" liberadas para `anon`), qualquer pessoa, sem login,
+pode:
+
+- **ler os 2.243 cartões com o nome do titular** e, se as colunas descritas existirem na
+  tabela (`customer_cpf`, `metadata` com documento), **o CPF**. É um vazamento de dado
+  pessoal (LGPD);
+- **gravar acessos falsos**, que os gatilhos transformam em validações e em ingresso
+  "usado": estraga o relatório e pode barrar quem pagou.
+
+**Não foi testado contra o servidor real**, de propósito.
+
+A correção, do lado da nuvem:
+1. Tirar as políticas de `anon` de `authorizations` e de `access_events`.
+2. Servir a catraca só pelas funções, com segredo por equipamento (§8.1).
+3. Se uma leitura direta for indispensável, expor uma view **sem dado pessoal** (número,
+   tipo, ativo, validade).
+
+### 9.3 O que os cartões mostram
+
+| Achado | Número | O que significa |
+|---|---|---|
+| Cartões | 2.243, iguais nos três arquivos (mesmo número, mesmo tipo) | Base consistente |
+| Tipos (autorizações) | 1.038 inteira, 603 meia, 602 social | No inventário RFID, 5 aparecem como "AUTO": são os 6 cartões de teste abaixo |
+| **12 dígitos** | 1.832 (inteira, meia e 207 social) | O formato principal |
+| **14 dígitos** | 395, todos social; **156 começam com zero** | Zero à esquerda é real aqui: o número é texto do começo ao fim (ADR-0008) |
+| 11 dígitos | 10 (inteira) | — |
+| 6 dígitos | 6, criados em 17/11/2025, antes da carga | Cartões de teste; não são formato de leitura |
+| Só dígitos | 100% | — |
+| Validade (`valido_de`/`valido_ate`) | vazia em todos | Se a view `offline_cards` filtrar `valid_from <= now()` sem tratar vazio, ela devolve **zero** cartões. `A_CONFIRMAR` no SQL da view |
+| Usos (`total_usos`, `vezes_usado`) | 0 em todos | A nuvem não conta usos (§8.2.3). Quem conta é a borda |
+| Liberados à mão depois de negados | 14 (social, 12 dígitos) | Foram negados por não estarem cadastrados, não por formato |
+| Inativos | 1 | Cancelamento chega pela sincronização incremental |
+
+### 9.4 O que muda para a catraca
+
+1. **Perfil do leitor.** O serviço usa `raw` por padrão, e os 12 e 14 dígitos passam
+   intactos. O assistente também oferece "mifare-catraca4", de **10 dígitos**. Com ele,
+   os 2.243 cartões seriam recusados na sincronização (teste
+   `Formatos_reais_do_cadastro_passam_intactos_no_perfil_raw_e_nao_no_de_10_digitos`).
+   Não escolha esse perfil antes da bancada.
+2. **O maior risco que resta é físico.** Um leitor Mifare "ABA 10 dígitos" entrega no
+   máximo 10 dígitos, mas o painel guarda números de 12 e 14. Se o número impresso ou
+   cadastrado não for o que a catraca lê, **nenhum cartão casa**. É exatamente o que as
+   linhas 8 a 12 do docs/21 medem, com cartões reais do estoque. Se não casar, é preciso
+   uma tabela de correspondência (número lido ↔ número cadastrado), e ela só se monta na
+   bancada.
+3. **Mais de 1.000 cartões.** A resposta foi corrigir o exportador. Falta confirmar que
+   `middleware-sync-cards` também pagina: 2.243 cartões passam do limite padrão. A borda
+   continua avisando e não avança o cursor se receber 1.000 ou mais.
+4. **Contingência.** Estes CSVs podem virar a carga inicial sem internet. Falta o
+   importador desse formato, que entra na fase 3 (cartões) junto com o modelo do docs/26.

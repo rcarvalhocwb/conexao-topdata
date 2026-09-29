@@ -66,6 +66,33 @@ public sealed class PainelTests
         Assert.Equal(FonteDeCartoesDoPainel.SemLimiteDeUsos, item.UsosMaximos);
     }
 
+    /// <summary>
+    /// Os formatos do cadastro real (backup de 29/09, docs/22 §9): 12 dígitos (inteira e meia),
+    /// 14 (social, 156 deles começando com zero) e 11. Números fictícios aqui.
+    /// Com o perfil "raw", o padrão do serviço, todos passam intactos. Com o perfil Mifare
+    /// de 10 dígitos, todos seriam recusados: é o que acontece se alguém escolher esse perfil
+    /// antes de a bancada (docs/21, linhas 8–12) mostrar o que a catraca entrega.
+    /// </summary>
+    [Fact]
+    public async Task Formatos_reais_do_cadastro_passam_intactos_no_perfil_raw_e_nao_no_de_10_digitos()
+    {
+        var cartoes = """
+            {"card_number":"100000000012","active":true,"admission_type":"inteira"},
+            {"card_number":"00000000000014","active":true,"admission_type":"social"},
+            {"card_number":"20000000000014","active":true,"admission_type":"social"},
+            {"card_number":"10000000011","active":true,"admission_type":"inteira"}
+            """;
+
+        var raw = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, Resposta(cartoes))), "bilheteria-local", "borda-01", CredentialNormalization.Raw);
+        var lidos = (await raw.LerAsync(null, CancellationToken.None)).Itens;
+        Assert.Equal(["100000000012", "00000000000014", "20000000000014", "10000000011"], lidos.Select(i => i.QrNormalizado));
+
+        var (dezDigitos, recusas) = Fonte(new Servidor(HttpStatusCode.OK, Resposta(cartoes)));
+        Assert.Empty((await dezDigitos.LerAsync(null, CancellationToken.None)).Itens);
+        Assert.Equal(4, recusas.Count);
+        Assert.All(recusas, m => Assert.DoesNotContain("00000000000014", m, StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Validade_sem_fuso_e_recusada()
     {
