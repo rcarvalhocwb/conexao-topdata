@@ -52,7 +52,9 @@ public partial class Gemeo : UserControl
     private readonly PerspectiveCamera _camera = new() { FieldOfView = 34, NearPlaneDistance = 20, FarPlaneDistance = 40000 };
 
     private GemeoDigitalViewModel? _vm;
-    private CancellationTokenSource? _aoVivo;
+    // Para o fluxo ao vivo. Guardado como ação, e não como o CancellationTokenSource: ele
+    // vive e morre com a tela aberta (Loaded/Unloaded), não com o objeto.
+    private Action? _pararAoVivo;
     private GeometryModel3D? _telaDoDisplay;
     private GeometryModel3D? _setaDeLiberado;
     private GeometryModel3D? _xisDeBloqueado;
@@ -124,19 +126,23 @@ public partial class Gemeo : UserControl
     {
         CompositionTarget.Rendering += AoDesenhar;
 
-        if (_vm is { } vm && _aoVivo is null)
+        if (_vm is { } vm && _pararAoVivo is null)
         {
-            _aoVivo = new CancellationTokenSource();
-            _ = vm.AcompanharAsync(acao => Dispatcher.BeginInvoke(acao), _aoVivo.Token);
+            var cancelamento = new CancellationTokenSource();
+            _ = vm.AcompanharAsync(acao => Dispatcher.BeginInvoke(acao), cancelamento.Token);
+            _pararAoVivo = () =>
+            {
+                cancelamento.Cancel();
+                cancelamento.Dispose();
+            };
         }
     }
 
     private void Fechar()
     {
         CompositionTarget.Rendering -= AoDesenhar;
-        _aoVivo?.Cancel();
-        _aoVivo?.Dispose();
-        _aoVivo = null;
+        _pararAoVivo?.Invoke();
+        _pararAoVivo = null;
     }
 
     private void AoMudarNaViewModel(object? sender, PropertyChangedEventArgs e)
@@ -467,7 +473,7 @@ public partial class Gemeo : UserControl
         _telaDoDisplay.Material = grupo;
     }
 
-    private BitmapSource RenderizarDisplay(string linha1, string linha2, Color fundo, Color tinta)
+    private RenderTargetBitmap RenderizarDisplay(string linha1, string linha2, Color fundo, Color tinta)
     {
         const int largura = 360, altura = 68;
         var dpi = VisualTreeHelper.GetDpi(this);
