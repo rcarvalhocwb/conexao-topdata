@@ -85,9 +85,16 @@ internal static class CapturaDeTela
                 await janela.AtualizarAsync().ConfigureAwait(true);
                 await tela.AtualizarAsync().ConfigureAwait(true);
 
-                var caminho = Path.Combine(pasta, nome + ".png");
-                await GravarAsync(caminho, janela).ConfigureAwait(true);
-                gravados.Add(caminho);
+                if (tela is GemeoDigitalViewModel gemeo)
+                {
+                    gravados.AddRange(await GravarGemeoAsync(pasta, nome, janela, gemeo).ConfigureAwait(true));
+                }
+                else
+                {
+                    var caminho = Path.Combine(pasta, nome + ".png");
+                    await GravarAsync(caminho, janela).ConfigureAwait(true);
+                    gravados.Add(caminho);
+                }
             }
             catch (Exception erro) when (erro is not OutOfMemoryException)
             {
@@ -101,6 +108,120 @@ internal static class CapturaDeTela
         File.WriteAllText(Path.Combine(pasta, "relatorio.txt"), Resumir(gravados, falhas));
         return gravados;
     }
+
+    /// <summary>
+    /// O gêmeo digital é fotografado na janela aberta de verdade, não pelo
+    /// <see cref="RenderTargetBitmap"/>: renderizar o Viewport3D fora de uma janela derrubava
+    /// o processo com estouro de pilha (0xC00000FD) no CI, sem exceção que desse para pegar.
+    /// Na janela aberta o 3D é desenhado pelo caminho normal, e a foto é a que o operador vê,
+    /// com o laço de animação rodando.
+    /// </summary>
+    private static async Task<IReadOnlyList<string>> GravarGemeoAsync(string pasta, string nome, JanelaViewModel vm, GemeoDigitalViewModel gemeo)
+    {
+        var gravados = new List<string>();
+        var janela = new JanelaPrincipal(vm)
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = 0,
+            Top = 0,
+            Width = Largura,
+            Height = Altura,
+            ShowInTaskbar = false,
+            Topmost = true,
+        };
+
+        try
+        {
+            janela.Show();
+
+            // 1. Como a tela abre: a catraca livre, a câmera na vista inicial.
+            await EsperarAsync(janela, TimeSpan.FromSeconds(3)).ConfigureAwait(true);
+            gravados.Add(FotografarJanela(janela, Path.Combine(pasta, nome + ".png")));
+
+            // 2. No meio de um cenário: o QR lido, sinal verde, braço solto.
+            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr);
+            await EsperarAsync(janela, TimeSpan.FromSeconds(1.5)).ConfigureAwait(true);
+            await gemeo.RodarRoteiro.ExecutarAsync(Desktop.ViewModels.GemeoDigital.Roteiros.QrValido).ConfigureAwait(true);
+            await EsperarAsync(janela, TimeSpan.FromSeconds(2.2)).ConfigureAwait(true);
+            gravados.Add(FotografarJanela(janela, Path.Combine(pasta, nome + "-cenario.png")));
+
+            // 3. As peças separadas, com a ficha dos braços.
+            await EsperarAsync(janela, TimeSpan.FromSeconds(3)).ConfigureAwait(true);
+            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+            gemeo.PecasSeparadas = true;
+            await gemeo.MudarVista.ExecutarAsync("Inicial").ConfigureAwait(true);
+            await EsperarAsync(janela, TimeSpan.FromSeconds(2.5)).ConfigureAwait(true);
+            gravados.Add(FotografarJanela(janela, Path.Combine(pasta, nome + "-separadas.png")));
+        }
+        finally
+        {
+            gemeo.PecasSeparadas = false;
+            janela.Close();
+        }
+
+        return gravados;
+    }
+
+    private static async Task EsperarAsync(Window janela, TimeSpan quanto)
+    {
+        await Task.Delay(quanto).ConfigureAwait(true);
+        await janela.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>
+    /// Copia a janela como o Windows a desenhou (PrintWindow com PW_RENDERFULLCONTENT, o mesmo
+    /// recurso da foto do Setup no CI): funciona mesmo com parte da janela fora do monitor.
+    /// </summary>
+    private static string FotografarJanela(Window janela, string caminho)
+    {
+        var alca = new System.Windows.Interop.WindowInteropHelper(janela).Handle;
+        if (!GetWindowRect(alca, out var r))
+        {
+            throw new InvalidOperationException("Não foi possível ler o tamanho da janela para a foto.");
+        }
+
+        using var foto = new System.Drawing.Bitmap(r.Right - r.Left, r.Bottom - r.Top);
+        using (var g = System.Drawing.Graphics.FromImage(foto))
+        {
+            var dc = g.GetHdc();
+            try
+            {
+                if (!PrintWindow(alca, dc, 2))
+                {
+                    throw new InvalidOperationException("O Windows recusou a foto da janela (PrintWindow).");
+                }
+            }
+            finally
+            {
+                g.ReleaseHdc(dc);
+            }
+        }
+
+        foto.Save(caminho, System.Drawing.Imaging.ImageFormat.Png);
+        return caminho;
+    }
+
+    // Preenchida pelo Windows em GetWindowRect: o compilador não vê a atribuição.
+#pragma warning disable CS0649
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct Retangulo
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+#pragma warning restore CS0649
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr janela, out Retangulo retangulo);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool PrintWindow(IntPtr janela, IntPtr dc, uint opcoes);
 
     private static async Task GravarAsync(string caminho, JanelaViewModel vm)
     {
