@@ -107,7 +107,7 @@ public sealed class DevicePump
 
         return dispositivo.Maquina.Current switch
         {
-            DeviceState.Discovering or DeviceState.Reconectar => Conectar(dispositivo, agora),
+            DeviceState.Discovering or DeviceState.Reconectar or DeviceState.Degradado => Conectar(dispositivo, agora),
             DeviceState.Conectar => Conectar(dispositivo, agora),
             DeviceState.LendoIdentidade => LerIdentidade(dispositivo, agora),
             DeviceState.VerificandoCompatibilidade => VerificarCompatibilidade(dispositivo, agora),
@@ -128,7 +128,11 @@ public sealed class DevicePump
 
     private string Conectar(DeviceSlot d, DateTimeOffset agora)
     {
-        if (d.Maquina.Current is DeviceState.Discovering)
+        // De Discovering, Reconectar ou Degradado, o caminho para tentar de novo passa por
+        // Conectar. Antes, só Discovering disparava este gatilho: a catraca que caía ficava
+        // em Reconectar para sempre, mesmo com a conexão de volta (teste
+        // Catraca_que_cai_volta_a_operar_quando_a_conexao_volta).
+        if (d.Maquina.Current is DeviceState.Discovering or DeviceState.Reconectar or DeviceState.Degradado)
         {
             Disparar(d, DeviceTrigger.EquipamentoApareceu, agora);
         }

@@ -87,6 +87,39 @@ public sealed class WorkerTests
     }
 
     /// <summary>
+    /// A catraca que cai (cabo, energia) tem de voltar a atender sozinha quando a conexão
+    /// volta: é o caso mais comum de um evento, e nenhum teste o cobria.
+    /// </summary>
+    [Fact]
+    public void Catraca_que_cai_volta_a_operar_quando_a_conexao_volta()
+    {
+        var relogio = new RelogioDeTeste(Inicio);
+        var (sim, laco, _) = Montar(relogio: () => relogio.Agora);
+        using var _sim = sim;
+        for (var i = 0; i < 12; i++)
+        {
+            laco.UmaVolta();
+        }
+
+        Assert.Equal(DeviceState.Polling, laco.Dispositivos[0].Maquina.Current);
+
+        sim.Dispositivo(1).Desconectado = true;
+        sim.Dispositivo(1).RetornoForcado = 1;
+        laco.UmaVolta();
+        Assert.Equal(DeviceState.Reconectar, laco.Dispositivos[0].Maquina.Current);
+
+        sim.Dispositivo(1).Desconectado = false;
+        sim.Dispositivo(1).RetornoForcado = null;
+        for (var i = 0; i < 20; i++)
+        {
+            relogio.Avancar(TimeSpan.FromMinutes(1));
+            laco.UmaVolta();
+        }
+
+        Assert.Equal(DeviceState.Polling, laco.Dispositivos[0].Maquina.Current);
+    }
+
+    /// <summary>
     /// ADR-0010: nada é configurado antes de o firmware constar da matriz.
     /// </summary>
     [Fact]
