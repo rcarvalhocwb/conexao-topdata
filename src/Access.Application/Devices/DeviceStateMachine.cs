@@ -204,6 +204,12 @@ public sealed class DeviceStateMachine
         Add(DeviceState.Polling, DeviceTrigger.CairParaListaLocal, DeviceState.OfflineAutonomo);
         Add(DeviceState.Polling, DeviceTrigger.EntrarEmManutencao, DeviceState.Manutencao);
 
+        // Comandos do operador (fase 4b). Só de Polling: com alguém no meio de uma
+        // passagem, a vez é da passagem. A liberação manual segue o mesmo caminho da
+        // liberação por ingresso — liberar, monitorar o giro, reabilitar o leitor.
+        Add(DeviceState.Polling, DeviceTrigger.LiberacaoManualSolicitada, DeviceState.LiberarCatraca);
+        Add(DeviceState.Polling, DeviceTrigger.ReconexaoSolicitada, DeviceState.Reconectar);
+
         Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoPermitido, DeviceState.LiberarCatraca);
         Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoNegado, DeviceState.EnviarMsgAcessoNegado);
         Add(DeviceState.ValidarAcesso, DeviceTrigger.TempoEsgotado, DeviceState.LiberarCatraca);

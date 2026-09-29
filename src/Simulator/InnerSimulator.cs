@@ -300,7 +300,16 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
                 nameof(mensagem));
         }
 
-        return ComDispositivo(inner, d => d.Desconectado ? 1 : 0);
+        return ComDispositivo(inner, d =>
+        {
+            if (d.Desconectado)
+            {
+                return 1;
+            }
+
+            d.MensagensTemporarias.Add((mensagem, duracao));
+            return 0;
+        });
     }
 
     public void Dispose()

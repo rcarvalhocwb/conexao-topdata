@@ -16,13 +16,19 @@ namespace Access.Infrastructure.SQLite;
 /// Conector da nuvem que recebe as tentativas. Vazio desliga o espelho.
 /// </param>
 /// <param name="EsperaPeloGiroSegundos">Quanto a liberação espera o giro antes de subir (ADR-0023).</param>
+/// <param name="AcertarRelogioAoDivergir">
+/// Acerta o relógio da catraca sozinho, em operação, quando a conferência horária achar
+/// divergência. Desligado: <c>A_CONFIRMAR_COM_TOPDATA</c> até o passo 6A do docs/21. Não
+/// aparece no painel; é chave técnica (<c>relogio.acertar_ao_divergir</c>).
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
     byte TempoDeAcionamento = 5,
     string MensagemPadrao = "Aproxime o ingresso",
     string ConectorDoEspelho = "",
-    int EsperaPeloGiroSegundos = 10)
+    int EsperaPeloGiroSegundos = 10,
+    bool AcertarRelogioAoDivergir = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -68,6 +74,7 @@ public sealed class ConfiguracoesDaBorda
     public const string ChaveMensagemPadrao = "catraca.mensagem";
     public const string ChaveConectorDoEspelho = "nuvem.conector_tentativas";
     public const string ChaveEsperaPeloGiro = "nuvem.espera_giro_segundos";
+    public const string ChaveAcertarRelogioAoDivergir = "relogio.acertar_ao_divergir";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -141,7 +148,8 @@ public sealed class ConfiguracoesDaBorda
             TempoDeAcionamento: Byte(ChaveTempoDeAcionamento, padrao.TempoDeAcionamento),
             MensagemPadrao: valores.GetValueOrDefault(ChaveMensagemPadrao, padrao.MensagemPadrao),
             ConectorDoEspelho: valores.GetValueOrDefault(ChaveConectorDoEspelho, padrao.ConectorDoEspelho),
-            EsperaPeloGiroSegundos: Inteiro(ChaveEsperaPeloGiro, padrao.EsperaPeloGiroSegundos));
+            EsperaPeloGiroSegundos: Inteiro(ChaveEsperaPeloGiro, padrao.EsperaPeloGiroSegundos),
+            AcertarRelogioAoDivergir: Logico(ChaveAcertarRelogioAoDivergir, padrao.AcertarRelogioAoDivergir));
 
         return (configuracao, ilegiveis);
     }
@@ -166,6 +174,7 @@ public sealed class ConfiguracoesDaBorda
             [ChaveMensagemPadrao] = configuracao.MensagemPadrao,
             [ChaveConectorDoEspelho] = configuracao.ConectorDoEspelho,
             [ChaveEsperaPeloGiro] = configuracao.EsperaPeloGiroSegundos.ToString(CultureInfo.InvariantCulture),
+            [ChaveAcertarRelogioAoDivergir] = configuracao.AcertarRelogioAoDivergir ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();

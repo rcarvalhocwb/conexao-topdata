@@ -36,6 +36,11 @@ service EdgeControl {
 
   // Modo simulação: "passa" um código numa catraca simulada. Recusado fora da simulação.
   rpc SimularLeitura(SimularLeituraRequest) returns (SimularLeituraResponse);
+
+  // Gerenciar catraca (fase 4b). Cada pedido vira auditoria na base local
+  // (operator_command) e é executado pelo worker quando a catraca estiver livre.
+  rpc EnviarComando(EnviarComandoRequest) returns (EnviarComandoResponse);
+  rpc ListarComandos(ListarComandosRequest) returns (ListarComandosResponse);
 }
 
 message ObterEstadoRequest {}
@@ -308,4 +313,66 @@ message SimularLeituraRequest {
 message SimularLeituraResponse {
   bool aceita = 1;
   string mensagem = 2;
+}
+
+// Só o que usa função documentada e já exercitada. Bip, relés, urna e sentido ficam de
+// fora até a bancada (docs/32).
+enum TipoDeComando {
+  TIPO_DE_COMANDO_NAO_ESPECIFICADO = 0;
+  TIPO_DE_COMANDO_ACERTAR_RELOGIO = 1;
+  TIPO_DE_COMANDO_MENSAGEM_TEMPORARIA = 2;
+  TIPO_DE_COMANDO_LIBERACAO_MANUAL = 3;
+  TIPO_DE_COMANDO_REINICIAR_CONEXAO = 4;
+  TIPO_DE_COMANDO_APLICAR_CONFIGURACAO = 5;
+}
+
+enum SituacaoDoComando {
+  SITUACAO_DO_COMANDO_NAO_ESPECIFICADO = 0;
+  SITUACAO_DO_COMANDO_PENDENTE = 1;
+  SITUACAO_DO_COMANDO_RECEBIDO = 2;
+  SITUACAO_DO_COMANDO_CONCLUIDO = 3;
+  SITUACAO_DO_COMANDO_FALHOU = 4;
+  SITUACAO_DO_COMANDO_EXPIRADO = 5;
+}
+
+message EnviarComandoRequest {
+  // 0 só em APLICAR_CONFIGURACAO: vale para todas as catracas cadastradas.
+  int32 inner = 1;
+  TipoDeComando tipo = 2;
+  // Nome de quem pede. Não há login: é o que a pessoa digitou.
+  string operador = 3;
+  // Mensagem temporária (até 32 caracteres) e quanto tempo fica no display (1 a 60 s).
+  string texto = 4;
+  int32 duracao_segundos = 5;
+  // Obrigatório na liberação manual (5 a 200 caracteres).
+  string motivo = 6;
+}
+
+message EnviarComandoResponse {
+  bool aceito = 1;
+  repeated string problemas = 2;
+  // Um por catraca: APLICAR_CONFIGURACAO com inner 0 gera um pedido para cada.
+  repeated string ids = 3;
+}
+
+message ListarComandosRequest {
+  int32 inner = 1;   // 0 = todas as catracas
+  int32 limite = 2;  // 0 = 100
+}
+
+message ComandoRegistrado {
+  string id = 1;
+  int32 inner = 2;
+  TipoDeComando tipo = 3;
+  string operador = 4;
+  string texto = 5;
+  string motivo = 6;
+  google.protobuf.Timestamp pedido_em = 7;
+  SituacaoDoComando situacao = 8;
+  google.protobuf.Timestamp concluido_em = 9;
+  string resultado = 10;
+}
+
+message ListarComandosResponse {
+  repeated ComandoRegistrado comandos = 1;
 }

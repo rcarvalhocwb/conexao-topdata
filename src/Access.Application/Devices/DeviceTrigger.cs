@@ -95,4 +95,10 @@ public enum DeviceTrigger
 
     /// <summary>Perdeu contato com a borda: passa a operar pela lista local (T2).</summary>
     CairParaListaLocal,
+
+    /// <summary>O operador pediu, pelo painel, um giro sem ingresso (com motivo).</summary>
+    LiberacaoManualSolicitada,
+
+    /// <summary>O operador pediu para refazer a conexão (ou aplicar a configuração nova).</summary>
+    ReconexaoSolicitada,
 }

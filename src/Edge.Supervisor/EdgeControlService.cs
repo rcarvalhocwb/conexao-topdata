@@ -37,6 +37,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly bool _semConfiguracao;
     private readonly IReadOnlyDictionary<int, string> _nomes;
     private readonly Access.Infrastructure.SQLite.LeiturasSimuladas? _simulacao;
+    private readonly Access.Infrastructure.SQLite.FilaDeComandosSqlite? _comandos;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -52,6 +53,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="semConfiguracao">O serviço subiu sem arquivo de configuração.</param>
     /// <param name="nomesDasCatracas">Nome de cada catraca no painel.</param>
     /// <param name="simulacao">Fila de leituras simuladas; presente só no modo simulação.</param>
+    /// <param name="comandos">Fila de comandos por catraca; sem ela, "Gerenciar" responde que não há base.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -63,7 +65,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         string? pastaDeDados = null,
         bool semConfiguracao = false,
         IReadOnlyDictionary<int, string>? nomesDasCatracas = null,
-        Access.Infrastructure.SQLite.LeiturasSimuladas? simulacao = null)
+        Access.Infrastructure.SQLite.LeiturasSimuladas? simulacao = null,
+        Access.Infrastructure.SQLite.FilaDeComandosSqlite? comandos = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -77,6 +80,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         _semConfiguracao = semConfiguracao;
         _nomes = nomesDasCatracas ?? new Dictionary<int, string>();
         _simulacao = simulacao;
+        _comandos = comandos;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -480,6 +484,153 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         _simulacao.Pedir(request.Inner, request.Codigo, request.NaUrna, request.Girar, _relogio());
         return Task.FromResult(new SimularLeituraResponse { Aceita = true, Mensagem = "Leitura enviada à catraca simulada." });
     }
+
+    public override Task<EnviarComandoResponse> EnviarComando(EnviarComandoRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var resposta = new EnviarComandoResponse();
+
+        if (_comandos is null)
+        {
+            resposta.Problemas.Add("O serviço não tem base local configurada.");
+            return Task.FromResult(resposta);
+        }
+
+        if (Tipo(request.Tipo) is not { } tipo)
+        {
+            resposta.Problemas.Add("Comando desconhecido.");
+            return Task.FromResult(resposta);
+        }
+
+        var cadastradas = _supervisor.Workers.SelectMany(w => w.Inners).Distinct().Order().ToList();
+        List<int> alvos;
+
+        if (request.Inner == 0 && tipo is Access.Application.Devices.TipoDeComando.AplicarConfiguracao)
+        {
+            alvos = cadastradas;
+        }
+        else if (cadastradas.Contains(request.Inner))
+        {
+            alvos = [request.Inner];
+        }
+        else
+        {
+            resposta.Problemas.Add($"A catraca {request.Inner} não está cadastrada.");
+            return Task.FromResult(resposta);
+        }
+
+        var agora = _relogio();
+        var pedidos = new List<Access.Application.Devices.ComandoDeCatraca>();
+
+        foreach (var inner in alvos)
+        {
+            var (comando, problemas) = Access.Application.Devices.ComandoDeCatraca.Criar(
+                inner,
+                tipo,
+                request.Operador,
+                agora,
+                request.Texto,
+                request.DuracaoSegundos == 0 ? 10 : request.DuracaoSegundos,
+                request.Motivo);
+
+            if (comando is null)
+            {
+                resposta.Problemas.AddRange(problemas);
+                return Task.FromResult(resposta);
+            }
+
+            pedidos.Add(comando);
+        }
+
+        foreach (var comando in pedidos)
+        {
+            _comandos.Pedir(comando);
+            resposta.Ids.Add(comando.Id.ToString());
+        }
+
+        resposta.Aceito = pedidos.Count > 0;
+        if (pedidos.Count == 0)
+        {
+            resposta.Problemas.Add("Nenhuma catraca cadastrada.");
+        }
+
+        return Task.FromResult(resposta);
+    }
+
+    public override Task<ListarComandosResponse> ListarComandos(ListarComandosRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var resposta = new ListarComandosResponse();
+
+        if (_comandos is null)
+        {
+            return Task.FromResult(resposta);
+        }
+
+        try
+        {
+            // Pedido que nenhum worker pegou a tempo aparece como expirado, e não como
+            // pendente para sempre.
+            _comandos.ExpirarVencidos(_relogio());
+
+            foreach (var r in _comandos.Listar(request.Inner == 0 ? null : request.Inner, request.Limite == 0 ? 100 : request.Limite))
+            {
+                var linha = new ComandoRegistrado
+                {
+                    Id = r.Comando.Id.ToString(),
+                    Inner = r.Comando.Inner,
+                    Tipo = Tipo(r.Comando.Tipo),
+                    Operador = r.Comando.Operador,
+                    Texto = r.Comando.Texto ?? string.Empty,
+                    Motivo = r.Comando.Motivo ?? string.Empty,
+                    PedidoEm = Timestamp.FromDateTimeOffset(r.Comando.PedidoEm),
+                    Situacao = r.Situacao switch
+                    {
+                        Access.Application.Devices.SituacaoDoComando.Pendente => SituacaoDoComando.Pendente,
+                        Access.Application.Devices.SituacaoDoComando.Recebido => SituacaoDoComando.Recebido,
+                        Access.Application.Devices.SituacaoDoComando.Concluido => SituacaoDoComando.Concluido,
+                        Access.Application.Devices.SituacaoDoComando.Falhou => SituacaoDoComando.Falhou,
+                        Access.Application.Devices.SituacaoDoComando.Expirado => SituacaoDoComando.Expirado,
+                        _ => SituacaoDoComando.NaoEspecificado,
+                    },
+                    Resultado = r.Resultado ?? string.Empty,
+                };
+
+                if (r.ConcluidoEm is { } concluido)
+                {
+                    linha.ConcluidoEm = Timestamp.FromDateTimeOffset(concluido);
+                }
+
+                resposta.Comandos.Add(linha);
+            }
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // Base ocupada: a tela tenta de novo.
+        }
+
+        return Task.FromResult(resposta);
+    }
+
+    private static Access.Application.Devices.TipoDeComando? Tipo(TipoDeComando tipo) => tipo switch
+    {
+        TipoDeComando.AcertarRelogio => Access.Application.Devices.TipoDeComando.AcertarRelogio,
+        TipoDeComando.MensagemTemporaria => Access.Application.Devices.TipoDeComando.MensagemTemporaria,
+        TipoDeComando.LiberacaoManual => Access.Application.Devices.TipoDeComando.LiberacaoManual,
+        TipoDeComando.ReiniciarConexao => Access.Application.Devices.TipoDeComando.ReiniciarConexao,
+        TipoDeComando.AplicarConfiguracao => Access.Application.Devices.TipoDeComando.AplicarConfiguracao,
+        _ => null,
+    };
+
+    private static TipoDeComando Tipo(Access.Application.Devices.TipoDeComando tipo) => tipo switch
+    {
+        Access.Application.Devices.TipoDeComando.AcertarRelogio => TipoDeComando.AcertarRelogio,
+        Access.Application.Devices.TipoDeComando.MensagemTemporaria => TipoDeComando.MensagemTemporaria,
+        Access.Application.Devices.TipoDeComando.LiberacaoManual => TipoDeComando.LiberacaoManual,
+        Access.Application.Devices.TipoDeComando.ReiniciarConexao => TipoDeComando.ReiniciarConexao,
+        Access.Application.Devices.TipoDeComando.AplicarConfiguracao => TipoDeComando.AplicarConfiguracao,
+        _ => TipoDeComando.NaoEspecificado,
+    };
 
     private static ConfiguracaoDoEvento Converter(Access.Infrastructure.SQLite.ConfiguracaoDaOperacao c) => new()
     {

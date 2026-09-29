@@ -51,6 +51,10 @@ public sealed class SessaoDeOperacao
     private readonly TimeSpan _intervaloDePublicacao;
     private readonly Func<DateTimeOffset> _relogio;
     private readonly Dictionary<string, string> _ultimaDecisao = new(StringComparer.Ordinal);
+    private readonly IFilaDeComandos? _comandos;
+    private readonly Func<(DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? _recarregarConfiguracao;
+    private readonly List<(Guid Id, SituacaoDoComando Situacao, string Resultado, DateTimeOffset Em)> _desfechosAGravar = [];
+    private DateTimeOffset _comandosConsultadosEm = DateTimeOffset.MinValue;
     private IReadOnlyList<SituacaoDaCatraca> _publicada = [];
     private DateTimeOffset _publicadaEm = DateTimeOffset.MinValue;
 
@@ -65,6 +69,12 @@ public sealed class SessaoDeOperacao
     /// usa para saber que o worker está vivo.
     /// </param>
     /// <param name="relogio">Relógio.</param>
+    /// <param name="comandos">Fila de comandos do operador. Sem ela, a catraca só opera.</param>
+    /// <param name="recarregarConfiguracao">
+    /// Relê a configuração do evento para <see cref="TipoDeComando.AplicarConfiguracao"/>.
+    /// Devolve a configuração nova, ou os problemas que impedem usá-la.
+    /// </param>
+    /// <param name="acertarRelogioAoDivergir">Ver <see cref="DevicePump"/>. Desligado por padrão.</param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -73,7 +83,10 @@ public sealed class SessaoDeOperacao
         Action<string> registrar,
         Action<IReadOnlyList<SituacaoDaCatraca>> publicar,
         TimeSpan? intervaloDePublicacao = null,
-        Func<DateTimeOffset>? relogio = null)
+        Func<DateTimeOffset>? relogio = null,
+        IFilaDeComandos? comandos = null,
+        Func<(DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
+        bool acertarRelogioAoDivergir = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
@@ -96,7 +109,17 @@ public sealed class SessaoDeOperacao
         _intervaloDePublicacao = intervaloDePublicacao ?? TimeSpan.FromSeconds(2);
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
 
-        var bomba = new DevicePump(adapter, _relogio, decidir: Decidir, aoReceberEvento: Receber);
+        _comandos = comandos;
+        _recarregarConfiguracao = recarregarConfiguracao;
+
+        var bomba = new DevicePump(
+            adapter,
+            _relogio,
+            decidir: Decidir,
+            aoReceberEvento: Receber,
+            acertarRelogioAoDivergir: acertarRelogioAoDivergir,
+            aoConcluirComando: Concluir,
+            antesDaLiberacaoManual: decisor.DescartarPendente);
 
         _laco = new DeviceGroupLoop(
             adapter,
@@ -114,6 +137,8 @@ public sealed class SessaoDeOperacao
     /// <summary>Uma passada por todas as catracas, e a publicação se for a hora.</summary>
     public void UmaVolta()
     {
+        BuscarComandosSeFor();
+
         foreach (var (inner, acao) in _laco.UmaVolta())
         {
             if (!string.Equals(acao, "sem eventos", StringComparison.Ordinal))
@@ -155,6 +180,105 @@ public sealed class SessaoDeOperacao
             d.RelogioConferidoEm,
             d.DivergenciaDoRelogio,
             d.RelogioDivergente))];
+
+    /// <summary>De quanto em quanto tempo o worker olha a fila de comandos.</summary>
+    public static readonly TimeSpan IntervaloDosComandos = TimeSpan.FromMilliseconds(500);
+
+    private void BuscarComandosSeFor()
+    {
+        if (_comandos is null)
+        {
+            return;
+        }
+
+        var agora = _relogio();
+        if (agora - _comandosConsultadosEm < IntervaloDosComandos)
+        {
+            return;
+        }
+
+        _comandosConsultadosEm = agora;
+
+        try
+        {
+            GravarDesfechos();
+
+            var inners = _laco.Dispositivos.Select(d => d.Inner).ToList();
+            foreach (var comando in _comandos.Pendentes(inners))
+            {
+                if (!_comandos.Receber(comando.Id, agora))
+                {
+                    continue;
+                }
+
+                var catraca = _laco.Dispositivos.First(d => d.Inner == comando.Inner);
+                DeviceConfiguration? configuracaoNova = null;
+
+                if (comando.Tipo is TipoDeComando.AplicarConfiguracao && (configuracaoNova = Recarregar(comando, agora)) is null)
+                {
+                    continue;
+                }
+
+                catraca.Enfileirar(comando, configuracaoNova);
+                _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{comando.Inner}: comando {comando.Tipo} recebido"));
+            }
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            // Base ocupada: a catraca não para por causa do painel. Tenta na próxima.
+            _registrar($"não foi possível ler os comandos: {erro.GetType().Name}");
+        }
+    }
+
+    private DeviceConfiguration? Recarregar(ComandoDeCatraca comando, DateTimeOffset agora)
+    {
+        var (configuracao, problemas) = _recarregarConfiguracao?.Invoke()
+            ?? (null, ["este worker não sabe reler a configuração"]);
+
+        var invalida = configuracao?.Validar() ?? [];
+        if (configuracao is null || problemas.Count > 0 || invalida.Count > 0)
+        {
+            _desfechosAGravar.Add((comando.Id, SituacaoDoComando.Falhou,
+                "configuração não aplicada: " + string.Join(" ", problemas.Concat(invalida)), agora));
+            GravarDesfechos();
+            return null;
+        }
+
+        return configuracao;
+    }
+
+    private void Concluir(ComandoDeCatraca comando, SituacaoDoComando situacao, string resultado)
+    {
+        _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{comando.Inner}: comando {comando.Tipo} {situacao}: {resultado}"));
+        _desfechosAGravar.Add((comando.Id, situacao, resultado, _relogio()));
+        GravarDesfechos();
+    }
+
+    // O desfecho não se perde se a base estiver ocupada: fica guardado e vai na próxima.
+    private void GravarDesfechos()
+    {
+        if (_comandos is null)
+        {
+            _desfechosAGravar.Clear();
+            return;
+        }
+
+        while (_desfechosAGravar.Count > 0)
+        {
+            var (id, situacao, resultado, em) = _desfechosAGravar[0];
+            try
+            {
+                _comandos.Concluir(id, situacao, resultado, em);
+            }
+            catch (Exception erro) when (erro is not OutOfMemoryException)
+            {
+                _registrar($"desfecho de comando não gravado ainda: {erro.GetType().Name}");
+                return;
+            }
+
+            _desfechosAGravar.RemoveAt(0);
+        }
+    }
 
     private void PublicarSeFor()
     {

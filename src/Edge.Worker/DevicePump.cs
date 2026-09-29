@@ -21,7 +21,57 @@ public sealed class DeviceSlot
 
     public int Inner { get; }
 
-    public DeviceConfiguration Configuracao { get; }
+    /// <summary>
+    /// Configuração enviada a cada conexão. Só muda por <see cref="TipoDeComando.AplicarConfiguracao"/>,
+    /// e só passa a valer na reconexão que o comando provoca (ADR-0020: sempre completa).
+    /// </summary>
+    public DeviceConfiguration Configuracao { get; internal set; }
+
+    /// <summary>Configuração relida, esperando o comando que a aplica.</summary>
+    internal DeviceConfiguration? ConfiguracaoNova { get; set; }
+
+    /// <summary>Comandos do operador esperando a catraca ficar livre (Polling).</summary>
+    internal Queue<ComandoDeCatraca> Comandos { get; } = new();
+
+    /// <summary>O comando sendo executado agora, quando leva mais de um passo.</summary>
+    internal ComandoEmCurso? EmCurso { get; set; }
+
+    /// <summary>Quantos comandos esperam a vez.</summary>
+    public int ComandosNaFila => Comandos.Count + (EmCurso is null ? 0 : 1);
+
+    /// <summary>Entrega um comando para ser executado quando a catraca estiver livre.</summary>
+    /// <param name="comando">O pedido.</param>
+    /// <param name="configuracaoNova">
+    /// Obrigatória em <see cref="TipoDeComando.AplicarConfiguracao"/>: a configuração
+    /// completa, já validada, que a reconexão vai enviar.
+    /// </param>
+    public void Enfileirar(ComandoDeCatraca comando, DeviceConfiguration? configuracaoNova = null)
+    {
+        ArgumentNullException.ThrowIfNull(comando);
+
+        if (comando.Inner != Inner)
+        {
+            throw new ArgumentException($"Comando da catraca {comando.Inner} entregue à catraca {Inner}.", nameof(comando));
+        }
+
+        if (comando.Tipo is TipoDeComando.AplicarConfiguracao)
+        {
+            if (configuracaoNova is null)
+            {
+                throw new ArgumentNullException(nameof(configuracaoNova), "Aplicar configuração exige a configuração nova.");
+            }
+
+            var problemas = configuracaoNova.Validar();
+            if (problemas.Count > 0)
+            {
+                throw new ArgumentException("Configuração nova inválida: " + string.Join(" ", problemas), nameof(configuracaoNova));
+            }
+
+            ConfiguracaoNova = configuracaoNova;
+        }
+
+        Comandos.Enqueue(comando);
+    }
 
     public DeviceStateMachine Maquina { get; }
 
@@ -76,6 +126,23 @@ public sealed class DeviceSlot
         RelogioInvalido || DivergenciaDoRelogio is { } divergencia && divergencia.Duration() > DevicePump.LimiteDeDivergenciaDoRelogio;
 }
 
+/// <summary>Um comando que leva mais de um passo: liberação manual, reconexão.</summary>
+internal sealed class ComandoEmCurso(ComandoDeCatraca comando, DateTimeOffset iniciadoEm)
+{
+    public ComandoDeCatraca Comando { get; } = comando;
+
+    public DateTimeOffset IniciadoEm { get; } = iniciadoEm;
+
+    /// <summary>A catraca aceitou a liberação.</summary>
+    public bool Liberou { get; set; }
+
+    /// <summary>Veio o giro (origem 6) depois da liberação.</summary>
+    public bool Girou { get; set; }
+
+    /// <summary>A reconexão pedida já saiu de Polling (para não concluir antes de começar).</summary>
+    public bool SaiuDeOperacao { get; set; }
+}
+
 /// <summary>
 /// Executa um passo da máquina de estados de um equipamento.
 /// </summary>
@@ -101,12 +168,23 @@ public sealed class DevicePump
     /// <summary>Depois de uma falha no acerto ou na leitura, espera isto para tentar de novo.</summary>
     public static readonly TimeSpan EsperaAposFalhaNoRelogio = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// Quanto uma reconexão pedida pelo operador pode levar para a catraca voltar a
+    /// atender, antes de o comando ser dado como falho.
+    /// </summary>
+    public static readonly TimeSpan LimiteDaReconexaoPedida = TimeSpan.FromMinutes(2);
+
+    /// <summary>Quanto esperar pelo giro, ou pelo fim do tempo, de uma liberação manual.</summary>
+    public static readonly TimeSpan LimiteDaLiberacaoManual = TimeSpan.FromSeconds(60);
+
     private readonly ITopdataInnerAdapter _adapter;
     private readonly Func<DateTimeOffset> _relogio;
     private readonly IReadOnlySet<byte> _linhasHomologadas;
     private readonly Func<DeviceEvent, Decision>? _decidir;
     private readonly Action<DeviceEvent>? _aoReceberEvento;
     private readonly bool _acertarRelogioAoDivergir;
+    private readonly Action<ComandoDeCatraca, SituacaoDoComando, string>? _aoConcluirComando;
+    private readonly Action<string>? _antesDaLiberacaoManual;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -119,16 +197,26 @@ public sealed class DevicePump
     /// com a catraca atendendo é <c>A_CONFIRMAR_COM_TOPDATA</c> (docs/21, INT-CLK-02).
     /// Desligado, a divergência só é informada — e o operador acerta pelo painel.
     /// </param>
+    /// <param name="aoConcluirComando">Recebe o desfecho de cada comando do operador.</param>
+    /// <param name="antesDaLiberacaoManual">
+    /// Chamado com o id do equipamento logo antes de uma liberação manual. O decisor usa
+    /// para encerrar a tentativa pendente: o giro que vier é do operador, não do último
+    /// ingresso lido.
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
         IReadOnlySet<byte>? linhasHomologadas = null,
         Func<DeviceEvent, Decision>? decidir = null,
         Action<DeviceEvent>? aoReceberEvento = null,
-        bool acertarRelogioAoDivergir = false)
+        bool acertarRelogioAoDivergir = false,
+        Action<ComandoDeCatraca, SituacaoDoComando, string>? aoConcluirComando = null,
+        Action<string>? antesDaLiberacaoManual = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _acertarRelogioAoDivergir = acertarRelogioAoDivergir;
+        _aoConcluirComando = aoConcluirComando;
+        _antesDaLiberacaoManual = antesDaLiberacaoManual;
         _adapter = adapter;
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
 
@@ -148,6 +236,40 @@ public sealed class DevicePump
     {
         ArgumentNullException.ThrowIfNull(dispositivo);
 
+        ExpirarNaFila(dispositivo, _relogio());
+        var feito = PassoDaMaquina(dispositivo, limiteDeEspera);
+        return AcompanharComando(dispositivo, _relogio()) is { } desfecho ? $"{feito} · {desfecho}" : feito;
+    }
+
+    // Catraca fora do ar ou presa num estado: o comando não espera para sempre na fila.
+    private void ExpirarNaFila(DeviceSlot d, DateTimeOffset agora)
+    {
+        if (d.Comandos.Count == 0 || d.Comandos.All(c => agora < c.ExpiraEm))
+        {
+            return;
+        }
+
+        var validos = new List<ComandoDeCatraca>(d.Comandos.Count);
+        while (d.Comandos.TryDequeue(out var comando))
+        {
+            if (agora < comando.ExpiraEm)
+            {
+                validos.Add(comando);
+            }
+            else
+            {
+                Concluir(comando, SituacaoDoComando.Expirado, $"a catraca não ficou livre a tempo (estado {d.Maquina.Current}); não executado");
+            }
+        }
+
+        foreach (var comando in validos)
+        {
+            d.Comandos.Enqueue(comando);
+        }
+    }
+
+    private string PassoDaMaquina(DeviceSlot dispositivo, TimeSpan limiteDeEspera)
+    {
         var agora = _relogio();
 
         if (dispositivo.EsperarAte is { } ate && agora < ate)
@@ -160,11 +282,19 @@ public sealed class DevicePump
             return "disjuntor aberto";
         }
 
-        // O relógio só é mexido em Polling: é o ponto ocioso e seguro, sem ninguém no meio
-        // de uma passagem. Uma chamada por passo, como o resto.
-        if (dispositivo.Maquina.Current is DeviceState.Polling && CuidarDoRelogio(dispositivo, agora) is { } relogio)
+        // Comandos do operador e relógio só em Polling: é o ponto ocioso e seguro, sem
+        // ninguém no meio de uma passagem. Uma chamada por passo, como o resto.
+        if (dispositivo.Maquina.Current is DeviceState.Polling)
         {
-            return relogio;
+            if (dispositivo.EmCurso is null && dispositivo.Comandos.TryDequeue(out var comando))
+            {
+                return Executar(dispositivo, comando, agora);
+            }
+
+            if (CuidarDoRelogio(dispositivo, agora) is { } relogio)
+            {
+                return relogio;
+            }
         }
 
         return dispositivo.Maquina.Current switch
@@ -308,6 +438,12 @@ public sealed class DevicePump
             case AdapterStatus.Ok when evento is not null:
                 d.Disjuntor.RegistrarSucesso();
                 d.UltimoEvento = evento;
+
+                if (evento.Origin.ConfirmaPassagemFisica && d.EmCurso is { Liberou: true } manual)
+                {
+                    manual.Girou = true;
+                }
+
                 _aoReceberEvento?.Invoke(evento);
                 Disparar(
                     d,
@@ -393,6 +529,11 @@ public sealed class DevicePump
 
         if (resultado.IsOk)
         {
+            if (d.EmCurso is { Comando.Tipo: TipoDeComando.LiberacaoManual } manual)
+            {
+                manual.Liberou = true;
+            }
+
             Disparar(d, DeviceTrigger.ComandoDeLiberacaoOk, agora);
             return $"giro liberado ({direcao})";
         }
@@ -415,11 +556,142 @@ public sealed class DevicePump
         return $"falha ao exibir negação ({resultado})";
     }
 
+    private string Executar(DeviceSlot d, ComandoDeCatraca comando, DateTimeOffset agora)
+    {
+        // Nome e motivo digitados ficam só na auditoria (operator_command): texto livre pode
+        // conter qualquer coisa, e o registro do worker não é lugar para isso.
+        var rotulo = $"comando {comando.Tipo}";
+
+        if (agora >= comando.ExpiraEm)
+        {
+            Concluir(comando, SituacaoDoComando.Expirado, "a catraca não ficou livre a tempo; não executado");
+            return $"{rotulo}: expirado, não executado";
+        }
+
+        switch (comando.Tipo)
+        {
+            case TipoDeComando.AcertarRelogio:
+            {
+                var (ok, feito) = AcertarRelogio(d, agora);
+                Concluir(comando, ok ? SituacaoDoComando.Concluido : SituacaoDoComando.Falhou, feito);
+                return $"{rotulo}: {feito}";
+            }
+
+            case TipoDeComando.MensagemTemporaria:
+            {
+                var resultado = _adapter.ExibirMensagemTemporaria(
+                    d.Inner, comando.Texto ?? string.Empty, TimeSpan.FromSeconds(comando.DuracaoSegundos));
+                var feito = resultado.IsOk ? "mensagem exibida" : $"a catraca recusou a mensagem ({resultado})";
+                Concluir(comando, resultado.IsOk ? SituacaoDoComando.Concluido : SituacaoDoComando.Falhou, feito);
+                return $"{rotulo}: {feito}";
+            }
+
+            case TipoDeComando.LiberacaoManual:
+                // O giro que vier é do operador: a tentativa pendente do último ingresso
+                // termina aqui, sem giro, e não leva a passagem de outra pessoa.
+                _antesDaLiberacaoManual?.Invoke(d.Maquina.DeviceId);
+                d.EmCurso = new ComandoEmCurso(comando, agora);
+                Disparar(d, DeviceTrigger.LiberacaoManualSolicitada, agora);
+                return $"{rotulo}: liberação manual pedida";
+
+            case TipoDeComando.ReiniciarConexao:
+            case TipoDeComando.AplicarConfiguracao:
+                if (comando.Tipo is TipoDeComando.AplicarConfiguracao)
+                {
+                    if (d.ConfiguracaoNova is not { } nova)
+                    {
+                        Concluir(comando, SituacaoDoComando.Falhou, "nenhuma configuração nova foi carregada");
+                        return $"{rotulo}: sem configuração nova";
+                    }
+
+                    d.Configuracao = nova;
+                    d.ConfiguracaoNova = null;
+                }
+
+                d.EmCurso = new ComandoEmCurso(comando, agora);
+                Disparar(d, DeviceTrigger.ReconexaoSolicitada, agora);
+                return $"{rotulo}: reconectando";
+
+            default:
+                Concluir(comando, SituacaoDoComando.Falhou, "comando sem execução neste worker");
+                return $"{rotulo}: desconhecido";
+        }
+    }
+
+    /// <summary>Fecha o comando de vários passos quando a catraca termina o que ele pediu.</summary>
+    private string? AcompanharComando(DeviceSlot d, DateTimeOffset agora)
+    {
+        if (d.EmCurso is not { } emCurso)
+        {
+            return null;
+        }
+
+        var estado = d.Maquina.Current;
+
+        if (emCurso.Comando.Tipo is TipoDeComando.LiberacaoManual)
+        {
+            if (estado is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
+            {
+                // A_CONFIRMAR: a saída de MonitoraGiro depende da origem 5 (fim do tempo de
+                // acionamento). Se a catraca não mandar, o comando não fica aberto para sempre.
+                if (agora - emCurso.IniciadoEm <= LimiteDaLiberacaoManual)
+                {
+                    return null;
+                }
+
+                d.EmCurso = null;
+                var semSinal = emCurso.Girou
+                    ? "liberada; girou"
+                    : $"liberada; a catraca não informou giro nem fim do tempo em {LimiteDaLiberacaoManual.TotalSeconds:0} s";
+                Concluir(emCurso.Comando, SituacaoDoComando.Concluido, semSinal);
+                return semSinal;
+            }
+
+            d.EmCurso = null;
+            var (situacao, resultado) = emCurso switch
+            {
+                { Liberou: false } => (SituacaoDoComando.Falhou, "a catraca não recebeu a liberação"),
+                { Girou: true } => (SituacaoDoComando.Concluido, "liberada; girou"),
+                _ => (SituacaoDoComando.Concluido, "liberada; ninguém girou"),
+            };
+            Concluir(emCurso.Comando, situacao, resultado);
+            return resultado;
+        }
+
+        // Reconexão pedida: conclui quando a catraca volta a atender.
+        if (estado is not DeviceState.Polling)
+        {
+            emCurso.SaiuDeOperacao = true;
+        }
+        else if (emCurso.SaiuDeOperacao)
+        {
+            d.EmCurso = null;
+            var resultado = emCurso.Comando.Tipo is TipoDeComando.AplicarConfiguracao
+                ? "configuração enviada; catraca atendendo"
+                : "reconectada; catraca atendendo";
+            Concluir(emCurso.Comando, SituacaoDoComando.Concluido, resultado);
+            return resultado;
+        }
+
+        if (agora - emCurso.IniciadoEm > LimiteDaReconexaoPedida)
+        {
+            d.EmCurso = null;
+            var resultado = $"a catraca não voltou a atender em {LimiteDaReconexaoPedida.TotalMinutes:0} min (estado {estado})";
+            Concluir(emCurso.Comando, SituacaoDoComando.Falhou, resultado);
+            return resultado;
+        }
+
+        return null;
+    }
+
+    private void Concluir(ComandoDeCatraca comando, SituacaoDoComando situacao, string resultado) =>
+        _aoConcluirComando?.Invoke(comando, situacao, resultado);
+
     private string? CuidarDoRelogio(DeviceSlot d, DateTimeOffset agora)
     {
         if (d.AcertarRelogioEm is { } acertar && agora >= acertar)
         {
-            return AcertarRelogio(d, agora);
+            return AcertarRelogio(d, agora).Feito;
         }
 
         if (d.ConferirRelogioEm is { } conferir && agora >= conferir)
@@ -432,7 +704,7 @@ public sealed class DevicePump
 
     // Falha no relógio nunca derruba a catraca: não conta no disjuntor nem dispara
     // reconexão. Se a comunicação caiu de fato, a próxima espera por evento percebe.
-    private string AcertarRelogio(DeviceSlot d, DateTimeOffset agora)
+    private (bool Ok, string Feito) AcertarRelogio(DeviceSlot d, DateTimeOffset agora)
     {
         AdapterResult resultado;
         try
@@ -444,19 +716,19 @@ public sealed class DevicePump
             // O relógio do PC está fora de 2000–2099: acertar a catraca por ele seria pior.
             d.AcertarRelogioEm = null;
             d.ConferirRelogioEm = agora + PrimeiraConferenciaDoRelogio;
-            return "relógio do PC fora do intervalo que a catraca guarda — relógio da catraca não acertado";
+            return (false, "relógio do PC fora do intervalo que a catraca guarda — relógio da catraca não acertado");
         }
 
         if (!resultado.IsOk)
         {
             d.AcertarRelogioEm = agora + EsperaAposFalhaNoRelogio;
-            return $"falha ao acertar o relógio ({resultado}) — a operação segue";
+            return (false, $"falha ao acertar o relógio ({resultado}) — a operação segue");
         }
 
         d.RelogioAcertadoEm = agora;
         d.AcertarRelogioEm = null;
         d.ConferirRelogioEm = agora + PrimeiraConferenciaDoRelogio;
-        return "relógio acertado";
+        return (true, "relógio acertado");
     }
 
     private string ConferirRelogio(DeviceSlot d, DateTimeOffset agora)

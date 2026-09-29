@@ -94,6 +94,9 @@ public sealed class SimulatedDevice : IDisposable
     /// </summary>
     public int ReabilitacoesDoLeitor { get; private set; }
 
+    /// <summary>Mensagens temporárias exibidas, na ordem.</summary>
+    public List<(string Texto, TimeSpan Duracao)> MensagensTemporarias { get; } = [];
+
     /// <summary>Configurações completas recebidas, na ordem.</summary>
     public List<DeviceConfiguration> ConfiguracoesRecebidas { get; } = [];
 

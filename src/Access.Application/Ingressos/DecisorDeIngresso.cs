@@ -161,6 +161,21 @@ public sealed class DecisorDeIngresso
         }
     }
 
+    /// <summary>
+    /// Encerra, sem giro, a tentativa pendente do equipamento. Chamado antes de uma
+    /// liberação manual: o giro que vier depois é do operador, e confirmar com ele a
+    /// passagem do último ingresso lido seria atribuir a entrada a outra pessoa.
+    /// </summary>
+    public void DescartarPendente(string deviceId)
+    {
+        ArgumentNullException.ThrowIfNull(deviceId);
+
+        if (_pendentes.Remove(deviceId))
+        {
+            AutorizacoesSemGiro++;
+        }
+    }
+
     /// <summary>Tradução estável de motivo de uso para código de relatório.</summary>
     public static ReasonCode CodigoPara(MotivoDoUso motivo) => motivo switch
     {

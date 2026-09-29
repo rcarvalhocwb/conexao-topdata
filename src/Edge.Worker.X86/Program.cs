@@ -194,6 +194,14 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>O que vai para cada catraca, a partir da configuração do evento.</summary>
+    private static DeviceConfiguration ConfiguracaoDasCatracas(ConfiguracaoDaOperacao configuracao) =>
+        ConfiguracaoDeBancada.TopFit4(configuracao.TipoDeLeitor, configuracao.LeitorDaUrna) with
+        {
+            TempoDoAcionamento1 = configuracao.TempoDeAcionamento,
+            MensagemPadrao = configuracao.MensagemPadrao,
+        };
+
     /// <summary>
     /// Operação: o laço de verdade, sem tela, decidindo pela base local compartilhada com o
     /// serviço. É como o serviço sobe o worker (ADR-0024).
@@ -244,11 +252,19 @@ internal static class Program
             .Select(v => int.Parse(v, CultureInfo.InvariantCulture))
             .ToList();
 
-        var configuracaoDasCatracas = ConfiguracaoDeBancada.TopFit4(configuracao.TipoDeLeitor, configuracao.LeitorDaUrna) with
+        var configuracaoDasCatracas = ConfiguracaoDasCatracas(configuracao);
+
+        // "Aplicar agora" (fase 4b): relê o que o operador gravou. Só o que vai para a
+        // catraca muda sem reiniciar — leitor, urna, tempo e mensagem. Nuvem e espera pelo
+        // giro continuam valendo a partir do próximo início do worker.
+        (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas) Recarregar()
         {
-            TempoDoAcionamento1 = configuracao.TempoDeAcionamento,
-            MensagemPadrao = configuracao.MensagemPadrao,
-        };
+            var (relida, ilegiveisAgora) = new ConfiguracoesDaBorda(fabrica).Ler();
+            var problemasAgora = relida.Validar();
+            return ilegiveisAgora.Count > 0 || problemasAgora.Count > 0
+                ? (null, [.. ilegiveisAgora.Select(c => $"'{c}' ilegível."), .. problemasAgora])
+                : (ConfiguracaoDasCatracas(relida), []);
+        }
 
         Registrar(string.Create(
             CultureInfo.InvariantCulture,
@@ -267,7 +283,10 @@ internal static class Program
                     c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow,
                     c.RelogioAcertadoEm, c.RelogioConferidoEm,
                     c.DivergenciaDoRelogio is { } divergencia ? (int)divergencia.TotalSeconds : null,
-                    c.RelogioDivergente))]));
+                    c.RelogioDivergente))]),
+            comandos: new FilaDeComandosSqlite(fabrica),
+            recarregarConfiguracao: Recarregar,
+            acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir);
 
         using var cancelamento = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
