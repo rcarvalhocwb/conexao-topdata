@@ -405,6 +405,19 @@ jobs:
               [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
               [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
               [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);
+              delegate bool VisitarFilho(IntPtr h, IntPtr p);
+              [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr pai, VisitarFilho v, IntPtr p);
+              // Um controle visível dentro da janela, pelo texto (o botão "&Instalar", por exemplo).
+              public static bool TemControle(IntPtr janela, string trecho) {
+                  bool achou = false;
+                  EnumChildWindows(janela, (h, p) => {
+                      var t = new StringBuilder(256);
+                      GetWindowText(h, t, t.Capacity);
+                      if (IsWindowVisible(h) && t.ToString().Replace("&", "").Contains(trecho)) { achou = true; return false; }
+                      return true;
+                  }, IntPtr.Zero);
+                  return achou;
+              }
               public static IntPtr Achar(string trecho) {
                   IntPtr achada = IntPtr.Zero;
                   EnumWindows((h, p) => {
@@ -433,7 +446,20 @@ jobs:
             Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
             throw 'O Setup não abriu a janela: quem baixar não consegue instalar. Veja o registro do Burn acima.'
           } else {
-            Start-Sleep -Seconds 2   # a arte termina de desenhar
+            # A janela aparece antes de o Setup terminar de examinar o computador; a página
+            # com o botão Instalar vem depois. Sem ele, quem baixar não consegue instalar.
+            $botao = $false
+            for ($i = 0; $i -lt 30 -and -not $botao; $i++) {
+              Start-Sleep -Seconds 1
+              $botao = [FotoDoSetup]::TemControle($janela, 'Instalar')
+            }
+            Write-Host '--- registro do Setup (Burn), fim ---'
+            Get-ChildItem "$PWD\setup-burn*.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_ -Tail 25 }
+            if (-not $botao) {
+              Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
+              throw 'O Setup abriu, mas o botão Instalar não apareceu em 30 s.'
+            }
+            Start-Sleep -Seconds 1   # a página termina de desenhar
             $r = New-Object FotoDoSetup+RECT
             [FotoDoSetup]::GetWindowRect($janela, [ref]$r) | Out-Null
             $foto = New-Object System.Drawing.Bitmap ($r.Right - $r.Left), ($r.Bottom - $r.Top)
