@@ -192,6 +192,9 @@ do instalador e fotografa também a primeira tela do Setup (`00-setup.png`).
 O Setup tem tema próprio (`installer/wix/tema-rayzer.xml`): a arte da marca
 (`marca/arte-rayzer-x.jpg`) de fundo, com os textos e botões numa faixa escura à direita.
 O fundo é gerado por `python tools/gerar-fundo-do-setup.py`: troque a arte e rode de novo.
+O fundo é pintado pela própria janela (`Theme/@ImageFile` + `Window/@SourceX/SourceY`),
+por baixo dos textos e botões, e precisa ser maior que a janela (822 x 463 para 820 x 461).
+Não use `ImageControl` como fundo: ele fica por cima dos botões.
 
 ## Antes de encostar em hardware
 
