@@ -308,9 +308,8 @@ internet fora no meio.
 
 **Não existe:**
 
-1. **A peça específica do Zet.** `IFonteDeIngressos` tem **um método**, e é tudo o que
-   falta para ligar uma bilheteria. Não o escrevo antes de saber a URL, a autenticação e o
-   formato da resposta — inventar isso produziria código que compila e não funciona.
+1. ~~A peça específica do Zet.~~ **Existe desde 29/09:** `TradutorDaZet` lê o webhook real
+   (compra e estorno). Falta decidir por onde ele chega à borda — docs/30 §4.
 2. **Nada disso está hospedado.** As classes existem e são testadas; nenhum processo as
    executa. Falta o ponto de composição no `Edge.Supervisor`.
 3. **O caminho da catraca até aqui não está ligado.** `TentarUsar` é chamado por teste, não

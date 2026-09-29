@@ -31,8 +31,8 @@
 | E4 | B7 — público, janela de pico e número de portões | cliente | dimensionamento (docs/14): pode faltar catraca |
 | E5 | B8 — cartão de proximidade ou Mifare; 10 ou 14 dígitos | cliente + bancada | normalização do código (zeros à esquerda) |
 | E6 | B9 — biometria/facial no escopo? | negócio + jurídico | fase 5 (só com base legal) |
-| E7 | Como o comprador on-line entra (o webhook do Zet não põe o QR na lista da catraca) | você + Zet | ligar a bilheteria on-line à lista local (docs/22 §8.4) |
-| E8 | Payload/URL/autenticação do Zet | Zet | escrever a `IFonteDeIngressos` do Zet (docs/16 §7) |
+| E7 | Como o comprador on-line entra: caminho A, B ou C do [docs/30](30-integracao-zet-analise.md) §4 | você + Zet | ligar a bilheteria on-line à lista local |
+| E8 | ~~Payload do Zet~~ **respondido em 29/09** — `TradutorDaZet` pronto (docs/30). Falta: ingressos da maquininha e cortesias, que nunca chegam por webhook (Z1) | Zet | 5,8% dos pedidos hoje ficariam de fora da catraca |
 | E9 | Hora de corte do dia de operação (proposta: 06:00) | organização | relatórios por dia (fase 6) |
 | E10 | Meia-entrada: o evento está sujeito à cota? Que número entregar? | contador/jurídico | conteúdo do R1 (docs/25 §6) |
 | E11 | Renomear o repositório `conexao-topdata` | você | só organização |
