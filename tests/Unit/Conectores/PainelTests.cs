@@ -93,6 +93,51 @@ public sealed class PainelTests
         Assert.All(recusas, m => Assert.DoesNotContain("00000000000014", m, StringComparison.Ordinal));
     }
 
+    private static string Muitos(int quantos) =>
+        string.Join(",", Enumerable.Range(1, quantos).Select(i => $$$"""{"card_number":"{{{i:D12}}}","active":true}"""));
+
+    [Fact]
+    public async Task Com_total_cards_a_lista_acima_de_mil_e_completa_se_vieram_todos()
+    {
+        // 2.243 cartões no cadastro real: com a contagem exata do servidor, não há por que
+        // suspeitar de corte só por passar de 1.000.
+        var corpo = $$"""{"success":true,"cards":[{{Muitos(1200)}}],"removed_cards":[],"total_cards":1200,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
+        var suspeitas = new List<int>();
+        var fonte = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, corpo)), "bilheteria-local", "borda-01",
+            CredentialNormalization.Raw, aoSuspeitarDeCorte: suspeitas.Add);
+
+        var pagina = await fonte.LerAsync(null, CancellationToken.None);
+
+        Assert.Equal(1200, pagina.Itens.Count);
+        Assert.Equal("2026-11-14T20:00:00.000+00:00", pagina.ProximoCursor);
+        Assert.Empty(suspeitas);
+    }
+
+    [Fact]
+    public async Task Com_total_cards_maior_que_o_recebido_a_lista_esta_cortada_e_o_cursor_nao_anda()
+    {
+        var corpo = $$"""{"success":true,"cards":[{{Muitos(1000)}}],"removed_cards":[],"total_cards":2243,"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}""";
+        var suspeitas = new List<int>();
+        var fonte = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, corpo)), "bilheteria-local", "borda-01",
+            CredentialNormalization.Raw, aoSuspeitarDeCorte: suspeitas.Add);
+
+        var pagina = await fonte.LerAsync(null, CancellationToken.None);
+
+        Assert.Null(pagina.ProximoCursor);
+        Assert.Equal([1000], suspeitas);
+    }
+
+    [Fact]
+    public async Task Sem_total_cards_mil_ou_mais_continua_suspeito()
+    {
+        var suspeitas = new List<int>();
+        var fonte = new FonteDeCartoesDoPainel(Http(new Servidor(HttpStatusCode.OK, Resposta(Muitos(1000)))), "bilheteria-local", "borda-01",
+            CredentialNormalization.Raw, aoSuspeitarDeCorte: suspeitas.Add);
+
+        Assert.Null((await fonte.LerAsync(null, CancellationToken.None)).ProximoCursor);
+        Assert.Equal([1000], suspeitas);
+    }
+
     [Fact]
     public async Task Validade_sem_fuso_e_recusada()
     {

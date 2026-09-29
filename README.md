@@ -81,6 +81,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 28 | [Rayzer UI: marca e componentes](docs/28-rayzer-ui-componentes.md) | Empresa (RAYZER X) × produto (XAcess), tokens do brand board, 25 componentes em React/TypeScript/Tailwind e WPF, arquivos de marca em `marca/` |
 | 29 | [O que falta](docs/29-o-que-falta.md) | Varredura de 29/09: bloqueios externos, bancada, fases 3–6, endurecimento, docs desatualizados e ordem recomendada |
 | 30 | [A Zet de verdade](docs/30-integracao-zet-analise.md) | Análise dos 27.641 webhooks e da planilha de vendas de 2025, o tradutor do formato real e o que falta para ligar a Zet à catraca |
+| 31 | [Contrato entre a nuvem e o XAcess](docs/31-contrato-da-nuvem.md) | Para enviar à equipe do painel: segurança (P0), cartões com `total_cards`, tentativas, repasse da Zet, dados e aceite |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |

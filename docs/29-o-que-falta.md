@@ -47,6 +47,8 @@ Qualquer pessoa leria os titulares e forjaria acessos. A correção é do dono d
 2. servir a catraca só pelas funções, com segredo por equipamento;
 3. se precisar de leitura direta, usar uma view sem dado pessoal.
 
+O documento para enviar à equipe do painel é o [docs/31](31-contrato-da-nuvem.md).
+
 ## 3. Depende da bancada (uma TopFit 4 + PC + SDK)
 
 Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado pelo CI.

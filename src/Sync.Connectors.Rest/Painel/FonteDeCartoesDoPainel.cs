@@ -174,7 +174,16 @@ public sealed class FonteDeCartoesDoPainel : IFonteDeIngressos
 
             var recebidos = cartoes.GetArrayLength();
 
-            if (recebidos >= _limiteDeLinhas)
+            // Contrato da nuvem v1 (docs/31 §3): total_cards é a contagem exata do que a
+            // consulta encontrou. Com ele, a lista está completa se vieram todos — mesmo
+            // acima de 1.000 — e cortada se vieram menos. Sem ele, vale a suspeita antiga:
+            // 1.000 ou mais pode ser o limite do servidor cortando sem avisar.
+            var total = raiz.TryGetProperty("total_cards", out var t)
+                        && t.ValueKind == JsonValueKind.Number && t.TryGetInt32(out var n) && n >= 0
+                ? n
+                : (int?)null;
+            var cortada = total is { } esperado ? recebidos < esperado : recebidos >= _limiteDeLinhas;
+            if (cortada)
             {
                 _aoSuspeitarDeCorte?.Invoke(recebidos);
                 return new PaginaDeIngressos(itens, ProximoCursor: null, TemMais: false);
