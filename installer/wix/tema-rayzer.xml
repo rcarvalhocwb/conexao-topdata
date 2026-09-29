@@ -19,20 +19,26 @@
   sobre a arte.
 -->
 <Theme xmlns="http://wixtoolset.org/schemas/v4/thmutil" ImageFile="fundo-setup.png">
-    <!-- 0: botões. 1: título. 2: cabeçalho de página. 3: campos de edição. 4: texto corrido. 5: rodapé. -->
+    <!-- 0: botões. 1: título. 2: cabeçalho de página. 3: campos de edição. 4: texto corrido. 5: rodapé. 6: janela. -->
     <Font Id="0" Height="-13" Weight="500" Foreground="windowtext" Background="window">Segoe UI</Font>
     <Font Id="1" Height="-28" Weight="700" Foreground="FFFFFF">Segoe UI</Font>
     <Font Id="2" Height="-19" Weight="600" Foreground="FFAA5A">Segoe UI</Font>
     <Font Id="3" Height="-13" Weight="500" Foreground="windowtext" Background="window">Segoe UI</Font>
     <Font Id="4" Height="-13" Weight="400" Foreground="EDE3DA">Segoe UI</Font>
     <Font Id="5" Height="-11" Weight="400" Foreground="B09B8A">Segoe UI</Font>
+    <!--
+      6: a fonte da janela, SEM Background. O Background da fonte da janela vira o pincel de
+      fundo da classe; com ele, o Windows apaga a janela (branco) antes de pintar e o thmutil
+      não desenha a arte (só desenha quando o fundo não foi apagado). Foi o fundo branco da 0.1.79.
+    -->
+    <Font Id="6" Height="-13" Weight="400" Foreground="EDE3DA">Segoe UI</Font>
 
     <!--
       SourceX/SourceY: o fundo é o recorte 0,0–820,461 de Theme/@ImageFile, pintado pela
       própria janela, por baixo de tudo. HexStyle explícito mantém a barra de título (sem
       ele, o thmutil faria a janela WS_POPUP).
     -->
-    <Window Width="820" Height="461" HexStyle="100a0000" FontId="0" Caption="#(loc.Caption)" SourceX="0" SourceY="0">
+    <Window Width="820" Height="461" HexStyle="100a0000" FontId="6" Caption="#(loc.Caption)" SourceX="0" SourceY="0">
         <Label X="470" Y="28" Width="-24" Height="38" FontId="1" Visible="yes" DisablePrefix="yes">#(loc.Title)</Label>
         <Label X="470" Y="-44" Width="-24" Height="16" FontId="5" Visible="yes" DisablePrefix="yes">#(loc.InstallVersion)</Label>
 
