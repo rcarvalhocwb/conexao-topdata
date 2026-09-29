@@ -38,7 +38,9 @@ public sealed class OperacaoTests
                 situacoes => Operacao.GravarSituacao(
                     [.. situacoes.Select(c => new SituacaoDoEquipamento(
                         c.DeviceId, c.Inner, "setor-a", c.Estado.ToString(), c.EmOperacao, c.Firmware,
-                        c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow))]),
+                        c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow,
+                        c.RelogioAcertadoEm, c.RelogioConferidoEm,
+                        c.DivergenciaDoRelogio is { } d ? (int)d.TotalSeconds : null, c.RelogioDivergente))]),
                 intervaloDePublicacao: TimeSpan.Zero);
 
             Sessao.Iniciar(3570);
@@ -85,6 +87,20 @@ public sealed class OperacaoTests
             Assert.True(s.Online, $"inner {s.Inner} em {s.Estado}");
             Assert.Equal("setor-a", s.Worker);
         });
+    }
+
+    /// <summary>O acerto do relógio feito ao conectar chega à base, para o painel mostrar.</summary>
+    [Fact]
+    public void O_acerto_do_relogio_ao_conectar_chega_a_base()
+    {
+        using var m = new Montagem();
+
+        var situacao = Assert.Single(m.Operacao.ListarSituacao());
+
+        Assert.Equal(1, m.Simulador.Dispositivo(1).AcertosDeRelogio);
+        Assert.NotNull(situacao.RelogioAcertadoEm);
+        Assert.Null(situacao.RelogioConferidoEm);
+        Assert.False(situacao.RelogioDivergente);
     }
 
     [Fact]

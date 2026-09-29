@@ -26,6 +26,9 @@ internal sealed class CosturaFalsa : IEasyInnerNative
     public (byte Dia, byte Mes, byte Ano, byte Hora, byte Minuto, byte Segundo) DataADevolver { get; set; }
         = (24, 9, 26, 19, 30, 45);
 
+    /// <summary>O que o adapter mandou em EnviarRelogio.</summary>
+    public (byte Dia, byte Mes, byte Ano, byte Hora, byte Minuto, byte Segundo)? DataEnviada { get; private set; }
+
     private byte Registrar(string nome)
     {
         Chamadas.Add(nome);
@@ -55,6 +58,12 @@ internal sealed class CosturaFalsa : IEasyInnerNative
     {
         (dia, mes, ano, hora, minuto, segundo) = DataADevolver;
         return Registrar(nameof(ReceberRelogio));
+    }
+
+    public byte EnviarRelogio(int inner, byte dia, byte mes, byte ano, byte hora, byte minuto, byte segundo)
+    {
+        DataEnviada = (dia, mes, ano, hora, minuto, segundo);
+        return Registrar(nameof(EnviarRelogio));
     }
 
     public byte DefinirPadraoCartao(byte padrao) => Registrar(nameof(DefinirPadraoCartao));

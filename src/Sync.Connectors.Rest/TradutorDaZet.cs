@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Access.Domain.Credentials;
+using Access.Domain.Tempo;
 using Access.Domain.Ticketing;
 
 namespace Sync.Connectors.Rest;
@@ -70,7 +71,7 @@ public sealed class TradutorDaZet : ITradutorDeIngresso
         Provedor = provedor;
         _eventoId = eventoId;
         _inicioDoDia = inicio;
-        _fuso = FusoDeBrasilia();
+        _fuso = HoraDeBrasilia.Fuso;
         _normalizacao = normalizacao ?? CredentialNormalization.Raw;
     }
 
@@ -275,19 +276,5 @@ public sealed class TradutorDaZet : ITradutorDeIngresso
 
         var texto = string.Join(' ', (descricao.GetString() ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         return texto.Length == 0 ? null : texto;
-    }
-
-    private static TimeZoneInfo FusoDeBrasilia()
-    {
-        foreach (var id in new[] { "America/Sao_Paulo", "E. South America Standard Time" })
-        {
-            if (TimeZoneInfo.TryFindSystemTimeZoneById(id, out var fuso))
-            {
-                return fuso;
-            }
-        }
-
-        // Brasil sem horário de verão desde 2019: UTC−3 fixo é o comportamento correto.
-        return TimeZoneInfo.CreateCustomTimeZone("Brasilia", TimeSpan.FromHours(-3), "Brasília", "Brasília");
     }
 }

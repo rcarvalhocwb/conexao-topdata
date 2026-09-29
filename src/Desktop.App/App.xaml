@@ -108,7 +108,23 @@
                 <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Folder}" Rotulo="Grupo" Valor="{Binding Grupo}" />
                 <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Ethernet}" Rotulo="Porta" Valor="{Binding Porta}" />
                 <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Sync}" Rotulo="Reconexões" Valor="{Binding Reconexoes}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Clock}" Rotulo="Relógio" Valor="{Binding Relogio}" />
               </WrapPanel>
+              <!-- Relógio divergente não tira a catraca de operação: é um aviso, não uma falha. -->
+              <TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
+                         Foreground="{DynamicResource Rayzer.Warning}"
+                         Text="Relógio da catraca fora do horário: os acessos saem com hora errada. Acerte em Gerenciar.">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Body}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding RelogioDivergente}" Value="True">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
             </StackPanel>
 
             <!-- TurnstileActionBar. -->

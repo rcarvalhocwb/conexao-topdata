@@ -15,7 +15,11 @@ public sealed record SituacaoDoEquipamento(
     int TentativasDeReconexao,
     DateTimeOffset? UltimoEventoEm,
     string? UltimaDecisao,
-    DateTimeOffset AtualizadoEm);
+    DateTimeOffset AtualizadoEm,
+    DateTimeOffset? RelogioAcertadoEm = null,
+    DateTimeOffset? RelogioConferidoEm = null,
+    int? DivergenciaDoRelogioSegundos = null,
+    bool RelogioDivergente = false);
 
 /// <summary>
 /// Uma tentativa, pronta para a tela: o código já vem mascarado. <c>Sequencia</c> é a
@@ -83,15 +87,20 @@ public sealed class Operacao
                 """
                 INSERT INTO device_status
                     (device_id, inner_number, worker, state, online, firmware, reconnect_attempts,
-                     last_event_at, last_decision, updated_at)
+                     last_event_at, last_decision, updated_at,
+                     clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent)
                 VALUES ($id, $inner, $worker, $estado, $online, $firmware, $reconexoes,
-                        $evento, $decisao, $em)
+                        $evento, $decisao, $em,
+                        $relogioAcertado, $relogioConferido, $divergencia, $divergente)
                 ON CONFLICT (device_id) DO UPDATE SET
                     inner_number = excluded.inner_number, worker = excluded.worker,
                     state = excluded.state, online = excluded.online, firmware = excluded.firmware,
                     reconnect_attempts = excluded.reconnect_attempts,
                     last_event_at = excluded.last_event_at, last_decision = excluded.last_decision,
-                    updated_at = excluded.updated_at;
+                    updated_at = excluded.updated_at,
+                    clock_set_at = excluded.clock_set_at, clock_checked_at = excluded.clock_checked_at,
+                    clock_drift_seconds = excluded.clock_drift_seconds,
+                    clock_divergent = excluded.clock_divergent;
                 """;
             comando.Parameters.AddWithValue("$id", s.DeviceId);
             comando.Parameters.AddWithValue("$inner", s.Inner);
@@ -103,6 +112,10 @@ public sealed class Operacao
             comando.Parameters.AddWithValue("$evento", (object?)IsoOuNulo(s.UltimoEventoEm) ?? DBNull.Value);
             comando.Parameters.AddWithValue("$decisao", (object?)s.UltimaDecisao ?? DBNull.Value);
             comando.Parameters.AddWithValue("$em", Iso(s.AtualizadoEm));
+            comando.Parameters.AddWithValue("$relogioAcertado", (object?)IsoOuNulo(s.RelogioAcertadoEm) ?? DBNull.Value);
+            comando.Parameters.AddWithValue("$relogioConferido", (object?)IsoOuNulo(s.RelogioConferidoEm) ?? DBNull.Value);
+            comando.Parameters.AddWithValue("$divergencia", (object?)s.DivergenciaDoRelogioSegundos ?? DBNull.Value);
+            comando.Parameters.AddWithValue("$divergente", s.RelogioDivergente ? 1 : 0);
             comando.ExecuteNonQuery();
         }
 
@@ -117,7 +130,8 @@ public sealed class Operacao
         comando.CommandText =
             """
             SELECT device_id, inner_number, worker, state, online, firmware, reconnect_attempts,
-                   last_event_at, last_decision, updated_at
+                   last_event_at, last_decision, updated_at,
+                   clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent
             FROM device_status
             ORDER BY inner_number;
             """;
@@ -137,7 +151,11 @@ public sealed class Operacao
                 leitor.GetInt32(6),
                 leitor.IsDBNull(7) ? null : Data(leitor.GetString(7)),
                 leitor.IsDBNull(8) ? null : leitor.GetString(8),
-                Data(leitor.GetString(9))));
+                Data(leitor.GetString(9)),
+                leitor.IsDBNull(10) ? null : Data(leitor.GetString(10)),
+                leitor.IsDBNull(11) ? null : Data(leitor.GetString(11)),
+                leitor.IsDBNull(12) ? null : leitor.GetInt32(12),
+                leitor.GetInt64(13) == 1));
         }
 
         return lista;

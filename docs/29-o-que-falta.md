@@ -79,7 +79,7 @@ As fases do docs/24 §3, em ordem de impacto para o evento.
 - Relação com a nuvem: o cadastro local e o `sync-cards` do painel não podem se sobrescrever. É preciso definir quem é a fonte da verdade de cada campo.
 
 ### Fase 4 — Gerenciar catraca (alta)
-- **Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.** Hoje nenhum código chama `EnviarRelogio`: a catraca pode registrar com hora errada.
+- ~~Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.~~ **Feito (fase 4a):** acerto a cada conexão, conferência 1 min depois e a cada hora, aviso no cartão da catraca. O acerto automático durante a operação fica desligado até o passo 6A do docs/21.
 - Tela por catraca:
   - mensagem padrão e temporária no visor;
   - reiniciar a conexão;

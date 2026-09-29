@@ -113,6 +113,17 @@ public interface ITopdataInnerAdapter : IDisposable
     (AdapterResult Resultado, DateTimeOffset? Relogio) LerRelogio(int inner);
 
     /// <summary>
+    /// Acerta o relógio do equipamento (<c>EnviarRelogio</c>, manual 4.6.1) no horário de
+    /// Brasília.
+    /// </summary>
+    /// <remarks>
+    /// O equipamento guarda hora sem fuso e ano com dois dígitos: só 2000–2099. O fluxo
+    /// oficial acerta o relógio na passagem para on-line; acertar com a catraca em uso é
+    /// <c>A_CONFIRMAR_COM_TOPDATA</c> (bancada, docs/21).
+    /// </remarks>
+    AdapterResult AcertarRelogio(int inner, DateTimeOffset instante);
+
+    /// <summary>
     /// Monta e envia a configuração <b>completa</b>.
     /// </summary>
     /// <remarks>

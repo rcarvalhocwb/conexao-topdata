@@ -109,7 +109,51 @@ public sealed class AdapterTests
 
         var (_, relogio) = adapter.LerRelogio(1);
 
-        Assert.Equal(new DateTimeOffset(2026, 9, 24, 19, 30, 45, TimeSpan.Zero), relogio);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 19, 30, 45, TimeSpan.FromHours(-3)), relogio);
+    }
+
+    /// <summary>
+    /// Acertar o relógio manda o horário de Brasília, com o ano em dois dígitos, qualquer que
+    /// seja o fuso do instante pedido.
+    /// </summary>
+    [Fact]
+    public void Acertar_relogio_manda_o_horario_de_brasilia_com_ano_de_dois_digitos()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        // 22:30:05 UTC = 19:30:05 em Brasília.
+        var resultado = adapter.AcertarRelogio(3, new DateTimeOffset(2026, 9, 24, 22, 30, 5, TimeSpan.Zero));
+
+        Assert.Equal(AdapterStatus.Ok, resultado.Status);
+        Assert.Equal(((byte)24, (byte)9, (byte)26, (byte)19, (byte)30, (byte)5), costura.DataEnviada);
+    }
+
+    /// <summary>O que se acerta é o que se lê de volta: o mesmo instante, sem as três horas de UTC.</summary>
+    [Fact]
+    public void Relogio_acertado_e_lido_de_volta_e_o_mesmo_instante()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+        var instante = new DateTimeOffset(2026, 12, 31, 23, 59, 58, TimeSpan.FromHours(-3));
+
+        adapter.AcertarRelogio(1, instante);
+        costura.DataADevolver = costura.DataEnviada!.Value;
+        var (_, lido) = adapter.LerRelogio(1);
+
+        Assert.Equal(instante, lido);
+    }
+
+    /// <summary>Ano fora de 2000–2099 não cabe em dois dígitos: recusado antes de chegar à catraca.</summary>
+    [Fact]
+    public void Acertar_relogio_fora_do_seculo_e_recusado()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            adapter.AcertarRelogio(1, new DateTimeOffset(2100, 1, 1, 12, 0, 0, TimeSpan.FromHours(-3))));
+        Assert.Null(costura.DataEnviada);
     }
 
     /// <summary>
@@ -237,7 +281,7 @@ public sealed class AdapterTests
         Assert.NotNull(evento);
         Assert.True(evento.Origin.ConfirmaPassagemFisica);
         Assert.Equal("0012345678", evento.RawCardData);
-        Assert.Equal(new DateTimeOffset(2026, 9, 24, 19, 30, 45, TimeSpan.Zero), evento.DeviceTime);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 19, 30, 45, TimeSpan.FromHours(-3)), evento.DeviceTime);
     }
 
     /// <summary>Zeros à esquerda precisam sobreviver à leitura do buffer.</summary>

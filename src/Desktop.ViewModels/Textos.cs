@@ -65,6 +65,42 @@ public static class Textos
                 : string.Create(CultureInfo.InvariantCulture, $"há {passou.TotalHours:F0} h");
     }
 
+    /// <summary>
+    /// O relógio da catraca em poucas palavras: "certo · conferido há 12 min", "atrasado
+    /// 45 s", "data inválida" — ou "não conferido" enquanto a catraca não chegou a operar.
+    /// </summary>
+    public static (string Texto, bool Divergente) Relogio(Equipamento equipamento, DateTimeOffset agora)
+    {
+        ArgumentNullException.ThrowIfNull(equipamento);
+
+        if (equipamento.RelogioDivergente)
+        {
+            if (!equipamento.HasDivergenciaDoRelogioSegundos)
+            {
+                return ("data inválida na catraca", true);
+            }
+
+            var d = equipamento.DivergenciaDoRelogioSegundos;
+            return ($"{(d > 0 ? "adiantado" : "atrasado")} {Duracao(Math.Abs(d))}", true);
+        }
+
+        if (equipamento.RelogioConferidoEm is { } conferido)
+        {
+            return ($"certo · conferido {Ha(conferido.ToDateTimeOffset(), agora)}", false);
+        }
+
+        return equipamento.RelogioAcertadoEm is { } acertado
+            ? ($"acertado {Ha(acertado.ToDateTimeOffset(), agora)}", false)
+            : ("não conferido", false);
+    }
+
+    private static string Duracao(int segundos) =>
+        segundos < 60
+            ? string.Create(CultureInfo.InvariantCulture, $"{segundos} s")
+            : segundos < 3600
+                ? string.Create(CultureInfo.InvariantCulture, $"{segundos / 60} min {segundos % 60} s")
+                : string.Create(CultureInfo.InvariantCulture, $"{segundos / 3600} h {segundos % 3600 / 60} min");
+
     /// <summary>Hora no relógio do evento (Brasília), no formato do painel.</summary>
     public static string Hora(DateTimeOffset quando) =>
         FusoDoEvento.NoEvento(quando).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
@@ -81,7 +117,9 @@ public sealed record LinhaDeCatraca(
     string Firmware,
     string Grupo,
     int Porta,
-    int Reconexoes)
+    int Reconexoes,
+    string Relogio = "não conferido",
+    bool RelogioDivergente = false)
 {
     /// <summary>"CATRACA 01": como a catraca é chamada no cartão do dispositivo.</summary>
     public string Rotulo => string.Create(CultureInfo.InvariantCulture, $"CATRACA {Inner:D2}");

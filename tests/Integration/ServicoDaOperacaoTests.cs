@@ -1,6 +1,8 @@
 using Access.Domain.Ticketing;
 using Access.Infrastructure.SQLite;
 using Contracts.Edge.V1;
+using Desktop.ViewModels;
+using Google.Protobuf.WellKnownTypes;
 using Edge.Supervisor;
 
 namespace Integration.Tests;
@@ -108,6 +110,51 @@ public sealed class ServicoDaOperacaoTests
         var estado = await c.Servico.ObterEstado(new ObterEstadoRequest(), null!);
         Assert.Equal(1, estado.EquipamentosConectados);
         Assert.Equal(2, estado.EquipamentosCadastrados);
+    }
+
+    /// <summary>O relógio de cada catraca vai da base ao painel, inclusive a divergência.</summary>
+    [Fact]
+    public async Task O_painel_ve_o_relogio_de_cada_catraca()
+    {
+        using var c = new Cenario();
+        c.Operacao.GravarSituacao(
+        [
+            new SituacaoDoEquipamento("inner-1", 1, "setor-a", "Polling", true, "4.2.0", 0, null, null, Agora,
+                RelogioAcertadoEm: Agora.AddHours(-2), RelogioConferidoEm: Agora.AddMinutes(-3),
+                DivergenciaDoRelogioSegundos: -45, RelogioDivergente: true),
+            new SituacaoDoEquipamento("inner-2", 2, "setor-a", "Polling", true, "4.2.0", 0, null, null, Agora,
+                RelogioAcertadoEm: Agora.AddMinutes(-1), RelogioConferidoEm: Agora.AddMinutes(-1),
+                DivergenciaDoRelogioSegundos: 0, RelogioDivergente: false),
+        ]);
+
+        var lista = await c.Servico.ListarEquipamentos(new ListarEquipamentosRequest(), null!);
+
+        var um = lista.Equipamentos.Single(e => e.Inner == 1);
+        Assert.True(um.RelogioDivergente);
+        Assert.Equal(-45, um.DivergenciaDoRelogioSegundos);
+        Assert.Equal(Agora.AddMinutes(-3), um.RelogioConferidoEm.ToDateTimeOffset());
+        Assert.Equal(("atrasado 45 s", true), Textos.Relogio(um, Agora));
+
+        var dois = lista.Equipamentos.Single(e => e.Inner == 2);
+        Assert.False(dois.RelogioDivergente);
+        Assert.True(dois.HasDivergenciaDoRelogioSegundos);
+        Assert.Equal(("certo · conferido há 1 min", false), Textos.Relogio(dois, Agora));
+        Assert.True(um.EmOperacao, "relógio divergente é aviso, não tira a catraca de operação");
+    }
+
+    [Fact]
+    public void Texto_do_relogio_cobre_data_invalida_adiantado_e_nunca_conferido()
+    {
+        var agora = Agora;
+
+        Assert.Equal(("não conferido", false), Textos.Relogio(new Equipamento(), agora));
+        Assert.Equal(("data inválida na catraca", true), Textos.Relogio(new Equipamento { RelogioDivergente = true }, agora));
+        Assert.Equal(
+            ("adiantado 2 min 5 s", true),
+            Textos.Relogio(new Equipamento { RelogioDivergente = true, DivergenciaDoRelogioSegundos = 125 }, agora));
+        Assert.Equal(
+            ("acertado há 10 s", false),
+            Textos.Relogio(new Equipamento { RelogioAcertadoEm = Timestamp.FromDateTimeOffset(agora.AddSeconds(-10)) }, agora));
     }
 
     [Fact]

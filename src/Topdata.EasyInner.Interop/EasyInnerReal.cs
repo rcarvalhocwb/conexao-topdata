@@ -41,6 +41,9 @@ public sealed class EasyInnerReal : IEasyInnerNative
         ref byte segundo) =>
         EasyInnerNative.ReceberRelogio(inner, ref dia, ref mes, ref ano, ref hora, ref minuto, ref segundo);
 
+    public byte EnviarRelogio(int inner, byte dia, byte mes, byte ano, byte hora, byte minuto, byte segundo) =>
+        EasyInnerNative.EnviarRelogio(inner, dia, mes, ano, hora, minuto, segundo);
+
     public byte DefinirPadraoCartao(byte padrao) => EasyInnerNative.DefinirPadraoCartao(padrao);
 
     public byte DefinirQuantidadeDigitosCartao(byte quantidade) =>

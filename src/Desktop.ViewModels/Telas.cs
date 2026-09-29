@@ -278,6 +278,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
     internal static LinhaDeCatraca Linha(Equipamento e, DateTimeOffset agora)
     {
         var (texto, sinal) = Textos.SituacaoDaCatraca(e);
+        var (relogio, relogioDivergente) = Textos.Relogio(e, agora);
 
         return new LinhaDeCatraca(
             e.Inner,
@@ -294,7 +295,9 @@ public sealed class PainelAoVivoViewModel : TelaBase
             string.IsNullOrWhiteSpace(e.Firmware) ? "—" : e.Firmware,
             e.Worker,
             e.Porta,
-            e.TentativasDeReconexao);
+            e.TentativasDeReconexao,
+            relogio,
+            relogioDivergente);
     }
 }
 

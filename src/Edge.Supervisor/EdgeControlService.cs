@@ -166,6 +166,22 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
                     equipamento.TentativasDeReconexao = c.Situacao.TentativasDeReconexao;
                     equipamento.UltimaDecisao = c.Situacao.UltimaDecisao ?? string.Empty;
                     equipamento.NoticiaEm = Timestamp.FromDateTimeOffset(c.Situacao.AtualizadoEm);
+                    equipamento.RelogioDivergente = c.Situacao.RelogioDivergente;
+
+                    if (c.Situacao.RelogioAcertadoEm is { } acertado)
+                    {
+                        equipamento.RelogioAcertadoEm = Timestamp.FromDateTimeOffset(acertado);
+                    }
+
+                    if (c.Situacao.RelogioConferidoEm is { } conferido)
+                    {
+                        equipamento.RelogioConferidoEm = Timestamp.FromDateTimeOffset(conferido);
+                    }
+
+                    if (c.Situacao.DivergenciaDoRelogioSegundos is { } divergencia)
+                    {
+                        equipamento.DivergenciaDoRelogioSegundos = divergencia;
+                    }
 
                     if (c.Situacao.UltimoEventoEm is { } evento)
                     {

@@ -87,11 +87,30 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
     public (AdapterResult Resultado, DateTimeOffset? Relogio) LerRelogio(int inner)
     {
         var dispositivo = Dispositivo(inner);
-        var resultado = ComDispositivo(inner, d => d.Desconectado ? 1 : 0);
+        var resultado = ComDispositivo(inner, d => d.RetornoDoRelogio ?? (d.Desconectado ? 1 : 0));
         return resultado.IsOk
             ? (resultado, _relogio() + dispositivo.DesvioDeRelogio)
             : (resultado, null);
     }
+
+    /// <summary>Acerta o relógio: o desvio passa a ser a diferença entre o pedido e o relógio da borda.</summary>
+    public AdapterResult AcertarRelogio(int inner, DateTimeOffset instante) =>
+        ComDispositivo(inner, d =>
+        {
+            if (d.RetornoDoRelogio is { } retorno)
+            {
+                return retorno;
+            }
+
+            if (d.Desconectado)
+            {
+                return 1;
+            }
+
+            d.DesvioDeRelogio = instante - _relogio();
+            d.AcertosDeRelogio++;
+            return 0;
+        });
 
     public AdapterResult EnviarConfiguracaoCompleta(int inner, DeviceConfiguration configuracao)
     {

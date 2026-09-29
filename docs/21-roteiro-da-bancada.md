@@ -179,6 +179,37 @@ evento ([`19`](19-bilheteria-local-e-divisao-das-catracas.md), seção 2.5).
 
 ---
 
+## 6A. Relógio da catraca (`INT-CLK-01`, `INT-CLK-02`)
+
+O sistema acerta o relógio da catraca **toda vez que ela conecta** (`EnviarRelogio`, no
+horário de Brasília) e confere **um minuto depois**, e então a cada hora
+(`ReceberRelogio`). O manual descreve as duas funções, mas não diz se a catraca guarda o
+fuso, nem se é seguro acertar com ela atendendo. Por isso o acerto automático durante a
+operação está **desligado** até esta tabela voltar preenchida.
+
+1. Assim que a catraca entrar em operação (passo 2), a tela mostra `relógio acertado`.
+2. Um minuto depois deve aparecer `relógio conferido (0 s)`, ou ±1 s.
+3. Se o display da catraca mostra a hora, confira contra o relógio do PC.
+4. Tire o cabo de rede por 30 s e ponha de volta. Depois de reconectar, deve aparecer
+   `relógio acertado` de novo. **Logo em seguida**, mostre um QR: ele precisa liberar
+   normalmente.
+
+| # | O que aparece | O que significa |
+|---|---|---|
+| 1 | `relógio conferido (0 s)` ou ±1 s | Acerto e leitura funcionam, no horário de Brasília |
+| 2 | `relógio divergente (+10800 s)` ou `(-10800 s)` | A catraca devolve em outro fuso (3 h de diferença): anote e não opere até corrigir |
+| 3 | `relógio divergente (data inválida)` | Dia e mês trocados, ou ano em outro formato: anote o que o display mostra |
+| 4 | `falha ao acertar o relógio (…)` | Anote o retorno. A catraca deve continuar atendendo mesmo assim |
+| 5 | O QR logo depois do reacerto não libera, ou demora | Acertar com a catraca em uso **não** é seguro: o acerto automático fica desligado de vez |
+
+| # | Resultado | Hora no display | Hora no PC |
+|---|---|---|---|
+| Conferência 1 min depois | | | |
+| Depois de reconectar | | | |
+| QR logo após o reacerto | | — | — |
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
@@ -220,7 +251,8 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 4: QR libera, gira, e `GiroConfirmado` aparece
 - [ ] Passo 4: cartão libera
 - [ ] Passo 5: as seis regras se comportam como a tabela diz
+- [ ] Passo 6A: relógio conferido com no máximo ±1 s, e o QR logo após o reacerto libera
 - [ ] Passo 7: o resumo bate com o que foi feito
 
-**Mande a tabela do passo 3 e o resumo do passo 7.** São eles que fecham as perguntas
+**Mande a tabela do passo 3, a do passo 6A e o resumo do passo 7.** São eles que fecham as perguntas
 em aberto sobre leitor, QR e cartão.

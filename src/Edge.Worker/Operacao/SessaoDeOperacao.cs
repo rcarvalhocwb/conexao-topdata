@@ -16,7 +16,11 @@ public sealed record SituacaoDaCatraca(
     string? Firmware,
     int TentativasDeReconexao,
     DateTimeOffset? UltimoEventoEm,
-    string? UltimaDecisao);
+    string? UltimaDecisao,
+    DateTimeOffset? RelogioAcertadoEm = null,
+    DateTimeOffset? RelogioConferidoEm = null,
+    TimeSpan? DivergenciaDoRelogio = null,
+    bool RelogioDivergente = false);
 
 /// <summary>
 /// A operação de verdade: o mesmo laço da bancada, sem tela, publicando a situação de cada
@@ -146,7 +150,11 @@ public sealed class SessaoDeOperacao
             d.Firmware?.Versao,
             d.TentativasDeReconexao,
             d.UltimoEvento?.ReceivedTime,
-            _ultimaDecisao.GetValueOrDefault(d.Maquina.DeviceId)))];
+            _ultimaDecisao.GetValueOrDefault(d.Maquina.DeviceId),
+            d.RelogioAcertadoEm,
+            d.RelogioConferidoEm,
+            d.DivergenciaDoRelogio,
+            d.RelogioDivergente))];
 
     private void PublicarSeFor()
     {

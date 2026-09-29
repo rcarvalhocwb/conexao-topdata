@@ -57,6 +57,9 @@ public interface IEasyInnerNative
         ref byte minuto,
         ref byte segundo);
 
+    /// <summary>EI-008 — acerta o relógio do equipamento. Ano com dois dígitos.</summary>
+    byte EnviarRelogio(int inner, byte dia, byte mes, byte ano, byte hora, byte minuto, byte segundo);
+
     /// <summary>EI-010 — padrão do cartão. 0 Topdata, 1 Livre.</summary>
     byte DefinirPadraoCartao(byte padrao);
 

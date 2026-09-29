@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Access.Application.Devices;
 using Access.Domain.Devices;
+using Access.Domain.Tempo;
 using Topdata.EasyInner.Interop;
 
 namespace Topdata.EasyInner.Adapter;
@@ -111,6 +112,25 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
 
         var relogio = Montar(ano, mes, dia, hora, minuto, segundo);
         return (resultado, relogio);
+    }
+
+    public AdapterResult AcertarRelogio(int inner, DateTimeOffset instante)
+    {
+        var local = HoraDeBrasilia.NoEvento(instante);
+        if (local.Year is < 2000 or > 2099)
+        {
+            // O ano vai com dois dígitos: fora desse século a catraca guardaria outra data.
+            throw new ArgumentOutOfRangeException(nameof(instante), "o relógio da catraca só guarda anos de 2000 a 2099.");
+        }
+
+        return Medir(() => _nativo.EnviarRelogio(
+            inner,
+            (byte)local.Day,
+            (byte)local.Month,
+            (byte)(local.Year - 2000),
+            (byte)local.Hour,
+            (byte)local.Minute,
+            (byte)local.Second));
     }
 
     public AdapterResult EnviarConfiguracaoCompleta(int inner, DeviceConfiguration configuracao)
@@ -292,6 +312,9 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
 
     /// <summary>Monta a data do equipamento, que traz o ano com dois dígitos.</summary>
     /// <remarks>
+    /// A catraca não guarda fuso. A borda acerta o relógio dela em horário de Brasília
+    /// (<see cref="AcertarRelogio"/>), então é nesse horário que a leitura é interpretada —
+    /// e não em UTC, o que deslocaria todo carimbo em três horas.
     /// Data inválida não vira exceção: o equipamento pode estar com o relógio zerado, e
     /// derrubar o laço por causa disso perderia o evento. Volta como
     /// <see cref="DateTimeOffset.MinValue"/>, que o consumidor reconhece.
@@ -300,7 +323,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     {
         try
         {
-            return new DateTimeOffset(2000 + ano, mes, dia, hora, minuto, segundo, TimeSpan.Zero);
+            return HoraDeBrasilia.DoEvento(new DateTime(2000 + ano, mes, dia, hora, minuto, segundo, DateTimeKind.Unspecified));
         }
         catch (ArgumentOutOfRangeException)
         {

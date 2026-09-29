@@ -1,3 +1,4 @@
+using System.Globalization;
 using Access.Application.Devices;
 using Access.Domain.Access;
 using Access.Domain.Devices;
@@ -48,6 +49,31 @@ public sealed class DeviceSlot
 
     /// <summary>Última decisão tomada para este equipamento.</summary>
     public Decision? UltimaDecisao { get; internal set; }
+
+    /// <summary>Quando acertar o relógio da catraca. Marcado a cada conexão.</summary>
+    public DateTimeOffset? AcertarRelogioEm { get; internal set; }
+
+    /// <summary>Quando conferir o relógio da catraca de novo.</summary>
+    public DateTimeOffset? ConferirRelogioEm { get; internal set; }
+
+    /// <summary>Último acerto do relógio que a catraca aceitou.</summary>
+    public DateTimeOffset? RelogioAcertadoEm { get; internal set; }
+
+    /// <summary>Última conferência do relógio.</summary>
+    public DateTimeOffset? RelogioConferidoEm { get; internal set; }
+
+    /// <summary>
+    /// Relógio da catraca menos o da borda, na última conferência, em segundos inteiros
+    /// (a catraca não guarda fração). Positivo: a catraca está adiantada.
+    /// </summary>
+    public TimeSpan? DivergenciaDoRelogio { get; internal set; }
+
+    /// <summary>A catraca devolveu uma data impossível (relógio zerado, por exemplo).</summary>
+    public bool RelogioInvalido { get; internal set; }
+
+    /// <summary>Verdadeiro quando a última conferência passou do limite de divergência.</summary>
+    public bool RelogioDivergente =>
+        RelogioInvalido || DivergenciaDoRelogio is { } divergencia && divergencia.Duration() > DevicePump.LimiteDeDivergenciaDoRelogio;
 }
 
 /// <summary>
@@ -60,20 +86,49 @@ public sealed class DeviceSlot
 /// </remarks>
 public sealed class DevicePump
 {
+    /// <summary>Acima disto o relógio da catraca é dado como divergente (docs/24 §1).</summary>
+    public static readonly TimeSpan LimiteDeDivergenciaDoRelogio = TimeSpan.FromSeconds(30);
+
+    /// <summary>De quanto em quanto tempo o relógio é conferido.</summary>
+    public static readonly TimeSpan IntervaloDeConferenciaDoRelogio = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// A primeira conferência vem logo depois do acerto: é ela que mostra se a catraca
+    /// guardou mesmo a hora enviada.
+    /// </summary>
+    public static readonly TimeSpan PrimeiraConferenciaDoRelogio = TimeSpan.FromMinutes(1);
+
+    /// <summary>Depois de uma falha no acerto ou na leitura, espera isto para tentar de novo.</summary>
+    public static readonly TimeSpan EsperaAposFalhaNoRelogio = TimeSpan.FromMinutes(5);
+
     private readonly ITopdataInnerAdapter _adapter;
     private readonly Func<DateTimeOffset> _relogio;
     private readonly IReadOnlySet<byte> _linhasHomologadas;
     private readonly Func<DeviceEvent, Decision>? _decidir;
     private readonly Action<DeviceEvent>? _aoReceberEvento;
+    private readonly bool _acertarRelogioAoDivergir;
 
+    /// <param name="adapter">Acesso à EasyInner.</param>
+    /// <param name="relogio">Relógio da borda.</param>
+    /// <param name="linhasHomologadas">Linhas de firmware da matriz (ADR-0010).</param>
+    /// <param name="decidir">Motor de decisão.</param>
+    /// <param name="aoReceberEvento">Recebe cada evento no instante em que chega.</param>
+    /// <param name="acertarRelogioAoDivergir">
+    /// Acerta sozinho, com a catraca em operação, quando a conferência horária achar
+    /// divergência. Desligado por padrão: o fluxo oficial só acerta na conexão, e acertar
+    /// com a catraca atendendo é <c>A_CONFIRMAR_COM_TOPDATA</c> (docs/21, INT-CLK-02).
+    /// Desligado, a divergência só é informada — e o operador acerta pelo painel.
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
         IReadOnlySet<byte>? linhasHomologadas = null,
         Func<DeviceEvent, Decision>? decidir = null,
-        Action<DeviceEvent>? aoReceberEvento = null)
+        Action<DeviceEvent>? aoReceberEvento = null,
+        bool acertarRelogioAoDivergir = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
+        _acertarRelogioAoDivergir = acertarRelogioAoDivergir;
         _adapter = adapter;
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
 
@@ -103,6 +158,13 @@ public sealed class DevicePump
         if (!dispositivo.Disjuntor.PermitePassar)
         {
             return "disjuntor aberto";
+        }
+
+        // O relógio só é mexido em Polling: é o ponto ocioso e seguro, sem ninguém no meio
+        // de uma passagem. Uma chamada por passo, como o resto.
+        if (dispositivo.Maquina.Current is DeviceState.Polling && CuidarDoRelogio(dispositivo, agora) is { } relogio)
+        {
+            return relogio;
         }
 
         return dispositivo.Maquina.Current switch
@@ -144,6 +206,11 @@ public sealed class DevicePump
             d.Disjuntor.RegistrarSucesso();
             d.TentativasDeReconexao = 0;
             d.EsperarAte = null;
+
+            // A cada conexão, o relógio é acertado assim que a catraca chegar a Polling —
+            // o fluxo oficial acerta na passagem para on-line (manual 4.6.1).
+            d.AcertarRelogioEm = agora;
+            d.ConferirRelogioEm = null;
             Disparar(d, DeviceTrigger.ConexaoOk, agora);
             return "conectado";
         }
@@ -346,6 +413,85 @@ public sealed class DevicePump
 
         Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
         return $"falha ao exibir negação ({resultado})";
+    }
+
+    private string? CuidarDoRelogio(DeviceSlot d, DateTimeOffset agora)
+    {
+        if (d.AcertarRelogioEm is { } acertar && agora >= acertar)
+        {
+            return AcertarRelogio(d, agora);
+        }
+
+        if (d.ConferirRelogioEm is { } conferir && agora >= conferir)
+        {
+            return ConferirRelogio(d, agora);
+        }
+
+        return null;
+    }
+
+    // Falha no relógio nunca derruba a catraca: não conta no disjuntor nem dispara
+    // reconexão. Se a comunicação caiu de fato, a próxima espera por evento percebe.
+    private string AcertarRelogio(DeviceSlot d, DateTimeOffset agora)
+    {
+        AdapterResult resultado;
+        try
+        {
+            resultado = _adapter.AcertarRelogio(d.Inner, agora);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // O relógio do PC está fora de 2000–2099: acertar a catraca por ele seria pior.
+            d.AcertarRelogioEm = null;
+            d.ConferirRelogioEm = agora + PrimeiraConferenciaDoRelogio;
+            return "relógio do PC fora do intervalo que a catraca guarda — relógio da catraca não acertado";
+        }
+
+        if (!resultado.IsOk)
+        {
+            d.AcertarRelogioEm = agora + EsperaAposFalhaNoRelogio;
+            return $"falha ao acertar o relógio ({resultado}) — a operação segue";
+        }
+
+        d.RelogioAcertadoEm = agora;
+        d.AcertarRelogioEm = null;
+        d.ConferirRelogioEm = agora + PrimeiraConferenciaDoRelogio;
+        return "relógio acertado";
+    }
+
+    private string ConferirRelogio(DeviceSlot d, DateTimeOffset agora)
+    {
+        var (resultado, lido) = _adapter.LerRelogio(d.Inner);
+
+        if (!resultado.IsOk || lido is not { } relogio)
+        {
+            d.ConferirRelogioEm = agora + EsperaAposFalhaNoRelogio;
+            return $"falha ao ler o relógio ({resultado}) — a operação segue";
+        }
+
+        d.RelogioConferidoEm = agora;
+        d.ConferirRelogioEm = agora + IntervaloDeConferenciaDoRelogio;
+        d.RelogioInvalido = relogio == DateTimeOffset.MinValue;
+        d.DivergenciaDoRelogio = d.RelogioInvalido
+            ? null
+            : TimeSpan.FromSeconds(Math.Round((relogio - agora).TotalSeconds));
+
+        if (!d.RelogioDivergente)
+        {
+            return string.Create(CultureInfo.InvariantCulture, $"relógio conferido ({d.DivergenciaDoRelogio!.Value.TotalSeconds:+0;-0;0} s)");
+        }
+
+        var descricao = d.RelogioInvalido
+            ? "data inválida"
+            : string.Create(CultureInfo.InvariantCulture, $"{d.DivergenciaDoRelogio!.Value.TotalSeconds:+0;-0} s");
+
+        if (_acertarRelogioAoDivergir)
+        {
+            d.AcertarRelogioEm = agora;
+            return $"relógio divergente ({descricao}) — será acertado";
+        }
+
+        return $"relógio divergente ({descricao}) — acerte pelo painel";
     }
 
     private static void Disparar(DeviceSlot d, DeviceTrigger gatilho, DateTimeOffset agora) =>

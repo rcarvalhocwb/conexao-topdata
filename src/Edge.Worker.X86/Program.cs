@@ -264,7 +264,10 @@ internal static class Program
             situacoes => operacao.GravarSituacao(
                 [.. situacoes.Select(c => new SituacaoDoEquipamento(
                     c.DeviceId, c.Inner, nome, c.Estado.ToString(), c.EmOperacao, c.Firmware,
-                    c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow))]));
+                    c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow,
+                    c.RelogioAcertadoEm, c.RelogioConferidoEm,
+                    c.DivergenciaDoRelogio is { } divergencia ? (int)divergencia.TotalSeconds : null,
+                    c.RelogioDivergente))]));
 
         using var cancelamento = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>

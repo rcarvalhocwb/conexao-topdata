@@ -47,6 +47,12 @@ public sealed class SimulatedDevice : IDisposable
     /// <summary>Desvio do relógio do equipamento em relação ao da borda.</summary>
     public TimeSpan DesvioDeRelogio { get; set; }
 
+    /// <summary>Quantas vezes o relógio foi acertado (<c>EnviarRelogio</c>).</summary>
+    public int AcertosDeRelogio { get; set; }
+
+    /// <summary>Quando definido, só as funções de relógio devolvem este retorno bruto.</summary>
+    public int? RetornoDoRelogio { get; set; }
+
     /// <summary>Quando definido, toda chamada devolve este retorno bruto.</summary>
     /// <remarks>Use 8 para reproduzir o GPF documentado.</remarks>
     public int? RetornoForcado { get; set; }
