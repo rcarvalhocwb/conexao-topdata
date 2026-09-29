@@ -416,7 +416,8 @@ jobs:
               }
           }
           '@
-          Start-Process (Resolve-Path RayzerXAcess-Setup.exe) | Out-Null
+          # -log: se o tema não carregar, o motivo fica aqui (e é impresso no fim).
+          Start-Process (Resolve-Path RayzerXAcess-Setup.exe) -ArgumentList @('-log', "`"$PWD\setup-burn.log`"") | Out-Null
           $janela = [IntPtr]::Zero
           for ($i = 0; $i -lt 40 -and $janela -eq [IntPtr]::Zero; $i++) {
             Start-Sleep -Seconds 1
@@ -425,6 +426,9 @@ jobs:
           if ($janela -eq [IntPtr]::Zero) {
             Write-Host "::warning::A janela do Setup não apareceu em 40 s para a foto."
             Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host "  janela: $($_.ProcessName) — $($_.MainWindowTitle)" }
+            Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  processo do Setup: $($_.Id), janela '$($_.MainWindowTitle)'" }
+            Write-Host '--- registro do Setup (Burn) ---'
+            Get-ChildItem "$PWD\setup-burn*.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_ -Tail 60 }
           } else {
             Start-Sleep -Seconds 2   # a arte termina de desenhar
             $r = New-Object FotoDoSetup+RECT
