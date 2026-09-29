@@ -138,8 +138,8 @@ internal static class CapturaDeTela
             await EsperarAsync(janela, TimeSpan.FromSeconds(3)).ConfigureAwait(true);
             gravados.Add(FotografarJanela(janela, Path.Combine(pasta, nome + ".png")));
 
-            // 2. No meio de um cenário: o QR lido, sinal verde, braço solto.
-            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr);
+            // 2. No meio de um cenário, de frente: o QR lido, sinal verde, braço solto.
+            await gemeo.MudarVista.ExecutarAsync("Frente").ConfigureAwait(true);
             await EsperarAsync(janela, TimeSpan.FromSeconds(1.5)).ConfigureAwait(true);
             await gemeo.RodarRoteiro.ExecutarAsync(Desktop.ViewModels.GemeoDigital.Roteiros.QrValido).ConfigureAwait(true);
             await EsperarAsync(janela, TimeSpan.FromSeconds(2.2)).ConfigureAwait(true);

@@ -746,7 +746,7 @@ public partial class Gemeo : UserControl
 
         var deslocamento = _deslocamentoDaPeca.TryGetValue(peca, out var d) ? d * _separacao : Ponto3.Zero;
         _alvoDesejado = vm.Modelo.CentroDe(peca) + deslocamento;
-        _distanciaDesejada = Math.Clamp(vm.Modelo.TamanhoDe(peca) * 3.2, 700, 3200);
+        _distanciaDesejada = Math.Clamp(vm.Modelo.TamanhoDe(peca) * 3.2, 1300, 3200);
 
         // Peças do painel: olhar de frente e um pouco de cima, para ler o que está escrito.
         if (peca is PecaDaCatraca.Display or PecaDaCatraca.Teclado or PecaDaCatraca.LeitorQr
