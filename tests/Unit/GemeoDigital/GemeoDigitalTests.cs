@@ -75,6 +75,21 @@ public sealed class GemeoDigitalTests
         Assert.Contains("ilegível", erro.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Especificacao_exige_cor_valida_para_todo_acabamento()
+    {
+        var e = EspecificacaoDaFit4.Padrao;
+        var semInox = e with
+        {
+            Aparencia = e.Aparencia with { Acabamentos = e.Aparencia.Acabamentos.Where(kv => kv.Key != "AcoInox").ToDictionary() },
+        };
+
+        Assert.Contains(semInox.Validar(), p => p.Contains("AcoInox", StringComparison.Ordinal));
+        Assert.Equal(new CorRgba(0x90, 0, 0, 0), CorRgba.Ler("#90000000"));
+        Assert.Equal(new CorRgba(0xFF, 0x3A, 0x3E, 0x46), CorRgba.Ler("#3A3E46"));
+        Assert.Throws<FormatException>(() => CorRgba.Ler("azul"));
+    }
+
     // --- Catálogo ---
 
     [Fact]

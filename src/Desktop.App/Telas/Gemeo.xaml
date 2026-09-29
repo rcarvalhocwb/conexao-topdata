@@ -205,11 +205,11 @@
             <StackPanel>
               <rz:RayzerSectionHeader Titulo="Como a mensagem aparece no display" />
               <TextBox MaxLength="40" Text="{Binding TextoDaPrevia, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Texto para ver no display" />
-              <Border Margin="0,10,0,0" Padding="10,8" HorizontalAlignment="Left" Background="#0B2A4A" CornerRadius="{StaticResource Rayzer.Radius.Sm}"
+              <Border Margin="0,10,0,0" Padding="10,8" HorizontalAlignment="Left" Background="{DynamicResource Rayzer.Brand.Primary}" CornerRadius="{StaticResource Rayzer.Radius.Sm}"
                       AutomationProperties.Name="Prévia do display, duas linhas de 16 caracteres">
                 <StackPanel>
-                  <TextBlock FontFamily="{StaticResource Rayzer.Font.Mono}" FontSize="16" Foreground="#CFE7FF" Text="{Binding PreviaLinha1}" />
-                  <TextBlock FontFamily="{StaticResource Rayzer.Font.Mono}" FontSize="16" Foreground="#CFE7FF" Text="{Binding PreviaLinha2}" />
+                  <TextBlock FontFamily="{StaticResource Rayzer.Font.Mono}" FontSize="16" Foreground="{DynamicResource Rayzer.Text.OnBrand}" Text="{Binding PreviaLinha1}" />
+                  <TextBlock FontFamily="{StaticResource Rayzer.Font.Mono}" FontSize="16" Foreground="{DynamicResource Rayzer.Text.OnBrand}" Text="{Binding PreviaLinha2}" />
                 </StackPanel>
               </Border>
               <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding AvisosDaPrevia}">

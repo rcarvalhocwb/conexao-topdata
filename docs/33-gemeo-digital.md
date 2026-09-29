@@ -105,6 +105,12 @@ As fotos de referência usadas para a disposição das peças (perfil da catraca
 facial, display, teclado, QR e proximidade) são material comercial da Topdata e **não estão no
 repositório**, que é público.
 
+**Cores.** As do objeto físico (pintura, inox, teclas, luzes da cena, display) também estão no
+`fit4.json`, em `aparencia`: a catraca é a mesma em qualquer tema, e a regra do projeto é
+não ter cor solta em tela. O que depende do tema — o realce da peça, o verde e o vermelho
+acesos, a urna cheia — vem das chaves Rayzer (`Rayzer.Brand.Cyan`, `Rayzer.Access.Granted`,
+`Rayzer.Access.Denied`, `Rayzer.Warning`).
+
 ## 6. Acessibilidade
 
 - Tudo o que o mouse faz no desenho tem caminho pelo teclado (lista de peças, botões de vista,

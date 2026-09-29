@@ -74,6 +74,87 @@ public sealed record RotorDaFit4
     public required int DuracaoDoGiroMs { get; init; }
 }
 
+/// <summary>Uma cor em #RRGGBB ou #AARRGGBB, sem depender do WPF.</summary>
+public readonly record struct CorRgba(byte A, byte R, byte G, byte B)
+{
+    /// <summary>Lê "#RRGGBB" ou "#AARRGGBB". Falha vira <see cref="FormatException"/>.</summary>
+    public static CorRgba Ler(string? texto)
+    {
+        var t = (texto ?? string.Empty).Trim();
+        if (!t.StartsWith('#') || t.Length is not (7 or 9)
+            || !uint.TryParse(t.AsSpan(1), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var v))
+        {
+            throw new FormatException($"Cor \"{texto}\" fora do formato #RRGGBB ou #AARRGGBB.");
+        }
+
+        var a = t.Length == 9 ? (byte)(v >> 24) : (byte)0xFF;
+        return new CorRgba(a, (byte)(v >> 16), (byte)(v >> 8), (byte)v);
+    }
+}
+
+/// <summary>Como um acabamento reflete a luz: cor, cor do brilho e quão concentrado.</summary>
+public sealed record AcabamentoDaFit4
+{
+    public required string Cor { get; init; }
+
+    public required string Brilho { get; init; }
+
+    public required double Potencia { get; init; }
+}
+
+/// <summary>Luzes, piso e as cores do display e do QR desenhado.</summary>
+public sealed record CenaDaAparencia
+{
+    public required string LuzAmbiente { get; init; }
+
+    public required string LuzPrincipal { get; init; }
+
+    public required string LuzDeRecorte { get; init; }
+
+    public required string LuzDeBaixo { get; init; }
+
+    public required string Piso { get; init; }
+
+    public required string Sombra { get; init; }
+
+    public required string DisplayAceso { get; init; }
+
+    public required string DisplayApagado { get; init; }
+
+    public required string TextoAceso { get; init; }
+
+    public required string TextoApagado { get; init; }
+
+    public required string QrClaro { get; init; }
+
+    public required string QrEscuro { get; init; }
+
+    internal IEnumerable<(string Nome, string Valor)> Todas() =>
+    [
+        (nameof(LuzAmbiente), LuzAmbiente), (nameof(LuzPrincipal), LuzPrincipal), (nameof(LuzDeRecorte), LuzDeRecorte),
+        (nameof(LuzDeBaixo), LuzDeBaixo), (nameof(Piso), Piso), (nameof(Sombra), Sombra),
+        (nameof(DisplayAceso), DisplayAceso), (nameof(DisplayApagado), DisplayApagado),
+        (nameof(TextoAceso), TextoAceso), (nameof(TextoApagado), TextoApagado),
+        (nameof(QrClaro), QrClaro), (nameof(QrEscuro), QrEscuro),
+    ];
+}
+
+/// <summary>
+/// As cores do objeto físico. Não seguem o tema da interface: a catraca é a mesma no tema
+/// claro e no escuro. Ficam aqui, e não na tela, pela regra "cor só nos tokens" do Rayzer.
+/// </summary>
+public sealed record AparenciaDaFit4
+{
+    public string? Comentario { get; init; }
+
+    /// <summary>Um por <see cref="Acabamento"/>, pelo nome.</summary>
+    public required IReadOnlyDictionary<string, AcabamentoDaFit4> Acabamentos { get; init; }
+
+    public required CenaDaAparencia Cena { get; init; }
+
+    public AcabamentoDaFit4 De(Acabamento acabamento) => Acabamentos[acabamento.ToString()];
+}
+
 /// <summary>
 /// A "planta" da TopFit 4 que o gêmeo digital desenha: medidas, peças da variante, display
 /// e rotor. Vem de um JSON embutido (<c>GemeoDigital/fit4.json</c>), e não de números
@@ -105,6 +186,8 @@ public sealed record EspecificacaoDaFit4
     public required DisplayDaFit4 Display { get; init; }
 
     public required RotorDaFit4 Rotor { get; init; }
+
+    public required AparenciaDaFit4 Aparencia { get; init; }
 
     /// <summary>Verdadeiro enquanto as medidas não foram conferidas numa catraca.</summary>
     public bool MedidasAConfirmar => FonteDasMedidas.StartsWith("A_CONFIRMAR", StringComparison.Ordinal);
@@ -204,6 +287,35 @@ public sealed record EspecificacaoDaFit4
         if (Rotor.DuracaoDoGiroMs is < 200 or > 5000)
         {
             problemas.Add("A duração do giro no desenho vai de 200 a 5000 ms.");
+        }
+
+        foreach (var acabamento in Enum.GetValues<Acabamento>())
+        {
+            if (!Aparencia.Acabamentos.TryGetValue(acabamento.ToString(), out var a))
+            {
+                problemas.Add($"Falta o acabamento {acabamento} em aparencia.acabamentos.");
+                continue;
+            }
+
+            CorValida($"{acabamento}.cor", a.Cor);
+            CorValida($"{acabamento}.brilho", a.Brilho);
+        }
+
+        foreach (var (nome, valor) in Aparencia.Cena.Todas())
+        {
+            CorValida($"cena.{nome}", valor);
+        }
+
+        void CorValida(string onde, string valor)
+        {
+            try
+            {
+                CorRgba.Ler(valor);
+            }
+            catch (FormatException erro)
+            {
+                problemas.Add($"{onde}: {erro.Message}");
+            }
         }
 
         return problemas;

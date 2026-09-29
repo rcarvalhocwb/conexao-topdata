@@ -29,15 +29,6 @@ public partial class Gemeo : UserControl
 {
     private const double Graus = Math.PI / 180;
 
-    // Cores fixas: é um objeto físico, não segue o tema da interface.
-    private static readonly Color CorDaPintura = Color.FromRgb(0x3A, 0x3E, 0x46);
-    private static readonly Color CorDaTampa = Color.FromRgb(0x2C, 0x2F, 0x36);
-    private static readonly Color CorDoInox = Color.FromRgb(0xC4, 0xC9, 0xD0);
-    private static readonly Color CorDoDestaque = Color.FromRgb(0x00, 0xD5, 0xFF);
-    private static readonly Color CorDoVerdeAceso = Color.FromRgb(0x32, 0xD5, 0x83);
-    private static readonly Color CorDoVermelhoAceso = Color.FromRgb(0xF0, 0x52, 0x52);
-    private static readonly Color CorDaUrnaCheia = Color.FromRgb(0xF5, 0xA5, 0x24);
-
     private readonly Dictionary<GeometryModel3D, PecaDaCatraca> _pecaDoModelo = [];
     private readonly Dictionary<PecaDaCatraca, List<(GeometryModel3D Modelo, Material Normal)>> _modelosDaPeca = [];
     private readonly Dictionary<PecaDaCatraca, TranslateTransform3D> _separacaoDaPeca = [];
@@ -52,6 +43,10 @@ public partial class Gemeo : UserControl
     private readonly PerspectiveCamera _camera = new() { FieldOfView = 34, NearPlaneDistance = 20, FarPlaneDistance = 40000 };
 
     private GemeoDigitalViewModel? _vm;
+
+    // As cores do objeto vêm da especificação (fit4.json): é uma catraca, não um controle
+    // da interface. O realce e as luzes acesas vêm do tema, pelas chaves Rayzer.
+    private AparenciaDaFit4? _aparencia;
     // Para o fluxo ao vivo. Guardado como ação, e não como o CancellationTokenSource: ele
     // vive e morre com a tela aberta (Loaded/Unloaded), não com o objeto.
     private Action? _pararAoVivo;
@@ -118,6 +113,7 @@ public partial class Gemeo : UserControl
         }
 
         vm.PropertyChanged += AoMudarNaViewModel;
+        _aparencia = vm.Especificacao.Aparencia;
         Montar(vm.Modelo);
         IrPara(vm.Vista, imediato: true);
     }
@@ -259,18 +255,20 @@ public partial class Gemeo : UserControl
             }
         }
 
+        var luzes = Aparencia.Cena;
         var cena = new Model3DGroup();
-        cena.Children.Add(new AmbientLight(Color.FromRgb(0x5A, 0x60, 0x6A)));
-        cena.Children.Add(new DirectionalLight(Color.FromRgb(0xE8, 0xEA, 0xEE), new Vector3D(-0.45, -0.8, -0.55)));
-        cena.Children.Add(new DirectionalLight(Color.FromRgb(0x50, 0x5A, 0x6E), new Vector3D(0.6, -0.2, 0.7)));
-        cena.Children.Add(new DirectionalLight(Color.FromRgb(0x30, 0x34, 0x3C), new Vector3D(0.2, 0.9, -0.3)));
+        cena.Children.Add(new AmbientLight(Cor(luzes.LuzAmbiente)));
+        cena.Children.Add(new DirectionalLight(Cor(luzes.LuzPrincipal), new Vector3D(-0.45, -0.8, -0.55)));
+        cena.Children.Add(new DirectionalLight(Cor(luzes.LuzDeRecorte), new Vector3D(0.6, -0.2, 0.7)));
+        cena.Children.Add(new DirectionalLight(Cor(luzes.LuzDeBaixo), new Vector3D(0.2, 0.9, -0.3)));
 
-        var piso = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(0x1C, 0x22, 0x2E)));
+        var piso = new DiffuseMaterial(new SolidColorBrush(Cor(luzes.Piso)));
         piso.Freeze();
         cena.Children.Add(new GeometryModel3D(Malha(modelo.Piso), piso));
 
         // Sombra de contato: um degradê escuro embaixo da base, sem custo de sombra real.
-        var sombra = new RadialGradientBrush(Color.FromArgb(0x90, 0, 0, 0), Color.FromArgb(0, 0, 0, 0));
+        var corDaSombra = Cor(luzes.Sombra);
+        var sombra = new RadialGradientBrush(corDaSombra, corDaSombra with { A = 0 });
         sombra.Freeze();
         var materialDaSombra = new DiffuseMaterial(sombra);
         materialDaSombra.Freeze();
@@ -344,50 +342,49 @@ public partial class Gemeo : UserControl
 
     private static Vector3D Vetor(Ponto3 p) => new(p.X, p.Y, p.Z);
 
-    private static Material Material(Acabamento acabamento)
+    private AparenciaDaFit4 Aparencia => _aparencia ?? EspecificacaoDaFit4.Padrao.Aparencia;
+
+    private static Color Cor(string hex)
     {
+        var c = CorRgba.Ler(hex);
+        return Color.FromArgb(c.A, c.R, c.G, c.B);
+    }
+
+    /// <summary>A cor de uma chave do tema Rayzer (muda com claro, escuro e alto contraste).</summary>
+    private Color CorDoTema(string chave) =>
+        TryFindResource(chave) is SolidColorBrush pincel ? pincel.Color : Cor(Aparencia.De(Acabamento.Fenda).Cor);
+
+    private Material Material(Acabamento acabamento)
+    {
+        var a = Aparencia.De(acabamento);
         Material material = acabamento switch
         {
-            Acabamento.Pintura => Fosco(CorDaPintura, brilho: 0x30, potencia: 20),
-            Acabamento.TampaPlastica => Fosco(CorDaTampa, brilho: 0x40, potencia: 30),
-            Acabamento.AcoInox => Fosco(CorDoInox, brilho: 0xF0, potencia: 60),
-            Acabamento.Tecla => Fosco(Color.FromRgb(0x1E, 0x20, 0x24), brilho: 0x20, potencia: 10),
-            Acabamento.Moldura => Fosco(Color.FromRgb(0x96, 0x9B, 0xA2), brilho: 0x50, potencia: 30),
-            Acabamento.VidroEscuro => Fosco(Color.FromRgb(0x0C, 0x10, 0x18), brilho: 0xC0, potencia: 80),
-            Acabamento.TelaDoDisplay => Fosco(Color.FromRgb(0x08, 0x14, 0x24), brilho: 0x60, potencia: 60),
-            Acabamento.LuzDeLiberado => Fosco(Color.FromRgb(0x14, 0x3A, 0x26), brilho: 0x20, potencia: 20),
-            Acabamento.LuzDeBloqueado => Fosco(Color.FromRgb(0x3A, 0x16, 0x16), brilho: 0x20, potencia: 20),
-            Acabamento.Fenda => Fosco(Color.FromRgb(0x12, 0x12, 0x14), brilho: 0x10, potencia: 10),
-            Acabamento.InteriorDaUrna => Fosco(Color.FromRgb(0x5A, 0x50, 0x3C), brilho: 0x10, potencia: 10),
-            Acabamento.Cartao => Fosco(Color.FromRgb(0xF4, 0xF7, 0xFB), brilho: 0x40, potencia: 20),
-            Acabamento.Celular => Fosco(Color.FromRgb(0x18, 0x1A, 0x1F), brilho: 0x80, potencia: 60),
-            Acabamento.TelaDoCelular => TelaComQr(),
-            Acabamento.Pessoa => Translucido(Color.FromArgb(0x55, 0x5A, 0x9B, 0xFF)),
-            _ => Fosco(Colors.Gray, brilho: 0x20, potencia: 10),
+            Acabamento.TelaDoCelular => TelaComQr(Cor(Aparencia.Cena.QrClaro), Cor(Aparencia.Cena.QrEscuro)),
+            Acabamento.Pessoa => new DiffuseMaterial(new SolidColorBrush(Cor(a.Cor))),
+            _ => Fosco(Cor(a.Cor), Cor(a.Brilho), a.Potencia),
         };
 
         material.Freeze();
         return material;
     }
 
-    private static MaterialGroup Fosco(Color cor, byte brilho, double potencia)
+    private static MaterialGroup Fosco(Color cor, Color brilho, double potencia)
     {
         var grupo = new MaterialGroup();
         grupo.Children.Add(new DiffuseMaterial(new SolidColorBrush(cor)));
-        grupo.Children.Add(new SpecularMaterial(new SolidColorBrush(Color.FromRgb(brilho, brilho, brilho)), potencia));
+        grupo.Children.Add(new SpecularMaterial(new SolidColorBrush(brilho), potencia));
         return grupo;
     }
 
-    private static DiffuseMaterial Translucido(Color cor) => new(new SolidColorBrush(cor));
-
     /// <summary>Um desenho de QR genérico: parece um QR, não é o código de ninguém.</summary>
-    private static MaterialGroup TelaComQr()
+    private static MaterialGroup TelaComQr(Color claro, Color escuro)
     {
+        var fundo = new SolidColorBrush(claro);
+        var tinta = new SolidColorBrush(escuro);
         var desenho = new DrawingGroup();
         using (var dc = desenho.Open())
         {
-            dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, 32, 64));
-            var preto = Brushes.Black;
+            dc.DrawRectangle(fundo, null, new Rect(0, 0, 32, 64));
             var semente = 7;
 
             for (var y = 0; y < 21; y++)
@@ -395,13 +392,9 @@ public partial class Gemeo : UserControl
                 for (var x = 0; x < 21; x++)
                 {
                     semente = ((semente * 1103515245) + 12345) & 0x7FFFFFFF;
-                    var marcador = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13);
-                    var ligado = marcador
-                        ? x % 6 == 0 || y % 6 == 0 || (x % 20 is > 1 and < 5 && y % 20 is > 1 and < 5) || (x > 13 && x % 6 == 2 && y is > 1 and < 5) || (x > 13 && (x == 14 || x == 20)) || (x > 15 && x < 19 && y > 1 && y < 5)
-                        : (semente >> 8) % 2 == 0;
-                    if (ligado)
+                    if (ModuloDoQr(x, y, semente))
                     {
-                        dc.DrawRectangle(preto, null, new Rect(3 + (x * 1.24), 19 + (y * 1.24), 1.25, 1.25));
+                        dc.DrawRectangle(tinta, null, new Rect(3 + (x * 1.24), 19 + (y * 1.24), 1.25, 1.25));
                     }
                 }
             }
@@ -412,6 +405,28 @@ public partial class Gemeo : UserControl
         grupo.Children.Add(new DiffuseMaterial(pincel));
         grupo.Children.Add(new EmissiveMaterial(pincel));
         return grupo;
+    }
+
+    // Os três quadrados de canto de um QR (borda e miolo), e o resto pseudoaleatório.
+    private static bool ModuloDoQr(int x, int y, int semente)
+    {
+        foreach (var (cx, cy) in new[] { (0, 0), (14, 0), (0, 14) })
+        {
+            var (dx, dy) = (x - cx, y - cy);
+            if (dx is >= 0 and < 7 && dy is >= 0 and < 7)
+            {
+                var borda = dx is 0 or 6 || dy is 0 or 6;
+                var miolo = dx is >= 2 and <= 4 && dy is >= 2 and <= 4;
+                return borda || miolo;
+            }
+
+            if (dx is >= -1 and < 8 && dy is >= -1 and < 8)
+            {
+                return false; // a margem clara em volta do quadrado
+            }
+        }
+
+        return (semente >> 8) % 2 == 0;
     }
 
     // ------------------------------------------------------------------ quadro a quadro
@@ -458,8 +473,9 @@ public partial class Gemeo : UserControl
         _luzDoDisplay = quadro.LuzDeFundoDoDisplay;
 
         // O texto sai do próprio display (textura emissiva), não flutua sobre ele.
-        var fundo = quadro.LuzDeFundoDoDisplay ? Color.FromRgb(0x10, 0x4E, 0xA8) : Color.FromRgb(0x06, 0x0C, 0x16);
-        var tinta = quadro.LuzDeFundoDoDisplay ? Color.FromRgb(0xE6, 0xF2, 0xFF) : Color.FromRgb(0x10, 0x18, 0x24);
+        var luzes = Aparencia.Cena;
+        var fundo = Cor(quadro.LuzDeFundoDoDisplay ? luzes.DisplayAceso : luzes.DisplayApagado);
+        var tinta = Cor(quadro.LuzDeFundoDoDisplay ? luzes.TextoAceso : luzes.TextoApagado);
         var imagem = RenderizarDisplay(quadro.Linha1, quadro.Linha2, fundo, tinta);
 
         var grupo = new MaterialGroup();
@@ -493,7 +509,7 @@ public partial class Gemeo : UserControl
                 {
                     // Uma célula por caractere, como no display de verdade.
                     var celula = new Rect(8 + (i * passo), 6 + (linha * 30), passo - 2, 26);
-                    dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(0x22, tinta.R, tinta.G, tinta.B)), null, celula);
+                    dc.DrawRectangle(new SolidColorBrush(tinta with { A = 0x22 }), null, celula);
                     var letra = new FormattedText(
                         texto[i].ToString(CultureInfo.InvariantCulture),
                         CultureInfo.InvariantCulture,
@@ -519,7 +535,7 @@ public partial class Gemeo : UserControl
         {
             _liberadoAceso = quadro.LuzDeLiberado;
             _setaDeLiberado.Material = quadro.LuzDeLiberado
-                ? Aceso(CorDoVerdeAceso)
+                ? Aceso(CorDoTema("Rayzer.Access.Granted"))
                 : Base(PecaDaCatraca.SinalLiberado, _setaDeLiberado);
         }
 
@@ -527,7 +543,7 @@ public partial class Gemeo : UserControl
         {
             _bloqueadoAceso = quadro.LuzDeBloqueado;
             _xisDeBloqueado.Material = quadro.LuzDeBloqueado
-                ? Aceso(CorDoVermelhoAceso)
+                ? Aceso(CorDoTema("Rayzer.Access.Denied"))
                 : Base(PecaDaCatraca.SinalBloqueado, _xisDeBloqueado);
         }
     }
@@ -541,7 +557,7 @@ public partial class Gemeo : UserControl
 
         _situacaoDaUrna = (quadro.UrnaCheia, ligada);
         _molduraDaUrna.Material = quadro.UrnaCheia
-            ? Aceso(CorDaUrnaCheia)
+            ? Aceso(CorDoTema("Rayzer.Warning"))
             : ligada ? _materialDaUrnaNormal : _materialDaUrnaDesligada;
     }
 
@@ -659,7 +675,7 @@ public partial class Gemeo : UserControl
                     continue;
                 }
 
-                modelo.Material = intensidade > 0 ? Realcado(normal, intensidade) : normal;
+                modelo.Material = intensidade > 0 ? Realcado(normal, CorDoTema("Rayzer.Brand.Cyan"), intensidade) : normal;
             }
         }
     }
@@ -678,9 +694,9 @@ public partial class Gemeo : UserControl
         return grupo;
     }
 
-    private static MaterialGroup Realcado(Material normal, double intensidade)
+    private static MaterialGroup Realcado(Material normal, Color destaque, double intensidade)
     {
-        var brilho = Color.FromArgb((byte)(255 * intensidade), CorDoDestaque.R, CorDoDestaque.G, CorDoDestaque.B);
+        var brilho = destaque with { A = (byte)(255 * intensidade) };
         var grupo = new MaterialGroup();
         grupo.Children.Add(normal);
         grupo.Children.Add(new EmissiveMaterial(new SolidColorBrush(brilho)));
