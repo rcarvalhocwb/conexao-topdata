@@ -14,6 +14,7 @@
 - modo simulação;
 - painel e assistente com o Rayzer Design System;
 - gerenciar catraca (fase 4): relógio acertado e conferido, liberação manual com motivo, mensagem no display, refazer a conexão, aplicar agora — tudo auditado ([docs/32](32-gerenciar-catraca.md));
+- gêmeo digital da TopFit 4: a catraca em 3D, fichas das peças, cenários de demonstração e espelho ao vivo — ainda não visto numa tela Windows ([docs/33](33-gemeo-digital.md));
 - MSI e Setup em português;
 - prestação de contas atual (totais e CSV);
 - pacote web `rayzer-ui`.

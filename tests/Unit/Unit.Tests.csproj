@@ -23,6 +23,7 @@
     <ProjectReference Include="../../src/Sync.Core/Sync.Core.csproj" />
     <ProjectReference Include="../../src/Sync.Ingestao/Sync.Ingestao.csproj" />
     <ProjectReference Include="../../src/Sync.Connectors.Rest/Sync.Connectors.Rest.csproj" />
+    <ProjectReference Include="../../src/Desktop.ViewModels/Desktop.ViewModels.csproj" />
   </ItemGroup>
 
   <ItemGroup>

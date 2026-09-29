@@ -358,7 +358,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     public async Task Janela_troca_de_tela_e_o_cabecalho_continua_atualizando()
     {
         var janela = new JanelaViewModel(Cliente());
-        Assert.Equal(10, janela.Telas.Count);
+        Assert.Equal(11, janela.Telas.Count);
         Assert.Same(janela.Painel, janela.TelaAtual);
 
         janela.TelaAtual = janela.Telas.OfType<SincronizacaoViewModel>().Single();
@@ -368,6 +368,45 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         var sincronizacao = (SincronizacaoViewModel)janela.TelaAtual;
         Assert.Contains(new ParDeTexto("Nuvem", "Não configurada nesta instalação"), sincronizacao.Situacao);
         Assert.Equal(2, Assert.Single(sincronizacao.Provedores).Codigos);
+    }
+
+    /// <summary>
+    /// Gêmeo digital contra o serviço de verdade: lê catracas e configuração, e no modo ao
+    /// vivo o desenho segue só os eventos da catraca escolhida. Demonstração e ao vivo não
+    /// se misturam: cenário não roda ao vivo.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_digital_le_o_servico_e_ao_vivo_segue_so_a_catraca_escolhida()
+    {
+        var instante = TimeSpan.Zero;
+        var tela = new GemeoDigitalViewModel(Cliente(), relogioDaCena: () => instante);
+
+        await tela.AtualizarAsync();
+
+        Assert.Equal(string.Empty, tela.Mensagem);
+        Assert.Equal(1, tela.Catraca);
+        Assert.Contains(tela.ResumoDaConfiguracao, p => p.Rotulo == "Mensagem padrão");
+        Assert.StartsWith("DEMONSTRAÇÃO", tela.SeloDoModo, StringComparison.Ordinal);
+
+        tela.ModoAoVivo = true;
+        await tela.AtualizarAsync();
+        Assert.StartsWith("AO VIVO · CATRACA 01", tela.SeloDoModo, StringComparison.Ordinal);
+        Assert.Equal(Desktop.ViewModels.GemeoDigital.EstadoDaCena.Livre, tela.EstadoAtual);
+
+        // Evento de outra catraca: nada muda.
+        tela.AplicarEventoAoVivo(new EventoDeAcesso { Inner = 2, Resultado = ResultadoDoAcesso.Negado });
+        Assert.Equal(Desktop.ViewModels.GemeoDigital.EstadoDaCena.Livre, tela.EstadoAtual);
+
+        // Desta catraca: a leitura aparece, e a negação vem depois dela.
+        tela.AplicarEventoAoVivo(new EventoDeAcesso { Inner = 1, Resultado = ResultadoDoAcesso.Negado, MensagemAoOperador = "Negado · já utilizado" });
+        instante = TimeSpan.FromSeconds(2);
+        tela.Quadro();
+        Assert.Equal(Desktop.ViewModels.GemeoDigital.EstadoDaCena.Negada, tela.EstadoAtual);
+        Assert.Contains("já utilizado", tela.UltimoEventoAoVivo, StringComparison.Ordinal);
+
+        // Cenário não roda ao vivo.
+        await tela.RodarRoteiro.ExecutarAsync(Desktop.ViewModels.GemeoDigital.Roteiros.QrValido);
+        Assert.Null(tela.RoteiroEmAndamento);
     }
 
     /// <summary>

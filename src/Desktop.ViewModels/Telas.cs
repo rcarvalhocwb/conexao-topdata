@@ -916,6 +916,7 @@ public sealed class JanelaViewModel : Notificavel
             new SincronizacaoViewModel(cliente, relogio),
             new ContasViewModel(cliente, relogio),
             new GerenciarCatracaViewModel(cliente, relogio),
+            new GemeoDigitalViewModel(cliente, relogio),
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
             new SimuladorViewModel(cliente, relogio),
@@ -1000,7 +1001,8 @@ public sealed class JanelaViewModel : Notificavel
     {
         await Painel.AtualizarAsync(cancelamento).ConfigureAwait(true);
 
-        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GerenciarCatracaViewModel)
+        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GerenciarCatracaViewModel
+            or GemeoDigitalViewModel)
         {
             await TelaAtual.AtualizarAsync(cancelamento).ConfigureAwait(true);
         }

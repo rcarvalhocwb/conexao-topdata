@@ -1,0 +1,35 @@
+{
+  "versao": 1,
+  "equipamento": {
+    "fabricante": "Topdata",
+    "modelo": "TopFit 4",
+    "variante": "QR Code na tampa, leitor da frente e urna com leitor (leitor 2)"
+  },
+  "fonteDasMedidas": "A_CONFIRMAR: medidas aproximadas de material comercial da Topdata (variante Facial: 300 x 1342 x 250 mm sem braços). Não constam de fonte primária lida nesta sessão. O modelo 3D é ilustrativo nas proporções; medir uma TopFit 4 na bancada e corrigir aqui.",
+  "medidasMm": {
+    "larguraDoCorpo": 300,
+    "profundidadeDoCorpo": 250,
+    "alturaDaTampa": 1000,
+    "alturaDaCabeca": 240,
+    "alturaComLeitorFacial": 1342,
+    "alturaDoEixo": 880,
+    "comprimentoDoBraco": 450,
+    "diametroDoBraco": 38
+  },
+  "pecas": {
+    "leitorQr": true,
+    "leitorDeProximidade": true,
+    "teclado": true,
+    "urna": true,
+    "leitorFacial": false
+  },
+  "display": {
+    "linhas": 2,
+    "colunas": 16
+  },
+  "rotor": {
+    "bracos": 3,
+    "inclinacaoDoEixoGraus": 45,
+    "duracaoDoGiroMs": 900
+  }
+}

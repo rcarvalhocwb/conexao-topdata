@@ -171,6 +171,7 @@
       <DataTemplate DataType="{x:Type vm:SincronizacaoViewModel}"><telas:Sincronizacao /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ContasViewModel}"><telas:Contas /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:GerenciarCatracaViewModel}"><telas:GerenciarCatraca /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:GemeoDigitalViewModel}"><telas:Gemeo /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ConfiguracoesViewModel}"><telas:Configuracoes /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:DiagnosticoViewModel}"><telas:Diagnostico /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:SimuladorViewModel}"><telas:Simulador /></DataTemplate>
