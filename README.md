@@ -79,6 +79,7 @@ habilitado após ensaio de bancada com relatório assinado por modelo e firmware
 | 26 | [Modelo de planilha de cartões](docs/26-modelo-de-planilha-de-cartoes.md) | Tipos e cartões para cadastro e importação; o modelo está em `installer/modelos/` |
 | 27 | [Rayzer Design System](docs/27-rayzer-design-system.md) | A identidade Rayzer XAcess como código: estratégia, tokens, temas, componentes, voz, acessibilidade |
 | 28 | [Rayzer UI: marca e componentes](docs/28-rayzer-ui-componentes.md) | Empresa (RAYZER X) × produto (XAcess), tokens do brand board, 25 componentes em React/TypeScript/Tailwind e WPF, arquivos de marca em `marca/` |
+| 29 | [O que falta](docs/29-o-que-falta.md) | Varredura de 29/09: bloqueios externos, bancada, fases 3–6, endurecimento, docs desatualizados e ordem recomendada |
 | — | [Acervo Topdata](vendor/topdata/) | Catálogo oficial de downloads e scripts de importação |
 | — | [Instalador de desenvolvimento](installer/) | Publicação, conferência de pré-requisitos e token de sessão |
 | — | [Glossário](docs/GLOSSARIO.md) | Termo técnico → linguagem do operador |
