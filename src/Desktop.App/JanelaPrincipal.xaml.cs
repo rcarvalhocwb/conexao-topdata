@@ -84,6 +84,9 @@ public partial class JanelaPrincipal : Window
         BarraLateral.Width = recolher ? 72 : 248;
         Menu.Tag = recolher ? string.Empty : "aberto";
         Logo.Variante = recolher ? VarianteDoLogo.Simbolo : VarianteDoLogo.Horizontal;
+        Cabecalho.Margin = recolher ? new Thickness(14, 20, 14, 14) : new Thickness(18, 20, 12, 14);
+        Produto.Padding = recolher ? new Thickness(5) : new Thickness(10, 8, 10, 8);
+        ProdutoTexto.Visibility = recolher ? Visibility.Collapsed : Visibility.Visible;
         var textos = recolher ? Visibility.Collapsed : Visibility.Visible;
         TextoTema.Visibility = textos;
         TextoRecolher.Visibility = textos;

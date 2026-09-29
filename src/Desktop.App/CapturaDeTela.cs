@@ -51,6 +51,19 @@ internal static class CapturaDeTela
         var gravados = new List<string>();
         var numero = 1;
 
+        // A abertura (brand board, seção 08), parada no quadro final: marca e produto.
+        var abertura = Path.Combine(pasta, $"00-abertura-{Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant()}.png");
+        Rayzer.Design.RayzerAbertura.SomenteQuadroFinal = true;
+        try
+        {
+            await FotografarAsync(new Border { Child = new Rayzer.Design.RayzerAbertura(), Width = Largura, Height = Altura }, abertura).ConfigureAwait(true);
+            gravados.Add(abertura);
+        }
+        finally
+        {
+            Rayzer.Design.RayzerAbertura.SomenteQuadroFinal = false;
+        }
+
         foreach (var tela in janela.Telas)
         {
             janela.TelaAtual = tela;
@@ -96,6 +109,12 @@ internal static class CapturaDeTela
         moldura.SetResourceReference(TextElement.FontFamilyProperty, "Rayzer.Font.Text");
         moldura.SetResourceReference(TextElement.FontSizeProperty, "Rayzer.FontSize.Body");
 
+        await FotografarAsync(moldura, caminho).ConfigureAwait(true);
+        janela.Close();
+    }
+
+    private static async Task FotografarAsync(Border moldura, string caminho)
+    {
         moldura.Measure(new Size(Largura, Altura));
         moldura.Arrange(new Rect(0, 0, Largura, Altura));
         moldura.UpdateLayout();
@@ -121,8 +140,6 @@ internal static class CapturaDeTela
 
         using var arquivo = File.Create(caminho);
         codificador.Save(arquivo);
-
-        janela.Close();
     }
 
     private static string Arquivo(string titulo) =>

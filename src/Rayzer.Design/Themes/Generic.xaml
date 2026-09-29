@@ -85,12 +85,15 @@
               </Grid.ColumnDefinitions>
               <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource Rayzer.FontSize.Small}" FontWeight="SemiBold"
                          Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{TemplateBinding Rotulo}" TextWrapping="Wrap" />
-              <Border Grid.Column="1" Width="30" Height="30" Margin="8,0,0,0" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
-                      Background="{TemplateBinding Background}">
+              <!-- Selo do ícone: fundo tingido e contorno na cor da situação (brand board, seção 09). -->
+              <Grid Grid.Column="1" Width="32" Height="32" Margin="8,0,0,0" VerticalAlignment="Top">
+                <Border CornerRadius="{DynamicResource Rayzer.Radius.Md}" Background="{TemplateBinding Background}" />
+                <Border CornerRadius="{DynamicResource Rayzer.Radius.Md}" BorderThickness="1" Opacity="0.55"
+                        BorderBrush="{TemplateBinding Foreground}" />
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"
                            FontFamily="{DynamicResource Rayzer.Font.Icons}" Foreground="{TemplateBinding Foreground}"
                            Text="{TemplateBinding Icone}" />
-              </Border>
+              </Grid>
               <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0" FontFamily="{DynamicResource Rayzer.Font.Display}"
                          FontSize="{DynamicResource Rayzer.FontSize.Metric}" FontWeight="SemiBold"
                          Foreground="{DynamicResource Rayzer.Text.Primary}"
@@ -260,48 +263,147 @@
     </Setter>
   </Style>
 
-  <!-- ===== RayzerLogo: símbolo + RAYZER X acess ===== -->
+  <!-- marca:inicio -->
+  <!-- ===== RayzerLogo: a marca corporativa RAYZER X (Rayzer Serviços e Tecnologia LTDA) ===== -->
   <Style TargetType="{x:Type local:RayzerLogo}">
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Nav.Text.Active}" />
+    <Setter Property="CorDeApoio" Value="{DynamicResource Rayzer.Nav.Text.Muted}" />
+    <Setter Property="Height" Value="40" />
     <Setter Property="IsTabStop" Value="False" />
     <Setter Property="Focusable" Value="False" />
+    <Setter Property="AutomationProperties.Name" Value="Rayzer X — Serviços e Tecnologia" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type local:RayzerLogo}">
-          <StackPanel AutomationProperties.Name="Rayzer XAcess">
-            <StackPanel Orientation="Horizontal">
-              <local:RayzerBrandMark Tamanho="{TemplateBinding TamanhoDoSimbolo}" VerticalAlignment="Center"
-                                     Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}"
-                                     Foreground="{TemplateBinding Foreground}" />
-              <StackPanel x:Name="Palavra" Margin="10,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock VerticalAlignment="Center" FontFamily="{DynamicResource Rayzer.Font.Display}" FontWeight="Bold"
-                           FontSize="{DynamicResource Rayzer.FontSize.Wordmark}" Foreground="{TemplateBinding Foreground}"
-                           Text="{TemplateBinding Empresa}" />
-                <local:RayzerBrandMark Margin="6,1,3,0" Tamanho="17" VerticalAlignment="Center" Monocromatico="{TemplateBinding Monocromatico}"
-                                       Foreground="{TemplateBinding Foreground}" />
-                <TextBlock VerticalAlignment="Center" Margin="0,-2,0,0" FontFamily="{DynamicResource Rayzer.Font.Display}" FontWeight="Light"
-                           FontSize="{DynamicResource Rayzer.FontSize.Wordmark}" Foreground="{TemplateBinding Foreground}"
-                           Text="{TemplateBinding Produto}" />
-              </StackPanel>
-              <StackPanel x:Name="Compacto" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
-                <TextBlock FontSize="10" FontWeight="Bold" Foreground="{TemplateBinding Foreground}" Opacity="0.75" Text="{TemplateBinding Empresa}" />
-                <TextBlock Margin="0,-3,0,0" FontFamily="{DynamicResource Rayzer.Font.Display}" FontSize="18" FontWeight="SemiBold"
-                           Foreground="{TemplateBinding Foreground}" Text="XAcess" />
-              </StackPanel>
-            </StackPanel>
-            <TextBlock x:Name="Assinatura" Margin="0,8,0,0" Visibility="Collapsed" FontSize="10" FontWeight="SemiBold"
-                       Foreground="{DynamicResource Rayzer.Nav.Text.Muted}" Text="{TemplateBinding Assinatura}" />
-          </StackPanel>
+          <Grid>
+          <Viewbox x:Name="Horizontal" Stretch="Uniform">
+            <Canvas Width="593.55" Height="146.0">
+              <Path Canvas.Left="0" Canvas.Top="27.74" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Rayzer}" />
+              <local:RayzerBrandMark Canvas.Left="417.13" Canvas.Top="-24.33" Tamanho="194.67" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+              <Path Canvas.Left="0" Canvas.Top="125.56" Fill="{TemplateBinding CorDeApoio}" Data="{DynamicResource Rayzer.Letreiro.Descritor}"><Path.RenderTransform><ScaleTransform ScaleX="0.1824" ScaleY="0.1824" /></Path.RenderTransform></Path>
+            </Canvas>
+          </Viewbox>
+          <Viewbox x:Name="Simples" Stretch="Uniform" Visibility="Collapsed">
+            <Canvas Width="593.55" Height="146.0">
+              <Path Canvas.Left="0" Canvas.Top="27.74" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Rayzer}" />
+              <local:RayzerBrandMark Canvas.Left="417.13" Canvas.Top="-24.33" Tamanho="194.67" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+            </Canvas>
+          </Viewbox>
+          <Viewbox x:Name="Vertical" Stretch="Uniform" Visibility="Collapsed">
+            <Canvas Width="423.7" Height="293.64">
+              <local:RayzerBrandMark Canvas.Left="104.78" Canvas.Top="-26.77" Tamanho="214.13" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+              <Path Canvas.Left="0" Canvas.Top="182.5" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Rayzer}" />
+              <Path Canvas.Left="0" Canvas.Top="280.32" Fill="{TemplateBinding CorDeApoio}" Data="{DynamicResource Rayzer.Letreiro.Descritor}"><Path.RenderTransform><ScaleTransform ScaleX="0.1824" ScaleY="0.1824" /></Path.RenderTransform></Path>
+            </Canvas>
+          </Viewbox>
+          <local:RayzerBrandMark x:Name="Simbolo" Visibility="Collapsed" Tamanho="{Binding ActualHeight, RelativeSource={RelativeSource TemplatedParent}}"
+                                 Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+          </Grid>
           <ControlTemplate.Triggers>
+            <Trigger Property="Descritor" Value="False">
+              <Setter TargetName="Horizontal" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Simples" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="Variante" Value="Vertical">
+              <Setter TargetName="Horizontal" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Simples" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Vertical" Property="Visibility" Value="Visible" />
+            </Trigger>
             <Trigger Property="Variante" Value="Simbolo">
-              <Setter TargetName="Palavra" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Horizontal" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Simples" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Simbolo" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== XAcessLogo: o produto XAcess (endosso "by RAYZER X") ===== -->
+  <Style TargetType="{x:Type local:XAcessLogo}">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />
+    <Setter Property="CorDeApoio" Value="{DynamicResource Rayzer.Text.Secondary}" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="AutomationProperties.Name" Value="XAcess — Controle de acesso inteligente" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:XAcessLogo}">
+          <Grid>
+          <Viewbox x:Name="Principal" Stretch="Uniform">
+            <Canvas Width="380.86" Height="124.16">
+              <local:RayzerBrandMark Canvas.Left="-10.22" Canvas.Top="-13.63" Tamanho="109.01" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+              <Path Canvas.Left="90.76" Canvas.Top="7.3" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Acess}" />
+              <Path Canvas.Left="0" Canvas.Top="113.88" Fill="{TemplateBinding CorDeApoio}" Data="{DynamicResource Rayzer.Letreiro.Tagline}"><Path.RenderTransform><ScaleTransform ScaleX="0.1408" ScaleY="0.1408" /></Path.RenderTransform></Path>
+            </Canvas>
+          </Viewbox>
+          <Viewbox x:Name="Assinatura" Stretch="Uniform" Visibility="Collapsed">
+            <Canvas Width="380.86" Height="121.47">
+              <local:RayzerBrandMark Canvas.Left="-10.22" Canvas.Top="-13.63" Tamanho="109.01" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+              <Path Canvas.Left="90.76" Canvas.Top="7.3" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Acess}" />
+              <Path Canvas.Left="230.36" Canvas.Top="105.12" Fill="{TemplateBinding CorDeApoio}" Data="{DynamicResource Rayzer.Letreiro.By}"><Path.RenderTransform><ScaleTransform ScaleX="0.2" ScaleY="0.2" /></Path.RenderTransform></Path>
+              <Path Canvas.Left="265.1" Canvas.Top="105.12" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Rayzer}"><Path.RenderTransform><ScaleTransform ScaleX="0.2" ScaleY="0.2" /></Path.RenderTransform></Path>
+              <local:RayzerBrandMark Canvas.Left="354.4" Canvas.Top="95.92" Tamanho="29.2" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+            </Canvas>
+          </Viewbox>
+          <Viewbox x:Name="Compacto" Stretch="Uniform" Visibility="Collapsed">
+            <Canvas Width="380.86" Height="81.76">
+              <local:RayzerBrandMark Canvas.Left="-10.22" Canvas.Top="-13.63" Tamanho="109.01" Brilho="{TemplateBinding Brilho}" Monocromatico="{TemplateBinding Monocromatico}" Foreground="{TemplateBinding Foreground}" />
+              <Path Canvas.Left="90.76" Canvas.Top="7.3" Fill="{TemplateBinding Foreground}" Data="{DynamicResource Rayzer.Letreiro.Acess}" />
+            </Canvas>
+          </Viewbox>
+          <local:RayzerAppIcon x:Name="Icone" Visibility="Collapsed" Width="{Binding ActualHeight, RelativeSource={RelativeSource TemplatedParent}}" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Variante" Value="ComAssinatura">
+              <Setter TargetName="Principal" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Assinatura" Property="Visibility" Value="Visible" />
             </Trigger>
             <Trigger Property="Variante" Value="Compacto">
-              <Setter TargetName="Palavra" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Principal" Property="Visibility" Value="Collapsed" />
               <Setter TargetName="Compacto" Property="Visibility" Value="Visible" />
             </Trigger>
-            <Trigger Property="Variante" Value="Completo">
-              <Setter TargetName="Assinatura" Property="Visibility" Value="Visible" />
+            <Trigger Property="Variante" Value="Icone">
+              <Setter TargetName="Principal" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Icone" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <!-- marca:fim -->
+
+  <!-- ===== RayzerAppIcon: ícone do aplicativo (quadro + X; com nome, "acess" embaixo) ===== -->
+  <Style TargetType="{x:Type local:RayzerAppIcon}">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="AutomationProperties.Name" Value="XAcess" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerAppIcon}">
+          <Viewbox Stretch="Uniform">
+            <Canvas Width="256" Height="256">
+              <Rectangle Canvas.Left="8" Canvas.Top="8" Width="240" Height="240" RadiusX="56" RadiusY="56" StrokeThickness="6"
+                         Fill="{DynamicResource Rayzer.AppIcon.Fundo}" Stroke="{DynamicResource Rayzer.AppIcon.Borda}" />
+              <local:RayzerBrandMark x:Name="Simbolo" Canvas.Left="40" Canvas.Top="40" Tamanho="176" />
+              <Path x:Name="Nome" Canvas.Left="53" Canvas.Top="159.87" Visibility="Collapsed"
+                    Fill="{DynamicResource Rayzer.AppIcon.Texto}" Data="{DynamicResource Rayzer.Letreiro.Acess}">
+                <Path.RenderTransform>
+                  <ScaleTransform ScaleX="0.5171" ScaleY="0.5171" />
+                </Path.RenderTransform>
+              </Path>
+            </Canvas>
+          </Viewbox>
+          <ControlTemplate.Triggers>
+            <Trigger Property="ComNome" Value="True">
+              <Setter TargetName="Simbolo" Property="Canvas.Left" Value="58.67" />
+              <Setter TargetName="Simbolo" Property="Canvas.Top" Value="26.67" />
+              <Setter TargetName="Simbolo" Property="Tamanho" Value="138.67" />
+              <Setter TargetName="Nome" Property="Visibility" Value="Visible" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -554,5 +656,90 @@
         <Setter Property="Background" Value="{DynamicResource Rayzer.Brand.Primary.Subtle}" />
       </Trigger>
     </Style.Triggers>
+  </Style>
+
+  <!-- ===== RayzerAbertura: a abertura do aplicativo (brand board, seção 08) ===== -->
+  <Style TargetType="{x:Type local:RayzerAbertura}">
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="AutomationProperties.Name" Value="Abrindo o XAcess" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:RayzerAbertura}">
+          <ControlTemplate.Resources>
+            <Storyboard x:Key="Sequencia">
+              <DoubleAnimation Storyboard.TargetName="FluxoA" Storyboard.TargetProperty="StrokeDashOffset" From="100" To="0" BeginTime="0:0:0" Duration="0:0:0.6"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="FluxoB" Storyboard.TargetProperty="StrokeDashOffset" From="100" To="0" BeginTime="0:0:0" Duration="0:0:0.6"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="FluxoC" Storyboard.TargetProperty="StrokeDashOffset" From="100" To="0" BeginTime="0:0:0" Duration="0:0:0.6"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="FluxoD" Storyboard.TargetProperty="StrokeDashOffset" From="100" To="0" BeginTime="0:0:0" Duration="0:0:0.6"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="Fluxos" Storyboard.TargetProperty="Opacity" From="1" To="0" BeginTime="0:0:1.1" Duration="0:0:0.35" />
+              <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Pulso" Storyboard.TargetProperty="Opacity">
+                <LinearDoubleKeyFrame KeyTime="0:0:0.55" Value="0" />
+                <LinearDoubleKeyFrame KeyTime="0:0:0.85" Value="0.95" />
+                <LinearDoubleKeyFrame KeyTime="0:0:1.4" Value="0" />
+              </DoubleAnimationUsingKeyFrames>
+              <DoubleAnimation Storyboard.TargetName="Pulso" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.3" To="1.6" BeginTime="0:0:0.55" Duration="0:0:0.85"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="Pulso" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.3" To="1.6" BeginTime="0:0:0.55" Duration="0:0:0.85"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Simbolo" Storyboard.TargetProperty="Opacity">
+                <LinearDoubleKeyFrame KeyTime="0:0:1.4" Value="0" />
+                <LinearDoubleKeyFrame KeyTime="0:0:1.65" Value="1" />
+                <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="1" />
+                <LinearDoubleKeyFrame KeyTime="0:0:2.0" Value="0" />
+              </DoubleAnimationUsingKeyFrames>
+              <DoubleAnimation Storyboard.TargetName="Simbolo" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.82" To="1" BeginTime="0:0:1.4" Duration="0:0:0.4"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="Simbolo" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.82" To="1" BeginTime="0:0:1.4" Duration="0:0:0.4"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="Marcas" Storyboard.TargetProperty="Opacity" From="0" To="1" BeginTime="0:0:1.85" Duration="0:0:0.35"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="Linha" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0" To="1" BeginTime="0:0:1.9" Duration="0:0:0.7"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction></DoubleAnimation>
+              <DoubleAnimation Storyboard.TargetName="Raiz" Storyboard.TargetProperty="Opacity" From="1" To="0" BeginTime="0:0:2.6" Duration="0:0:0.3" />
+            </Storyboard>
+          </ControlTemplate.Resources>
+          <Grid x:Name="Raiz" Background="{DynamicResource Rayzer.Nav.Background}">
+            <Viewbox MaxWidth="560" MaxHeight="360" Margin="32" Stretch="Uniform">
+              <Canvas Width="520" Height="340">
+                <!-- 1. Fluxos se aproximam: linhas de energia desenhadas até o centro. -->
+                <Canvas x:Name="Fluxos" Effect="{DynamicResource Rayzer.Glow.Md}">
+                  <Path x:Name="FluxoA" Data="M -20,250 C 120,250 180,170 260,170" Stroke="{DynamicResource Rayzer.Energy}"
+                        StrokeThickness="3" StrokeDashArray="100 100" StrokeDashOffset="100" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                  <Path x:Name="FluxoB" Data="M 540,90 C 400,90 340,170 260,170" Stroke="{DynamicResource Rayzer.Energy}"
+                        StrokeThickness="3" StrokeDashArray="100 100" StrokeDashOffset="100" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                  <Path x:Name="FluxoC" Data="M -20,205 C 130,205 190,170 260,170" Stroke="{DynamicResource Rayzer.Energy}" Opacity="0.45"
+                        StrokeThickness="2" StrokeDashArray="150 150" StrokeDashOffset="100" StrokeStartLineCap="Round" />
+                  <Path x:Name="FluxoD" Data="M 540,135 C 390,135 330,170 260,170" Stroke="{DynamicResource Rayzer.Energy}" Opacity="0.45"
+                        StrokeThickness="2" StrokeDashArray="150 150" StrokeDashOffset="100" StrokeStartLineCap="Round" />
+                </Canvas>
+                <!-- 2. Interseção: o pulso Rayzer Access. -->
+                <Ellipse x:Name="Pulso" Canvas.Left="140" Canvas.Top="50" Width="240" Height="240" Opacity="0"
+                         Fill="{DynamicResource Rayzer.Abertura.Pulso}" RenderTransformOrigin="0.5,0.5">
+                  <Ellipse.RenderTransform>
+                    <ScaleTransform ScaleX="0.3" ScaleY="0.3" />
+                  </Ellipse.RenderTransform>
+                </Ellipse>
+                <!-- 3. O símbolo se completa. -->
+                <local:RayzerBrandMark x:Name="Simbolo" Canvas.Left="185" Canvas.Top="95" Tamanho="150" Brilho="True" Opacity="0"
+                                       RenderTransformOrigin="0.5,0.5">
+                  <local:RayzerBrandMark.RenderTransform>
+                    <ScaleTransform ScaleX="0.82" ScaleY="0.82" />
+                  </local:RayzerBrandMark.RenderTransform>
+                </local:RayzerBrandMark>
+                <!-- 4. Marca e produto. -->
+                <StackPanel x:Name="Marcas" Canvas.Top="92" Width="520" Opacity="0">
+                  <local:RayzerLogo Height="46" Descritor="False" Brilho="True" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource Rayzer.Nav.Text.Active}" />
+                  <local:XAcessLogo Variante="Compacto" Height="40" Margin="0,24,0,0" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource Rayzer.Nav.Text.Active}" />
+                  <Border x:Name="Linha" Width="170" Height="3" Margin="0,26,0,0" CornerRadius="1.5"
+                          Background="{DynamicResource Rayzer.Energy}" RenderTransformOrigin="0,0.5">
+                    <Border.RenderTransform>
+                      <ScaleTransform ScaleX="0" />
+                    </Border.RenderTransform>
+                  </Border>
+                </StackPanel>
+              </Canvas>
+            </Viewbox>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 </ResourceDictionary>

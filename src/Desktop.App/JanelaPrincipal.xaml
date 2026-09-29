@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
-        Title="Rayzer XAcess — Painel do evento"
+        Title="XAcess — Painel do evento · Rayzer"
         Height="800" Width="1366"
         MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
@@ -26,9 +26,27 @@
     <!-- ===== Barra lateral ===== -->
     <Border x:Name="BarraLateral" Grid.Column="0" Width="248" Background="{DynamicResource Rayzer.Nav.Background}">
       <DockPanel>
-        <Grid DockPanel.Dock="Top" Margin="18,20,12,20">
-          <rz:RayzerLogo x:Name="Logo" TamanhoDoSimbolo="30" Brilho="True" HorizontalAlignment="Left" />
-        </Grid>
+        <!--
+          Arquitetura de marca (brand board, seção 09): a empresa no alto — RAYZER X —, o
+          produto em uso logo abaixo — XAcess, controle de acesso. Um bloco de contexto, não
+          um seletor: hoje há um produto só.
+        -->
+        <StackPanel x:Name="Cabecalho" DockPanel.Dock="Top" Margin="18,20,12,14">
+          <rz:RayzerLogo x:Name="Logo" Height="30" Descritor="False" Brilho="True" HorizontalAlignment="Left" />
+          <Border x:Name="Produto" Margin="0,18,0,0" Padding="10,8" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                  Background="{DynamicResource Rayzer.Nav.Item.Hover}" BorderBrush="{DynamicResource Rayzer.Nav.Divider}" BorderThickness="1"
+                  ToolTip="XAcess — Controle de acesso inteligente">
+            <StackPanel Orientation="Horizontal">
+              <rz:RayzerAppIcon Width="32" />
+              <StackPanel x:Name="ProdutoTexto" Margin="10,0,0,0" VerticalAlignment="Center">
+                <TextBlock FontFamily="{DynamicResource Rayzer.Font.Display}" FontSize="15" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Rayzer.Nav.Text.Active}" Text="XAcess" />
+                <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" Foreground="{DynamicResource Rayzer.Nav.Text.Muted}"
+                           Text="Controle de acesso" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Margin="8,8,8,16">
           <Border Style="{StaticResource Rayzer.Divider}" Background="{DynamicResource Rayzer.Nav.Divider}" Margin="8,0,8,8" />
@@ -131,6 +149,9 @@
                          Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
               <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Caption}" Text="Horário de Brasília" />
             </StackPanel>
+            <!-- O produto com o endosso da empresa: XAcess by RAYZER X. -->
+            <Border Width="1" Height="36" Margin="20,0,20,0" Background="{DynamicResource Rayzer.Border}" />
+            <rz:XAcessLogo Variante="ComAssinatura" Height="38" VerticalAlignment="Center" />
           </StackPanel>
 
           <!-- A frase da situação: o que aconteceu, desde quando, o que fazer. -->
@@ -145,5 +166,8 @@
 
       <ContentControl Grid.Row="2" Margin="{DynamicResource Rayzer.Padding.Page}" Content="{Binding TelaAtual}" Focusable="False" />
     </Grid>
+
+    <!-- Abertura (brand board, seção 08): toca uma vez, some sozinha e nunca bloqueia clique. -->
+    <rz:RayzerAbertura Grid.ColumnSpan="2" />
   </Grid>
 </Window>

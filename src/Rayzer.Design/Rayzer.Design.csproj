@@ -22,6 +22,9 @@
   <ItemGroup>
     <!-- Ícone e logo do Rayzer XAcess: janelas (pack://), executáveis e instalador. -->
     <Resource Include="Marca\rayzer-xacess.ico" />
+    <!-- Tipografia do brand board (Sora, Inter, JetBrains Mono — SIL OFL 1.1). -->
+    <Resource Include="Fontes\*.ttf" />
+    <None Include="Fontes\*-OFL.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="Licencas\Fontes" />
   </ItemGroup>
 
 </Project>

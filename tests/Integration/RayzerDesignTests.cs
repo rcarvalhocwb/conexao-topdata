@@ -88,7 +88,8 @@ public sealed partial class RayzerDesignTests
     public void Texto_e_situacao_passam_no_contraste_WCAG_AA(string tema)
     {
         var cor = Cores(Arquivo($"src/Rayzer.Design/Temas/{tema}.xaml"));
-        var superficies = new[] { "Rayzer.Background", "Rayzer.Surface", "Rayzer.Surface.Elevated", "Rayzer.Surface.Sunken" };
+        // Hover incluído: a linha da tabela sob o mouse continua mostrando a situação.
+        var superficies = new[] { "Rayzer.Background", "Rayzer.Surface", "Rayzer.Surface.Elevated", "Rayzer.Surface.Sunken", "Rayzer.Surface.Hover" };
         var falhas = new List<string>();
 
         void Exigir(string frente, string fundo, double minimo)

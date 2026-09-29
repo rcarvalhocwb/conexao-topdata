@@ -60,7 +60,7 @@
   <SolidColorBrush x:Key="Rayzer.Brand.Accent" Color="{x:Static SystemColors.HotTrackColor}" po:Freeze="True" />
   <!-- Ciano #00D5FF: brilho, linha de energia, indicador -->
   <SolidColorBrush x:Key="Rayzer.Brand.Cyan" Color="{x:Static SystemColors.HotTrackColor}" po:Freeze="True" />
-  <!-- Grafite #1A2332: equilíbrio e interface -->
+  <!-- Superfície elevada #111827 (brand board, paleta) -->
   <SolidColorBrush x:Key="Rayzer.Graphite" Color="{x:Static SystemColors.ControlDarkColor}" po:Freeze="True" />
   <!-- Brilho azul sutil (fundo translúcido) -->
   <SolidColorBrush x:Key="Rayzer.Glow.Blue" Color="{x:Static SystemColors.HighlightColor}" po:Freeze="True" />
@@ -82,7 +82,7 @@
   <SolidColorBrush x:Key="Rayzer.Info.Subtle" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- Neutro: parado, desligado, sem dado -->
   <SolidColorBrush x:Key="Rayzer.Neutral" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />
-  <!-- Fundo neutro (Grafite no escuro) -->
+  <!-- Fundo neutro -->
   <SolidColorBrush x:Key="Rayzer.Neutral.Subtle" Color="{x:Static SystemColors.WindowColor}" po:Freeze="True" />
   <!-- ✓ Acesso autorizado -->
   <SolidColorBrush x:Key="Rayzer.Access.Granted" Color="{x:Static SystemColors.WindowTextColor}" po:Freeze="True" />

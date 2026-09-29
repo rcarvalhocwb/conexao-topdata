@@ -17,13 +17,14 @@ porta que se fecha: identificar → validar → decidir → autorizar → regist
 **Arquitetura de marca**
 
 ```
-RAYZER                         marca corporativa — Rayzer Serviços e Tecnologia LTDA
- └─ Rayzer XAcess              produto: controle de acesso (catracas, cartões, QR)
- └─ Rayzer [Produto]           próximos produtos herdam tudo de src/Rayzer.Design
+RAYZER X                       marca corporativa — Rayzer Serviços e Tecnologia LTDA
+ └─ XAcess (by RAYZER X)       produto: controle de acesso (catracas, cartões, QR)
+ └─ [Produto] (by RAYZER X)    próximos produtos herdam tudo de src/Rayzer.Design
 ```
 
-Um produto novo referencia `Rayzer.Design`, troca `Produto` no `RayzerLogo` e o nome da
-pasta de preferências em `TemaRayzer.Instalar(app, "Produto")`. Cores, tipo, componentes,
+Empresa e produto são marcas separadas (brand board, seções 01–04): `RayzerLogo` é só a
+empresa; `XAcessLogo` é o produto, com o endosso "by RAYZER X". Um produto novo referencia
+`Rayzer.Design`, ganha o seu lockup em `tools/gerar-marca.py` e muda o nome da pasta de preferências em `TemaRayzer.Instalar(app, "Produto")`. Cores, tipo, componentes,
 voz e símbolo continuam os mesmos. O teste `O_design_system_nao_depende_de_nenhum_projeto`
 garante que a biblioteca não carregue regra de nenhum produto.
 
@@ -52,52 +53,51 @@ fluxo gRPC.
 
 ## 3. Identidade visual
 
-### 3.1 O símbolo
+### 3.1 O símbolo e os logos
 
-Um **X** em que uma barra — **o fluxo**, Azul Fluxo — atravessa a abertura da outra — **a
-passagem**, Verde Passagem. É o X de XAcess e é, ao mesmo tempo, a catraca aberta com a
-pessoa passando. Geometria em grade 32 × 32 (`Rayzer.Logo.Flow.Geometry`,
-`Rayzer.Logo.Gate.Geometry`), a mesma no ícone do executável, na barra lateral, no
-assistente e no Setup (`src/Rayzer.Design/Marca`).
+> Atualizado pelo brand board (seções 01–05). Especificação completa, com lockups, tamanhos
+> mínimos e arquivos, em [docs/28](28-rayzer-ui-componentes.md) §0.
 
-Uso: sobre Azul Noite (a barra lateral e o ícone). Área de respiro mínima: metade da
-altura do símbolo. Não recolorir, não girar, não contornar.
+Um **X** vítreo: a faixa do **fluxo** (\\, Azul Principal) é contínua e passa por cima; a da
+**passagem** (/, do ciano ao prata) se abre para ela. Grade 32 × 32
+(`Rayzer.Mark.*.Geometry`). Os letreiros "RAYZER" e "acess" são vetores gerados da Sora
+(`Rayzer.Letreiro.*`, `tools/gerar-marca.py`) — idênticos no desktop, na web e em `marca/`.
+
+- **Empresa:** `RayzerLogo` — RAYZER X, com ou sem "SERVIÇOS E TECNOLOGIA LTDA"; horizontal,
+  vertical, símbolo; colorido ou monocromático.
+- **Produto:** `XAcessLogo` — Xacess, com a tagline "CONTROLE DE ACESSO INTELIGENTE", com o
+  endosso "by RAYZER X", compacto ou ícone (`RayzerAppIcon`).
+
+Não recolorir o X, não girar, não contornar, não juntar empresa e produto num letreiro só.
 
 ### 3.2 Cor
 
-Três cores de marca e uma paleta semântica. Toda cor mora num token. A tela nunca escreve
-um valor de cor: o teste `Nenhuma_tela_tem_cor_solta` reprova.
+Paleta do brand board (seção 06). Toda cor mora num token; a tela nunca escreve um valor
+de cor (`Nenhuma_tela_tem_cor_solta`), e o tema escuro é conferido contra o board
+(`O_tema_escuro_usa_a_paleta_do_brand_board`).
 
 | Token | Claro | Escuro | Papel |
 |---|---|---|---|
-| `Rayzer.Brand.Primary` | `#2350E6` | `#3358E8` | **Azul Fluxo** — ação principal |
-| `Rayzer.Brand.Secondary` | `#0E1E33` | `#1B3252` | **Azul Noite** — base institucional, barra lateral |
-| `Rayzer.Brand.Accent` | `#0A7672` | `#36CFC6` | **Verde Passagem** — o acento do fluxo |
-| `Rayzer.Background` | `#EEF2F7` | `#0B121C` | fundo |
-| `Rayzer.Surface` | `#FFFFFF` | `#111B28` | cartões e tabelas |
-| `Rayzer.Surface.Elevated` | `#FFFFFF` | `#172334` | menus, popups, dicas |
-| `Rayzer.Border` | `#DCE2EB` | `#243246` | bordas |
-| `Rayzer.Text.Primary` | `#0F1B2D` | `#E7EDF6` | texto |
-| `Rayzer.Text.Secondary` | `#4A5871` | `#9AA8BC` | texto de apoio |
-| `Rayzer.Success` = `Access.Granted` = `Device.Online` | `#157A3C` | `#4CC27A` | ✓ ● |
-| `Rayzer.Danger` = `Access.Denied` = `Device.Offline` | `#C0262D` | `#F07373` | × ○ |
-| `Rayzer.Warning` = `Device.Warning` | `#8F5400` | `#F0A83C` | ! |
-| `Rayzer.Info` = `Syncing` | `#1F63C6` | `#6AA8F5` | ↻ |
+| `Rayzer.Brand.Primary` | `#0066FF` | `#0066FF` | **Rayzer Blue** — ação principal |
+| `Rayzer.Brand.Cyan` | `#00D5FF` | `#00D5FF` | **Rayzer Cyan** — brilho, linha de energia, indicador |
+| `Rayzer.Background` | `#F4F7FB` | `#0B1A33` | fundo (Neutro claro / Fundo principal dark) |
+| `Rayzer.Surface` | `#FFFFFF` | `#111827` | cartões e tabelas (Superfície elevada) |
+| `Rayzer.Text.Primary` | `#0B1A33` | `#F4F7FB` | texto principal |
+| `Rayzer.Text.Secondary` | `#4A5A72` | `#8A9BB0` | texto secundário (Cinza) |
+| `Rayzer.Success` = `Access.Granted` = `Device.Online` | `#0F7A45` | `#32D583` | ✓ ● Sucesso / operacional |
+| `Rayzer.Warning` = `Device.Warning` | `#8A5300` | `#F5A524` | ! Atenção / simulação |
+| `Rayzer.Danger` = `Access.Denied` = `Device.Offline` | `#C8283A` | `#F05252` | × ○ Erro / negado |
 
-A lista completa (50 tokens, com a função de cada um) está em
-`src/Rayzer.Design/Temas/Claro.xaml`. **Escuro** é operacional: fundo azul-noite em vez de
-preto e situação dessaturada, para horas de monitoramento. **Alto contraste** cede às cores
-do Windows quando a pessoa liga o alto contraste do sistema.
-
-Os nomes pedidos no briefing (`--rayzer-brand-primary`, `--rayzer-surface-elevated`…)
-correspondem às chaves WPF `Rayzer.Brand.Primary`, `Rayzer.Surface.Elevated`… (hífen vira
-ponto; o WPF não tem variável CSS).
+No claro, as cores de situação escurecem para passar 4,5:1 sobre branco; no escuro são as
+do board. Lista completa em `src/Rayzer.Design/Temas/*.xaml` (e `--rayzer-*` na web).
 
 ### 3.3 Tipografia
 
-Segoe UI Variable (Windows 11), com Segoe UI de reserva (Windows 10). É fonte do sistema:
-não há nada para baixar ou licenciar, e a renderização é nativa. Horas, códigos e registros
-usam Cascadia Mono/Consolas, com dígitos de largura fixa.
+Brand board, seção 07 — embutidas em `src/Rayzer.Design/Fontes` (SIL OFL 1.1, licença ao
+lado), com a fonte do sistema de reserva: **Sora** na interface e nos títulos
+(`Rayzer.Font.Display`), **Inter** no texto e nos sistemas (`Rayzer.Font.Text`),
+**JetBrains Mono** em horas, códigos e registros (`Rayzer.Font.Mono`, dígitos de largura
+fixa).
 
 | Token | px | Uso |
 |---|---|---|
@@ -150,7 +150,9 @@ Implementado em `RayzerStatus` (Tom + Texto + Glifo).
 | `RayzerMetricCard` | painel ao vivo, prestação de contas | um número com rótulo, ícone e contexto |
 | `RayzerAlert` | mensagens de tela, problemas | STATUS → EXCEÇÃO → CONTEXTO → AÇÃO |
 | `RayzerEmptyState` | toda tabela | explica por que está vazio e o que fazer |
-| `RayzerLogo` | barra lateral, assistente | símbolo + RAYZER + produto; só o símbolo quando recolhido |
+| `RayzerLogo` | barra lateral, abertura | a empresa, RAYZER X; só o X quando recolhido |
+| `XAcessLogo` / `RayzerAppIcon` | barra superior, assistente, barra lateral | o produto: Xacess, com tagline, com "by RAYZER X" ou ícone |
+| `RayzerAbertura` | ao abrir o painel | fluxos → pulso → X → marca e produto, 2,9 s, nunca bloqueia |
 | `RayzerFlowBar` | abaixo da barra superior | carregando |
 | Cartão de catraca | painel ao vivo, catracas | CATRACA 01 · situação · nome · último evento · linha técnica · Diagnóstico |
 | Estilos | `Controles.xaml` | botão (principal, secundário, fantasma, ícone), campo, senha, lista, data, caixa de marcar, tabela, rolagem, menu lateral, passos, dica |
@@ -159,7 +161,7 @@ Os nomes do briefing sem função no produto hoje não foram criados como abstra
 
 ## 6. Onde a marca foi aplicada
 
-- **Janela:** barra lateral Azul Noite com o logo, os ícones, a linha do fluxo no item
+- **Janela:** barra lateral em azul profundo com a empresa (RAYZER X) no alto e o produto (XAcess) logo abaixo, os ícones, a linha de energia ciano no item
   ativo, o selo permanente "MODO SIMULAÇÃO", o tema claro/escuro, o menu recolhível e a
   autoria. O menu recolhe sozinho abaixo de 1200 px. A barra superior segue STATUS →
   EXCEÇÃO → CONTEXTO → AÇÃO: situação com símbolo, detalhe da internet, hora de Brasília,
@@ -243,8 +245,8 @@ essas funções.
 
 Sem o logo, a tela ainda é Rayzer?
 
-- A barra lateral Azul Noite com a linha do fluxo em Verde Passagem.
-- O Azul Fluxo só na ação principal.
+- A barra lateral em azul profundo com a linha de energia em Ciano.
+- O Rayzer Blue (#0066FF) só na ação principal.
 - As pílulas de situação ✓ × ● ○ ! ↻.
 - O traço que atravessa a linha ao carregar.
 - Os cartões de raio 12 sobre fundo cinza-azulado.

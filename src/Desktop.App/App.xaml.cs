@@ -16,6 +16,9 @@ public partial class App : Application
         Rayzer.Design.TemaRayzer.Instalar(this, "XAcess");
         TratarErrosInesperados("painel");
 
+        // Na captura de telas, a foto é do painel, não da abertura.
+        Rayzer.Design.RayzerAbertura.Desligada = e.Args.Contains(ArgumentoDeCaptura);
+
         var autoteste = Array.IndexOf(e.Args, "--autoteste");
         if (autoteste >= 0)
         {

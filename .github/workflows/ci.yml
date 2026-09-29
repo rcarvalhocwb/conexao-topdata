@@ -423,6 +423,56 @@ jobs:
           path: "**/TestResults/soak-relatorio.txt"
           if-no-files-found: warn
 
+  # Rayzer UI: o Rayzer Design System em React + TypeScript + Tailwind (web/rayzer-ui),
+  # com os mesmos tokens e letreiros do desktop — os testes conferem a paridade.
+  rayzer-ui:
+    name: Rayzer UI (web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web/rayzer-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/rayzer-ui/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # A marca sai de tools/gerar-marca.py (letreiros em vetor da Sora). Se alguém editou
+      # à mão o XAML, o TypeScript ou um SVG, o gerador desfaz e o diff acusa.
+      - name: Conferir que a marca gerada está em dia
+        working-directory: .
+        run: |
+          set -euo pipefail
+          pip install --quiet fonttools==4.66.0 uharfbuzz==0.56.2
+          python tools/gerar-marca.py
+          git diff --exit-code -- src/Rayzer.Design/Tokens.xaml src/Rayzer.Design/Themes/Generic.xaml web/rayzer-ui/src/components/brand/letreiros.ts marca/svg
+
+      - name: Instalar
+        run: npm ci
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      - name: Construir a demo
+        run: npm run demo:build
+
+      - name: Publicar a demo
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayzer-ui-demo
+          path: web/rayzer-ui/demo/dist
+
   # SEC-LOG-01: nenhum dado sensível pode chegar ao log.
   # Nesta fase, a checagem é estática; ela cresce junto com a observabilidade.
   seguranca:

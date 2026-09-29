@@ -185,20 +185,35 @@ public class RayzerEmptyState : ContentControl
     public string Observacao { get => (string)GetValue(ObservacaoProperty); set => SetValue(ObservacaoProperty, value); }
 }
 
-/// <summary>Como a marca aparece (brand board, "logo principal" e variações).</summary>
+/// <summary>
+/// Como a marca corporativa aparece (brand board, "Variações e aplicações da marca RAYZER X").
+/// </summary>
 public enum VarianteDoLogo
 {
-    /// <summary>Símbolo + RAYZER X acess numa linha: barra lateral, cabeçalhos.</summary>
+    /// <summary>RAYZER + X numa linha (com o descritor, se <see cref="RayzerLogo.Descritor"/>).</summary>
     Horizontal,
 
-    /// <summary>Horizontal com a assinatura "CONTROLE DE ACESSO INTELIGENTE": telas de entrada.</summary>
-    Completo,
+    /// <summary>X em cima, RAYZER e o descritor embaixo.</summary>
+    Vertical,
 
-    /// <summary>Só o símbolo: barra recolhida, ícone.</summary>
+    /// <summary>Só o X: barra recolhida, favicon, espaços mínimos.</summary>
     Simbolo,
+}
 
-    /// <summary>Símbolo + "XAcess" em duas linhas curtas: espaços estreitos.</summary>
+/// <summary>Como o produto aparece (brand board, "Variações e aplicações do produto XAcess").</summary>
+public enum VarianteDoProduto
+{
+    /// <summary>Xacess com a tagline "CONTROLE DE ACESSO INTELIGENTE".</summary>
+    Principal,
+
+    /// <summary>Xacess com o endosso "by RAYZER X".</summary>
+    ComAssinatura,
+
+    /// <summary>Só Xacess: cabeçalhos estreitos.</summary>
     Compacto,
+
+    /// <summary>O ícone do produto (quadro arredondado com o X).</summary>
+    Icone,
 }
 
 /// <summary>
@@ -228,29 +243,21 @@ public class RayzerBrandMark : Control
 }
 
 /// <summary>
-/// RayzerLogo: o símbolo com "RAYZER X acess". Serve a qualquer produto Rayzer: muda só
-/// <see cref="Produto"/> (o texto depois do X).
+/// A marca corporativa RAYZER X — Rayzer Serviços e Tecnologia LTDA. Letreiro em vetor
+/// (Rayzer.Letreiro.*, gerado por tools/gerar-marca.py); a altura do controle define o
+/// tamanho e a largura acompanha a proporção. Não é o produto: para o XAcess use
+/// <see cref="XAcessLogo"/>.
 /// </summary>
-/// <remarks>
-/// Área de respiro: metade da altura do símbolo em volta. Tamanho mínimo: símbolo de 16 px
-/// (só símbolo) e de 24 px (horizontal).
-/// </remarks>
 public class RayzerLogo : Control
 {
-    public static readonly DependencyProperty ProdutoProperty = DependencyProperty.Register(
-        nameof(Produto), typeof(string), typeof(RayzerLogo), new PropertyMetadata("acess"));
-
-    public static readonly DependencyProperty EmpresaProperty = DependencyProperty.Register(
-        nameof(Empresa), typeof(string), typeof(RayzerLogo), new PropertyMetadata("RAYZER"));
-
-    public static readonly DependencyProperty AssinaturaProperty = DependencyProperty.Register(
-        nameof(Assinatura), typeof(string), typeof(RayzerLogo), new PropertyMetadata("CONTROLE DE ACESSO INTELIGENTE"));
-
     public static readonly DependencyProperty VarianteProperty = DependencyProperty.Register(
         nameof(Variante), typeof(VarianteDoLogo), typeof(RayzerLogo), new PropertyMetadata(VarianteDoLogo.Horizontal));
 
-    public static readonly DependencyProperty TamanhoDoSimboloProperty = DependencyProperty.Register(
-        nameof(TamanhoDoSimbolo), typeof(double), typeof(RayzerLogo), new PropertyMetadata(32.0));
+    public static readonly DependencyProperty DescritorProperty = DependencyProperty.Register(
+        nameof(Descritor), typeof(bool), typeof(RayzerLogo), new PropertyMetadata(true));
+
+    public static readonly DependencyProperty CorDeApoioProperty = DependencyProperty.Register(
+        nameof(CorDeApoio), typeof(Brush), typeof(RayzerLogo), new PropertyMetadata(null));
 
     public static readonly DependencyProperty BrilhoProperty = DependencyProperty.Register(
         nameof(Brilho), typeof(bool), typeof(RayzerLogo), new PropertyMetadata(false));
@@ -261,19 +268,64 @@ public class RayzerLogo : Control
     static RayzerLogo() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerLogo), new FrameworkPropertyMetadata(typeof(RayzerLogo)));
 
-    public string Produto { get => (string)GetValue(ProdutoProperty); set => SetValue(ProdutoProperty, value); }
-
-    public string Empresa { get => (string)GetValue(EmpresaProperty); set => SetValue(EmpresaProperty, value); }
-
-    public string Assinatura { get => (string)GetValue(AssinaturaProperty); set => SetValue(AssinaturaProperty, value); }
-
     public VarianteDoLogo Variante { get => (VarianteDoLogo)GetValue(VarianteProperty); set => SetValue(VarianteProperty, value); }
 
-    public double TamanhoDoSimbolo { get => (double)GetValue(TamanhoDoSimboloProperty); set => SetValue(TamanhoDoSimboloProperty, value); }
+    /// <summary>Mostra "SERVIÇOS E TECNOLOGIA LTDA" sob o RAYZER (só a partir de ~40 px de altura).</summary>
+    public bool Descritor { get => (bool)GetValue(DescritorProperty); set => SetValue(DescritorProperty, value); }
+
+    /// <summary>Cor do descritor.</summary>
+    public Brush? CorDeApoio { get => (Brush?)GetValue(CorDeApoioProperty); set => SetValue(CorDeApoioProperty, value); }
 
     public bool Brilho { get => (bool)GetValue(BrilhoProperty); set => SetValue(BrilhoProperty, value); }
 
     public bool Monocromatico { get => (bool)GetValue(MonocromaticoProperty); set => SetValue(MonocromaticoProperty, value); }
+}
+
+/// <summary>
+/// O produto XAcess — controle de acesso inteligente, by RAYZER X. O X da marca abre o nome
+/// ("Xacess"); a altura do controle define o tamanho.
+/// </summary>
+public class XAcessLogo : Control
+{
+    public static readonly DependencyProperty VarianteProperty = DependencyProperty.Register(
+        nameof(Variante), typeof(VarianteDoProduto), typeof(XAcessLogo), new PropertyMetadata(VarianteDoProduto.Principal));
+
+    public static readonly DependencyProperty CorDeApoioProperty = DependencyProperty.Register(
+        nameof(CorDeApoio), typeof(Brush), typeof(XAcessLogo), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty BrilhoProperty = DependencyProperty.Register(
+        nameof(Brilho), typeof(bool), typeof(XAcessLogo), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty MonocromaticoProperty = DependencyProperty.Register(
+        nameof(Monocromatico), typeof(bool), typeof(XAcessLogo), new PropertyMetadata(false));
+
+    static XAcessLogo() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(XAcessLogo), new FrameworkPropertyMetadata(typeof(XAcessLogo)));
+
+    public VarianteDoProduto Variante { get => (VarianteDoProduto)GetValue(VarianteProperty); set => SetValue(VarianteProperty, value); }
+
+    /// <summary>Cor da tagline e do "by".</summary>
+    public Brush? CorDeApoio { get => (Brush?)GetValue(CorDeApoioProperty); set => SetValue(CorDeApoioProperty, value); }
+
+    public bool Brilho { get => (bool)GetValue(BrilhoProperty); set => SetValue(BrilhoProperty, value); }
+
+    public bool Monocromatico { get => (bool)GetValue(MonocromaticoProperty); set => SetValue(MonocromaticoProperty, value); }
+}
+
+/// <summary>
+/// Ícone de aplicativo (brand board, "Ícone e favicon"): quadro arredondado em azul profundo,
+/// borda Azul Principal e o X; com <see cref="ComNome"/>, o "acess" do produto embaixo.
+/// A largura define o tamanho.
+/// </summary>
+public class RayzerAppIcon : Control
+{
+    public static readonly DependencyProperty ComNomeProperty = DependencyProperty.Register(
+        nameof(ComNome), typeof(bool), typeof(RayzerAppIcon), new PropertyMetadata(false));
+
+    static RayzerAppIcon() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerAppIcon), new FrameworkPropertyMetadata(typeof(RayzerAppIcon)));
+
+    public bool ComNome { get => (bool)GetValue(ComNomeProperty); set => SetValue(ComNomeProperty, value); }
 }
 
 /// <summary>StatusPill: RayzerStatus já em forma de pílula (Operacional, Online, Simulação…).</summary>
@@ -498,4 +550,54 @@ public static class Marca
 
     /// <summary>O princípio que orienta a experiência.</summary>
     public const string Principio = "Access is a flow, not a door.";
+}
+
+/// <summary>
+/// Abertura (brand board, "Animação de inicialização"): fluxos se aproximam (0–0,6 s),
+/// interseção e pulso (0,6–1,4 s), o X se completa (1,4–1,8 s), marca e produto
+/// (1,8–2,2 s); some sozinha em 2,9 s. Nunca bloqueia: não recebe clique nem foco, e com as
+/// animações do Windows desligadas (movimento reduzido) nem aparece.
+/// </summary>
+public class RayzerAbertura : Control
+{
+    /// <summary>Tempo total, do primeiro quadro até sumir.</summary>
+    public static readonly TimeSpan Duracao = TimeSpan.FromSeconds(2.9);
+
+    static RayzerAbertura() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(RayzerAbertura), new FrameworkPropertyMetadata(typeof(RayzerAbertura)));
+
+    /// <summary>Não mostra a abertura (captura de telas, testes).</summary>
+    public static bool Desligada { get; set; }
+
+    /// <summary>Para a animação no quadro final, visível (captura da própria abertura).</summary>
+    public static bool SomenteQuadroFinal { get; set; }
+
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+
+        if (!SomenteQuadroFinal && (Desligada || !SystemParameters.ClientAreaAnimation))
+        {
+            Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (Template?.Resources["Sequencia"] is not Storyboard modelo)
+        {
+            Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var sequencia = modelo.Clone();
+        if (SomenteQuadroFinal)
+        {
+            sequencia.Begin(this, Template, isControllable: true);
+            sequencia.SeekAlignedToLastTick(this, TimeSpan.FromSeconds(2.5), TimeSeekOrigin.BeginTime);
+            sequencia.Pause(this);
+            return;
+        }
+
+        sequencia.Completed += (_, _) => Visibility = Visibility.Collapsed;
+        sequencia.Begin(this, Template);
+    }
 }

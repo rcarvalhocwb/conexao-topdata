@@ -61,8 +61,8 @@
   <SolidColorBrush x:Key="Rayzer.Brand.Accent" Color="#007A99" po:Freeze="True" />
   <!-- Ciano #00D5FF: brilho, linha de energia, indicador -->
   <SolidColorBrush x:Key="Rayzer.Brand.Cyan" Color="#00D5FF" po:Freeze="True" />
-  <!-- Grafite #1A2332: equilíbrio e interface -->
-  <SolidColorBrush x:Key="Rayzer.Graphite" Color="#1A2332" po:Freeze="True" />
+  <!-- Superfície elevada #111827 (brand board, paleta) -->
+  <SolidColorBrush x:Key="Rayzer.Graphite" Color="#111827" po:Freeze="True" />
   <!-- Brilho azul sutil (fundo translúcido) -->
   <SolidColorBrush x:Key="Rayzer.Glow.Blue" Color="#330066FF" po:Freeze="True" />
   <!-- Sucesso -->
@@ -83,7 +83,7 @@
   <SolidColorBrush x:Key="Rayzer.Info.Subtle" Color="#E4EFFC" po:Freeze="True" />
   <!-- Neutro: parado, desligado, sem dado -->
   <SolidColorBrush x:Key="Rayzer.Neutral" Color="#5B6A80" po:Freeze="True" />
-  <!-- Fundo neutro (Grafite no escuro) -->
+  <!-- Fundo neutro -->
   <SolidColorBrush x:Key="Rayzer.Neutral.Subtle" Color="#EDF1F6" po:Freeze="True" />
   <!-- ✓ Acesso autorizado -->
   <SolidColorBrush x:Key="Rayzer.Access.Granted" Color="#0F7A45" po:Freeze="True" />
