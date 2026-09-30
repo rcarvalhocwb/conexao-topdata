@@ -35,6 +35,30 @@ namespace Access.Infrastructure.SQLite;
 /// até o ensaio HIL-EVT-01 dizer o que a DLL devolve sem evento (<c>A_CONFIRMAR_COM_TOPDATA</c>).
 /// Chave técnica (<c>catraca.reconectar_em_erro_de_recepcao</c>).
 /// </param>
+/// <param name="EnviarDataHoraNoEvento">
+/// Envia <c>ReceberDataHoraDadosOnLine(1)</c> (EI-027). Desligado: a catraca segue com o padrão
+/// da DLL. Chave técnica <c>catraca.enviar_data_hora_no_evento</c>, desligada até INT-CFG-07
+/// (Etapa A.2, docs/34 §4.1).
+/// </param>
+/// <param name="RegistrarAcessoNegado">
+/// Valor de <c>RegistrarAcessoNegado</c> (EI-021), 0 a 3. Nulo (chave vazia): não é enviado e a
+/// catraca segue com o padrão da DLL. A chave leva o valor porque o significado de cada um é
+/// <c>A_CONFIRMAR_COM_TOPDATA</c> e é o ensaio INT-OFF-08 que o descobre. Chave técnica
+/// <c>catraca.registrar_acesso_negado</c>.
+/// </param>
+/// <param name="EnviarTipoDeLista">
+/// Envia <c>DefinirTipoListaAcesso(0)</c> (EI-033): "não usar lista", explícito. Chave técnica
+/// <c>catraca.enviar_tipo_de_lista</c>, desligada até INT-OFF-02.
+/// </param>
+/// <param name="EnviarWiegandDoisLeitores">
+/// Envia <c>ConfigurarWiegandDoisLeitores(0, 0)</c> (EI-024). Chave técnica
+/// <c>catraca.enviar_wiegand_dois_leitores</c>, desligada até HIL-CARD-05.
+/// </param>
+/// <param name="EnviarFormasDeEntrada">
+/// Rearma o leitor com os valores do modelo em vez das constantes de sempre (EI-032; hoje são
+/// os mesmos). Chave técnica <c>catraca.enviar_formas_de_entrada</c>, desligada até INT-SM-032
+/// (T26).
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -44,7 +68,12 @@ public sealed record ConfiguracaoDaOperacao(
     int EsperaPeloGiroSegundos = 10,
     bool AcertarRelogioAoDivergir = false,
     bool EnviarDigitosVariaveis = false,
-    bool ReconectarEmErroDeRecepcao = false)
+    bool ReconectarEmErroDeRecepcao = false,
+    bool EnviarDataHoraNoEvento = false,
+    byte? RegistrarAcessoNegado = null,
+    bool EnviarTipoDeLista = false,
+    bool EnviarWiegandDoisLeitores = false,
+    bool EnviarFormasDeEntrada = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -66,6 +95,11 @@ public sealed record ConfiguracaoDaOperacao(
         TempoDeAcionamento = TempoDeAcionamento,
         MensagemPadrao = MensagemPadrao,
         EnviarDigitosVariaveis = EnviarDigitosVariaveis,
+        EnviarDataHoraNoEventoOnLine = EnviarDataHoraNoEvento,
+        RegistrarAcessoNegado = RegistrarAcessoNegado,
+        EnviarTipoDeLista = EnviarTipoDeLista,
+        EnviarWiegandDoisLeitores = EnviarWiegandDoisLeitores,
+        EnviarFormasDeEntradaOnLine = EnviarFormasDeEntrada,
     };
 
     /// <summary>Problemas que impedem a catraca de operar com esta configuração.</summary>
@@ -87,6 +121,13 @@ public sealed record ConfiguracaoDaOperacao(
         if (string.IsNullOrWhiteSpace(MensagemPadrao) || MensagemPadrao.Length > 32)
         {
             problemas.Add("A mensagem do display precisa ter de 1 a 32 caracteres.");
+        }
+
+        // A faixa da função (FUN:22). Recusar aqui evita que o worker monte uma configuração
+        // que o adapter recusaria.
+        if (RegistrarAcessoNegado is > 3)
+        {
+            problemas.Add("O registro de acesso negado vai de 0 a 3.");
         }
 
         return problemas;
@@ -112,6 +153,15 @@ public sealed class ConfiguracoesDaBorda
     public const string ChaveAcertarRelogioAoDivergir = "relogio.acertar_ao_divergir";
     public const string ChaveEnviarDigitosVariaveis = "catraca.enviar_digitos_variaveis";
     public const string ChaveReconectarEmErroDeRecepcao = "catraca.reconectar_em_erro_de_recepcao";
+
+    // Etapa A.2 (docs/34 §4.1): todas sem tela e desligadas por padrão; desligada = não enviado.
+    public const string ChaveEnviarDataHoraNoEvento = "catraca.enviar_data_hora_no_evento";
+
+    /// <summary>Leva o próprio valor, 0 a 3; vazia = desligada (EI-021, INT-OFF-08).</summary>
+    public const string ChaveRegistrarAcessoNegado = "catraca.registrar_acesso_negado";
+    public const string ChaveEnviarTipoDeLista = "catraca.enviar_tipo_de_lista";
+    public const string ChaveEnviarWiegandDoisLeitores = "catraca.enviar_wiegand_dois_leitores";
+    public const string ChaveEnviarFormasDeEntrada = "catraca.enviar_formas_de_entrada";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -160,6 +210,23 @@ public sealed class ConfiguracoesDaBorda
             return atual;
         }
 
+        // Vazia (ou ausente) é desligada; um byte é o valor; o resto é ilegível e desliga.
+        byte? ByteOpcional(string chave)
+        {
+            if (!valores.TryGetValue(chave, out var texto) || texto.Length == 0)
+            {
+                return null;
+            }
+
+            if (byte.TryParse(texto, NumberStyles.None, CultureInfo.InvariantCulture, out var v))
+            {
+                return v;
+            }
+
+            ilegiveis.Add(chave);
+            return null;
+        }
+
         bool Logico(string chave, bool atual)
         {
             if (!valores.TryGetValue(chave, out var texto))
@@ -188,7 +255,12 @@ public sealed class ConfiguracoesDaBorda
             EsperaPeloGiroSegundos: Inteiro(ChaveEsperaPeloGiro, padrao.EsperaPeloGiroSegundos),
             AcertarRelogioAoDivergir: Logico(ChaveAcertarRelogioAoDivergir, padrao.AcertarRelogioAoDivergir),
             EnviarDigitosVariaveis: Logico(ChaveEnviarDigitosVariaveis, padrao.EnviarDigitosVariaveis),
-            ReconectarEmErroDeRecepcao: Logico(ChaveReconectarEmErroDeRecepcao, padrao.ReconectarEmErroDeRecepcao));
+            ReconectarEmErroDeRecepcao: Logico(ChaveReconectarEmErroDeRecepcao, padrao.ReconectarEmErroDeRecepcao),
+            EnviarDataHoraNoEvento: Logico(ChaveEnviarDataHoraNoEvento, padrao.EnviarDataHoraNoEvento),
+            RegistrarAcessoNegado: ByteOpcional(ChaveRegistrarAcessoNegado),
+            EnviarTipoDeLista: Logico(ChaveEnviarTipoDeLista, padrao.EnviarTipoDeLista),
+            EnviarWiegandDoisLeitores: Logico(ChaveEnviarWiegandDoisLeitores, padrao.EnviarWiegandDoisLeitores),
+            EnviarFormasDeEntrada: Logico(ChaveEnviarFormasDeEntrada, padrao.EnviarFormasDeEntrada));
 
         return (configuracao, ilegiveis);
     }
@@ -216,6 +288,11 @@ public sealed class ConfiguracoesDaBorda
             [ChaveAcertarRelogioAoDivergir] = configuracao.AcertarRelogioAoDivergir ? "1" : "0",
             [ChaveEnviarDigitosVariaveis] = configuracao.EnviarDigitosVariaveis ? "1" : "0",
             [ChaveReconectarEmErroDeRecepcao] = configuracao.ReconectarEmErroDeRecepcao ? "1" : "0",
+            [ChaveEnviarDataHoraNoEvento] = configuracao.EnviarDataHoraNoEvento ? "1" : "0",
+            [ChaveRegistrarAcessoNegado] = configuracao.RegistrarAcessoNegado?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            [ChaveEnviarTipoDeLista] = configuracao.EnviarTipoDeLista ? "1" : "0",
+            [ChaveEnviarWiegandDoisLeitores] = configuracao.EnviarWiegandDoisLeitores ? "1" : "0",
+            [ChaveEnviarFormasDeEntrada] = configuracao.EnviarFormasDeEntrada ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();

@@ -75,6 +75,18 @@ public sealed class EasyInnerReal : IEasyInnerNative
     public byte HabilitarMudancaOnLineOffLine(byte habilita, byte tempo) =>
         EasyInnerNative.HabilitarMudancaOnLineOffLine(habilita, tempo);
 
+    // As cinco abaixo (Etapa A.2) também moram no arquivo gerado do SDK, como EI-012.
+    public byte ConfigurarWiegandDoisLeitores(byte habilita, byte exibirMensagem) =>
+        EasyInnerGerada.ConfigurarWiegandDoisLeitores(habilita, exibirMensagem);
+
+    public byte RegistrarAcessoNegado(byte tipoRegistro) => EasyInnerGerada.RegistrarAcessoNegado(tipoRegistro);
+
+    public byte ReceberDataHoraDadosOnLine(byte recebe) => EasyInnerGerada.ReceberDataHoraDadosOnLine(recebe);
+
+    public byte DefinirNumeroCartaoMaster(string master) => EasyInnerGerada.DefinirNumeroCartaoMaster(master);
+
+    public byte DefinirTipoListaAcesso(byte tipo) => EasyInnerGerada.DefinirTipoListaAcesso(tipo);
+
     public byte EnviarConfiguracoes(int inner) => EasyInnerNative.EnviarConfiguracoes(inner);
 
     public byte EnviarFormasEntradasOnLine(

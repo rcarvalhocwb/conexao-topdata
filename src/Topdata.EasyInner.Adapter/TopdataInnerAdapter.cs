@@ -31,6 +31,12 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     /// <summary>Teclado e os dois leitores aceitos. Enum FormaEntrada do SDK.</summary>
     private const byte EntradaTecladoELeitores = 7;
 
+    /// <summary>
+    /// O rearme de sempre: (0, 0, 7, 0, 0). Fica aqui, e não só no modelo, para que a chave
+    /// desligada mande isto mesmo que alguém mude o padrão do modelo.
+    /// </summary>
+    private static readonly FormasDeEntradaOnLine FormasDeEntradaDeSempre = new(0, 0, EntradaTecladoELeitores, 0, 0);
+
     private readonly IEasyInnerNative _nativo;
 
     /// <summary>
@@ -208,6 +214,27 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
                 (nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine), _nativo.HabilitarMudancaOnLineOffLine(
                     configuracao.MudancaAutomatica,
                     configuracao.TempoDaMudancaAutomatica)),
+
+                // Etapa A.2: o que ia com o padrão da DLL (ADR-0020). Cada um só com a sua
+                // chave técnica (desligadas = a sequência acima, idêntica à de antes), no fim da
+                // montagem e antes de EnviarConfiguracoes, na ordem dos campos comuns do anexo
+                // 01 §3.3. A ordem dentro do buffer é INFERIDO (T13).
+                .. Se(configuracao.EnviarWiegandDoisLeitores, () =>
+                    (nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores), _nativo.ConfigurarWiegandDoisLeitores(
+                        Byte(configuracao.WiegandDoisLeitores.Habilitado),
+                        Byte(configuracao.WiegandDoisLeitores.ExibirMensagem)))),
+                .. Se(configuracao.RegistrarAcessoNegado is not null, () =>
+                    (nameof(IEasyInnerNative.RegistrarAcessoNegado), _nativo.RegistrarAcessoNegado(configuracao.RegistrarAcessoNegado!.Value))),
+                .. Se(configuracao.EnviarDataHoraNoEventoOnLine, () =>
+                    (nameof(IEasyInnerNative.ReceberDataHoraDadosOnLine), _nativo.ReceberDataHoraDadosOnLine(
+                        Byte(configuracao.DataHoraNoEventoOnLine)))),
+
+                // O número só existe aqui, na chamada; nunca no resultado nem no registro.
+                .. Se(configuracao.CartaoMaster is not null, () =>
+                    (nameof(IEasyInnerNative.DefinirNumeroCartaoMaster), _nativo.DefinirNumeroCartaoMaster(
+                        configuracao.CartaoMaster!.RevelarParaADll()))),
+                .. Se(configuracao.EnviarTipoDeLista, () =>
+                    (nameof(IEasyInnerNative.DefinirTipoListaAcesso), _nativo.DefinirTipoListaAcesso(configuracao.TipoDeLista))),
             ];
 
             foreach (var passo in passos)
@@ -225,16 +252,25 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         });
     }
 
-    public AdapterResult ConfigurarEntradasOnline(int inner) => Medir(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), () =>
-        // É este passo que rearma o leitor para a próxima leitura. Sem ele, a pista para de
-        // ler sem dar erro nenhum — o modo de falha mais caro que existe numa fila.
-        _nativo.EnviarFormasEntradasOnLine(
-            inner,
-            qtdeDigitosTeclado: 0,
-            ecoTeclado: 0,
-            formaEntrada: EntradaTecladoELeitores,
-            tempoTeclado: 0,
-            posicaoCursorTeclado: 0));
+    public AdapterResult ConfigurarEntradasOnline(int inner, DeviceConfiguration? configuracao = null)
+    {
+        // Só com a chave catraca.enviar_formas_de_entrada os valores vêm do modelo (Etapa A.2);
+        // desligada, são as constantes de sempre. O significado de cada FormaEntrada é T26.
+        var formas = configuracao is { EnviarFormasDeEntradaOnLine: true }
+            ? configuracao.FormasDeEntradaOnLine
+            : FormasDeEntradaDeSempre;
+
+        return Medir(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), () =>
+            // É este passo que rearma o leitor para a próxima leitura. Sem ele, a pista para de
+            // ler sem dar erro nenhum — o modo de falha mais caro que existe numa fila.
+            _nativo.EnviarFormasEntradasOnLine(
+                inner,
+                formas.QtdeDigitosTeclado,
+                formas.EcoTeclado,
+                formas.FormaEntrada,
+                formas.TempoTeclado,
+                formas.PosicaoCursorTeclado));
+    }
 
     public AdapterResult EnviarMensagemPadrao(int inner, string mensagem)
     {
@@ -389,6 +425,13 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     /// <summary>Corta a mensagem no limite do display, sem quebrar no meio de nada.</summary>
     private static string Cortar(string texto, int limite) =>
         texto.Length <= limite ? texto : texto[..limite];
+
+    /// <summary>Um passo da montagem que só acontece com a condição (a chave técnica) verdadeira.</summary>
+    /// <remarks>A chamada nativa só é feita aqui dentro: desligada, a DLL nem fica sabendo.</remarks>
+    private static (string Funcao, byte Retorno)[] Se(bool condicao, Func<(string Funcao, byte Retorno)> chamada) =>
+        condicao ? [chamada()] : [];
+
+    private static byte Byte(bool valor) => valor ? (byte)1 : (byte)0;
 
     /// <summary>
     /// Mede uma chamada e interpreta o retorno à luz da função que o devolveu (F6, docs/34 §2).

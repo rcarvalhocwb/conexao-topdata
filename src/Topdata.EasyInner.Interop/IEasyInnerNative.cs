@@ -99,6 +99,28 @@ public interface IEasyInnerNative
     /// <summary>EI-028 — mudança automática on-line/off-line.</summary>
     byte HabilitarMudancaOnLineOffLine(byte habilita, byte tempo);
 
+    // Etapa A.2 (docs/35): funções de montagem que iam com o padrão da DLL (ADR-0020). Todas
+    // escrevem no buffer global e só valem com EnviarConfiguracoes; o adapter só as chama com
+    // a chave técnica de cada uma ligada.
+
+    /// <summary>EI-024 — segundo leitor Wiegand: habilita 0–1, exibir mensagem 0–1 (FUN:25).</summary>
+    byte ConfigurarWiegandDoisLeitores(byte habilita, byte exibirMensagem);
+
+    /// <summary>EI-021 — registro de acesso negado, 0 a 3 (FUN:22). Retorno 128 = tipo inválido.</summary>
+    byte RegistrarAcessoNegado(byte tipoRegistro);
+
+    /// <summary>EI-027 — data e hora no evento on-line, 0 ou 1 (FUN:28).</summary>
+    byte ReceberDataHoraDadosOnLine(byte recebe);
+
+    /// <summary>
+    /// EI-023 — número do cartão master, até 14 dígitos, padrão Livre (FUN:24). Retorno 128 =
+    /// número inválido. O argumento é segredo: nunca registrar.
+    /// </summary>
+    byte DefinirNumeroCartaoMaster(string master);
+
+    /// <summary>EI-033 — tipo de lista: 0 não usar, 1 branca, 2 negra (FUN:34). Retorno 128 = tipo inválido.</summary>
+    byte DefinirTipoListaAcesso(byte tipo);
+
     /// <summary>EI-030 — aplica a configuração montada. Envia também os padrões da DLL.</summary>
     byte EnviarConfiguracoes(int inner);
 

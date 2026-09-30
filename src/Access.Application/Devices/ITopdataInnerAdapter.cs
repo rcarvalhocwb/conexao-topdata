@@ -202,8 +202,13 @@ public interface ITopdataInnerAdapter : IDisposable
     /// <remarks>
     /// É este passo que reabilita o leitor para a próxima leitura. Pulá-lo é a causa
     /// documentada de "catraca/leitor trava após passar o cartão" (manual, 7.2.3).
+    /// <para>
+    /// Com a configuração e a chave <c>catraca.enviar_formas_de_entrada</c> ligada nela, os
+    /// parâmetros vêm de <see cref="DeviceConfiguration.FormasDeEntradaOnLine"/>; sem uma ou
+    /// outra, são os de sempre (Etapa A.2 do docs/35; T26).
+    /// </para>
     /// </remarks>
-    AdapterResult ConfigurarEntradasOnline(int inner);
+    AdapterResult ConfigurarEntradasOnline(int inner, DeviceConfiguration? configuracao = null);
 
     /// <summary>Envia a mensagem exibida no display quando ocioso.</summary>
     AdapterResult EnviarMensagemPadrao(int inner, string mensagem);

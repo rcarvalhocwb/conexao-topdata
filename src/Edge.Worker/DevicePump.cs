@@ -413,7 +413,7 @@ public sealed class DevicePump
 
     private string ConfigurarEntradas(DeviceSlot d, DateTimeOffset agora)
     {
-        var resultado = _adapter.ConfigurarEntradasOnline(d.Inner);
+        var resultado = _adapter.ConfigurarEntradasOnline(d.Inner, d.Configuracao);
 
         if (resultado.IsOk)
         {
