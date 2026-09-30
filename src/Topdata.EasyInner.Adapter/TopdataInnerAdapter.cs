@@ -185,8 +185,10 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
                 }
             }
 
-            var mensagem = _nativo.EnviarMensagemPadraoOnLine(inner, 0, configuracao.MensagemPadrao);
-            return mensagem != 0 ? mensagem : _nativo.EnviarConfiguracoes(inner);
+            // Nada com Inner entre montar e enviar (ADR-0006). A mensagem padrão ia aqui no
+            // meio, e três vezes por conexão; ela tem o seu passo próprio no laço
+            // (EnviarMsgPadrao), depois de rearmar o leitor (defeito F7, docs/34 §2).
+            return _nativo.EnviarConfiguracoes(inner);
         });
     }
 

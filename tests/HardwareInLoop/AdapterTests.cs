@@ -210,6 +210,10 @@ public sealed class AdapterTests
     /// <summary>
     /// A sequência nativa de uma configuração de hoje, sem a chave de dígitos variáveis.
     /// </summary>
+    /// <remarks>
+    /// Sem <c>EnviarMensagemPadraoOnLine</c> entre a montagem e o envio desde a Etapa 0.5:
+    /// ela violava a ADR-0006 e tem o seu passo próprio no laço (F7, docs/34 §2).
+    /// </remarks>
     private static readonly string[] SequenciaSemDigitosVariaveis =
     [
         "DefinirPadraoCartao",
@@ -222,7 +226,6 @@ public sealed class AdapterTests
         "ConfigurarInnerOnLine",
         "HabilitarTeclado",
         "HabilitarMudancaOnLineOffLine",
-        "EnviarMensagemPadraoOnLine",
         "EnviarConfiguracoes",
     ];
 
@@ -281,6 +284,44 @@ public sealed class AdapterTests
             ],
             costura.Chamadas.Take(5));
         Assert.Equal("EnviarConfiguracoes", costura.Chamadas[^1]);
+    }
+
+    /// <summary>As funções da costura que falam com uma catraca (primeiro parâmetro <c>inner</c>).</summary>
+    private static readonly HashSet<string> FuncoesComInner = typeof(Topdata.EasyInner.Interop.IEasyInnerNative)
+        .GetMethods()
+        .Where(m => m.GetParameters() is [{ Name: "inner" }, ..])
+        .Select(m => m.Name)
+        .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Entre a primeira função de montagem e <c>EnviarConfiguracoes</c>, nenhuma chamada fala
+    /// com a catraca: o buffer é global da DLL e o envio o limpa (ADR-0006; F7, docs/34 §2).
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Nada_com_inner_entre_montar_e_enviar(bool digitosVariaveis)
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.EnviarConfiguracaoCompleta(1, Configuracao() with
+        {
+            QuantidadesVariaveisDeDigitos = [4, 16],
+            EnviarDigitosVariaveis = digitosVariaveis,
+        });
+
+        Assert.Contains("EnviarConfiguracoes", FuncoesComInner);
+        Assert.Contains("EnviarMensagemPadraoOnLine", FuncoesComInner);
+
+        var inicio = costura.Chamadas.FindIndex(c => c.StartsWith("Definir", StringComparison.Ordinal)
+                                                    || c.StartsWith("Configurar", StringComparison.Ordinal));
+        var envio = costura.Chamadas.IndexOf("EnviarConfiguracoes");
+        Assert.True(inicio >= 0 && envio > inicio);
+
+        var noMeio = costura.Chamadas.Skip(inicio).Take(envio - inicio).Where(FuncoesComInner.Contains).ToList();
+        Assert.True(noMeio.Count == 0, "Chamadas com Inner no meio da montagem: " + string.Join(", ", noMeio));
+        Assert.DoesNotContain("EnviarMensagemPadraoOnLine", costura.Chamadas);
     }
 
     /// <summary>Tamanho repetido na lista não vira chamada repetida: é um por tamanho.</summary>
