@@ -14,7 +14,7 @@ namespace HardwareInLoop.Tests;
 /// </remarks>
 public sealed class AdapterTests
 {
-    private static DeviceConfiguration Configuracao(bool sentidoInvertido = false) => new()
+    private static DeviceConfiguration Configuracao() => new()
     {
         PadraoCartao = 1,
         QuantidadeFixaDeDigitos = 10,
@@ -31,7 +31,7 @@ public sealed class AdapterTests
         MudancaAutomatica = 1,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "ENTRADA - PISTA A",
-        PerfilFisico = new GatePhysicalProfile(sentidoInvertido),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     /// <summary>O tipo de conexão precisa ser definido antes de abrir a porta.</summary>
@@ -222,20 +222,29 @@ public sealed class AdapterTests
     }
 
     /// <summary>
-    /// O sentido invertido vem do comissionamento, e liberar para o lado errado trava a fila.
+    /// Cada pedido de liberação chama exatamente uma função, sem consultar perfil nenhum.
     /// </summary>
+    /// <remarks>
+    /// Substitui o teste que enviava um perfil invertido ao adapter e pedia
+    /// <c>GateDirection.Entrada</c>: ele só cobria o adapter e por isso não via o laço
+    /// invertendo de novo (defeito F1, docs/34 §2). A escolha agora é do comissionamento, e
+    /// o caminho inteiro está em <see cref="LiberacaoDePontaAPontaTests"/>.
+    /// </remarks>
     [Theory]
-    [InlineData(false, "LiberarCatracaEntrada")]
-    [InlineData(true, "LiberarCatracaEntradaInvertida")]
-    public void Sentido_do_giro_segue_o_perfil_fisico(bool invertido, string esperada)
+    [InlineData(GateDirection.Entrada, "LiberarCatracaEntrada")]
+    [InlineData(GateDirection.EntradaInvertida, "LiberarCatracaEntradaInvertida")]
+    [InlineData(GateDirection.Saida, "LiberarCatracaSaida")]
+    [InlineData(GateDirection.SaidaInvertida, "LiberarCatracaSaidaInvertida")]
+    [InlineData(GateDirection.DoisSentidos, "LiberarCatracaDoisSentidos")]
+    public void Cada_pedido_de_liberacao_chama_exatamente_uma_funcao(GateDirection direcao, string esperada)
     {
         var costura = new CosturaFalsa();
         using var adapter = new TopdataInnerAdapter(costura);
 
-        adapter.EnviarConfiguracaoCompleta(1, Configuracao(invertido));
+        adapter.EnviarConfiguracaoCompleta(1, Configuracao());
         costura.Chamadas.Clear();
 
-        adapter.LiberarGiro(1, GateDirection.Entrada);
+        adapter.LiberarGiro(1, direcao);
 
         Assert.Equal([esperada], costura.Chamadas);
     }

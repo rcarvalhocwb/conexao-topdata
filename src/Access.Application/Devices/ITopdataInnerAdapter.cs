@@ -2,17 +2,36 @@ using Access.Domain.Devices;
 
 namespace Access.Application.Devices;
 
-/// <summary>Sentido físico a liberar, já resolvido pelo perfil do portão.</summary>
+/// <summary>A liberação a executar: cada valor é exatamente uma função da DLL.</summary>
 /// <remarks>
-/// A escolha entre <c>LiberarCatracaEntrada</c> e <c>LiberarCatracaEntradaInvertida</c>
-/// é do perfil físico definido no comissionamento, não de código.
-/// Ver docs/04-workflow-collect-card-then-enter.md, seção 7.
+/// <para>
+/// A escolha entre <c>LiberarCatracaEntrada</c> e as variantes invertidas é do perfil
+/// físico definido no comissionamento (<see cref="GatePhysicalProfile.LiberacaoDaEntrada"/>),
+/// não de código. Ver docs/04-workflow-collect-card-then-enter.md, seção 7.
+/// </para>
+/// <para>
+/// O adapter traduz um para um e não consulta perfil nenhum: antes, laço e adapter
+/// aplicavam a inversão cada um por sua conta, e o perfil invertido acabava em
+/// <c>LiberarCatracaSaidaInvertida</c> (defeito F1, docs/34 §2). Os valores novos entram
+/// no fim para não mudar os números dos que já existiam.
+/// </para>
 /// </remarks>
 public enum GateDirection
 {
+    /// <summary><c>LiberarCatracaEntrada</c> (EI-041).</summary>
     Entrada,
+
+    /// <summary><c>LiberarCatracaSaida</c> (EI-042).</summary>
     Saida,
+
+    /// <summary><c>LiberarCatracaDoisSentidos</c> (EI-045). Só evacuação: permite carona.</summary>
     DoisSentidos,
+
+    /// <summary><c>LiberarCatracaEntradaInvertida</c> (EI-043).</summary>
+    EntradaInvertida,
+
+    /// <summary><c>LiberarCatracaSaidaInvertida</c> (EI-044).</summary>
+    SaidaInvertida,
 }
 
 /// <summary>Como o retorno nativo foi interpretado.</summary>
@@ -149,7 +168,10 @@ public interface ITopdataInnerAdapter : IDisposable
     /// </summary>
     (AdapterResult Resultado, DeviceEvent? Evento) AguardarEvento(int inner, TimeSpan limite);
 
-    /// <summary>Libera o giro no sentido informado, conforme o perfil do portão.</summary>
+    /// <summary>
+    /// Libera o giro chamando exatamente a função pedida. Quem escolhe a função é o perfil
+    /// do portão (<see cref="GatePhysicalProfile.LiberacaoDaEntrada"/>), e mais ninguém.
+    /// </summary>
     AdapterResult LiberarGiro(int inner, GateDirection direcao);
 
     /// <summary>Aciona o relé 2, que abre a fenda da urna.</summary>

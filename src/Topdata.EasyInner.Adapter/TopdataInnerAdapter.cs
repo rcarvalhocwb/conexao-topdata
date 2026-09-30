@@ -32,7 +32,6 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     private const byte EntradaTecladoELeitores = 7;
 
     private readonly IEasyInnerNative _nativo;
-    private readonly Dictionary<int, GatePhysicalProfile> _perfis = [];
 
     /// <summary>
     /// Identifica esta sessão do adapter, para a chave de deduplicação.
@@ -146,8 +145,6 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
                 nameof(configuracao));
         }
 
-        _perfis[inner] = configuracao.PerfilFisico;
-
         return Medir(() =>
         {
             // Cada chamada monta um pedaço no buffer da DLL; EnviarConfiguracoes aplica tudo.
@@ -235,26 +232,23 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         return (resultado, evento);
     }
 
-    public AdapterResult LiberarGiro(int inner, GateDirection direcao)
+    /// <remarks>
+    /// Um para um, sem consultar perfil: a inversão já foi resolvida no comissionamento
+    /// (<see cref="GatePhysicalProfile.LiberacaoDaEntrada"/>). Antes o adapter invertia de
+    /// novo o que o laço já tinha invertido (defeito F1, docs/34 §2).
+    /// </remarks>
+    public AdapterResult LiberarGiro(int inner, GateDirection direcao) => Medir(() => direcao switch
     {
-        var invertido = _perfis.TryGetValue(inner, out var perfil) && perfil.SentidoInvertido;
+        GateDirection.Entrada => _nativo.LiberarCatracaEntrada(inner),
+        GateDirection.EntradaInvertida => _nativo.LiberarCatracaEntradaInvertida(inner),
+        GateDirection.Saida => _nativo.LiberarCatracaSaida(inner),
+        GateDirection.SaidaInvertida => _nativo.LiberarCatracaSaidaInvertida(inner),
 
-        return Medir(() => direcao switch
-        {
-            GateDirection.Entrada => invertido
-                ? _nativo.LiberarCatracaEntradaInvertida(inner)
-                : _nativo.LiberarCatracaEntrada(inner),
+        // Só para evacuação: permite carona e por isso não entra na operação normal.
+        GateDirection.DoisSentidos => _nativo.LiberarCatracaDoisSentidos(inner),
 
-            GateDirection.Saida => invertido
-                ? _nativo.LiberarCatracaSaidaInvertida(inner)
-                : _nativo.LiberarCatracaSaida(inner),
-
-            // Só para evacuação: permite carona e por isso não entra na operação normal.
-            GateDirection.DoisSentidos => _nativo.LiberarCatracaDoisSentidos(inner),
-
-            _ => throw new ArgumentOutOfRangeException(nameof(direcao), direcao, "Sentido desconhecido."),
-        });
-    }
+        _ => throw new ArgumentOutOfRangeException(nameof(direcao), direcao, "Sentido desconhecido."),
+    });
 
     public AdapterResult AcionarReleDaUrna(int inner) => Medir(() => _nativo.AcionarRele2(inner));
 

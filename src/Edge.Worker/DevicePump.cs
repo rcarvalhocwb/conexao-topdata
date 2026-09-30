@@ -519,11 +519,10 @@ public sealed class DevicePump
 
     private string Liberar(DeviceSlot d, DateTimeOffset agora)
     {
-        // O sentido vem do perfil físico do portão, definido no comissionamento —
-        // nunca de constante em código. Ver docs/04, seção 3.
-        var direcao = d.Configuracao.PerfilFisico.SentidoInvertido
-            ? GateDirection.Saida
-            : GateDirection.Entrada;
+        // A função exata vem do perfil físico do portão, definido no comissionamento —
+        // nunca de constante em código nem de combinação de sinalizadores (docs/04, seção
+        // 3; defeito F1 do docs/34 §2). Ingresso e liberação manual passam por aqui.
+        var direcao = d.Configuracao.PerfilFisico.LiberacaoDaEntrada;
 
         var resultado = _adapter.LiberarGiro(d.Inner, direcao);
 

@@ -26,7 +26,7 @@ public sealed class SimuladorTests
         MudancaAutomatica = 2,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "Apresente o ingresso",
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     private static InnerSimulator SimuladorAberto(int porta = 3570)

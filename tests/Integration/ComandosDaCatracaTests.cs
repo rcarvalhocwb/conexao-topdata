@@ -44,7 +44,7 @@ public sealed class ComandosDaCatracaTests : IDisposable
         MudancaAutomatica = 2,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = mensagem,
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     private static Decision Autorizado(DeviceEvent _) => new(

@@ -45,7 +45,9 @@ public static class ConfiguracaoDeBancada
         MudancaAutomatica = 0,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "Aproxime o ingresso",
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        // LiberarCatracaEntrada, como sempre foi. A catraca instalada à esquerda escolhe a
+        // variante no comissionamento, depois de HIL-DIR-05/06 (docs/34 §2, F1).
+        PerfilFisico = new GatePhysicalProfile(FuncaoDeLiberacao.Entrada),
     };
 }
 
