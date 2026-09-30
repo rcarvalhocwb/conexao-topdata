@@ -16,6 +16,8 @@ public sealed partial class RayzerDesignTests
 {
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
 
+    private static readonly XNamespace Wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+
     public static TheoryData<string> Temas() => ["Claro", "Escuro"];
 
     [Fact]
@@ -147,6 +149,190 @@ public sealed partial class RayzerDesignTests
         Assert.True(falhas.Count == 0, $"Tema {tema}: {string.Join("; ", falhas)}");
     }
 
+    /// <summary>
+    /// Controle sem estilo Rayzer cai no visual padrão do Windows, que não conhece o tema: o
+    /// "Demonstração / Ao vivo" do gêmeo saía preto sobre o fundo escuro e a lista de peças
+    /// saía branca (docs/34 §7.1, P1 e P2). Todo tipo de controle interativo usado nas telas
+    /// precisa de estilo implícito (sem chave) em Controles.xaml; tipo novo que o teste não
+    /// conhece reprova até ser classificado aqui.
+    /// </summary>
+    [Fact]
+    public void Todo_controle_interativo_das_telas_tem_estilo_Rayzer_implicito()
+    {
+        // Controles que o operador clica, digita ou seleciona.
+        var interativos = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Button", "RepeatButton", "ToggleButton", "CheckBox", "RadioButton", "TextBox", "PasswordBox", "RichTextBox",
+            "ComboBox", "ComboBoxItem", "ListBox", "ListBoxItem", "ListView", "ListViewItem", "TreeView", "TreeViewItem",
+            "DataGrid", "DataGridRow", "DataGridCell", "DataGridColumnHeader", "DatePicker", "DatePickerTextBox", "Calendar",
+            "TabControl", "TabItem", "Slider", "ScrollBar", "Menu", "MenuItem", "ContextMenu", "Expander", "GridSplitter",
+            "Hyperlink", "ToolTip",
+        };
+
+        // Painéis, texto, desenho e declarações: não têm estado de interação próprio.
+        var naoInterativos = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "UserControl", "Window", "Grid", "StackPanel", "DockPanel", "WrapPanel", "UniformGrid", "Canvas", "Border",
+            "ScrollViewer", "ContentControl", "ContentPresenter", "ItemsControl", "TextBlock", "Run", "LineBreak", "Span",
+            "Bold", "Italic", "Image", "Viewbox", "Viewport3D", "Rectangle", "Ellipse", "Path", "ColumnDefinition",
+            "RowDefinition", "DataGridTextColumn", "DataGridTemplateColumn", "DataTemplate", "ItemsPanelTemplate",
+            "ControlTemplate", "Style", "Setter", "Trigger", "DataTrigger", "MultiDataTrigger", "Condition", "KeyBinding",
+            "ResourceDictionary",
+        };
+
+        // Quem usa um controle de itens usa também o contêiner que ele gera.
+        var implicitos = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["ListBox"] = ["ListBoxItem", "ScrollBar"],
+            ["ComboBox"] = ["ComboBoxItem"],
+            ["DataGrid"] = ["DataGridRow", "DataGridCell", "DataGridColumnHeader", "ScrollBar"],
+            ["DatePicker"] = ["DatePickerTextBox"],
+            ["TabControl"] = ["TabItem"],
+            ["ScrollViewer"] = ["ScrollBar"],
+        };
+
+        var comEstilo = XDocument.Load(Arquivo("src/Rayzer.Design/Controles.xaml")).Root!.Elements()
+            .Where(e => e.Name.LocalName == "Style" && e.Attribute(X + "Key") is null)
+            .Select(e => (string)e.Attribute("TargetType")!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var usados = new SortedSet<string>(StringComparer.Ordinal);
+        var desconhecidos = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var xaml in Directory.EnumerateFiles(Raiz("src/Desktop.App/Telas"), "*.xaml").Append(Arquivo("src/Desktop.App/JanelaPrincipal.xaml")))
+        {
+            foreach (var elemento in XDocument.Load(xaml).Descendants().Where(e => e.Name.Namespace == Wpf && !e.Name.LocalName.Contains('.', StringComparison.Ordinal)))
+            {
+                var tipo = elemento.Name.LocalName;
+                if (interativos.Contains(tipo))
+                {
+                    usados.Add(tipo);
+                    usados.UnionWith(implicitos.GetValueOrDefault(tipo, []));
+                }
+                else if (naoInterativos.Contains(tipo))
+                {
+                    usados.UnionWith(implicitos.GetValueOrDefault(tipo, []));
+                }
+                else
+                {
+                    desconhecidos.Add($"{Path.GetFileName(xaml)}: {tipo}");
+                }
+            }
+        }
+
+        Assert.True(desconhecidos.Count == 0, $"Tipos que o teste não sabe classificar (interativo ou não): {string.Join(", ", desconhecidos)}");
+        Assert.Contains("RadioButton", usados);
+        Assert.Contains("ListBoxItem", usados);
+
+        var semEstilo = usados.Where(t => !comEstilo.Contains(t)).ToList();
+        Assert.True(semEstilo.Count == 0, $"Usados nas telas sem estilo Rayzer implícito: {string.Join(", ", semEstilo)} (usados: {string.Join(", ", usados)})");
+    }
+
+    /// <summary>
+    /// O texto do botão de opção e dos itens da lista, nas cores que os próprios estilos usam
+    /// (lidas de Controles.xaml), passa 4,5:1 nos dois temas: normal, sob o mouse e
+    /// selecionado. O aro e o ponto do botão de opção passam 3:1 (componente de interface).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Temas))]
+    public void RadioButton_e_lista_passam_no_contraste_WCAG_AA(string tema)
+    {
+        var cor = Cores(Arquivo($"src/Rayzer.Design/Temas/{tema}.xaml"));
+        var controles = XDocument.Load(Arquivo("src/Rayzer.Design/Controles.xaml")).Root!;
+        var falhas = new List<string>();
+
+        void Exigir(string contexto, string frente, string fundo, double minimo)
+        {
+            var razao = Contraste(cor[frente], cor[fundo]);
+            if (razao < minimo)
+            {
+                falhas.Add(string.Create(CultureInfo.InvariantCulture, $"{contexto}: {frente} sobre {fundo}: {razao:F2} (mínimo {minimo})"));
+            }
+        }
+
+        // Botão de opção: não tem fundo próprio; fica sobre cartão, página ou superfície elevada.
+        var radio = EstiloImplicito(controles, "RadioButton");
+        var textoDoRadio = Token(radio, "Foreground");
+        foreach (var fundo in new[] { "Rayzer.Surface", "Rayzer.Background", "Rayzer.Surface.Elevated" })
+        {
+            Exigir("RadioButton", textoDoRadio, fundo, 4.5);
+        }
+
+        var aroMarcado = Token(radio, "Stroke", "IsChecked", "True", "Aro");
+        var fundoDoAro = Token(radio, "Fill", alvo: "Aro");
+        Exigir("RadioButton (aro)", Token(radio, "Stroke", alvo: "Aro"), fundoDoAro, 3);
+        Exigir("RadioButton (marcado)", aroMarcado, fundoDoAro, 3);
+        Exigir("RadioButton (ponto)", Token(radio, "Fill", alvo: "Ponto"), fundoDoAro, 3);
+        Exigir("RadioButton (aro sobre o cartão)", aroMarcado, "Rayzer.Surface", 3);
+
+        // Lista: o item herda o fundo da lista; sob o mouse e selecionado, tem fundo próprio.
+        var lista = EstiloImplicito(controles, "ListBox");
+        var item = EstiloImplicito(controles, "ListBoxItem");
+        var fundoDaLista = Token(lista, "Background");
+        var textoDoItem = Token(item, "Foreground");
+        Exigir("ListBox", Token(lista, "Foreground"), fundoDaLista, 4.5);
+        Exigir("ListBoxItem", textoDoItem, fundoDaLista, 4.5);
+        Exigir("ListBoxItem (mouse)", textoDoItem, Token(item, "Background", "IsMouseOver", "True", "Fundo"), 4.5);
+        Exigir("ListBoxItem (selecionado)", Token(item, "Foreground", "IsSelected", "True"), Token(item, "Background", "IsSelected", "True", "Fundo"), 4.5);
+        Exigir("ListBoxItem (foco)", Token(item, "BorderBrush", "IsKeyboardFocused", "True", "Fundo"), fundoDaLista, 3);
+        Exigir("ListBox (borda)", Token(lista, "BorderBrush"), fundoDaLista, 3);
+
+        Assert.True(falhas.Count == 0, $"Tema {tema}: {string.Join("; ", falhas)}");
+    }
+
+    /// <summary>
+    /// Desabilitado tem cor própria, não opacidade: a 50 %, o botão fantasma continuava azul e
+    /// parecia link, e o principal continuava azul no tema escuro (docs/34 §7.1, P12).
+    /// </summary>
+    /// <remarks>
+    /// O critério do estudo (anexo 04, §6.2, item 3) é ≥ 3:1 de diferença de luminância entre
+    /// habilitado e desabilitado. Ele vale como está para o texto do botão secundário e para o
+    /// preenchimento do principal. No fantasma não dá: o azul de link e um cinza 3:1 mais claro
+    /// ou mais escuro deixariam o rótulo quase invisível sobre o cartão. Lá, o que muda é a
+    /// cor: o texto desabilitado é cinza (saturação baixa), nunca o azul de link, e ainda se
+    /// distingue em luminância (≥ 2:1). Em todos, o rótulo desabilitado continua legível
+    /// (≥ 2:1 sobre o próprio fundo) — o operador lê o que não está disponível.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Temas))]
+    public void Botao_desabilitado_tem_cor_propria_e_nao_parece_habilitado(string tema)
+    {
+        var cor = Cores(Arquivo($"src/Rayzer.Design/Temas/{tema}.xaml"));
+        var raiz = XDocument.Load(Arquivo("src/Rayzer.Design/Controles.xaml")).Root!;
+        var secundario = EstiloImplicito(raiz, "Button");
+        var principal = EstiloComChave(raiz, "Rayzer.Button.Primary");
+        var fantasma = EstiloComChave(raiz, "Rayzer.Button.Ghost");
+
+        foreach (var estilo in new[] { secundario, principal, fantasma })
+        {
+            // Nenhum botão fica "desabilitado" só por transparência.
+            Assert.DoesNotContain(
+                Setters(estilo, "IsEnabled", "False"),
+                s => (string?)s.Attribute("Property") == "Opacity");
+        }
+
+        var texto = Token(secundario, "Foreground", "IsEnabled", "False");
+        var fundo = Token(secundario, "Background", "IsEnabled", "False");
+        Assert.Equal("Rayzer.Text.Disabled", texto);
+        Assert.Equal("Rayzer.Surface.Disabled", fundo);
+        Assert.Equal(texto, Token(principal, "Foreground", "IsEnabled", "False"));
+        Assert.Equal(fundo, Token(principal, "Background", "IsEnabled", "False"));
+        Assert.Equal(texto, Token(fantasma, "Foreground", "IsEnabled", "False"));
+
+        // Secundário: o texto. Principal: o preenchimento azul vira cinza.
+        Assert.True(Contraste(cor[Token(secundario, "Foreground")], cor[texto]) >= 3, $"{tema}: texto do secundário");
+        Assert.True(Contraste(cor[Token(principal, "Background")], cor[fundo]) >= 3, $"{tema}: preenchimento do principal");
+
+        // Fantasma: sai o azul de link, entra o cinza.
+        var link = cor[Token(fantasma, "Foreground")];
+        Assert.True(Saturacao(link) >= 0.8, $"{tema}: o fantasma habilitado deveria ser o azul de link");
+        Assert.True(Saturacao(cor[texto]) <= 0.3, $"{tema}: texto desabilitado com cor de link ({cor[texto]})");
+        Assert.True(Contraste(link, cor[texto]) >= 2, $"{tema}: fantasma habilitado e desabilitado com a mesma luminância");
+
+        // Legível: o rótulo desabilitado sobre o próprio fundo e sobre o cartão.
+        Assert.True(Contraste(cor[texto], cor[fundo]) >= 2, $"{tema}: rótulo desabilitado ilegível");
+        Assert.True(Contraste(cor[texto], cor["Rayzer.Surface"]) >= 2, $"{tema}: rótulo desabilitado ilegível no cartão");
+    }
+
     [Fact]
     public void Toda_chave_Rayzer_usada_nas_telas_existe()
     {
@@ -227,6 +413,59 @@ public sealed partial class RayzerDesignTests
         XDocument.Load(arquivo).Root!.Elements()
             .Where(e => e.Attribute(X + "Key") is not null && e.Attribute("Color") is not null)
             .ToDictionary(e => (string)e.Attribute(X + "Key")!, e => (string)e.Attribute("Color")!, StringComparer.Ordinal);
+
+    private static XElement EstiloImplicito(XElement raiz, string tipo) =>
+        raiz.Elements().Single(e => e.Name.LocalName == "Style" && e.Attribute(X + "Key") is null && (string?)e.Attribute("TargetType") == tipo);
+
+    private static XElement EstiloComChave(XElement raiz, string chave) =>
+        raiz.Elements().Single(e => e.Name.LocalName == "Style" && (string?)e.Attribute(X + "Key") == chave);
+
+    /// <summary>
+    /// Os Setter do estilo: sem gatilho, os do próprio estilo e os atributos do modelo (por
+    /// nome); com gatilho, os de dentro do Trigger com aquela propriedade e valor (do estilo
+    /// ou do ControlTemplate).
+    /// </summary>
+    private static IEnumerable<XElement> Setters(XElement estilo, string? gatilho, string? valor) =>
+        gatilho is null
+            ? estilo.Elements().Where(e => e.Name.LocalName == "Setter")
+            : estilo.Descendants().Where(e => e.Name.LocalName == "Trigger"
+                                             && (string?)e.Attribute("Property") == gatilho
+                                             && (string?)e.Attribute("Value") == valor)
+                .SelectMany(t => t.Elements().Where(e => e.Name.LocalName == "Setter"));
+
+    /// <summary>A chave Rayzer que o estilo põe numa propriedade (de um elemento do modelo, com <paramref name="alvo"/>).</summary>
+    private static string Token(XElement estilo, string propriedade, string? gatilho = null, string? valor = null, string? alvo = null)
+    {
+        string? bruto;
+        if (gatilho is null && alvo is not null)
+        {
+            // Sem gatilho, o valor está no atributo do próprio elemento nomeado do modelo.
+            var elemento = estilo.Descendants().Single(e => (string?)e.Attribute(X + "Name") == alvo);
+            bruto = (string?)elemento.Attribute(propriedade);
+        }
+        else
+        {
+            bruto = Setters(estilo, gatilho, valor)
+                .Where(s => (string?)s.Attribute("Property") == propriedade && (string?)s.Attribute("TargetName") == alvo)
+                .Select(s => (string?)s.Attribute("Value"))
+                .SingleOrDefault();
+        }
+
+        var m = Referencia().Match(bruto ?? string.Empty);
+        Assert.True(m.Success, $"{propriedade} ({gatilho}={valor}, {alvo}) não usa uma chave Rayzer: '{bruto}'");
+        return m.Groups[1].Value;
+    }
+
+    /// <summary>Saturação HSL (0 a 1): cinza perto de 0, azul de link perto de 1.</summary>
+    private static double Saturacao(string hex)
+    {
+        var h = hex.TrimStart('#');
+        h = h.Length == 8 ? h[2..] : h;
+        var canais = Enumerable.Range(0, 3).Select(i => int.Parse(h.AsSpan(i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture) / 255.0).ToArray();
+        var (max, min) = (canais.Max(), canais.Min());
+        var luz = (max + min) / 2;
+        return max == min ? 0 : (max - min) / (1 - Math.Abs((2 * luz) - 1));
+    }
 
     private static double Contraste(string a, string b)
     {

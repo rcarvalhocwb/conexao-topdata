@@ -151,8 +151,16 @@
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource Rayzer.Surface.Selected}" />
       </Trigger>
+      <!--
+        Desabilitado com cor própria, não com opacidade: a 50 %, o botão fantasma continuava
+        azul e parecia link, e o principal continuava azul no tema escuro (docs/34 §7.1, P12).
+        Cinza liso, texto desabilitado e sem a mãozinha. O último gatilho vence: fica no fim.
+      -->
       <Trigger Property="IsEnabled" Value="False">
-        <Setter Property="Opacity" Value="0.5" />
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Disabled}" />
+        <Setter Property="Cursor" Value="Arrow" />
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -170,6 +178,12 @@
         <Setter Property="Background" Value="{DynamicResource Rayzer.Brand.Primary.Pressed}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Rayzer.Brand.Primary.Pressed}" />
       </Trigger>
+      <!-- Repetido aqui porque os gatilhos deste estilo vêm depois dos do botão base. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Disabled}" />
+      </Trigger>
     </Style.Triggers>
   </Style>
 
@@ -183,6 +197,15 @@
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource Rayzer.Surface.Selected}" />
+      </Trigger>
+      <!--
+        Fantasma desabilitado vira uma etiqueta cinza lisa: sem o azul de link, o operador não
+        tenta clicar em "Bip curto e longo" (docs/34 §7.1, P12).
+      -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Background" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+        <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Disabled}" />
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -465,6 +488,58 @@
     </Setter>
   </Style>
 
+  <!--
+    ===== Botão de opção =====
+    Sem este estilo o WPF usava a cor padrão do Windows (preta): "Demonstração / Ao vivo" do
+    gêmeo ficava ilegível no tema escuro — justo o controle que diz se o desenho é simulação
+    ou a catraca real (docs/34 §7.1, P1). Mesmo desenho da caixa de marcar, em círculo.
+  -->
+  <Style TargetType="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />
+    <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Body}" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid Background="Transparent">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Width="20" Height="20" VerticalAlignment="Center">
+              <Ellipse x:Name="Aro" StrokeThickness="1.5" Stroke="{DynamicResource Rayzer.Input.Border}" Fill="{DynamicResource Rayzer.Input.Background}" />
+              <Ellipse x:Name="Ponto" Width="10" Height="10" Visibility="Collapsed" Fill="{DynamicResource Rayzer.Brand.Primary}" />
+            </Grid>
+            <ContentPresenter Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Aro" Property="Stroke" Value="{DynamicResource Rayzer.Brand.Primary}" />
+              <Setter TargetName="Ponto" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Aro" Property="Stroke" Value="{DynamicResource Rayzer.Brand.Primary}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Aro" Property="Stroke" Value="{DynamicResource Rayzer.Focus}" />
+              <Setter TargetName="Aro" Property="StrokeThickness" Value="2.5" />
+            </Trigger>
+            <!-- Desabilitado com cor própria, como os botões (P12): nada de opacidade. -->
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Disabled}" />
+              <Setter Property="Cursor" Value="Arrow" />
+              <Setter TargetName="Aro" Property="Stroke" Value="{DynamicResource Rayzer.Text.Disabled}" />
+              <Setter TargetName="Aro" Property="Fill" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+              <Setter TargetName="Ponto" Property="Fill" Value="{DynamicResource Rayzer.Text.Disabled}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ===== Barra de rolagem fina ===== -->
   <Style x:Key="Rayzer.ScrollBar.Page" TargetType="RepeatButton">
     <Setter Property="Focusable" Value="False" />
@@ -610,6 +685,86 @@
           <Border Background="Transparent" Padding="12,0">
             <ContentPresenter VerticalAlignment="Center" />
           </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    ===== Lista (ListBox) =====
+    Sem estilo, a lista de peças do gêmeo saía branca no tema escuro: um bloco ofuscante numa
+    sala escura (docs/34 §7.1, P2). Tem o aspecto de campo, como a caixa de seleção ao lado:
+    fundo e borda de campo, itens com a altura da linha de tabela (alvo de toque de 36 px) e
+    a mesma seleção da caixa de seleção. O menu lateral usa estilos com chave e não é afetado.
+  -->
+  <Style TargetType="ListBox">
+    <Setter Property="Background" Value="{DynamicResource Rayzer.Input.Background}" />
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Rayzer.Input.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Body}" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+    <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Contained" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <Border x:Name="Borda" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource Rayzer.Radius.Sm}"
+                  SnapsToDevicePixels="True">
+            <ScrollViewer Padding="{TemplateBinding Padding}" Focusable="False">
+              <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+            </ScrollViewer>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Borda" Property="Background" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+              <Setter TargetName="Borda" Property="BorderBrush" Value="{DynamicResource Rayzer.Surface.Disabled}" />
+              <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Disabled}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="ListBoxItem">
+    <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Rayzer.Height.Row}" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Margin" Value="0,0,0,2" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Fundo" Background="Transparent" CornerRadius="{DynamicResource Rayzer.Radius.Sm}" Padding="{TemplateBinding Padding}"
+                  BorderThickness="2" BorderBrush="Transparent" SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Fundo" Property="Background" Value="{DynamicResource Rayzer.Surface.Hover}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Fundo" Property="Background" Value="{DynamicResource Rayzer.Brand.Primary.Subtle}" />
+              <Setter Property="Foreground" Value="{DynamicResource Rayzer.Brand.Primary.Foreground}" />
+              <Setter Property="FontWeight" Value="SemiBold" />
+            </Trigger>
+            <!-- A borda de 2 px existe sempre, transparente: o foco só a pinta, sem mexer no texto. -->
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Fundo" Property="BorderBrush" Value="{DynamicResource Rayzer.Focus}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource Rayzer.Text.Disabled}" />
+              <Setter Property="Cursor" Value="Arrow" />
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>

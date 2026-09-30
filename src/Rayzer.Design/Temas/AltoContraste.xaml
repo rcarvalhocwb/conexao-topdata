@@ -42,6 +42,8 @@
   <SolidColorBrush x:Key="Rayzer.Text.Tertiary" Color="{x:Static SystemColors.GrayTextColor}" po:Freeze="True" />
   <!-- Texto desabilitado -->
   <SolidColorBrush x:Key="Rayzer.Text.Disabled" Color="{x:Static SystemColors.GrayTextColor}" po:Freeze="True" />
+  <!-- Fundo de controle desabilitado: cinza liso, sem a cor da ação (nunca só opacidade) -->
+  <SolidColorBrush x:Key="Rayzer.Surface.Disabled" Color="{x:Static SystemColors.ControlColor}" po:Freeze="True" />
   <!-- Texto sobre a cor da marca -->
   <SolidColorBrush x:Key="Rayzer.Text.OnBrand" Color="{x:Static SystemColors.HighlightTextColor}" po:Freeze="True" />
   <!-- Azul Principal #0066FF: preenchimento da ação principal -->
