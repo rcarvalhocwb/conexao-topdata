@@ -1,4 +1,5 @@
 using System.Globalization;
+using Access.Application.Devices;
 
 namespace Access.Infrastructure.SQLite;
 
@@ -47,6 +48,25 @@ public sealed record ConfiguracaoDaOperacao(
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
+
+    /// <summary>
+    /// A parte desta configuração que vai para a catraca, como camada do
+    /// <see cref="MontadorDaConfiguracao"/> (Etapa A.1 do docs/35).
+    /// </summary>
+    /// <remarks>
+    /// Todo campo sai preenchido: o que o operador não mudou já chega aqui com o padrão deste
+    /// registro, igual ao de fábrica. Ficam de fora, de propósito, o que não é parâmetro da
+    /// catraca: o conector e a espera da nuvem (repositório), <see cref="AcertarRelogioAoDivergir"/>
+    /// (laço) e <see cref="ReconectarEmErroDeRecepcao"/> (adapter).
+    /// </remarks>
+    public SobreposicoesDoEvento ParaACatraca() => new()
+    {
+        TipoDeLeitor = TipoDeLeitor,
+        LeitorDaUrna = LeitorDaUrna,
+        TempoDeAcionamento = TempoDeAcionamento,
+        MensagemPadrao = MensagemPadrao,
+        EnviarDigitosVariaveis = EnviarDigitosVariaveis,
+    };
 
     /// <summary>Problemas que impedem a catraca de operar com esta configuração.</summary>
     public IReadOnlyList<string> Validar()

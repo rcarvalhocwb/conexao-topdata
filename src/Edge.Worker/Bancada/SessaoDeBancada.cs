@@ -10,45 +10,18 @@ namespace Edge.Worker.Bancada;
 /// Configuração da TopFit 4 para o ensaio de bancada.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Cada valor tem fonte, e o que não tem está desligado em vez de adivinhado:
-/// </para>
-/// <list type="bullet">
-/// <item>Cartão <b>padrão livre</b> e <b>dígitos variáveis de 4 a 16</b> — passo a passo da
-/// Topdata para cadastrar a Catraca 4 com QR.</item>
-/// <item>Acionamento 1 = <b>2, "registro entrada"</b> — matriz de funções, SDK 6.0.2.0.</item>
-/// <item>Tipo de leitor <b>8</b> por padrão (QR por letras). A Topdata fala em "serial barcode",
-/// que no SDK pode ser o <b>5</b> — o ensaio decide. <c>A_CONFIRMAR</c>.</item>
-/// <item><b>Relé 2 (urna) desligado.</b> A função que faz a urna recolher o cartão não está
-/// documentada. Na bancada, o leitor da urna lê e o sistema decide; o recolhimento é o
-/// fluxo da Fase 3, ainda não construído.</item>
-/// <item>Mudança automática on-line/off-line <b>desligada</b>: na bancada, a catraca só
-/// funciona com o sistema rodando, para que tudo que acontece passe por ele.</item>
-/// </list>
+/// Fachada fina, mantida para não mexer em quem já a usa (bancada e testes). A fonte da
+/// verdade é o <see cref="MontadorDaConfiguracao"/> sobre <see cref="PadroesDeFabrica.TopFit4"/>,
+/// onde estão os valores e as fontes de cada um (Etapa A.1 do docs/35).
 /// </remarks>
 public static class ConfiguracaoDeBancada
 {
-    public static DeviceConfiguration TopFit4(byte tipoDeLeitor = 8, bool leitorDaUrna = true) => new()
-    {
-        PadraoCartao = 1,
-        QuantidadesVariaveisDeDigitos = [.. Enumerable.Range(4, 13).Select(n => (byte)n)],
-        TipoDeLeitor = tipoDeLeitor,
-        OperacaoDoLeitor1 = 1,
-        OperacaoDoLeitor2 = leitorDaUrna ? (byte)1 : (byte)0,
-        FuncaoDoAcionamento1 = 2,
-        TempoDoAcionamento1 = 5,
-        FuncaoDoAcionamento2 = 0,
-        TempoDoAcionamento2 = 0,
-        Online = true,
-        TecladoHabilitado = false,
-        EcoDoTeclado = 0,
-        MudancaAutomatica = 0,
-        TempoDaMudancaAutomatica = 10,
-        MensagemPadrao = "Aproxime o ingresso",
-        // LiberarCatracaEntrada, como sempre foi. A catraca instalada à esquerda escolhe a
-        // variante no comissionamento, depois de HIL-DIR-05/06 (docs/34 §2, F1).
-        PerfilFisico = new GatePhysicalProfile(FuncaoDeLiberacao.Entrada),
-    };
+    /// <summary>O padrão de fábrica com o tipo de leitor e o leitor da urna escolhidos na linha de comando.</summary>
+    public static DeviceConfiguration TopFit4(byte tipoDeLeitor = 8, bool leitorDaUrna = true) =>
+        MontadorDaConfiguracao.Montar(
+            PadroesDeFabrica.TopFit4,
+            new SobreposicoesDoEvento { TipoDeLeitor = tipoDeLeitor, LeitorDaUrna = leitorDaUrna },
+            SobreposicoesDaCatraca.Nenhuma);
 }
 
 /// <summary>
