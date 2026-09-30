@@ -688,6 +688,12 @@ public sealed class ConfiguracoesViewModel : TelaBase
     private int _tempo = 5;
     private string _mensagemPadrao = string.Empty;
     private int _espera = 10;
+
+    /// <summary>
+    /// A espera pelo giro que o serviço tem gravada. É a única que o "Aplicar agora" não
+    /// leva; a tela precisa saber se ela mudou para avisar que só vale ao reiniciar.
+    /// </summary>
+    private int _esperaGravada = 10;
     private bool _nuvemLigada;
     private IReadOnlyList<string> _problemas = [];
 
@@ -734,6 +740,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
             TempoDeAcionamento = c.TempoDeAcionamentoSegundos;
             MensagemPadrao = c.MensagemPadrao;
             EsperaPeloGiro = c.EsperaPeloGiroSegundos;
+            _esperaGravada = c.EsperaPeloGiroSegundos;
             NuvemLigada = c.NuvemLigada;
             Problemas = [];
         });
@@ -755,11 +762,22 @@ public sealed class ConfiguracoesViewModel : TelaBase
             });
 
             Problemas = [.. r.Problemas];
+
+            // exige_reinicio quer dizer "há o que aplicar" (nome anterior ao "Aplicar
+            // agora", docs/32). O "Aplicar agora" leva leitor, urna, tempo e mensagem sem
+            // reiniciar o serviço; só a espera pelo giro fica para o próximo início.
+            var esperaMudou = r.Gravada && EsperaPeloGiro != _esperaGravada;
             Mensagem = !r.Gravada
                 ? "Não foi gravado. Corrija os itens abaixo."
                 : r.ExigeReinicio
-                    ? "Gravado. Use \"Aplicar agora nas catracas\" para as catracas passarem a usar a nova configuração, ou reinicie o serviço."
+                    ? "Gravado. Use \"Aplicar agora nas catracas\" para as catracas passarem a usar a nova configuração, sem reiniciar o serviço."
+                      + (esperaMudou ? " A espera pelo giro só muda quando o serviço reiniciar." : string.Empty)
                     : "Nada mudou.";
+
+            if (r.Gravada)
+            {
+                _esperaGravada = EsperaPeloGiro;
+            }
         }).ConfigureAwait(true);
 
     private async Task AplicarAgoraAsync() =>

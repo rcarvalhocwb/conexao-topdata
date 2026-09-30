@@ -373,6 +373,19 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         await configuracoes.Salvar.ExecutarAsync();
         Assert.StartsWith("Gravado.", configuracoes.Mensagem, StringComparison.Ordinal);
 
+        // "Aplicar agora" leva a mudança sem reiniciar o serviço (docs/32, docs/35 0.8).
+        Assert.Contains("Aplicar agora nas catracas", configuracoes.Mensagem, StringComparison.Ordinal);
+        Assert.Contains("sem reiniciar o serviço", configuracoes.Mensagem, StringComparison.Ordinal);
+        Assert.DoesNotContain("espera pelo giro", configuracoes.Mensagem, StringComparison.Ordinal);
+
+        // Só a espera pelo giro fica para o próximo início do serviço.
+        configuracoes.EsperaPeloGiro = 15;
+        await configuracoes.Salvar.ExecutarAsync();
+        Assert.EndsWith("A espera pelo giro só muda quando o serviço reiniciar.", configuracoes.Mensagem, StringComparison.Ordinal);
+
+        await configuracoes.Salvar.ExecutarAsync();
+        Assert.Equal("Nada mudou.", configuracoes.Mensagem);
+
         var releitura = new ConfiguracoesViewModel(Cliente());
         await releitura.AtualizarAsync();
         Assert.Equal(("Bem-vindo", 6), (releitura.MensagemPadrao, releitura.TempoDeAcionamento));
