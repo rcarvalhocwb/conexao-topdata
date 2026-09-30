@@ -90,14 +90,16 @@
 | F8 | **Normalização assimétrica** e `external_ref` bruto na sincronização | `DecisorDeIngresso.cs:88`; `FonteDeCartoesDoPainel.cs:234` | dormente (perfil `raw`) | ao escolher perfil pela bancada | **corrigido na Etapa 0** (0.7): `PerfisDeLeitura.Normalizar` é a função única da leitura, cadastro, sincronização e consulta; a leitura segue `raw` até o perfil por catraca (Etapa A); a sincronização grava `external_ref` normalizado e adota a referência bruta antiga sem colidir |
 
 Menores, mas registrados:
-- **~30 campos do buffer vão com o padrão da DLL** (ADR-0020). Resolvido no modelo completo da
-  Etapa A.2; o que for `A_CONFIRMAR` continua não enviado até a bancada medir o padrão.
+- **~30 campos do buffer vão com o padrão da DLL** (ADR-0020). **Modelo completo na Etapa A.2**
+  (§4.1, "Situação de cada campo"): cinco funções com linha na matriz entraram na costura, cada
+  uma atrás da sua chave técnica desligada; o que é `A_CONFIRMAR` continua não enviado (padrão da
+  DLL) até a bancada ligar a chave.
 - **`exige_reinicio`** no contrato ficou desatualizado depois do "Aplicar agora".
 - `raw_event`, `access_decision`, `physical_passage` e `device_state_transition` existem, mas
   **não são gravadas** pela operação (só por testes). A fonte da prestação de contas é
   `ticket_use_attempt`.
 - O comentário de `FuncaoDoAcionamento1` diz "0 a 5" e a validação aceita 0–9 (a faixa do manual
-  é 0–9).
+  é 0–9). **Corrigido na Etapa A.2.**
 - A matriz `funcoes-easyinner.csv` tem divergências de assinatura com o SDK (`AcionarRele2`,
   `SetarBioVariavel`/`ConfigurarBioVariavel`, `TestarConexaoInner`/`PingOnline`,
   `LigarBackLite`/`DesligarBackLite`). Corrigir a matriz (anexo 01 §0.7).
@@ -187,6 +189,49 @@ que é o comportamento de hoje, e fica registrado. Detalhes, faixas e fontes: an
 | Lista | tipo de lista 0/1/2; tabelas de horário | 0 (sem lista) | D3 |
 | Urna | habilitada; tempos T2, T3, T4 do docs/04 | desligada | após bancada |
 
+#### Situação de cada campo na Etapa A.2 (no código)
+
+Tudo em `DeviceConfiguration` (`src/Access.Application/Devices/DeviceConfiguration.cs`, tipos em
+`CamposDaConfiguracao.cs`). **Com todas as chaves desligadas nada muda na catraca**: para cada
+parâmetro abaixo que não é enviado, **a catraca segue com o padrão da DLL**, como antes
+(ADR-0020; `CoberturaDaConfiguracaoTests.Com_as_chaves_desligadas_nenhum_campo_novo_chega_a_dll`).
+Só entra na costura função que já tem linha (id EI-xxx) na matriz FUN; o resto fica no modelo e
+não é enviado.
+
+| Campo | Tipo e faixa | Padrão | Situação | Evidência |
+|---|---|---|---|---|
+| `ModoDeDigitos` | `Fixo`/`Variavel`, anulável | nulo (= como antes) | não é enviado: escolhe EI-011 ou EI-012; declarado, liga as regras 1 e 2 | anexo 01 §3.1; FUN:12-13 |
+| `FuncaoDeLiberacaoDaEntrada` | enum de 4 | `Entrada` | já existia (`PerfilFisico`, Etapa 0.1): escolhe EI-041 a EI-044 | FUN:42-45 |
+| `RegimeAlvo` | on-line/off-line | on-line | é o campo `Online`, reaproveitado: escolhe EI-018/EI-019. Vira enum na A.7, quando passa a dizer em que regime a catraca **termina** | FUN:19-20; anexo 01 §3.1 |
+| `DataHoraNoEventoOnLine` | bool (0/1) | ligado | **atrás da chave `catraca.enviar_data_hora_no_evento`** (EI-027), desligada até INT-CFG-07 | FUN:28 |
+| `RegistrarAcessoNegado` | byte 0–3, anulável | nulo | **atrás da chave `catraca.registrar_acesso_negado`**, que leva o próprio valor (vazia = não enviado) (EI-021). O significado de cada valor não está na matriz: INT-OFF-08 descobre | FUN:22 |
+| `TipoDeLista` | 0/1/2 | 0 | **atrás da chave `catraca.enviar_tipo_de_lista`** (EI-033), desligada até INT-OFF-02. Só o 0 é válido enquanto a lista na catraca não existir (regras 7 e 8) | FUN:34 |
+| `WiegandDoisLeitores` | (0–1, 0–1) | (0, 0) | **atrás da chave `catraca.enviar_wiegand_dois_leitores`** (EI-024), desligada até HIL-CARD-05 | FUN:25 |
+| `FormasDeEntradaOnLine` | 5 bytes; `FormaEntrada` ∈ 0–7, 10–14, 100–105 | (0, 0, 7, 0, 0), os de sempre | **atrás da chave `catraca.enviar_formas_de_entrada`** (EI-032): desligada, o rearme vai com as constantes de sempre. Desligada até INT-SM-032 (T26) | FUN:33 |
+| `CartaoMaster` | texto, só dígitos, 1–14, padrão Livre; `ToString` mascarado | nulo | enviado por EI-023 **só se existir**, e na A.2 nunca existe: gerar, cifrar (DPAPI, como o `CofreDpapi` do serviço) e entregar ao worker é **PROPOSTA FUTURA** (SEC-MASTER-01, T13). Sem chave em `edge_setting`: o número não pode morar lá em claro | FUN:24 |
+| `WebServerDesabilitado` | bool, anulável | nulo | **fora**: `DesabilitarWebServer` só tem assinatura do SDK, sem linha na matriz; 0/1 e persistência são `INFERIDO` (T32, NOVO-SEC-WEB-01). A **senha** do WebServer fica fora do modelo: nenhuma função conhecida a grava (PROPOSTA FUTURA) | inventário linha 83 |
+| Mensagens de apresentação (entrada, saída) | texto ≤ 32, ≤ 16 com data | nulas | **fora**: só assinatura do SDK, sem linha na matriz; limite e `ExibirData` `INFERIDO` (NOVO-INT-MSG-03). Importa por LGPD: a 1ª linha pode mostrar o número do cartão | inventário linhas 62-63 |
+| Mensagens off-line (padrão, entrada, saída) | idem | nulas | **fora**: sem linha na matriz, e o enviador próprio (`EnviarMensagensOffLine`, com Inner) entra no passo "cfg off-line" da sequência oficial (A.7). NOVO-INT-MSG-04 | inventário linhas 64, 68, 69, 113 |
+
+Fora da A.2, e onde entram: `VarianteDeRecepcao` (do adapter, não da catraca; letras só depois de
+T25), função padrão da proximidade e lógica do relé (valor lido na bancada), entradas e mensagens
+da mudança e intervalo do `PingOnLine` (A.7), avisar memória cheia (T34, A.9), master libera
+acesso e bip desabilitado (só assinatura do SDK), tabelas de horário (Etapa D), urna e T2–T4
+(A.11). O micro switch nunca é editável.
+
+**Para a A.3 (configuração por catraca):** o que depende do equipamento físico pode ser
+sobreposto por catraca — tipo de leitor, leitores 1 e 2, urna, tempo do relé 1, função de
+liberação (comissionamento), mensagem padrão, e dos campos da A.2 `WiegandDoisLeitores` e
+`FormasDeEntradaOnLine` (dependem dos leitores e do teclado daquela catraca). As **chaves
+técnicas** continuam do evento (uma bancada liga para todas) e **não** viram coluna por catraca;
+`RegistrarAcessoNegado`, `DataHoraNoEventoOnLine` e `TipoDeLista` ficam no evento até o ensaio
+dizer que variam por equipamento. O cartão master não entra em tabela nenhuma em claro.
+
+**Tipo de leitor padrão:** continua **8** até NOVO-HIL-QR-02 (T25); `Alertas()` registra, a cada
+subida do worker, que o 8 está com recepção numérica. **Recepção com letras** (`_ComLetras`,
+`_QRCodeComLetras`) exige buffer **maior que os 64 bytes** de hoje e terminador validado antes de
+ser ligada (§8); a A.2 não mexe no buffer.
+
 ### 4.2 Regras entre campos (vão para `Validar()`)
 
 1. Variável ⇒ conjunto não vazio; Fixo ⇒ 4–16.
@@ -202,6 +247,23 @@ que é o comportamento de hoje, e fica registrado. Detalhes, faixas e fontes: an
 11. Tempo do relé 1 ≤ espera do giro (8 s) − margem.
 12. Inner 1–99 (enquanto T9 não responder).
 13. Modelo `NAO_ENSAIADO` ⇒ só aplica em manutenção (ADR-0010).
+
+**Na Etapa A.2** (`DeviceConfiguration.Validar()` e `Alertas()`; testes `RegrasEntreCamposTests`,
+cada regra com caso válido e inválido):
+
+| Regra | Onde ficou |
+|---|---|
+| 1, 2 | `Validar()`, quando `ModoDeDigitos` é declarado (não declarado = regras de antes). Regra 2: padrão Livre + leitor 5 ou 8 + variável ⇒ os tamanhos cobrem o perfil `qr-catraca4` (4–16) |
+| 3 | `Validar()` (já existia) |
+| 4 | **A.11**: os campos da urna recolhendo (habilitada, T2–T4) dependem de T18/T19 |
+| 5 | `Validar()`: mudança 2 ⇒ on-line (já existia). A metade do intervalo do `PingOnLine` fica para a **A.7**: o intervalo é do laço, e a unidade do tempo da mudança é T24 |
+| 6 | `Validar()`, nas mensagens de apresentação e off-line (a padrão sempre vai sem data) |
+| 7, 8 | `Validar()`, na forma que valem sem lista gravada: tipo ≠ 0 recusado (não há lista para caber); lista negra recusada sem D5. A conta em posições entra com a lista (Etapa D) |
+| 9 | `Alertas()`: como erro recusaria a configuração de hoje (leitor 8, numérica) até T25 |
+| 10 | `Validar()`, na parte com fonte: `FormaEntrada` na faixa da matriz. A coerência com teclado e leitores precisa da tabela de T26 |
+| 11 | `Alertas()`: o evento aceita tempo até 50 s; alerta quando o tempo do relé 1 não é menor que a espera pelo giro (8 s). A margem sai de NOVO-LOAD-LOOP-01 |
+| 12 | fora da configuração: já validado no assistente de instalação e nos comandos (1–99) |
+| 13 | fora da configuração: o laço já não configura firmware não homologado (ADR-0010) |
 
 ### 4.3 Ordem de envio (segue a sequência do manual; atrás de chave até INT-SM-021)
 
@@ -469,7 +531,7 @@ Tabela a atualizar a cada PR do [docs/35](35-prompt-modulo-catraca.md).
 | Etapa | Itens | Situação |
 |---|---|---|
 | 0 — Endurecer | 0.1–0.9 (F1, F2, F4, F6, F7, F8, contrato, telas) | **concluída no código** (PR #1): 809 testes passando. Falta bancada: HIL-DIR-05/06 (F1), HIL-CARD-02 e T30 (F2, chave desligada), HIL-EVT-01 (F6, chave desligada). P3 foi para a Etapa C |
-| A — Parametrização e funções | A.1–A.9 (A.10 e A.11 bloqueadas por T12 e bancada) | **A.1 concluída no código**: `MontadorDaConfiguracao.Montar` (`Access.Application/Devices`), função pura fábrica (`PadroesDeFabrica.TopFit4`) → evento (`SobreposicoesDoEvento`, de `ConfiguracaoDaOperacao.ParaACatraca()`) → catraca (`SobreposicoesDaCatraca`, vazia até a A.3); `ConfiguracaoDeBancada.TopFit4` virou fachada e o worker x86 chama o montador na subida e no "Aplicar agora". Mesmo resultado de antes, campo a campo (`MontadorDaConfiguracaoTests`). ADR-0020 item 3 agora tem teste (`CoberturaDaConfiguracaoTests`): todo campo é enviado (prova pelo valor, laço + adapter + costura falsa) ou declarado não enviado com motivo — `EnviarDigitosVariaveis` (chave técnica) e `PerfilFisico` (escolhe a função de liberação). Registrado: `QuantidadeFixaDeDigitos` é nula no padrão, então `DefinirQuantidadeDigitosCartao` não é chamada e a catraca segue com o padrão da DLL (como antes; modelo completo na A.2). Nenhum teste de bancada novo; 858 testes passando. A.2–A.9 não iniciadas |
+| A — Parametrização e funções | A.1–A.9 (A.10 e A.11 bloqueadas por T12 e bancada) | **A.1 concluída no código**: `MontadorDaConfiguracao.Montar` (`Access.Application/Devices`), função pura fábrica (`PadroesDeFabrica.TopFit4`) → evento (`SobreposicoesDoEvento`, de `ConfiguracaoDaOperacao.ParaACatraca()`) → catraca (`SobreposicoesDaCatraca`, vazia até a A.3); `ConfiguracaoDeBancada.TopFit4` virou fachada e o worker x86 chama o montador na subida e no "Aplicar agora". Mesmo resultado de antes, campo a campo (`MontadorDaConfiguracaoTests`). ADR-0020 item 3 agora tem teste (`CoberturaDaConfiguracaoTests`): todo campo é enviado (prova pelo valor, laço + adapter + costura falsa) ou declarado não enviado com motivo — `EnviarDigitosVariaveis` (chave técnica) e `PerfilFisico` (escolhe a função de liberação). Registrado: `QuantidadeFixaDeDigitos` é nula no padrão, então `DefinirQuantidadeDigitosCartao` não é chamada e a catraca segue com o padrão da DLL (como antes; modelo completo na A.2). Nenhum teste de bancada novo; 858 testes passando. **A.2 concluída no código**: modelo completo do §4.1 na `DeviceConfiguration` (situação de cada campo no §4.1), regras do §4.2 em `Validar()` e `Alertas()` (onde ficou cada uma, no §4.2). Cinco funções com linha na matriz entraram na costura — EI-021, EI-023, EI-024, EI-027, EI-033 — e o rearme (EI-032) passou a ler o modelo; cada uma só com a sua chave técnica em `edge_setting`, **todas desligadas**: `catraca.enviar_data_hora_no_evento`, `catraca.registrar_acesso_negado` (leva o valor 0–3; vazia = desligada), `catraca.enviar_tipo_de_lista`, `catraca.enviar_wiegand_dois_leitores`, `catraca.enviar_formas_de_entrada`. **Com as chaves desligadas, a catraca segue com o padrão da DLL** para cada um desses parâmetros, como antes; os testes congelados da A.1 passam sem mudança. O cartão master só vai se existir e na A.2 não existe (custódia DPAPI: PROPOSTA FUTURA); WebServer e mensagens de apresentação e off-line ficam no modelo, não enviados (sem linha na matriz). Nenhuma migração, nenhuma tela, proto intocado. Linhas de bancada no docs/21 §6C. 947 testes passando. A.3–A.9 não iniciadas; o que a catraca pode sobrepor na A.3: §4.1 |
 | B — Cartões | B.0–B.9 (B.4+ bloqueada por D1) | não iniciada |
 | C — Gêmeo e telas | C.1–C.9 | não iniciada |
 | D — Lista na catraca | bloqueada por D3, D4, D5 e bancada | bloqueada |

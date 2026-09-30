@@ -229,6 +229,42 @@ escolha a catraca e digite seu nome.
 
 ---
 
+## 6C. Chaves técnicas da configuração (Etapa A.2)
+
+Parâmetros que hoje vão para a catraca com o **padrão da DLL**, que ninguém conhece
+([`34`](34-estudo-modulo-catraca.md) §4.1). Cada um só é enviado com a sua chave técnica em
+`edge_setting`, **desligada**; nenhuma tem tela. Precisa do **sistema instalado**, como o 6B (o
+modo `--bancada` não lê `edge_setting`).
+
+**Como ligar uma chave:** com o serviço parado, na base local:
+
+```sql
+INSERT INTO edge_setting (key, value, updated_at, updated_by)
+VALUES ('<chave>', '1', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'bancada')
+ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at,
+    updated_by = excluded.updated_by;
+```
+
+Para `catraca.registrar_acesso_negado`, o valor é `0`, `1`, `2` ou `3` (vazio = desligada). Suba o serviço ou use **Configurações → Aplicar agora**. **Uma chave por vez**, e volte a
+`0` (ou vazio) se o resultado for ruim. O registro do worker mostra, a cada subida, os alertas
+da configuração.
+
+| # | Chave | Ensaio | O que muda na catraca | Faça e anote | Liga de vez quando |
+|---|---|---|---|---|---|
+| 1 | `catraca.enviar_data_hora_no_evento` | INT-CFG-07 | `ReceberDataHoraDadosOnLine(1)` (EI-027) | Com a chave desligada e depois ligada, mostre um QR: a tentativa tem a data e a hora certas? Alguma leitura chegou com data zerada ou inválida? | ligada dá data certa em 10 leituras seguidas |
+| 2 | `catraca.registrar_acesso_negado` = `0`, `1`, `2`, `3` | INT-OFF-08 | `RegistrarAcessoNegado(n)` (EI-021) | Para cada valor: mostre um QR desconhecido; depois tire o cabo (off-line) e mostre de novo. O que aparece no WebServer em Registros para cada valor? A liberação de quem é válido continua igual? | o valor que registra a negação sem mudar a liberação está anotado — e a Topdata confirmou o significado (T13) |
+| 3 | `catraca.enviar_tipo_de_lista` | INT-OFF-02 | `DefinirTipoListaAcesso(0)` (EI-033): "não usar lista", explícito | Ligue, aplique e confira que QR e cartão continuam liberando como antes; anote no WebServer o que ele diz sobre a lista | nada muda na liberação (a lista na catraca é a Etapa D) |
+| 4 | `catraca.enviar_wiegand_dois_leitores` | HIL-CARD-05 | `ConfigurarWiegandDoisLeitores(0, 0)` (EI-024) | Ligue e repita a tabela do passo 3 (linhas 1–7): QR na frente, cartão na frente e na urna | a tabela do passo 3 sai igual à de antes |
+| 5 | `catraca.enviar_formas_de_entrada` | INT-SM-032 | o rearme do leitor passa a usar o modelo; com os valores de hoje, manda os mesmos (0, 0, 7, 0, 0) | Ligue e passe 20 leituras seguidas (QR e cartão): o leitor rearma todas as vezes? | 20 de 20 rearmam; mudar `FormaEntrada` só depois da tabela de T26 |
+
+Não têm chave, de propósito: o **cartão master** (o número não pode morar na base em claro;
+gerar e custodiar é PROPOSTA FUTURA, SEC-MASTER-01), o **WebServer** e as **mensagens de
+apresentação e off-line** (a função só tem assinatura do SDK: NOVO-SEC-WEB-01, NOVO-INT-MSG-03 e
+NOVO-INT-MSG-04 respondem antes). Enquanto isso, **anote o que o display mostra na 1ª linha**
+quando alguém passa: se aparecer o número do cartão, é o padrão da DLL (LGPD, docs/34 §6).
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
@@ -272,7 +308,8 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 5: as seis regras se comportam como a tabela diz
 - [ ] Passo 6A: relógio conferido com no máximo ±1 s, e o QR logo após o reacerto libera
 - [ ] Passo 6B: os oito pedidos se comportam como a tabela diz; linha 5 com o QR sem giro
+- [ ] Passo 6C: cada chave ensaiada tem a linha preenchida (ou "não ensaiada") e voltou desligada se o resultado foi ruim
 - [ ] Passo 7: o resumo bate com o que foi feito
 
-**Mande a tabela do passo 3, as dos passos 6A e 6B e o resumo do passo 7.** São eles que fecham as perguntas
+**Mande a tabela do passo 3, as dos passos 6A, 6B e 6C e o resumo do passo 7.** São eles que fecham as perguntas
 em aberto sobre leitor, QR e cartão.
