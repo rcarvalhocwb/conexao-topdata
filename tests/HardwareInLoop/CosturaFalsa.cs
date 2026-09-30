@@ -29,46 +29,60 @@ internal sealed class CosturaFalsa : IEasyInnerNative
     /// <summary>O que o adapter mandou em EnviarRelogio.</summary>
     public (byte Dia, byte Mes, byte Ano, byte Hora, byte Minuto, byte Segundo)? DataEnviada { get; private set; }
 
-    private byte Registrar(string nome)
+    /// <summary>
+    /// Cada chamada com os argumentos que a DLL recebeu, na ordem de <see cref="Chamadas"/>.
+    /// </summary>
+    /// <remarks>
+    /// Existe para provar que um valor da configuração chega à DLL, e não só que a função foi
+    /// chamada (ADR-0020 item 3; <c>CoberturaDaConfiguracaoTests</c>, Etapa A.1 do docs/35).
+    /// </remarks>
+    public List<(string Funcao, object[] Argumentos)> ChamadasComArgumentos { get; } = [];
+
+    private byte Registrar(string nome, params object[] argumentos)
     {
         Chamadas.Add(nome);
+        ChamadasComArgumentos.Add((nome, argumentos));
         return Retornos.TryGetValue(nome, out var r) ? r : (byte)0;
     }
 
-    public byte DefinirTipoConexao(byte tipo) => Registrar(nameof(DefinirTipoConexao));
+    public byte DefinirTipoConexao(byte tipo) => Registrar(nameof(DefinirTipoConexao), tipo);
 
-    public byte AbrirPortaComunicacao(int porta) => Registrar(nameof(AbrirPortaComunicacao));
+    public byte AbrirPortaComunicacao(int porta) => Registrar(nameof(AbrirPortaComunicacao), porta);
 
-    public void FecharPortaComunicacao() => Chamadas.Add(nameof(FecharPortaComunicacao));
+    public void FecharPortaComunicacao()
+    {
+        Chamadas.Add(nameof(FecharPortaComunicacao));
+        ChamadasComArgumentos.Add((nameof(FecharPortaComunicacao), []));
+    }
 
-    public byte Ping(int inner) => Registrar(nameof(Ping));
+    public byte Ping(int inner) => Registrar(nameof(Ping), inner);
 
-    public byte PingOnLine(int inner) => Registrar(nameof(PingOnLine));
+    public byte PingOnLine(int inner) => Registrar(nameof(PingOnLine), inner);
 
     public byte ReceberVersaoFirmware(
         int inner, ref byte linha, ref short variacao, ref byte versaoAlta,
         ref byte versaoBaixa, ref byte versaoSufixo, ref byte innerAcessoBio)
     {
         linha = 4; variacao = 12; versaoAlta = 5; versaoBaixa = 20; versaoSufixo = 1; innerAcessoBio = 1;
-        return Registrar(nameof(ReceberVersaoFirmware));
+        return Registrar(nameof(ReceberVersaoFirmware), inner);
     }
 
     public byte ReceberRelogio(
         int inner, ref byte dia, ref byte mes, ref byte ano, ref byte hora, ref byte minuto, ref byte segundo)
     {
         (dia, mes, ano, hora, minuto, segundo) = DataADevolver;
-        return Registrar(nameof(ReceberRelogio));
+        return Registrar(nameof(ReceberRelogio), inner);
     }
 
     public byte EnviarRelogio(int inner, byte dia, byte mes, byte ano, byte hora, byte minuto, byte segundo)
     {
         DataEnviada = (dia, mes, ano, hora, minuto, segundo);
-        return Registrar(nameof(EnviarRelogio));
+        return Registrar(nameof(EnviarRelogio), inner, dia, mes, ano, hora, minuto, segundo);
     }
 
-    public byte DefinirPadraoCartao(byte padrao) => Registrar(nameof(DefinirPadraoCartao));
+    public byte DefinirPadraoCartao(byte padrao) => Registrar(nameof(DefinirPadraoCartao), padrao);
 
-    public byte DefinirQuantidadeDigitosCartao(byte quantidade) => Registrar(nameof(DefinirQuantidadeDigitosCartao));
+    public byte DefinirQuantidadeDigitosCartao(byte quantidade) => Registrar(nameof(DefinirQuantidadeDigitosCartao), quantidade);
 
     /// <summary>Tamanhos recebidos por InserirQuantidadeDigitoVariavel, na ordem.</summary>
     public List<byte> DigitosVariaveis { get; } = [];
@@ -76,34 +90,34 @@ internal sealed class CosturaFalsa : IEasyInnerNative
     public byte InserirQuantidadeDigitoVariavel(byte digito)
     {
         DigitosVariaveis.Add(digito);
-        return Registrar(nameof(InserirQuantidadeDigitoVariavel));
+        return Registrar(nameof(InserirQuantidadeDigitoVariavel), digito);
     }
 
-    public byte ConfigurarTipoLeitor(byte tipo) => Registrar(nameof(ConfigurarTipoLeitor));
+    public byte ConfigurarTipoLeitor(byte tipo) => Registrar(nameof(ConfigurarTipoLeitor), tipo);
 
-    public byte ConfigurarLeitor1(byte operacao) => Registrar(nameof(ConfigurarLeitor1));
+    public byte ConfigurarLeitor1(byte operacao) => Registrar(nameof(ConfigurarLeitor1), operacao);
 
-    public byte ConfigurarLeitor2(byte operacao) => Registrar(nameof(ConfigurarLeitor2));
+    public byte ConfigurarLeitor2(byte operacao) => Registrar(nameof(ConfigurarLeitor2), operacao);
 
-    public byte ConfigurarAcionamento1(byte funcao, byte tempo) => Registrar(nameof(ConfigurarAcionamento1));
+    public byte ConfigurarAcionamento1(byte funcao, byte tempo) => Registrar(nameof(ConfigurarAcionamento1), funcao, tempo);
 
-    public byte ConfigurarAcionamento2(byte funcao, byte tempo) => Registrar(nameof(ConfigurarAcionamento2));
+    public byte ConfigurarAcionamento2(byte funcao, byte tempo) => Registrar(nameof(ConfigurarAcionamento2), funcao, tempo);
 
     public byte ConfigurarInnerOnLine() => Registrar(nameof(ConfigurarInnerOnLine));
 
     public byte ConfigurarInnerOffLine() => Registrar(nameof(ConfigurarInnerOffLine));
 
-    public byte HabilitarTeclado(byte habilita, byte ecoar) => Registrar(nameof(HabilitarTeclado));
+    public byte HabilitarTeclado(byte habilita, byte ecoar) => Registrar(nameof(HabilitarTeclado), habilita, ecoar);
 
     public byte HabilitarMudancaOnLineOffLine(byte habilita, byte tempo) =>
-        Registrar(nameof(HabilitarMudancaOnLineOffLine));
+        Registrar(nameof(HabilitarMudancaOnLineOffLine), habilita, tempo);
 
-    public byte EnviarConfiguracoes(int inner) => Registrar(nameof(EnviarConfiguracoes));
+    public byte EnviarConfiguracoes(int inner) => Registrar(nameof(EnviarConfiguracoes), inner);
 
     public byte EnviarFormasEntradasOnLine(
         int inner, byte qtdeDigitosTeclado, byte ecoTeclado,
         byte formaEntrada, byte tempoTeclado, byte posicaoCursorTeclado) =>
-        Registrar(nameof(EnviarFormasEntradasOnLine));
+        Registrar(nameof(EnviarFormasEntradasOnLine), inner, qtdeDigitosTeclado, ecoTeclado, formaEntrada, tempoTeclado, posicaoCursorTeclado);
 
     public byte ColetarBilhete(
         int inner, ref byte tipo, ref byte dia, ref byte mes, ref byte ano,
@@ -113,7 +127,7 @@ internal sealed class CosturaFalsa : IEasyInnerNative
         (dia, mes, ano, hora, minuto) = (DataADevolver.Dia, DataADevolver.Mes, DataADevolver.Ano,
                                          DataADevolver.Hora, DataADevolver.Minuto);
         Escrever(cartao, CartaoADevolver);
-        return Registrar(nameof(ColetarBilhete));
+        return Registrar(nameof(ColetarBilhete), inner);
     }
 
     public byte ReceberDadosOnLine(
@@ -124,32 +138,32 @@ internal sealed class CosturaFalsa : IEasyInnerNative
         complemento = 0;
         (dia, mes, ano, hora, minuto, segundo) = DataADevolver;
         Escrever(cartao, CartaoADevolver);
-        return Registrar(nameof(ReceberDadosOnLine));
+        return Registrar(nameof(ReceberDadosOnLine), inner);
     }
 
-    public byte LiberarCatracaEntrada(int inner) => Registrar(nameof(LiberarCatracaEntrada));
+    public byte LiberarCatracaEntrada(int inner) => Registrar(nameof(LiberarCatracaEntrada), inner);
 
-    public byte LiberarCatracaSaida(int inner) => Registrar(nameof(LiberarCatracaSaida));
+    public byte LiberarCatracaSaida(int inner) => Registrar(nameof(LiberarCatracaSaida), inner);
 
-    public byte LiberarCatracaEntradaInvertida(int inner) => Registrar(nameof(LiberarCatracaEntradaInvertida));
+    public byte LiberarCatracaEntradaInvertida(int inner) => Registrar(nameof(LiberarCatracaEntradaInvertida), inner);
 
-    public byte LiberarCatracaSaidaInvertida(int inner) => Registrar(nameof(LiberarCatracaSaidaInvertida));
+    public byte LiberarCatracaSaidaInvertida(int inner) => Registrar(nameof(LiberarCatracaSaidaInvertida), inner);
 
-    public byte LiberarCatracaDoisSentidos(int inner) => Registrar(nameof(LiberarCatracaDoisSentidos));
+    public byte LiberarCatracaDoisSentidos(int inner) => Registrar(nameof(LiberarCatracaDoisSentidos), inner);
 
-    public byte AcionarRele2(int inner) => Registrar(nameof(AcionarRele2));
+    public byte AcionarRele2(int inner) => Registrar(nameof(AcionarRele2), inner);
 
     public byte EnviarMensagemPadraoOnLine(int inner, byte exibirData, string mensagem)
     {
         UltimaMensagem = mensagem;
-        return Registrar(nameof(EnviarMensagemPadraoOnLine));
+        return Registrar(nameof(EnviarMensagemPadraoOnLine), inner, exibirData, mensagem);
     }
 
     public byte EnviarMensagemTemporariaOnLine(int inner, byte exibirData, string mensagem, byte tempo)
     {
         UltimaMensagem = mensagem;
         UltimoTempoDeMensagem = tempo;
-        return Registrar(nameof(EnviarMensagemTemporariaOnLine));
+        return Registrar(nameof(EnviarMensagemTemporariaOnLine), inner, exibirData, mensagem, tempo);
     }
 
     public string UltimaMensagem { get; private set; } = string.Empty;
