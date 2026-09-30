@@ -171,8 +171,9 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         string gateId,
         string deviceId,
         DateTimeOffset agora,
-        KnownEventOrigin? leitor) =>
-        TentarUsar(qrNormalizado, gateId, deviceId, agora, decisionId: null, leitor);
+        KnownEventOrigin? leitor,
+        int? origemBruta) =>
+        TentarUsar(qrNormalizado, gateId, deviceId, agora, decisionId: null, leitor, origemBruta);
 
     /// <inheritdoc />
     /// <remarks>É o mesmo que <see cref="Ingerir"/>: a ingestão não pede nada além disso.</remarks>
@@ -323,6 +324,11 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
     /// Origem da leitura: leitor 1 (frente) ou leitor 2 (fenda da urna). Nulo quando não
     /// se sabe — e, para provedor que exige urna, não saber é recusar.
     /// </param>
+    /// <param name="origemBruta">
+    /// Origem bruta do evento, gravada em <c>reader_origin</c> na mesma transação da
+    /// tentativa (migração 010). Só informa: a decisão usa <paramref name="leitor"/>. Nulo
+    /// grava nulo, como as tentativas anteriores à migração.
+    /// </param>
     /// <returns>O resultado, já com o motivo exato da negativa.</returns>
     public (ResultadoDoUso Resultado, Guid TentativaId) TentarUsar(
         string qrNormalizado,
@@ -330,7 +336,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         string deviceId,
         DateTimeOffset agora,
         Guid? decisionId = null,
-        KnownEventOrigin? leitor = null)
+        KnownEventOrigin? leitor = null,
+        int? origemBruta = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(qrNormalizado);
         ArgumentException.ThrowIfNullOrWhiteSpace(gateId);
@@ -356,7 +363,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
                 MotivoDoUso.Consumido, e.Id, e.Provedor, e.Setor, e.UsosMaximos - e.UsosFeitos, e.Categoria);
 
             RegistrarTentativa(conexao, transacao, tentativaId, e.Id, e.Provedor, qrNormalizado, gateId, deviceId,
-                "consumido", MotivoDoUso.Consumido, decisionId, agora, e.Categoria);
+                "consumido", MotivoDoUso.Consumido, decisionId, agora, e.Categoria, origemBruta);
 
             Espelhar(conexao, transacao, tentativaId, qrNormalizado, deviceId, gateId, agora,
                 liberado: true, MotivoDoUso.Consumido, e.Provedor, e.Categoria);
@@ -373,7 +380,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
                 motivo, estado?.Id, estado?.Provedor, estado?.Setor, Categoria: estado?.Categoria);
 
             RegistrarTentativa(conexao, transacao, tentativaId, estado?.Id, estado?.Provedor, qrNormalizado,
-                gateId, deviceId, "negado", motivo, decisionId, agora, estado?.Categoria);
+                gateId, deviceId, "negado", motivo, decisionId, agora, estado?.Categoria, origemBruta);
 
             Espelhar(conexao, transacao, tentativaId, qrNormalizado, deviceId, gateId, agora,
                 liberado: false, motivo, estado?.Provedor, estado?.Categoria);
@@ -1124,7 +1131,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         MotivoDoUso motivo,
         Guid? decisionId,
         DateTimeOffset agora,
-        string? categoria)
+        string? categoria,
+        int? origemBruta)
     {
         using var comando = conexao.CreateCommand();
         comando.Transaction = transacao;
@@ -1132,10 +1140,10 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             """
             INSERT INTO ticket_use_attempt
                 (id, ticket_id, provider_id, qr_normalized, gate_id, device_id,
-                 outcome, reason, decision_id, at, category)
+                 outcome, reason, decision_id, at, category, reader_origin)
             VALUES
                 ($id, $ingresso, $provedor, $qr, $gate, $dispositivo,
-                 $desfecho, $motivo, $decisao, $em, $categoria);
+                 $desfecho, $motivo, $decisao, $em, $categoria, $origem);
             """;
         comando.Parameters.AddWithValue("$id", tentativaId.ToString());
         comando.Parameters.AddWithValue("$ingresso", (object?)ingressoId?.ToString() ?? DBNull.Value);
@@ -1148,6 +1156,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         comando.Parameters.AddWithValue("$decisao", (object?)decisionId?.ToString() ?? DBNull.Value);
         comando.Parameters.AddWithValue("$em", Iso(agora));
         comando.Parameters.AddWithValue("$categoria", (object?)categoria ?? DBNull.Value);
+        comando.Parameters.AddWithValue("$origem", (object?)origemBruta ?? DBNull.Value);
         comando.ExecuteNonQuery();
     }
 

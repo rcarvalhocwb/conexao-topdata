@@ -1,0 +1,15 @@
+-- Migração 010 — de onde veio cada leitura (Etapa 0.3 do docs/35; defeito C1 do docs/34-anexos/02).
+-- Uma migração nova, e não uma alteração da 003: migração publicada nunca é editada.
+--
+-- A origem bruta que a catraca entregou em ReceberDadosOnLine (2 = leitor 1, 3 = leitor 2,
+-- a fenda da urna; 21 = QR Code; ver docs/compatibility-matrix/origens-evento.csv),
+-- gravada na mesma transação da tentativa. Sem ela o painel e o gêmeo digital não sabem
+-- se a pessoa usou o celular, o cartão na frente ou a urna.
+--
+-- NULL = tentativa gravada antes desta migração, ou por quem não conhece a origem (testes,
+-- ferramentas). Não é "origem zero": zero não existe na tabela oficial.
+--
+-- Sem CHECK, de propósito: uma origem fora da tabela é desconhecida, não inválida, e é
+-- preservada íntegra (ADR-0018). Recusar aqui faria a gravação da tentativa falhar, e a
+-- decisão negaria por falha de base uma leitura que nada tem de errado.
+ALTER TABLE ticket_use_attempt ADD COLUMN reader_origin INTEGER NULL;

@@ -15,12 +15,27 @@ namespace Access.Application.Ingressos;
 public interface IValidadorDeIngressos
 {
     /// <summary>Tenta consumir um uso. Grava a tentativa, qualquer que seja o desfecho.</summary>
+    /// <param name="qrNormalizado">Código já normalizado pelo perfil da leitura.</param>
+    /// <param name="gateId">Portão.</param>
+    /// <param name="deviceId">Equipamento.</param>
+    /// <param name="agora">Instante da leitura.</param>
+    /// <param name="leitor">
+    /// Leitor 1 ou leitor 2 (fenda da urna), quando a leitura veio de um deles. É o que a
+    /// regra "somente na urna" consulta.
+    /// </param>
+    /// <param name="origemBruta">
+    /// A origem exatamente como a catraca a entregou, conhecida ou não (ADR-0018). Vai para
+    /// a tentativa gravada, para o painel e o gêmeo saberem de onde veio a leitura
+    /// (docs/35, Etapa 0.3). Não entra na decisão: quem decide é <paramref name="leitor"/>.
+    /// Nulo quando quem chama não sabe.
+    /// </param>
     (ResultadoDoUso Resultado, Guid TentativaId) TentarUsar(
         string qrNormalizado,
         string gateId,
         string deviceId,
         DateTimeOffset agora,
-        KnownEventOrigin? leitor);
+        KnownEventOrigin? leitor,
+        int? origemBruta);
 
     /// <summary>Anexa a prova de giro (origem 6) a uma tentativa consumida.</summary>
     void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em);
@@ -105,7 +120,8 @@ public sealed class DecisorDeIngresso
                 _portaoDoEquipamento(evento.Key.DeviceId),
                 evento.Key.DeviceId,
                 _relogio.GetUtcNow(),
-                leitor);
+                leitor,
+                evento.Origin.Raw);
         }
         catch (Exception erro) when (erro is not OutOfMemoryException)
         {

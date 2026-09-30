@@ -1,3 +1,5 @@
+using Access.Application.Ingressos;
+using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 using Access.Infrastructure.SQLite;
 using Contracts;
@@ -159,6 +161,59 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.True(linha.Liberado);
         Assert.Equal("Liberado · meia", linha.Mensagem);
         Assert.DoesNotContain(Qr, linha.Codigo, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A origem da leitura vai da catraca ao painel: gravada com a tentativa (migração 010)
+    /// e entregue pelo AcompanharEventos de verdade. Docs/35, Etapa 0.3.
+    /// </summary>
+    [Fact]
+    public async Task A_origem_da_leitura_chega_ao_acompanhar_eventos()
+    {
+        using var cancelamento = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var fluxo = Cliente().AcompanharEventos(new AcompanharEventosRequest(), cancellationToken: cancelamento.Token);
+        SpinWait.SpinUntil(() => _servico.Eventos.Assinantes > 0, TimeSpan.FromSeconds(10));
+
+        var acompanhamento = new AcompanhamentoDaOperacao(new Operacao(_banco.Fabrica), _servico.Eventos, TimeSpan.FromSeconds(1));
+        acompanhamento.ComecarDoFim();
+        var decisor = new DecisorDeIngresso(_repositorio);
+        var sequencia = 0L;
+
+        DeviceEvent Leitura(int origem, string codigo) =>
+            DeviceEvent.Create(
+                new DeviceEventKey("inner-1", "boot", ++sequencia),
+                EventOrigin.FromRaw(origem),
+                DateTimeOffset.UtcNow,
+                "corr",
+                rawCardData: codigo);
+
+        // Como era antes da migração: quem grava não informa a origem.
+        _repositorio.TentarUsar("9999000101", "p1", "inner-1", DateTimeOffset.UtcNow);
+
+        // Pela fenda da urna (leitor 2, origem 3).
+        Assert.True(decisor.Decidir(Leitura(3, Qr)).ShouldRelease);
+
+        // Origem que não consta da tabela oficial: chega com o número, marcada desconhecida.
+        Assert.False(decisor.Decidir(Leitura(11, "9999000102")).ShouldRelease);
+
+        Assert.Equal(3, acompanhamento.UmaLeitura());
+
+        var recebidos = new List<EventoDeAcesso>();
+        while (recebidos.Count < 3 && await fluxo.ResponseStream.MoveNext(cancelamento.Token))
+        {
+            recebidos.Add(fluxo.ResponseStream.Current);
+        }
+
+        var antiga = recebidos[0];
+        Assert.Equal((0, string.Empty, false), (antiga.OrigemBruta, antiga.OrigemConhecida, antiga.OrigemDesconhecida));
+
+        var urna = recebidos[1];
+        Assert.Equal(ResultadoDoAcesso.Permitido, urna.Resultado);
+        Assert.Equal((3, "Leitor2", false), (urna.OrigemBruta, urna.OrigemConhecida, urna.OrigemDesconhecida));
+
+        var desconhecida = recebidos[2];
+        Assert.Equal((11, string.Empty, true), (desconhecida.OrigemBruta, desconhecida.OrigemConhecida, desconhecida.OrigemDesconhecida));
+        Assert.DoesNotContain("9999000102", desconhecida.CredencialMascarada, StringComparison.Ordinal);
     }
 
     [Fact]

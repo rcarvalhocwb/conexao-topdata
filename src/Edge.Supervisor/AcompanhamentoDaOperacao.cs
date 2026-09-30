@@ -1,4 +1,5 @@
 using System.Globalization;
+using Access.Domain.Devices;
 using Access.Infrastructure.SQLite;
 using Contracts.Edge.V1;
 using Google.Protobuf.WellKnownTypes;
@@ -54,11 +55,18 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
     }
 
     /// <summary>Como uma tentativa aparece no painel.</summary>
+    /// <remarks>
+    /// A origem vem da tentativa gravada (migração 010): bruta sempre, e o nome só quando
+    /// consta da tabela oficial — uma origem desconhecida chega com o número e marcada como
+    /// desconhecida, nunca descartada nem trocada por um palpite (ADR-0018). É dela que o
+    /// gêmeo digital tira "celular", "cartão na frente" ou "cartão na urna" (docs/33 §7).
+    /// Tentativa sem origem gravada, anterior à migração, segue sem origem.
+    /// </remarks>
     public static EventoDeAcesso Converter(TentativaParaOPainel t)
     {
         ArgumentNullException.ThrowIfNull(t);
 
-        return new EventoDeAcesso
+        var evento = new EventoDeAcesso
         {
             EventoId = t.Id.ToString(),
             Inner = InnerDe(t.DeviceId),
@@ -72,6 +80,16 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             Categoria = t.Categoria ?? string.Empty,
             Portao = t.Portao,
         };
+
+        if (t.Origem is { } bruta)
+        {
+            var origem = EventOrigin.FromRaw(bruta);
+            evento.OrigemBruta = origem.Raw;
+            evento.OrigemConhecida = origem.Known?.ToString() ?? string.Empty;
+            evento.OrigemDesconhecida = !origem.IsKnown;
+        }
+
+        return evento;
     }
 
     /// <summary>O motivo em português de operador, sem jargão.</summary>

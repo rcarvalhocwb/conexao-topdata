@@ -119,7 +119,7 @@ public sealed class ConsultasDaOperacao
         comando.CommandText =
             $"""
             SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at
+                   qr_normalized, passage_confirmed_at, reader_origin
             FROM ticket_use_attempt
             {onde}
             ORDER BY rowid DESC
@@ -259,7 +259,7 @@ public sealed class ConsultasDaOperacao
         historico.CommandText =
             """
             SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at
+                   qr_normalized, passage_confirmed_at, reader_origin
             FROM ticket_use_attempt
             WHERE qr_normalized = $qr
             ORDER BY rowid DESC
@@ -341,7 +341,8 @@ public sealed class ConsultasDaOperacao
                 leitor.IsDBNull(7) ? null : leitor.GetString(7),
                 leitor.IsDBNull(8) ? null : leitor.GetString(8),
                 CredentialValue.Mascarar(leitor.GetString(9)),
-                !leitor.IsDBNull(10)));
+                !leitor.IsDBNull(10),
+                leitor.IsDBNull(11) ? null : leitor.GetInt32(11)));
         }
 
         return lista;

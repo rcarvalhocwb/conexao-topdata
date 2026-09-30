@@ -21,12 +21,15 @@ public sealed class DecisorDeIngressoTests
 
         public List<(string Qr, KnownEventOrigin? Leitor)> Tentativas { get; } = [];
 
+        public List<int?> Origens { get; } = [];
+
         public List<Guid> Confirmadas { get; } = [];
 
         public Guid UltimaTentativa { get; private set; }
 
         public (ResultadoDoUso Resultado, Guid TentativaId) TentarUsar(
-            string qrNormalizado, string gateId, string deviceId, DateTimeOffset agora, KnownEventOrigin? leitor)
+            string qrNormalizado, string gateId, string deviceId, DateTimeOffset agora, KnownEventOrigin? leitor,
+            int? origemBruta)
         {
             if (Explodir is not null)
             {
@@ -34,6 +37,7 @@ public sealed class DecisorDeIngressoTests
             }
 
             Tentativas.Add((qrNormalizado, leitor));
+            Origens.Add(origemBruta);
             UltimaTentativa = Guid.NewGuid();
             return (Responder(qrNormalizado), UltimaTentativa);
         }
@@ -78,6 +82,29 @@ public sealed class DecisorDeIngressoTests
         decisor.Decidir(Evento(KnownEventOrigin.Leitor2, "0012345678"));
 
         Assert.Equal(KnownEventOrigin.Leitor2, validador.Tentativas[0].Leitor);
+    }
+
+    /// <summary>
+    /// A origem bruta vai para a base qualquer que seja: é o que o painel e o gêmeo mostram
+    /// (docs/35, Etapa 0.3). A regra da urna continua olhando só o leitor conhecido.
+    /// </summary>
+    [Fact]
+    public void A_origem_bruta_chega_ate_a_base_mesmo_quando_nao_e_um_dos_leitores()
+    {
+        var validador = new ValidadorFalso();
+        var decisor = new DecisorDeIngresso(validador);
+
+        decisor.Decidir(Evento(KnownEventOrigin.Leitor2, "0012345678"));
+        decisor.Decidir(Evento(KnownEventOrigin.QrCode, "9999000101"));
+        decisor.Decidir(DeviceEvent.Create(
+            new DeviceEventKey("inner-1", "boot", Interlocked.Increment(ref _seq)),
+            EventOrigin.FromRaw(11),
+            Agora,
+            "corr",
+            rawCardData: "9999000102"));
+
+        Assert.Equal([3, 21, 11], validador.Origens);
+        Assert.Equal([KnownEventOrigin.Leitor2, null, null], validador.Tentativas.Select(t => t.Leitor));
     }
 
     [Fact]
