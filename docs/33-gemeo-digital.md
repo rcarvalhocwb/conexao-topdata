@@ -126,9 +126,12 @@ acesos, a urna cheia — vem das chaves Rayzer (`Rayzer.Brand.Cyan`, `Rayzer.Acc
   da espera pelo giro, sem mostrar o giro que veio depois. Resolveria: o serviço difundir
   também a confirmação da passagem (um campo a mais em `EventoDeAcesso`, ou um segundo evento
   com o mesmo `evento_id`).
-- **O fluxo ao vivo não informa a origem** (QR, frente, urna). `origem_bruta` existe no
-  contrato mas o serviço não preenche. Até preencher, a leitura ao vivo aparece sem o objeto
-  (exceto "use a fenda da urna", deduzido do motivo).
+- **A origem ao vivo só existe para tentativas novas.** Desde a Etapa 0.3 do docs/35, a
+  origem bruta de cada leitura é gravada com a tentativa (`ticket_use_attempt.reader_origin`,
+  migração 010) e o serviço preenche `origem_bruta`, `origem_conhecida` e
+  `origem_desconhecida` (QR 21, frente 2, urna 3). Tentativas gravadas antes da migração não
+  têm origem e continuam aparecendo sem o objeto (exceto "use a fenda da urna", deduzido do
+  motivo).
 - **Urna cheia ao vivo** só aparece quando o serviço mandar a origem 20.
 - **Sinais liberado/bloqueado** estão "Aguardando confirmação": as luzes comandadas pelo
   sistema só existem na Linha 3 (docs/02, docs/11); na TopFit 4 o aviso à pessoa é o display.

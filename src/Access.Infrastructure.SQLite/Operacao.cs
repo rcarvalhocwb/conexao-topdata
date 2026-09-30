@@ -25,6 +25,11 @@ public sealed record SituacaoDoEquipamento(
 /// Uma tentativa, pronta para a tela: o código já vem mascarado. <c>Sequencia</c> é a
 /// ordem de gravação; o painel pede "depois de N".
 /// </summary>
+/// <remarks>
+/// <c>Origem</c> é a origem bruta da leitura, como a catraca a entregou (migração 010).
+/// É nula nas tentativas gravadas antes da migração ou por quem não conhece a origem:
+/// essas seguem para o painel sem origem, e não com uma origem inventada.
+/// </remarks>
 public sealed record TentativaParaOPainel(
     long Sequencia,
     Guid Id,
@@ -36,7 +41,8 @@ public sealed record TentativaParaOPainel(
     string? Categoria,
     string? Provedor,
     string CodigoMascarado,
-    bool Girou);
+    bool Girou,
+    int? Origem = null);
 
 /// <summary>Contagens do evento até agora, para o topo do painel.</summary>
 public sealed record ResumoDaOperacao(
@@ -173,7 +179,7 @@ public sealed class Operacao
         comando.CommandText =
             """
             SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at
+                   qr_normalized, passage_confirmed_at, reader_origin
             FROM ticket_use_attempt
             WHERE rowid > $depois
             ORDER BY rowid
@@ -198,7 +204,8 @@ public sealed class Operacao
                 leitor.IsDBNull(7) ? null : leitor.GetString(7),
                 leitor.IsDBNull(8) ? null : leitor.GetString(8),
                 CredentialValue.Mascarar(leitor.GetString(9)),
-                !leitor.IsDBNull(10)));
+                !leitor.IsDBNull(10),
+                leitor.IsDBNull(11) ? null : leitor.GetInt32(11)));
         }
 
         return lista;

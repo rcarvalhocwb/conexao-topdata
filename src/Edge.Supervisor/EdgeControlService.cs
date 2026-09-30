@@ -302,6 +302,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
 
         _configuracoes.Gravar(nova, _relogio(), string.IsNullOrWhiteSpace(request.Operador) ? null : request.Operador);
         resposta.Gravada = true;
+        // "Há o que aplicar", apesar do nome: o "Aplicar agora nas catracas" leva a mudança
+        // sem reiniciar o serviço; só a espera pelo giro espera o próximo início (docs/32).
         resposta.ExigeReinicio = nova != atual;
         return Task.FromResult(resposta);
     }

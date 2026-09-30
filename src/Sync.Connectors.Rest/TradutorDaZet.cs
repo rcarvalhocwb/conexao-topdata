@@ -180,7 +180,7 @@ public sealed class TradutorDaZet : ITradutorDeIngresso
         }
 
         var voucher = LerVoucher(item, posicao);
-        var normalizado = _normalizacao.Apply(voucher);
+        var normalizado = PerfisDeLeitura.Normalizar(voucher, _normalizacao)!;
         if (!_normalizacao.IsLengthAccepted(normalizado))
         {
             throw new FormatException(

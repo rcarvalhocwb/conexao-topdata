@@ -203,7 +203,11 @@ message GravarConfiguracaoRequest {
 message GravarConfiguracaoResponse {
   bool gravada = 1;
   repeated string problemas = 2;
-  // As catracas leem a configuração ao conectar: vale depois que o serviço reiniciar.
+  // Verdadeiro quando a configuração gravada difere da anterior: há o que aplicar.
+  // Leitor, urna, tempo e mensagem passam às catracas pelo "Aplicar agora nas catracas"
+  // (comando APLICAR_CONFIGURACAO: cada catraca reconecta), SEM reiniciar o serviço
+  // (docs/32). Só a espera pelo giro vale a partir do próximo início do serviço.
+  // O nome é anterior ao "Aplicar agora" e fica, com o número, para não quebrar clientes.
   bool exige_reinicio = 3;
 }
 

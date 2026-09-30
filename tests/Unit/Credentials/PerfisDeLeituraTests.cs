@@ -78,6 +78,54 @@ public sealed class PerfisDeLeituraTests
         Assert.False(perfil.IsLengthAccepted(perfil.Apply("12345678901234")));
     }
 
+    /// <summary>
+    /// A lista de perfis é uma só, e a leitura usa <c>raw</c> até a parametrização por
+    /// catraca (docs/35, Etapa A) — com ele, a decisão compara o mesmo texto de sempre.
+    /// </summary>
+    [Fact]
+    public void Os_perfis_conhecidos_sao_tres_e_a_leitura_usa_raw()
+    {
+        Assert.Equal(["mifare-catraca4", "qr-catraca4", "raw"], PerfisDeLeitura.Todos.Keys.Order(StringComparer.Ordinal));
+        Assert.Same(CredentialNormalization.Raw, PerfisDeLeitura.DaLeitura);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Sem_codigo_nao_ha_o_que_normalizar(string? codigo)
+    {
+        foreach (var perfil in PerfisDeLeitura.Todos.Values)
+        {
+            Assert.Null(PerfisDeLeitura.Normalizar(codigo, perfil));
+        }
+    }
+
+    [Fact]
+    public void Com_o_perfil_raw_normalizar_e_so_tirar_espacos_nas_pontas()
+    {
+        // É o que a decisão fazia antes (RawCardData.Trim()); nada muda com o perfil padrão.
+        Assert.Equal("0000000101", PerfisDeLeitura.Normalizar(" 0000000101 ", CredentialNormalization.Raw));
+        Assert.Equal("00ab12CD", PerfisDeLeitura.Normalizar("00ab12CD", CredentialNormalization.Raw));
+    }
+
+    /// <summary>ADR-0008: nenhum perfil tira zero à esquerda, nem transforma em número.</summary>
+    [Theory]
+    [InlineData("0000000101")]
+    [InlineData("0099994567")]
+    [InlineData("00123")]
+    [InlineData("000099990000000101")]
+    public void Nenhum_perfil_remove_zeros_a_esquerda(string codigo)
+    {
+        foreach (var perfil in PerfisDeLeitura.Todos.Values)
+        {
+            var normalizado = PerfisDeLeitura.Normalizar(codigo, perfil)!;
+
+            Assert.EndsWith(codigo, normalizado, StringComparison.Ordinal);
+            Assert.True(normalizado.Length >= codigo.Length, perfil.Name);
+        }
+    }
+
     [Fact]
     public void Dez_digitos_e_exatamente_o_tamanho_de_um_identificador_de_4_bytes()
     {
