@@ -96,7 +96,6 @@ As fases do docs/24 §3, em ordem de impacto para o evento.
   - importação atômica e desfazer a última importação (B.4);
   - ~~teste com 100 mil linhas~~ **feito para a prévia (B.3)**; o LOAD-IMPORT-01 da aplicação com catracas lendo é da B.4.
 - ~~Relação com a nuvem~~ **decidida (ADR-0025):** com conexão, a nuvem manda; sem conexão, o cadastro local substitui e sobe ao reconectar. Falta a fila de subida, a lista de conflitos e o contrato da função da nuvem que recebe a fila (PROPOSTA FUTURA).
-- O modelo `cartoes-modelo.csv` traz um exemplo com titular; a prévia o recusa até a B.9 (cifra do titular e prazos do jurídico).
 
 ### Fase 4 — Gerenciar catraca (alta)
 - ~~Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.~~ **Feito (fase 4a):** acerto a cada conexão, conferência 1 min depois e a cada hora, aviso no cartão da catraca. O acerto automático durante a operação fica desligado até o passo 6A do docs/21.

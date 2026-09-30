@@ -89,7 +89,7 @@ A prévia lê o arquivo e compara com o cadastro **sem gravar nada**. Além das 
 | `codigo` vindo de **fórmula** no .xlsx | erro na linha |
 | `codigo` terminando em `,0` (número convertido em texto) | erro na linha |
 | `codigo` com comprimento que o **perfil do provedor** não aceita, ou fora de 4 a 16 | erro na linha. Se o perfil completa zeros (ex.: `mifare-catraca4`), a linha passa e avisa |
-| `titular` preenchido | **erro na linha**, até existirem a cifra do titular por evento e os prazos aprovados pelo jurídico (docs/35, Etapa B.9). O nome não fica na prévia. O exemplo com titular do `cartoes-modelo.csv` cai aqui |
+| `titular` preenchido | **erro na linha**, até existirem a cifra do titular por evento e os prazos aprovados pelo jurídico (docs/35, Etapa B.9). O nome não fica na prévia. Por isso os modelos (`cartoes-modelo.csv` e a aba de exemplo do `.xlsx`) vêm sem titular |
 | `observacao` com mais de 200 caracteres, ou com CPF, e-mail ou telefone | erro na linha. A observação é conferida, mas ainda não tem onde ser gravada (B.4) |
 | `tipo` inativo num cartão novo, ou trocando para ele | erro na linha. O cartão que já é do tipo inativo pode ficar |
 | `validade_*` como data do Excel (número) | aceita, nos sistemas de 1900 e 1904, lida em horário de Brasília |

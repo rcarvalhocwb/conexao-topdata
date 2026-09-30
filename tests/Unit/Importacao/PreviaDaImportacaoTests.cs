@@ -546,7 +546,7 @@ public sealed class PreviaDaImportacaoTests(ITestOutputHelper saida)
     // ---------------------------------------------------------------- os modelos do repositório
 
     [Fact]
-    public void Os_modelos_instalados_sao_lidos_e_o_exemplo_com_titular_e_recusado()
+    public void Os_modelos_instalados_sao_lidos_e_entram_sem_erro()
     {
         var pasta = Path.Combine(RaizDoRepositorio(), "installer", "modelos");
 
@@ -563,12 +563,11 @@ public sealed class PreviaDaImportacaoTests(ITestOutputHelper saida)
         using var tipos = File.OpenRead(Path.Combine(pasta, "tipos-modelo.csv"));
         var doCsv = PreviaDaImportacao.DeCsv(cartoes, new ContextoDaPrevia(Bilheteria, CredentialNormalization.Raw, [], []), tipos);
 
-        // O exemplo com titular é recusado até existir a cifra do titular (B.9); os outros entram.
+        // O modelo não traz titular (recusado até a cifra do titular, B.9): tudo entra.
         Assert.False(doCsv.Recusada);
         Assert.Equal(4, doCsv.Tipos.Count(t => t.Classe == ClasseDaLinha.Novo));
-        Assert.Equal(1, doCsv.ComErro);
-        Assert.Contains(doCsv.Linhas.Single(l => l.Classe == ClasseDaLinha.Erro).Erros, e => e.Contains("titular", StringComparison.Ordinal));
-        Assert.Equal(3, doCsv.Novos);
+        Assert.Equal(0, doCsv.ComErro);
+        Assert.Equal(4, doCsv.Novos);
     }
 
     // ------------------------------------------------------------------ 100 mil linhas
