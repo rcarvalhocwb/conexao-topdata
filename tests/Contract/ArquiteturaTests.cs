@@ -284,6 +284,63 @@ public sealed class ArquiteturaTests
             $"Projeto de sincronização com referência indevida: {string.Join("; ", violacoes)}");
     }
 
+    /// <summary>
+    /// A importação de cartões é pura: só o domínio (a normalização única do código mora lá)
+    /// e nenhum pacote NuGet — o .xlsx é lido com a biblioteca padrão (docs/35 B.3).
+    /// </summary>
+    [Fact]
+    public void A_importacao_so_conhece_o_dominio_e_nenhum_pacote()
+    {
+        var projeto = Projetos().Single(p => p.Nome == "Access.Importacao");
+
+        var indevidas = ReferenciasDe(projeto.Caminho).Where(r => r != "Access.Domain").ToList();
+        var pacotes = XDocument.Load(projeto.Caminho).Descendants("PackageReference").ToList();
+
+        Assert.True(indevidas.Count == 0, $"Access.Importacao referencia indevidamente: {string.Join(", ", indevidas)}");
+        Assert.True(pacotes.Count == 0, "Access.Importacao não pode ter pacote NuGet: a leitura do .xlsx é só com a BCL.");
+    }
+
+    /// <summary>No assembly compilado: biblioteca padrão e o domínio, mais nada.</summary>
+    [Fact]
+    public void O_assembly_da_importacao_so_depende_da_biblioteca_padrao_e_do_dominio()
+    {
+        var permitidos = new[] { "System", "netstandard", "mscorlib", "Access.Domain" };
+
+        var externas = typeof(Access.Importacao.LeitorDeXlsx).Assembly
+            .GetReferencedAssemblies()
+            .Select(a => a.Name ?? string.Empty)
+            .Where(n => !permitidos.Any(p => n.StartsWith(p, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.True(externas.Count == 0, $"Access.Importacao passou a depender de: {string.Join(", ", externas)}");
+    }
+
+    /// <summary>
+    /// O worker nunca importa (docs/34 §5.4): ler e comparar 100 mil linhas não pode
+    /// acontecer na thread que decide o giro. Quem importa é o serviço.
+    /// </summary>
+    [Fact]
+    public void O_caminho_de_decisao_nao_alcanca_a_importacao()
+    {
+        var violacoes = new List<string>();
+
+        foreach (var nome in new[] { "Access.Domain", "Access.Application", "Edge.Worker", "Edge.Worker.X86" })
+        {
+            var projeto = Projetos().FirstOrDefault(p => p.Nome == nome);
+            if (projeto.Caminho is null)
+            {
+                continue;
+            }
+
+            violacoes.AddRange(
+                ReferenciasDe(projeto.Caminho)
+                    .Where(r => r == "Access.Importacao")
+                    .Select(r => $"{nome} -> {r}"));
+        }
+
+        Assert.True(violacoes.Count == 0, $"Caminho de decisão alcançando a importação: {string.Join("; ", violacoes)}");
+    }
+
     [Fact]
     public void Nenhum_projeto_de_producao_referencia_projeto_de_teste()
     {

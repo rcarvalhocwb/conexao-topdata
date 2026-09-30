@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Leitura e prévia da importação de cartões (Etapa B.3 do docs/35; docs/26).
+    Puro: só a biblioteca padrão (System.IO.Compression e System.Xml leem o .xlsx) e
+    NENHUM pacote NuGet. Não grava nada, não conhece SQLite, rede nem tela: recebe o
+    arquivo e o retrato da base, e devolve a prévia. Quem grava é a Etapa B.4.
+
+    Referencia só Access.Domain, porque é lá que moram a normalização única do código
+    (PerfisDeLeitura.Normalizar, Etapa 0.7), a máscara (CredentialValue.Mascarar) e o
+    relógio do evento (HoraDeBrasilia) — criar outra normalização aqui é exatamente o
+    defeito F8 do docs/34 §2. Regra verificada por ArquiteturaTests.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
