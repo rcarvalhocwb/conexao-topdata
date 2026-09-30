@@ -254,6 +254,18 @@ internal static class Program
             configuracao = new ConfiguracaoDaOperacao();
         }
 
+        // Retorno ≠ 0 de ReceberDadosOnLine: reconectar só com a chave técnica, desligada até
+        // HIL-EVT-01 (F6, docs/34 §2). Vale para a DLL real; o simulador declara a queda por si.
+        // Como o espelho, muda no próximo início do worker, não no "Aplicar agora".
+        if (adapter is TopdataInnerAdapter real)
+        {
+            real.ReconectarEmErroDeRecepcao = configuracao.ReconectarEmErroDeRecepcao;
+            if (real.ReconectarEmErroDeRecepcao)
+            {
+                Registrar("reconexão em erro de recepção ligada (chave técnica, ensaio HIL-EVT-01)");
+            }
+        }
+
         var espelho = configuracao.EspelhoLigado
             ? new EspelhoDeTentativas(configuracao.ConectorDoEspelho, TimeSpan.FromSeconds(configuracao.EsperaPeloGiroSegundos))
             : null;

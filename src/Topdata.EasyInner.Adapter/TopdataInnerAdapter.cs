@@ -55,6 +55,21 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     }
 
     /// <summary>
+    /// Trata o retorno ≠ 0 (exceto o 8) de <c>ReceberDadosOnLine</c> como erro, que o laço
+    /// leva à reconexão. Desligado por padrão.
+    /// </summary>
+    /// <remarks>
+    /// Desligado, o retorno ≠ 0 é contado (<see cref="ErrosDeRecepcao"/>) e devolvido como
+    /// "sem eventos" com o bruto preservado — o que a DLL real sempre teve aqui, agora com
+    /// rastro. O manual não diz o que a DLL devolve quando simplesmente não há evento (T2,
+    /// docs/34 §10): se for ≠ 0, reconectar a cada volta deixaria a catraca reconectando sem
+    /// parar e perderia o giro de quem está passando. <c>A_CONFIRMAR_COM_TOPDATA</c> até o
+    /// ensaio HIL-EVT-01; liga pela chave técnica <c>catraca.reconectar_em_erro_de_recepcao</c>.
+    /// O 8 (falha de dependência) é fatal com ou sem esta opção.
+    /// </remarks>
+    public bool ReconectarEmErroDeRecepcao { get; set; }
+
+    /// <summary>
     /// Quantas vezes <c>ReceberDadosOnLine</c> devolveu retorno diferente de zero, em todas as
     /// catracas desta instância.
     /// </summary>
@@ -235,15 +250,16 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         var resultado = Medir(nameof(IEasyInnerNative.ReceberDadosOnLine), () => _nativo.ReceberDadosOnLine(
             inner, ref origem, ref complemento, buffer, ref dia, ref mes, ref ano, ref hora, ref minuto, ref segundo));
 
-        // Retorno diferente de zero não é silêncio. Antes, todo retorno ≠ 0 virava
-        // SemEventos — inclusive o 8 — e uma queda de comunicação só aparecia quando o
-        // watchdog pegava (defeito F6, docs/34 §2). Agora o bruto é preservado com o seu
-        // status (8 continua falha de dependência; o resto, erro) e contado (ADR-0018); o
-        // laço o trata como falha de recepção.
+        // Retorno diferente de zero não é silêncio (defeito F6, docs/34 §2): é contado e o
+        // bruto é preservado (ADR-0018). O 8 é sempre falha de dependência. Os demais só vão
+        // ao laço como erro — e daí à reconexão — com ReconectarEmErroDeRecepcao ligado; senão
+        // seguem como "sem eventos", com o retorno bruto no resultado (HIL-EVT-01).
         if (resultado.Status is not AdapterStatus.Ok)
         {
             Interlocked.Increment(ref _errosDeRecepcao);
-            return (resultado, null);
+            return resultado.Status is AdapterStatus.FalhaDeDependencia || ReconectarEmErroDeRecepcao
+                ? (resultado, null)
+                : (resultado with { Status = AdapterStatus.SemEventos }, null);
         }
 
         // A_CONFIRMAR: o manual não diz como a DLL sinaliza "nada aconteceu". A leitura aqui

@@ -249,6 +249,7 @@ public sealed class ConsultasDaOperacao
                 SELECT t.qr_normalized, p.name, t.category, t.status, t.used_count, t.max_uses, t.last_used_at
                 FROM ticket t JOIN ticket_provider p ON p.id = t.provider_id
                 WHERE {onde}
+                ORDER BY (t.qr_normalized = $codigo) DESC, (t.qr_raw = $codigo) DESC
                 LIMIT 1;
                 """;
             comando.Parameters.AddWithValue("$codigo", procurado);

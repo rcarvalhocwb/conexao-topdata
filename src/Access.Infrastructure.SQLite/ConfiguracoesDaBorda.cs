@@ -28,6 +28,12 @@ namespace Access.Infrastructure.SQLite;
 /// o ensaio HIL-CARD-02 (<c>A_CONFIRMAR_COM_TOPDATA</c>). Não aparece no painel; é chave
 /// técnica (<c>catraca.enviar_digitos_variaveis</c>).
 /// </param>
+/// <param name="ReconectarEmErroDeRecepcao">
+/// Reconecta quando <c>ReceberDadosOnLine</c> devolve retorno ≠ 0 (exceto o 8, sempre fatal).
+/// Desligado: o erro é contado e registrado, e o laço segue como "sem eventos". Fica desligado
+/// até o ensaio HIL-EVT-01 dizer o que a DLL devolve sem evento (<c>A_CONFIRMAR_COM_TOPDATA</c>).
+/// Chave técnica (<c>catraca.reconectar_em_erro_de_recepcao</c>).
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -36,7 +42,8 @@ public sealed record ConfiguracaoDaOperacao(
     string ConectorDoEspelho = "",
     int EsperaPeloGiroSegundos = 10,
     bool AcertarRelogioAoDivergir = false,
-    bool EnviarDigitosVariaveis = false)
+    bool EnviarDigitosVariaveis = false,
+    bool ReconectarEmErroDeRecepcao = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -84,6 +91,7 @@ public sealed class ConfiguracoesDaBorda
     public const string ChaveEsperaPeloGiro = "nuvem.espera_giro_segundos";
     public const string ChaveAcertarRelogioAoDivergir = "relogio.acertar_ao_divergir";
     public const string ChaveEnviarDigitosVariaveis = "catraca.enviar_digitos_variaveis";
+    public const string ChaveReconectarEmErroDeRecepcao = "catraca.reconectar_em_erro_de_recepcao";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -159,7 +167,8 @@ public sealed class ConfiguracoesDaBorda
             ConectorDoEspelho: valores.GetValueOrDefault(ChaveConectorDoEspelho, padrao.ConectorDoEspelho),
             EsperaPeloGiroSegundos: Inteiro(ChaveEsperaPeloGiro, padrao.EsperaPeloGiroSegundos),
             AcertarRelogioAoDivergir: Logico(ChaveAcertarRelogioAoDivergir, padrao.AcertarRelogioAoDivergir),
-            EnviarDigitosVariaveis: Logico(ChaveEnviarDigitosVariaveis, padrao.EnviarDigitosVariaveis));
+            EnviarDigitosVariaveis: Logico(ChaveEnviarDigitosVariaveis, padrao.EnviarDigitosVariaveis),
+            ReconectarEmErroDeRecepcao: Logico(ChaveReconectarEmErroDeRecepcao, padrao.ReconectarEmErroDeRecepcao));
 
         return (configuracao, ilegiveis);
     }
@@ -186,6 +195,7 @@ public sealed class ConfiguracoesDaBorda
             [ChaveEsperaPeloGiro] = configuracao.EsperaPeloGiroSegundos.ToString(CultureInfo.InvariantCulture),
             [ChaveAcertarRelogioAoDivergir] = configuracao.AcertarRelogioAoDivergir ? "1" : "0",
             [ChaveEnviarDigitosVariaveis] = configuracao.EnviarDigitosVariaveis ? "1" : "0",
+            [ChaveReconectarEmErroDeRecepcao] = configuracao.ReconectarEmErroDeRecepcao ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();

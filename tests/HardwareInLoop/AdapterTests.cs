@@ -426,14 +426,18 @@ public sealed class AdapterTests
     }
 
     /// <summary>
-    /// Retorno ≠ 0 de <c>ReceberDadosOnLine</c> não é "sem eventos": o bruto é preservado com
-    /// o seu status e contado (defeito F6, docs/34 §2; ADR-0018).
+    /// Retorno ≠ 0 de <c>ReceberDadosOnLine</c> não é silêncio: o bruto é preservado e contado
+    /// (defeito F6, docs/34 §2; ADR-0018). Com a reconexão ligada, sai com o seu status; o 8 é
+    /// sempre falha de dependência.
     /// </summary>
     [Theory]
-    [InlineData(1, AdapterStatus.Erro)]
-    [InlineData(8, AdapterStatus.FalhaDeDependencia)]
-    [InlineData(200, AdapterStatus.RetornoDesconhecido)]
-    public void Retorno_diferente_de_zero_na_recepcao_nao_e_silencio(byte retorno, AdapterStatus esperado)
+    [InlineData(1, true, AdapterStatus.Erro)]
+    [InlineData(200, true, AdapterStatus.RetornoDesconhecido)]
+    [InlineData(8, true, AdapterStatus.FalhaDeDependencia)]
+    [InlineData(8, false, AdapterStatus.FalhaDeDependencia)]
+    [InlineData(1, false, AdapterStatus.SemEventos)]
+    [InlineData(200, false, AdapterStatus.SemEventos)]
+    public void Retorno_diferente_de_zero_na_recepcao_nao_e_silencio(byte retorno, bool reconectar, AdapterStatus esperado)
     {
         var costura = new CosturaFalsa
         {
@@ -442,17 +446,25 @@ public sealed class AdapterTests
             CartaoADevolver = "0000000101",
         };
         costura.Retornos["ReceberDadosOnLine"] = retorno;
-        using var adapter = new TopdataInnerAdapter(costura);
+        using var adapter = new TopdataInnerAdapter(costura) { ReconectarEmErroDeRecepcao = reconectar };
 
         var (resultado, evento) = adapter.AguardarEvento(1, TimeSpan.FromSeconds(1));
         adapter.AguardarEvento(1, TimeSpan.FromSeconds(1));
 
+        // Desligada (padrão até HIL-EVT-01), segue como "sem eventos", mas com o bruto e contado.
         Assert.Equal(esperado, resultado.Status);
-        Assert.NotEqual(AdapterStatus.SemEventos, resultado.Status);
         Assert.Equal(retorno, resultado.NativeReturn);
         Assert.Equal("ReceberDadosOnLine", resultado.Funcao);
         Assert.Null(evento);
         Assert.Equal(2, adapter.ErrosDeRecepcao);
+    }
+
+    [Fact]
+    public void Reconexao_em_erro_de_recepcao_nasce_desligada()
+    {
+        using var adapter = new TopdataInnerAdapter(new CosturaFalsa());
+
+        Assert.False(adapter.ReconectarEmErroDeRecepcao);
     }
 
     /// <summary>A hipótese documentada continua: retorno 0 com origem 0 é ausência de evento, e não conta.</summary>

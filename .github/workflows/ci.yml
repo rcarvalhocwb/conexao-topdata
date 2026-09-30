@@ -219,10 +219,14 @@ jobs:
             $fora = @()
             if (Test-Path capturas\tamanho-fora-de-1366x768.txt) { $fora += Get-Content capturas\tamanho-fora-de-1366x768.txt }
             Get-ChildItem capturas -Filter '*.png' -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne '00-setup.png' } | ForEach-Object {
-              $imagem = [System.Drawing.Image]::FromFile($_.FullName)
+              # PNG truncado (captura morta pelo tempo no meio da gravação) é aviso, como antes,
+              # e não reprova o job por um motivo que não é o tamanho.
+              try { $imagem = [System.Drawing.Image]::FromFile($_.FullName) }
+              catch { Write-Host "::warning::Captura ilegível (provavelmente incompleta): $($_.Exception.Message)"; return }
               $ok = $false
+              # ±1 px: a janela arredonda o tamanho em escalas como 125 % e 175 %.
               foreach ($escala in 1, 1.25, 1.5, 1.75, 2) {
-                if ($imagem.Width -eq [Math]::Floor(1366 * $escala) -and $imagem.Height -eq [Math]::Floor(768 * $escala)) { $ok = $true }
+                if ([Math]::Abs($imagem.Width - 1366 * $escala) -le 1 -and [Math]::Abs($imagem.Height - 768 * $escala) -le 1) { $ok = $true }
               }
               if (-not $ok) { $fora += "$($_.Name): $($imagem.Width)x$($imagem.Height) px" }
               $imagem.Dispose()

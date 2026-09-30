@@ -207,6 +207,24 @@ public sealed class OperacaoTests
     }
 
     /// <summary>
+    /// A chave técnica <c>catraca.reconectar_em_erro_de_recepcao</c> nasce desligada e vai e
+    /// volta do banco (F6, docs/34 §2; desligada até HIL-EVT-01).
+    /// </summary>
+    [Fact]
+    public void Chave_de_reconectar_em_erro_de_recepcao_nasce_desligada_e_vai_e_volta_do_banco()
+    {
+        using var banco = new BancoTemporario();
+        banco.Migrar();
+        var configuracoes = new ConfiguracoesDaBorda(banco.Fabrica);
+
+        Assert.False(configuracoes.Ler().Configuracao.ReconectarEmErroDeRecepcao);
+
+        configuracoes.Gravar(new ConfiguracaoDaOperacao(ReconectarEmErroDeRecepcao: true), DateTimeOffset.UtcNow, "técnico");
+        Assert.True(configuracoes.Ler().Configuracao.ReconectarEmErroDeRecepcao);
+        Assert.False(configuracoes.Ler().Configuracao.EnviarDigitosVariaveis);
+    }
+
+    /// <summary>
     /// A chave técnica <c>catraca.enviar_digitos_variaveis</c> nasce desligada, vai e volta do
     /// banco, e valor ilegível cai no padrão desligado (F2, docs/34 §2).
     /// </summary>

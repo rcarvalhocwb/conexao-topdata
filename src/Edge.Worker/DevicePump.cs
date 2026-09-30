@@ -476,6 +476,19 @@ public sealed class DevicePump
             case AdapterStatus.SemEventos:
                 d.Disjuntor.RegistrarSucesso();
                 Disparar(d, DeviceTrigger.SemEventos, agora);
+                if (resultado.NativeReturn != 0)
+                {
+                    // Retorno ≠ 0 que o adaptador, com a reconexão desligada até HIL-EVT-01,
+                    // devolveu como "sem eventos": conta sempre e deixa o bruto no registro (F6).
+                    // Se a DLL devolver ≠ 0 em toda volta sem evento, uma linha por volta
+                    // afogaria o registro: registra a 1ª, a 10ª, a 100ª... e o total fica no contador.
+                    d.ErrosDeRecepcao++;
+                    return EhMarco(d.ErrosDeRecepcao)
+                        ? $"sem eventos com retorno {resultado} — erro de recepção nº {d.ErrosDeRecepcao}, " +
+                            "sem reconectar até HIL-EVT-01"
+                        : "sem eventos";
+                }
+
                 return "sem eventos";
 
             case AdapterStatus.FalhaDeDependencia:
@@ -487,11 +500,23 @@ public sealed class DevicePump
             default:
                 // Retorno ≠ 0 de ReceberDadosOnLine não é silêncio (F6, docs/34 §2): conta,
                 // registra com o bruto e segue pelo caminho de falha de sempre — disjuntor,
-                // backoff e reconexão —, sem derrubar o laço das outras catracas.
+                // backoff e reconexão —, sem derrubar o laço das outras catracas. Da DLL real só
+                // chega aqui com ReconectarEmErroDeRecepcao ligado no adaptador (HIL-EVT-01).
                 d.ErrosDeRecepcao++;
                 Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
                 return $"erro ao aguardar evento ({resultado}) — erro de recepção nº {d.ErrosDeRecepcao}";
         }
+    }
+
+    /// <summary>1, 10, 100, 1000...: quando um erro repetido volta ao registro.</summary>
+    private static bool EhMarco(long n)
+    {
+        while (n >= 10 && n % 10 == 0)
+        {
+            n /= 10;
+        }
+
+        return n == 1;
     }
 
     private string ColetarBilhete(DeviceSlot d, DateTimeOffset agora)
