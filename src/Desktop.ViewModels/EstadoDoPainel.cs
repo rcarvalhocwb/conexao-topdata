@@ -111,6 +111,14 @@ public sealed record EstadoDoPainel
         {
             // Impossível confundir com operação real: vem antes de qualquer outra frase.
             mensagem = "MODO SIMULAÇÃO (sem catraca física) — " + mensagem;
+
+            // Simulação é tom de Atenção (docs/27), nunca de sucesso: a barra saía verde,
+            // com "✓", ao lado do cartão laranja de simulação — "tudo certo" numa instalação
+            // que não aciona catraca nenhuma (docs/34 §7.1, P11). Ação continua Ação.
+            if (saude is SaudeDoPainel.Normal)
+            {
+                saude = SaudeDoPainel.Atencao;
+            }
         }
 
         return new EstadoDoPainel

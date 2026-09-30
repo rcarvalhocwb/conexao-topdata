@@ -332,18 +332,18 @@ Prazos são **propostas** para o jurídico validar (D7).
 
 **O que corrigir:**
 
-| # | Problema | Gravidade |
-|---|---|---|
-| P1 | "Demonstração/Ao vivo" ilegível no tema escuro (`RadioButton` sem estilo Rayzer) | alta |
-| P2 | Lista de peças branca no tema escuro (`ListBox` sem estilo) | alta |
-| P3 | Em 1366×768, o desenho e a narração não cabem juntos (palco com altura fixa de 460 px) | alta |
-| P4 | A captura do gêmeo sai em 1044×768 com o menu recolhido; o CI não prova 1366×768 | alta |
-| P16 | Sinais liberado/bloqueado como "Disponível" sem fonte (a Linha 4 sinaliza por display e bip) | alta (conteúdo) |
-| P12 | Botões desabilitados de Gerenciar catraca parecem links | média |
-| P11 | "✓ MODO SIMULAÇÃO" em verde (tom de sucesso) | média |
-| P6 | "Testar giro" é o botão azul principal, mas só gira o desenho | média |
-| P13 | "Tipo de leitor" técnico no modo guiado | média |
-| — | O gêmeo ignora a opção de reduzir animações do Windows | média |
+| # | Problema | Gravidade | Situação |
+|---|---|---|---|
+| P1 | "Demonstração/Ao vivo" ilegível no tema escuro (`RadioButton` sem estilo Rayzer) | alta | **corrigido na Etapa 0** (0.9): estilo implícito Rayzer; contraste AA testado nos dois temas |
+| P2 | Lista de peças branca no tema escuro (`ListBox` sem estilo) | alta | **corrigido na Etapa 0** (0.9): `ListBox`/`ListBoxItem` com tokens; teste reprova controle interativo das telas sem estilo implícito |
+| P3 | Em 1366×768, o desenho e a narração não cabem juntos (palco com altura fixa de 460 px) | alta | aberto: mexe no layout do gêmeo (Etapa C); não coube com segurança na Etapa 0 |
+| P4 | A captura do gêmeo sai em 1044×768 com o menu recolhido; o CI não prova 1366×768 | alta | **corrigido na Etapa 0** (0.9): causa era o monitor 1024×768 do runner limitando a janela com moldura; a captura usa janela sem moldura de 1366×768 lógicos, o `relatorio.txt` traz tamanho e DPI de cada imagem e o CI reprova fora de 1366×768 (confirmação na próxima execução no Windows) |
+| P16 | Sinais liberado/bloqueado como "Disponível" sem fonte (a Linha 4 sinaliza por display e bip) | alta (conteúdo) | **corrigido na Etapa 0** (0.9): "Aguardando confirmação" com o motivo; a narração não diz mais que a catraca acende o sinal |
+| P12 | Botões desabilitados de Gerenciar catraca parecem links | média | **corrigido na Etapa 0** (0.9): desabilitado com `Rayzer.Surface.Disabled` e `Rayzer.Text.Disabled`, sem opacidade |
+| P11 | "✓ MODO SIMULAÇÃO" em verde (tom de sucesso) | média | **corrigido na Etapa 0** (0.9): simulação em tom de Atenção ("!") |
+| P6 | "Testar giro" é o botão azul principal, mas só gira o desenho | média | aberto |
+| P13 | "Tipo de leitor" técnico no modo guiado | média | aberto |
+| — | O gêmeo ignora a opção de reduzir animações do Windows | média | aberto |
 
 ### 7.2 Proposta
 

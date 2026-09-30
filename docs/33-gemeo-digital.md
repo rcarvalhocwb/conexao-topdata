@@ -130,6 +130,10 @@ acesos, a urna cheia — vem das chaves Rayzer (`Rayzer.Brand.Cyan`, `Rayzer.Acc
   contrato mas o serviço não preenche. Até preencher, a leitura ao vivo aparece sem o objeto
   (exceto "use a fenda da urna", deduzido do motivo).
 - **Urna cheia ao vivo** só aparece quando o serviço mandar a origem 20.
+- **Sinais liberado/bloqueado** estão "Aguardando confirmação": as luzes comandadas pelo
+  sistema só existem na Linha 3 (docs/02, docs/11); na TopFit 4 o aviso à pessoa é o display.
+  O desenho acende verde/vermelho só para marcar o momento, e a ficha diz isso
+  (`A_CONFIRMAR_COM_TOPDATA`; docs/34 §7.1, P16).
 - **Liberação manual e mensagem temporária** feitas em Gerenciar catraca não passam pelo
   fluxo de acessos: o desenho ao vivo não as mostra.
 - **Transparência** (a pessoa genérica) no WPF depende da ordem de desenho; vista de alguns
@@ -139,7 +143,7 @@ acesos, a urna cheia — vem das chaves Rayzer (`Rayzer.Brand.Cyan`, `Rayzer.Acc
 
 1. Instale ou rode o painel em modo simulação (docs/23).
 2. Abra **Gêmeo digital** no menu.
-3. Rode cada cenário; em "QR válido", confira: celular chega, verde acende, braço gira um
+3. Rode cada cenário; em "QR válido", confira: celular chega, verde acende no desenho, braço gira um
    terço para trás, display volta à mensagem padrão.
 4. Marque **Ao vivo**, e na tela **Simulador** passe `1000000001` na catraca 1: o desenho
    precisa ler, liberar e girar.

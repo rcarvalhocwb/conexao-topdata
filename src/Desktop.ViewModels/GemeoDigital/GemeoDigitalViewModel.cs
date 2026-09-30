@@ -563,7 +563,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
         "Teste de giro",
         "Libera e gira um terço de volta, só no desenho.",
         [
-            new(TimeSpan.Zero, SinalDaCena.Liberado(), "Liberada: sinal verde, braço solto.", PecaDaCatraca.SinalLiberado),
+            new(TimeSpan.Zero, SinalDaCena.Liberado(), "Liberada: braço solto.", PecaDaCatraca.Rotor),
             new(TimeSpan.FromSeconds(0.8), SinalDaCena.Giro(), "Um terço de volta, no sentido da entrada.", PecaDaCatraca.Rotor),
             new(TimeSpan.FromSeconds(2.0), null, "Travada de novo.", PecaDaCatraca.Rotor),
         ]);

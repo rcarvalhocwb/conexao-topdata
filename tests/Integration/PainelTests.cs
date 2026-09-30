@@ -186,6 +186,39 @@ public sealed class PainelTests : IAsyncLifetime
         Assert.Contains("Nenhuma catraca conectada", estado.Mensagem, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Simulação nunca sai em tom de sucesso (docs/27: simulação é Atenção). A barra superior
+    /// mostrava "✓ MODO SIMULAÇÃO" em verde, ao lado do cartão laranja (docs/34 §7.1, P11).
+    /// </summary>
+    [Theory]
+    [InlineData(NivelDeDegradacao.T0Normal, SaudeDoPainel.Atencao)]
+    [InlineData(NivelDeDegradacao.T1SemInternet, SaudeDoPainel.Atencao)]
+    [InlineData(NivelDeDegradacao.T2ListaLocal, SaudeDoPainel.Atencao)]
+    [InlineData(NivelDeDegradacao.T3Isolado, SaudeDoPainel.Acao)]
+    public void Simulacao_nunca_aparece_em_tom_de_sucesso(NivelDeDegradacao nivel, SaudeDoPainel esperada)
+    {
+        var resposta = new ObterEstadoResponse
+        {
+            Versao = "teste",
+            Nivel = nivel,
+            EquipamentosConectados = 2,
+            Simulacao = true,
+        };
+
+        var estado = EstadoDoPainel.De(resposta, Agora);
+
+        Assert.Equal(esperada, estado.Saude);
+        Assert.NotEqual(SaudeDoPainel.Normal, estado.Saude);
+        Assert.StartsWith("MODO SIMULAÇÃO", estado.Mensagem, StringComparison.Ordinal);
+
+        // Fora da simulação, o mesmo nível sem internet continua Normal: só a simulação muda o tom.
+        resposta.Simulacao = false;
+        if (nivel is NivelDeDegradacao.T1SemInternet)
+        {
+            Assert.Equal(SaudeDoPainel.Normal, EstadoDoPainel.De(resposta, Agora).Saude);
+        }
+    }
+
     /// <summary>O detalhe técnico existe, mas separado da frase que o operador lê.</summary>
     [Fact]
     public void Mensagem_ao_operador_nao_carrega_jargao()

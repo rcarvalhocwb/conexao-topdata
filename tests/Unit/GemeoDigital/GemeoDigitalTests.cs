@@ -108,6 +108,47 @@ public sealed class GemeoDigitalTests
         Assert.All(CatalogoDaFit4.De(PecaDaCatraca.LeitorFacial).Funcoes, f => Assert.Equal(SituacaoDaFuncao.ForaDoEscopo, f.Situacao));
     }
 
+    /// <summary>
+    /// P16 (docs/34 §7.1): as luzes verde e vermelha comandadas pelo sistema só existem na
+    /// Linha 3; na TopFit 4 (Linha 4) o aviso é o display. Enquanto a matriz disser isso, os
+    /// sinais do gêmeo não são "Disponível", a ficha diz que o desenho só marca o momento, e
+    /// nenhum cenário conta que a catraca acende a luz.
+    /// </summary>
+    [Fact]
+    public void Sinais_luminosos_nao_sao_disponiveis_sem_confirmacao_da_linha_4()
+    {
+        var matriz = File.ReadAllText(Path.Combine(Raiz(), "docs", "02-matriz-compatibilidade.md"));
+        Assert.Contains("LEDs verde e vermelho só existem na Linha 3", matriz, StringComparison.Ordinal);
+
+        foreach (var peca in new[] { PecaDaCatraca.SinalLiberado, PecaDaCatraca.SinalBloqueado })
+        {
+            var ficha = CatalogoDaFit4.De(peca);
+            Assert.NotEmpty(ficha.Funcoes);
+            Assert.All(ficha.Funcoes, f =>
+            {
+                Assert.Equal(SituacaoDaFuncao.AguardandoConfirmacao, f.Situacao);
+                Assert.Equal("Aguardando confirmação", f.Selo);
+                Assert.Contains("display", f.Explicacao, StringComparison.Ordinal);
+                Assert.Contains("Linha 3", f.Explicacao, StringComparison.Ordinal);
+                Assert.Contains("marca o momento", f.Explicacao, StringComparison.Ordinal);
+            });
+        }
+
+        foreach (var passo in Roteiros.Todos.SelectMany(r => r.Passos))
+        {
+            // O display é o aviso principal: nenhum passo põe o sinal em destaque como se ele
+            // fosse a resposta da catraca, e a cor só aparece dita como marca do desenho.
+            Assert.NotEqual(PecaDaCatraca.SinalLiberado, passo.Destaque);
+            Assert.NotEqual(PecaDaCatraca.SinalBloqueado, passo.Destaque);
+            if (passo.Narracao.Contains("verde", StringComparison.OrdinalIgnoreCase)
+                || passo.Narracao.Contains("vermelh", StringComparison.OrdinalIgnoreCase)
+                || passo.Narracao.Contains("sinal", StringComparison.OrdinalIgnoreCase))
+            {
+                Assert.Contains("no desenho", passo.Narracao, StringComparison.Ordinal);
+            }
+        }
+    }
+
     [Fact]
     public void Toda_peca_tem_ficha()
     {
