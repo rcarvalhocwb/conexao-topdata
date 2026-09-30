@@ -72,6 +72,14 @@ internal static class Program
             var abertura = adapter.AbrirPorta(porta);
             Console.WriteLine($"  {abertura}");
 
+            if (abertura.Status is AdapterStatus.FalhaDeDependencia && abertura.Significado is { } dependencia)
+            {
+                // Retornos 4 a 6 de AbrirPortaComunicacao (EI-002): DLL de apoio ausente.
+                Console.Error.WriteLine(
+                    $"Retorno {abertura.NativeReturn} ({dependencia}). Rode installer/verificar-ambiente.ps1.");
+                return 2;
+            }
+
             if (abertura.Status is AdapterStatus.FalhaDeDependencia)
             {
                 Console.Error.WriteLine(

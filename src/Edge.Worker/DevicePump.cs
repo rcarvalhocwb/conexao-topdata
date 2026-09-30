@@ -83,6 +83,16 @@ public sealed class DeviceSlot
     /// <summary>Quando este equipamento pode ser tentado de novo.</summary>
     public DateTimeOffset? EsperarAte { get; internal set; }
 
+    /// <summary>
+    /// Quantas vezes a espera por evento voltou com erro (retorno nativo ≠ 0 que não é
+    /// falha de dependência).
+    /// </summary>
+    /// <remarks>
+    /// Antes esses retornos viravam "sem eventos" e a queda só aparecia quando o watchdog
+    /// pegava (defeito F6, docs/34 §2; ADR-0018: contar, nunca calar).
+    /// </remarks>
+    public long ErrosDeRecepcao { get; internal set; }
+
     /// <summary>Identidade lida do equipamento, quando já conhecida.</summary>
     public FirmwareInfo? Firmware { get; internal set; }
 
@@ -475,8 +485,12 @@ public sealed class DevicePump
                 return $"falha de dependência ({resultado}) — worker inutilizável";
 
             default:
+                // Retorno ≠ 0 de ReceberDadosOnLine não é silêncio (F6, docs/34 §2): conta,
+                // registra com o bruto e segue pelo caminho de falha de sempre — disjuntor,
+                // backoff e reconexão —, sem derrubar o laço das outras catracas.
+                d.ErrosDeRecepcao++;
                 Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
-                return $"erro ao aguardar evento ({resultado})";
+                return $"erro ao aguardar evento ({resultado}) — erro de recepção nº {d.ErrosDeRecepcao}";
         }
     }
 

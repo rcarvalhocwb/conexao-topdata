@@ -60,26 +60,71 @@ public enum AdapterStatus
     /// genérico. Ver docs/ADR/ADR-0018-eventos-desconhecidos.md
     /// </summary>
     RetornoDesconhecido,
+
+    /// <summary>
+    /// A função recusou um parâmetro, com o retorno documentado para ela na matriz
+    /// (128/129/130 nas funções de montagem; 9 em <c>DefinirTipoConexao</c>). Ver
+    /// <see cref="RetornosDocumentados"/>.
+    /// </summary>
+    ConfiguracaoRecusada,
+
+    /// <summary>
+    /// Retorno 3 de <c>AbrirPortaComunicacao</c>: a porta já estava aberta — em geral um
+    /// processo anterior que não a fechou.
+    /// </summary>
+    PortaJaAberta,
 }
 
 /// <summary>Resultado de uma chamada ao adapter, com o retorno bruto preservado.</summary>
 /// <param name="Status">Interpretação do retorno.</param>
 /// <param name="NativeReturn">Valor exato devolvido pela DLL.</param>
 /// <param name="Elapsed">Duração da chamada.</param>
-public readonly record struct AdapterResult(AdapterStatus Status, int NativeReturn, TimeSpan Elapsed)
+/// <param name="Funcao">
+/// A função nativa que devolveu <paramref name="NativeReturn"/>, quando conhecida. O mesmo
+/// número significa coisas diferentes em funções diferentes (ADR-0018; docs/34 §2, F6).
+/// </param>
+public readonly record struct AdapterResult(AdapterStatus Status, int NativeReturn, TimeSpan Elapsed, string? Funcao = null)
 {
     public bool IsOk => Status is AdapterStatus.Ok;
 
-    /// <summary>Mapeia um retorno nativo, sem nunca descartar o valor bruto.</summary>
-    public static AdapterResult FromNative(int nativo, TimeSpan duracao) => nativo switch
-    {
-        0 => new AdapterResult(AdapterStatus.Ok, nativo, duracao),
-        1 => new AdapterResult(AdapterStatus.Erro, nativo, duracao),
-        8 => new AdapterResult(AdapterStatus.FalhaDeDependencia, nativo, duracao),
-        _ => new AdapterResult(AdapterStatus.RetornoDesconhecido, nativo, duracao),
-    };
+    /// <summary>
+    /// O significado documentado deste retorno para <see cref="Funcao"/>, ou <c>null</c>
+    /// quando a matriz não diz nada específico.
+    /// </summary>
+    public string? Significado => RetornosDocumentados.Consultar(Funcao, NativeReturn)?.Significado;
 
-    public override string ToString() => $"{Status}(retorno={NativeReturn}, {Elapsed.TotalMilliseconds:F0}ms)";
+    /// <summary>Mapeia um retorno nativo, sem nunca descartar o valor bruto.</summary>
+    /// <param name="nativo">O retorno da DLL.</param>
+    /// <param name="duracao">Duração da chamada.</param>
+    /// <param name="funcao">
+    /// A função que devolveu o retorno. Com ela, os retornos específicos da matriz FUN
+    /// (<see cref="RetornosDocumentados"/>) deixam de cair em
+    /// <see cref="AdapterStatus.RetornoDesconhecido"/>; sem ela, vale só o mapeamento geral.
+    /// </param>
+    public static AdapterResult FromNative(int nativo, TimeSpan duracao, string? funcao = null)
+    {
+        if (RetornosDocumentados.Consultar(funcao, nativo) is { } documentado)
+        {
+            return new AdapterResult(documentado.Status, nativo, duracao, funcao);
+        }
+
+        var status = nativo switch
+        {
+            0 => AdapterStatus.Ok,
+            1 => AdapterStatus.Erro,
+            8 => AdapterStatus.FalhaDeDependencia,
+            _ => AdapterStatus.RetornoDesconhecido,
+        };
+
+        return new AdapterResult(status, nativo, duracao, funcao);
+    }
+
+    public override string ToString()
+    {
+        var onde = Funcao is null ? string.Empty : $"{Funcao}: ";
+        var porque = Significado is { } s ? $" — {s}" : string.Empty;
+        return $"{Status}({onde}retorno={NativeReturn}{porque}, {Elapsed.TotalMilliseconds:F0}ms)";
+    }
 }
 
 /// <summary>Identidade do equipamento, lida de <c>ReceberVersaoFirmware</c>.</summary>

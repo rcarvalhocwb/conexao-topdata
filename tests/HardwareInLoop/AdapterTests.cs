@@ -425,6 +425,107 @@ public sealed class AdapterTests
         Assert.Null(evento);
     }
 
+    /// <summary>
+    /// Retorno ≠ 0 de <c>ReceberDadosOnLine</c> não é "sem eventos": o bruto é preservado com
+    /// o seu status e contado (defeito F6, docs/34 §2; ADR-0018).
+    /// </summary>
+    [Theory]
+    [InlineData(1, AdapterStatus.Erro)]
+    [InlineData(8, AdapterStatus.FalhaDeDependencia)]
+    [InlineData(200, AdapterStatus.RetornoDesconhecido)]
+    public void Retorno_diferente_de_zero_na_recepcao_nao_e_silencio(byte retorno, AdapterStatus esperado)
+    {
+        var costura = new CosturaFalsa
+        {
+            // Nem uma origem preenchida faz um retorno de erro virar evento.
+            OrigemADevolver = (byte)KnownEventOrigin.QrCode,
+            CartaoADevolver = "0000000101",
+        };
+        costura.Retornos["ReceberDadosOnLine"] = retorno;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var (resultado, evento) = adapter.AguardarEvento(1, TimeSpan.FromSeconds(1));
+        adapter.AguardarEvento(1, TimeSpan.FromSeconds(1));
+
+        Assert.Equal(esperado, resultado.Status);
+        Assert.NotEqual(AdapterStatus.SemEventos, resultado.Status);
+        Assert.Equal(retorno, resultado.NativeReturn);
+        Assert.Equal("ReceberDadosOnLine", resultado.Funcao);
+        Assert.Null(evento);
+        Assert.Equal(2, adapter.ErrosDeRecepcao);
+    }
+
+    /// <summary>A hipótese documentada continua: retorno 0 com origem 0 é ausência de evento, e não conta.</summary>
+    [Fact]
+    public void Retorno_zero_com_origem_zero_continua_sendo_sem_eventos_e_nao_conta()
+    {
+        var costura = new CosturaFalsa { OrigemADevolver = 0 };
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var (resultado, _) = adapter.AguardarEvento(1, TimeSpan.FromSeconds(1));
+
+        Assert.Equal(AdapterStatus.SemEventos, resultado.Status);
+        Assert.Equal(0, adapter.ErrosDeRecepcao);
+    }
+
+    /// <summary>129 em <c>ConfigurarLeitor2</c> é recusa daquele passo, dita com o nome da função.</summary>
+    [Fact]
+    public void Passo_recusado_diz_a_funcao_e_o_motivo()
+    {
+        var costura = new CosturaFalsa();
+        costura.Retornos["ConfigurarLeitor2"] = 129;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.EnviarConfiguracaoCompleta(1, Configuracao());
+
+        Assert.Equal(AdapterStatus.ConfiguracaoRecusada, resultado.Status);
+        Assert.Equal("ConfigurarLeitor2", resultado.Funcao);
+        Assert.Equal(129, resultado.NativeReturn);
+        Assert.StartsWith("configuração recusada", resultado.Significado, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnviarConfiguracoes", costura.Chamadas);
+    }
+
+    /// <summary>O envio também diz de onde veio o retorno.</summary>
+    [Fact]
+    public void Retorno_do_envio_leva_o_nome_do_envio()
+    {
+        var costura = new CosturaFalsa();
+        costura.Retornos["EnviarConfiguracoes"] = 1;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.EnviarConfiguracaoCompleta(1, Configuracao());
+
+        Assert.Equal(AdapterStatus.Erro, resultado.Status);
+        Assert.Equal("EnviarConfiguracoes", resultado.Funcao);
+    }
+
+    [Fact]
+    public void Tipo_de_conexao_invalido_e_configuracao_recusada()
+    {
+        var costura = new CosturaFalsa();
+        costura.Retornos["DefinirTipoConexao"] = 9;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.AbrirPorta(3570);
+
+        Assert.Equal(AdapterStatus.ConfiguracaoRecusada, resultado.Status);
+        Assert.Equal("DefinirTipoConexao", resultado.Funcao);
+    }
+
+    /// <summary>Retorno 3: a porta já estava aberta, em geral por um worker anterior que não a fechou.</summary>
+    [Fact]
+    public void Porta_ja_aberta_e_reconhecida()
+    {
+        var costura = new CosturaFalsa();
+        costura.Retornos["AbrirPortaComunicacao"] = 3;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.AbrirPorta(3570);
+
+        Assert.Equal(AdapterStatus.PortaJaAberta, resultado.Status);
+        Assert.Equal("porta já aberta", resultado.Significado);
+    }
+
     [Fact]
     public void Evento_traz_origem_credencial_e_hora_do_equipamento()
     {
