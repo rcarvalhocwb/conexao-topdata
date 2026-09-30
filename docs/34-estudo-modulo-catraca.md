@@ -408,7 +408,7 @@ por worker. Uma chamada longa congela todas as catracas daquele worker.
 
 | # | Decisão | Bloqueia |
 |---|---|---|
-| D1 | **Fonte da verdade** do cadastro de cartões: nuvem, local ou dono por campo (a ADR-0023 hoje diz "cadastro é da nuvem") | Etapa B.4 em diante |
+| D1 | **Fonte da verdade** do cadastro de cartões: nuvem, local ou dono por campo (a ADR-0023 hoje diz "cadastro é da nuvem") | **Decidida em 2026-09-30** ([ADR-0025](ADR/ADR-0025-fonte-da-verdade-do-cadastro.md)): com conexão, a nuvem manda e o PC só consulta e faz bloqueio emergencial; sem conexão, o cadastro local substitui; ao reconectar, sobe para a nuvem, e conflito vai ao operador com o estado mais restritivo valendo |
 | D2 | Parque do evento: urna e QR em **todas** as catracas? | urna, perfis |
 | D3 | Lista na catraca: branca, negra ou nenhuma (30 mil não cabem em lista branca) | Etapa D |
 | D4 | Cartões da bilheteria em off-line: carregar todo o estoque (qualquer cartão do estoque passa) ou negar | Etapa D |
@@ -470,6 +470,6 @@ Tabela a atualizar a cada PR do [docs/35](35-prompt-modulo-catraca.md).
 |---|---|---|
 | 0 — Endurecer | 0.1–0.9 (F1, F2, F4, F6, F7, F8, contrato, telas) | **concluída no código** (PR #1): 809 testes passando. Falta bancada: HIL-DIR-05/06 (F1), HIL-CARD-02 e T30 (F2, chave desligada), HIL-EVT-01 (F6, chave desligada). P3 foi para a Etapa C |
 | A — Parametrização e funções | A.1–A.9 (A.10 e A.11 bloqueadas por T12 e bancada) | **A.1 concluída no código**: `MontadorDaConfiguracao.Montar` (`Access.Application/Devices`), função pura fábrica (`PadroesDeFabrica.TopFit4`) → evento (`SobreposicoesDoEvento`, de `ConfiguracaoDaOperacao.ParaACatraca()`) → catraca (`SobreposicoesDaCatraca`, vazia até a A.3); `ConfiguracaoDeBancada.TopFit4` virou fachada e o worker x86 chama o montador na subida e no "Aplicar agora". Mesmo resultado de antes, campo a campo (`MontadorDaConfiguracaoTests`). ADR-0020 item 3 agora tem teste (`CoberturaDaConfiguracaoTests`): todo campo é enviado (prova pelo valor, laço + adapter + costura falsa) ou declarado não enviado com motivo — `EnviarDigitosVariaveis` (chave técnica) e `PerfilFisico` (escolhe a função de liberação). Registrado: `QuantidadeFixaDeDigitos` é nula no padrão, então `DefinirQuantidadeDigitosCartao` não é chamada e a catraca segue com o padrão da DLL (como antes; modelo completo na A.2). Nenhum teste de bancada novo; 858 testes passando. A.2–A.9 não iniciadas |
-| B — Cartões | B.0–B.9 (B.4+ bloqueada por D1) | não iniciada |
+| B — Cartões | B.0–B.9 (B.0 feita: ADR-0025; D1 decidida) | não iniciada |
 | C — Gêmeo e telas | C.1–C.9 | não iniciada |
 | D — Lista na catraca | bloqueada por D3, D4, D5 e bancada | bloqueada |
