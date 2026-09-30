@@ -74,6 +74,34 @@ nunca em relatório nem em log.
 | `codigo` com menos de 4 ou mais de 16 caracteres | É o limite documentado da catraca 4 (mesma regra do QR) |
 | Data fora do formato `dd/mm/aaaa hh:mm`, ou `validade_fim` antes de `validade_inicio` | Validade ambígua não entra |
 
+### 3A. O que a prévia confere hoje (Etapa B.3, `src/Access.Importacao`)
+
+A prévia lê o arquivo e compara com o cadastro **sem gravar nada**. Além das recusas acima:
+
+| Regra | Nível |
+|---|---|
+| Arquivo que não é UTF-8, ou em UTF-16 ("Texto Unicode") | recusa o arquivo, com a instrução "salve como CSV UTF-8" |
+| Separador que não é `;` | recusa o arquivo |
+| Coluna obrigatória (`codigo`, `tipo`, `situacao`) faltando, ou coluna repetida | recusa o arquivo. Coluna desconhecida só avisa e é ignorada. O cabeçalho é comparado sem caixa e sem acento |
+| Mais de 200 mil linhas, ou mais de 20 MB | recusa o arquivo. Acima de 100 mil linhas, avisa |
+| .xlsx com macro, com vínculo externo, ou grande demais depois de descompactado | recusa o arquivo |
+| .xlsx sem a aba "Cartões" | recusa, a menos que a pasta tenha uma aba só (lida com aviso). "Exemplo" e "Instruções" nunca são lidas |
+| `codigo` vindo de **fórmula** no .xlsx | erro na linha |
+| `codigo` terminando em `,0` (número convertido em texto) | erro na linha |
+| `codigo` com comprimento que o **perfil do provedor** não aceita, ou fora de 4 a 16 | erro na linha. Se o perfil completa zeros (ex.: `mifare-catraca4`), a linha passa e avisa |
+| `titular` preenchido | **erro na linha**, até existirem a cifra do titular por evento e os prazos aprovados pelo jurídico (docs/35, Etapa B.9). O nome não fica na prévia. O exemplo com titular do `cartoes-modelo.csv` cai aqui |
+| `observacao` com mais de 200 caracteres, ou com CPF, e-mail ou telefone | erro na linha. A observação é conferida, mas ainda não tem onde ser gravada (B.4) |
+| `tipo` inativo num cartão novo, ou trocando para ele | erro na linha. O cartão que já é do tipo inativo pode ficar |
+| `validade_*` como data do Excel (número) | aceita, nos sistemas de 1900 e 1904, lida em horário de Brasília |
+| Código que já é de **outro provedor** | erro na linha: a importação não muda cartão de outro provedor |
+| Cartão **cancelado** | erro na linha: a importação não reativa cartão cancelado |
+| Cartão bloqueado e a linha diz `ATIVO` | muda, com aviso "confirmar a importação o desbloqueia" |
+| Mesmo código com zeros a mais ou a menos, no arquivo ou no cadastro | aviso, nas linhas envolvidas; nada é juntado |
+
+Nenhuma mensagem da prévia repete o código: a linha é identificada pelo número e o código
+aparece mascarado (`cred:****01(10)`). Pela [ADR-0025](ADR/ADR-0025-fonte-da-verdade-do-cadastro.md),
+confirmar a importação no PC só será permitido sem conexão com a nuvem (Etapa B.4).
+
 ## 4. Quanto ao cadastro do ano passado
 
 As três planilhas exportadas do sistema na nuvem (ver [`22`](22-sistema-supabase.md),
