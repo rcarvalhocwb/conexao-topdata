@@ -211,6 +211,26 @@ jobs:
               Write-Host "::warning::A captura da tela $($_.BaseName) falhou (detalhe abaixo)."
               Get-Content $_.FullName | Select-Object -First 40 | ForEach-Object { Write-Host "  $_" }
             }
+            # Tamanho e DPI de cada imagem (docs/34 §7.1, P4: o gêmeo saía com 1044×768).
+            Get-Content capturas\relatorio.txt -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+            # Toda captura do painel tem de ser 1366×768 lógicos: 1366×768 a 100 %, 2049×1152 a
+            # 150 % etc. A captura marca a que não for; aqui se confere também pelo arquivo.
+            Add-Type -AssemblyName System.Drawing
+            $fora = @()
+            if (Test-Path capturas\tamanho-fora-de-1366x768.txt) { $fora += Get-Content capturas\tamanho-fora-de-1366x768.txt }
+            Get-ChildItem capturas -Filter '*.png' -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne '00-setup.png' } | ForEach-Object {
+              $imagem = [System.Drawing.Image]::FromFile($_.FullName)
+              $ok = $false
+              foreach ($escala in 1, 1.25, 1.5, 1.75, 2) {
+                if ($imagem.Width -eq [Math]::Floor(1366 * $escala) -and $imagem.Height -eq [Math]::Floor(768 * $escala)) { $ok = $true }
+              }
+              if (-not $ok) { $fora += "$($_.Name): $($imagem.Width)x$($imagem.Height) px" }
+              $imagem.Dispose()
+            }
+            if ($fora.Count -gt 0) {
+              $fora | ForEach-Object { Write-Host "::error::Captura fora de 1366x768 lógicos: $_" }
+              throw 'Há captura fora de 1366x768 lógicos (a tela mínima suportada, docs/10).'
+            }
           }
           finally {
             Stop-Process -Id $servico.Id -Force -ErrorAction SilentlyContinue
