@@ -207,7 +207,8 @@ internal static class Program
     /// Delega ao <see cref="MontadorDaConfiguracao"/> (Etapa A.1 do docs/35): fábrica → evento →
     /// catraca, esta ainda vazia até a Etapa A.3. <c>EnviarDigitosVariaveis</c> vem da chave
     /// técnica <c>catraca.enviar_digitos_variaveis</c>, desligada por padrão até HIL-CARD-02
-    /// (docs/34 §2, F2). Passa também pelo "Aplicar agora".
+    /// (docs/34 §2, F2), e as chaves da Etapa A.2 (docs/34 §4.1) vêm do mesmo jeito, todas
+    /// desligadas. Passa também pelo "Aplicar agora".
     /// </remarks>
     private static DeviceConfiguration ConfiguracaoDasCatracas(ConfiguracaoDaOperacao configuracao) =>
         MontadorDaConfiguracao.Montar(PadroesDeFabrica.TopFit4, configuracao.ParaACatraca(), SobreposicoesDaCatraca.Nenhuma);
@@ -276,8 +277,16 @@ internal static class Program
 
         var configuracaoDasCatracas = ConfiguracaoDasCatracas(configuracao);
 
+        // O que é permitido mas depende de bancada (docs/34 §4.2, regras 9 e 11): fica no
+        // registro do worker, sem impedir a subida.
+        foreach (var alerta in configuracaoDasCatracas.Alertas())
+        {
+            Registrar("configuração da catraca, atenção: " + alerta);
+        }
+
         // "Aplicar agora" (fase 4b): relê o que o operador gravou. Só o que vai para a
-        // catraca muda sem reiniciar — leitor, urna, tempo e mensagem. Nuvem e espera pelo
+        // catraca muda sem reiniciar — leitor, urna, tempo, mensagem e as chaves técnicas da
+        // configuração (dígitos variáveis e as da Etapa A.2). Nuvem e espera pelo
         // giro continuam valendo a partir do próximo início do worker.
         (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas) Recarregar()
         {

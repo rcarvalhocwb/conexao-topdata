@@ -26,6 +26,11 @@ namespace Access.Application.Devices;
 /// sistema rodando, para que tudo que acontece passe por ele (sequência oficial: Etapa A.7).</item>
 /// <item>Liberação por <c>LiberarCatracaEntrada</c>, como sempre foi. A catraca instalada à
 /// esquerda escolhe a variante no comissionamento, depois de HIL-DIR-05/06 (F1, docs/34 §2).</item>
+/// <item>Campos da Etapa A.2 (docs/34 §4.1) no valor inicial do modelo: data e hora no evento
+/// ligada, tipo de lista 0, Wiegand (0, 0), formas de entrada de sempre — cada um só chega à
+/// catraca com a sua chave técnica, todas desligadas. Registro de acesso negado, cartão master,
+/// WebServer e mensagens de apresentação e off-line ficam vazios. O tipo de leitor continua 8
+/// até NOVO-HIL-QR-02 (T25).</item>
 /// </list>
 /// </remarks>
 public static class PadroesDeFabrica
@@ -70,8 +75,8 @@ public static class PadroesDeFabrica
 /// <para>
 /// Os campos são exatamente os que o evento já mudava antes da Etapa A.1: tipo de leitor,
 /// leitor 2 pela urna, tempo do relé 1 e mensagem (docs/34-anexos/02-arquiteto.md, "vêm do
-/// operador"), mais a chave de dígitos variáveis da Etapa 0.4. Campos novos entram com o
-/// modelo completo da Etapa A.2.
+/// operador"), mais a chave de dígitos variáveis da Etapa 0.4. A Etapa A.2 acrescentou só
+/// as chaves técnicas dos campos novos (docs/34 §4.1): nenhum valor novo vem do operador.
 /// </para>
 /// </remarks>
 public sealed record SobreposicoesDoEvento
@@ -99,6 +104,34 @@ public sealed record SobreposicoesDoEvento
     /// (F2, docs/34 §2).
     /// </summary>
     public bool? EnviarDigitosVariaveis { get; init; }
+
+    // Etapa A.2: o docs/34 não põe nenhum campo novo nas mãos do operador (anexo 02: só tipo
+    // de leitor, urna, tempo e mensagem "vêm do operador"). O evento só liga ou desliga, por
+    // chave técnica sem tela, o envio dos valores do padrão de fábrica — todas desligadas.
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_data_hora_no_evento</c> (EI-027), desligada até INT-CFG-07.
+    /// </summary>
+    public bool? EnviarDataHoraNoEventoOnLine { get; init; }
+
+    /// <summary>
+    /// Chave técnica <c>catraca.registrar_acesso_negado</c> (EI-021): o próprio valor, 0 a 3.
+    /// Nulo = não enviado. Vazia até INT-OFF-08.
+    /// </summary>
+    public byte? RegistrarAcessoNegado { get; init; }
+
+    /// <summary>Chave técnica <c>catraca.enviar_tipo_de_lista</c> (EI-033), desligada até INT-OFF-02.</summary>
+    public bool? EnviarTipoDeLista { get; init; }
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_wiegand_dois_leitores</c> (EI-024), desligada até HIL-CARD-05.
+    /// </summary>
+    public bool? EnviarWiegandDoisLeitores { get; init; }
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_formas_de_entrada</c> (EI-032), desligada até INT-SM-032 (T26).
+    /// </summary>
+    public bool? EnviarFormasDeEntradaOnLine { get; init; }
 }
 
 /// <summary>
@@ -173,6 +206,11 @@ public static class MontadorDaConfiguracao
             TempoDoAcionamento1 = evento.TempoDeAcionamento ?? padraoDeFabrica.TempoDoAcionamento1,
             MensagemPadrao = evento.MensagemPadrao ?? padraoDeFabrica.MensagemPadrao,
             EnviarDigitosVariaveis = evento.EnviarDigitosVariaveis ?? padraoDeFabrica.EnviarDigitosVariaveis,
+            EnviarDataHoraNoEventoOnLine = evento.EnviarDataHoraNoEventoOnLine ?? padraoDeFabrica.EnviarDataHoraNoEventoOnLine,
+            RegistrarAcessoNegado = evento.RegistrarAcessoNegado ?? padraoDeFabrica.RegistrarAcessoNegado,
+            EnviarTipoDeLista = evento.EnviarTipoDeLista ?? padraoDeFabrica.EnviarTipoDeLista,
+            EnviarWiegandDoisLeitores = evento.EnviarWiegandDoisLeitores ?? padraoDeFabrica.EnviarWiegandDoisLeitores,
+            EnviarFormasDeEntradaOnLine = evento.EnviarFormasDeEntradaOnLine ?? padraoDeFabrica.EnviarFormasDeEntradaOnLine,
         };
 
         // A camada da catraca ainda não tem campos (Etapa A.3): herda tudo do evento.
