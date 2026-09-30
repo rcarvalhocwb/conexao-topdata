@@ -444,16 +444,24 @@ public sealed class DevicePump
                     manual.Girou = true;
                 }
 
+                // Todo evento vai inteiro para quem registra, leitura ou não (ADR-0018).
                 _aoReceberEvento?.Invoke(evento);
-                Disparar(
-                    d,
-                    evento.Origin.ConfirmaPassagemFisica
-                        ? DeviceTrigger.GiroConfirmado
-                        : evento.Origin.Known is KnownEventOrigin.FimTempoAcionamento
-                            ? DeviceTrigger.TempoDeAcionamentoEsgotado
-                            : DeviceTrigger.EventoRecebido,
-                    agora);
-                return $"evento {evento.Origin}";
+
+                // Só leitura vai para a decisão. Sinal da catraca (cartão recolhido, sensor,
+                // urna cheia, tecla, origem desconhecida) sem código virava negação, com
+                // "Acesso nao autorizado" no display e o leitor rearmado (F4, docs/34 §2).
+                var gatilho = evento.Origin switch
+                {
+                    { ConfirmaPassagemFisica: true } => DeviceTrigger.GiroConfirmado,
+                    { Known: KnownEventOrigin.FimTempoAcionamento } => DeviceTrigger.TempoDeAcionamentoEsgotado,
+                    { EhLeitura: true } => DeviceTrigger.EventoRecebido,
+                    _ => DeviceTrigger.SinalDaCatraca,
+                };
+
+                Disparar(d, gatilho, agora);
+                return gatilho is DeviceTrigger.SinalDaCatraca
+                    ? $"sinal da catraca {evento.Origin} — registrado, sem decisão"
+                    : $"evento {evento.Origin}";
 
             case AdapterStatus.SemEventos:
                 d.Disjuntor.RegistrarSucesso();

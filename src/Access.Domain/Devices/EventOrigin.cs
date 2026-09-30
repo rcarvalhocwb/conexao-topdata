@@ -131,6 +131,29 @@ public readonly record struct EventOrigin
     /// </remarks>
     public bool ConfirmaPassagemFisica => Known is KnownEventOrigin.GiroConfirmado;
 
+    /// <summary>
+    /// Verdadeiro só para as origens que trazem uma leitura a decidir: teclado (1), leitor 1
+    /// (2), leitor 2 (3) e QR Code (21).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// São as linhas de <c>docs/compatibility-matrix/origens-evento.csv</c> cuja ação padrão é
+    /// "tratar como leitura de credencial" ou "credencial PIN". Todo o resto é sinal da
+    /// própria catraca — cartão recolhido (7), sensores (8–10), urna cheia (20), teclas de
+    /// função — e não pode cair na decisão: sem código, viraria negação e o display
+    /// mostraria "Acesso nao autorizado" a quem está na frente (defeito F4, docs/34 §2).
+    /// </para>
+    /// <para>
+    /// A 12 (sensor biométrico) também traz credencial, mas fica de fora de propósito:
+    /// biometria está fora deste trabalho (docs/35, PROPOSTA FUTURA). Origem desconhecida
+    /// não é leitura; o valor bruto continua preservado em <see cref="Raw"/> (ADR-0018).
+    /// </para>
+    /// </remarks>
+    public bool EhLeitura => Known is KnownEventOrigin.Teclado
+        or KnownEventOrigin.Leitor1
+        or KnownEventOrigin.Leitor2
+        or KnownEventOrigin.QrCode;
+
     public override string ToString() =>
         Known is { } k ? $"{k} ({Raw})" : $"Desconhecida ({Raw})";
 }

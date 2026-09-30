@@ -42,7 +42,7 @@ public enum DeviceTrigger
     /// <summary>Lista, horários e demais dados de contingência foram enviados.</summary>
     DadosOfflineSincronizados,
 
-    /// <summary><c>ReceberDadosOnLine</c> devolveu um evento.</summary>
+    /// <summary><c>ReceberDadosOnLine</c> devolveu uma <b>leitura</b> a decidir (origem 1, 2, 3 ou 21).</summary>
     EventoRecebido,
 
     /// <summary><c>ReceberDadosOnLine</c> devolveu "sem eventos".</summary>
@@ -101,4 +101,14 @@ public enum DeviceTrigger
 
     /// <summary>O operador pediu para refazer a conexão (ou aplicar a configuração nova).</summary>
     ReconexaoSolicitada,
+
+    /// <summary>
+    /// <c>ReceberDadosOnLine</c> devolveu um sinal da própria catraca, não uma leitura:
+    /// cartão recolhido, sensor, urna cheia, tecla, origem desconhecida.
+    /// </summary>
+    /// <remarks>
+    /// Existe para que o sinal fique na trilha de transições sem passar pela decisão
+    /// (defeito F4, docs/34 §2). O evento em si vai inteiro para quem o registra.
+    /// </remarks>
+    SinalDaCatraca,
 }

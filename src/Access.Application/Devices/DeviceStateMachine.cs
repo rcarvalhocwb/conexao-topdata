@@ -199,6 +199,10 @@ public sealed class DeviceStateMachine
         // --- Operação ---
         Add(DeviceState.Polling, DeviceTrigger.EventoRecebido, DeviceState.ValidarAcesso);
         Add(DeviceState.Polling, DeviceTrigger.SemEventos, DeviceState.Polling);
+
+        // Sinal da catraca (cartão recolhido, sensor, urna cheia, tecla) não é leitura: não
+        // decide, não mostra negação e não rearma o leitor (F4, docs/34 §2).
+        Add(DeviceState.Polling, DeviceTrigger.SinalDaCatraca, DeviceState.Polling);
         Add(DeviceState.Polling, DeviceTrigger.ErroDeComunicacao, DeviceState.Reconectar);
         Add(DeviceState.Polling, DeviceTrigger.IniciarColetaDeBilhetes, DeviceState.ColetarBilhetes);
         Add(DeviceState.Polling, DeviceTrigger.CairParaListaLocal, DeviceState.OfflineAutonomo);
