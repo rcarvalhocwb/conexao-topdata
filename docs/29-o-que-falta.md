@@ -23,6 +23,14 @@
 
 **Pronto, mas nunca exercitado:** o caminho completo da catraca (leitura → decisão → liberação → giro), o recolhimento pela urna e a liberação por sentido.
 
+**Estudo do módulo catraca (30/09):** o [docs/34](34-estudo-modulo-catraca.md) cataloga as 265
+funções da DLL, propõe o modelo completo de parametrização, o cadastro e a importação de
+cartões e o gêmeo acompanhando cada função. Ele também acha **oito defeitos no código atual**,
+quatro deles já ativos: dígitos variáveis nunca enviados, sequência oficial de conexão não
+seguida, retorno de erro tratado como "sem eventos" e mensagem enviada no meio da montagem. O
+prompt de implementação, em etapas, está no [docs/35](35-prompt-modulo-catraca.md). As decisões
+do dono (D1–D8) e as 34 perguntas para a Topdata (T1–T34) estão no docs/34 §9 e §10.
+
 ## 2. Depende de outras pessoas (bloqueia ou muda o rumo)
 
 | # | Pergunta | Quem responde | O que destrava |
@@ -69,6 +77,9 @@ Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado 
 ## 4. Desenvolvimento que dá para fazer já (sem hardware)
 
 As fases do docs/24 §3, em ordem de impacto para o evento.
+
+> Esta seção está detalhada, com modelo, testes e ordem, no [docs/34](34-estudo-modulo-catraca.md) §5
+> e no [docs/35](35-prompt-modulo-catraca.md), Etapa B.
 
 ### Fase 3 — Cartões (alta)
 - Cadastro de **tipos** (nome, ordem, cor, ativo); cada cartão atrelado a um tipo ou a uma pessoa.
