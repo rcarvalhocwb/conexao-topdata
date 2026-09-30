@@ -119,6 +119,7 @@ Os motivos são um catálogo fechado, e cada um vira uma linha do relatório fin
 | `Bloqueado` | Bloqueio da operação |
 | `ForaDaJanela` | Ingresso de outro dia, ou de outro horário |
 | `ProvedorDesabilitado` | A operação desligou aquela bilheteria |
+| `TipoInativo` | A operação desativou o tipo de entrada do ingresso (docs/26 §1). Categoria sem tipo cadastrado continua valendo. A regra está no mesmo `UPDATE` do consumo (docs/35, Etapa B.2) |
 
 **Toda tentativa vira linha, inclusive a negada.** Sem isso não existe prestação de
 contas: sabe-se quem entrou e nunca quem tentou — e é justamente quem tentou que explica a

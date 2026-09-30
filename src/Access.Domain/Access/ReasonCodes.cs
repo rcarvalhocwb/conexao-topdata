@@ -50,6 +50,9 @@ public static class ReasonCodes
     public static readonly ReasonCode ForaDaUrna = new("FORA_DA_URNA");
     public static readonly ReasonCode VendaAnteriorNaoUsada = new("VENDA_ANTERIOR_NAO_USADA");
 
+    /// <summary>O tipo de entrada do ingresso está desativado (docs/26 §1; docs/35 B.2).</summary>
+    public static readonly ReasonCode TipoInativo = new("TIPO_INATIVO");
+
     // --- Operação ---
     public static readonly ReasonCode LiberacaoManual = new("LIBERACAO_MANUAL");
     public static readonly ReasonCode TempoDeDecisaoEsgotado = new("TEMPO_DE_DECISAO_ESGOTADO");

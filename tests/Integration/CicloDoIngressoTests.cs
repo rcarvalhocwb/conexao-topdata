@@ -1,4 +1,6 @@
 using System.Net;
+using Access.Application.Ingressos;
+using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 using Access.Infrastructure.SQLite;
 using Sync.Connectors.Rest;
@@ -183,5 +185,185 @@ public sealed class CicloDoIngressoTests
         var cursoresNovos = new CursoresSqlite(new SqliteConnectionFactory(banco.Caminho));
 
         Assert.Equal("venda-500", cursoresNovos.Ler(Provedor, LacoDeIngestao.FluxoIncremental));
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Etapa B.2 do docs/35: tipo de entrada desativado nega, dentro do único UPDATE do
+    // consumo; categoria sem tipo cadastrado continua valendo.
+    // ------------------------------------------------------------------------------------
+
+    private static IngressoRecebido IngressoDoTipo(string referencia, string? categoria, int usos = 1) =>
+        new(Provedor, referencia, $"ZET-{referencia}", $"ZET-{referencia}", Setor: "pista",
+            UsosMaximos: usos, Categoria: categoria);
+
+    private static RepositorioDeIngressos PrepararComTipos(BancoTemporario banco, params IngressoRecebido[] ingressos)
+    {
+        banco.Migrar();
+        var repositorio = new RepositorioDeIngressos(banco.Fabrica);
+        repositorio.RegistrarProvedor(new ProvedorDeIngresso(Provedor, "Zet", "qr-maiusculo", "zet-rest"), Abertura);
+        repositorio.Ingerir(ingressos, Abertura);
+        return repositorio;
+    }
+
+    private static void GravarTipo(BancoTemporario banco, string codigo, bool ativo)
+    {
+        using var conexao = banco.Fabrica.Abrir();
+        using var comando = conexao.CreateCommand();
+        comando.CommandText =
+            """
+            INSERT INTO ticket_type (code, display_name, sort_order, active, created_at)
+            VALUES ($codigo, $codigo, 1, $ativo, $em)
+            ON CONFLICT (code) DO UPDATE SET active = excluded.active;
+            """;
+        comando.Parameters.AddWithValue("$codigo", codigo);
+        comando.Parameters.AddWithValue("$ativo", ativo ? 1 : 0);
+        comando.Parameters.AddWithValue("$em", Abertura.ToString("O"));
+        comando.ExecuteNonQuery();
+    }
+
+    private static void GravarApelido(BancoTemporario banco, string apelido, string tipo)
+    {
+        using var conexao = banco.Fabrica.Abrir();
+        using var comando = conexao.CreateCommand();
+        comando.CommandText =
+            "INSERT INTO ticket_type_alias (provider_id, alias, type_code, created_at) VALUES ($p, $a, $t, $em);";
+        comando.Parameters.AddWithValue("$p", Provedor);
+        comando.Parameters.AddWithValue("$a", apelido);
+        comando.Parameters.AddWithValue("$t", tipo);
+        comando.Parameters.AddWithValue("$em", Abertura.ToString("O"));
+        comando.ExecuteNonQuery();
+    }
+
+    private static long UsosFeitos(BancoTemporario banco, string qr)
+    {
+        using var conexao = banco.Fabrica.Abrir();
+        using var comando = conexao.CreateCommand();
+        comando.CommandText = "SELECT used_count FROM ticket WHERE qr_normalized = $qr;";
+        comando.Parameters.AddWithValue("$qr", qr);
+        return (long)comando.ExecuteScalar()!;
+    }
+
+    [Fact]
+    public void Tipo_inativo_nega_com_TipoInativo_e_nao_consome()
+    {
+        using var banco = new BancoTemporario();
+        var repositorio = PrepararComTipos(banco, IngressoDoTipo("M1", "MEIA"));
+        GravarTipo(banco, "MEIA", ativo: false);
+
+        var (uso, _) = repositorio.TentarUsar("ZET-M1", "portao-1", "catraca-01", Abertura.AddHours(1));
+
+        Assert.False(uso.Liberou);
+        Assert.Equal(MotivoDoUso.TipoInativo, uso.Motivo);
+        Assert.Equal("MEIA", uso.Categoria);
+        Assert.Equal(0, UsosFeitos(banco, "ZET-M1"));
+
+        // Pela decisão da catraca, o motivo vira o código próprio do catálogo.
+        var decisao = new DecisorDeIngresso(repositorio).Decidir(DeviceEvent.Create(
+            new DeviceEventKey("catraca-01", "boot", 1),
+            EventOrigin.From(KnownEventOrigin.Leitor1),
+            Abertura.AddHours(1),
+            "corr",
+            rawCardData: "ZET-M1"));
+        Assert.False(decisao.ShouldRelease);
+        Assert.Equal("TIPO_INATIVO", decisao.Reason.Value);
+
+        // A negativa entra na prestação de contas com o motivo próprio.
+        Assert.Equal(2, repositorio.Conciliar(Provedor, Abertura.AddHours(12)).TentativasNegadas[MotivoDoUso.TipoInativo]);
+
+        // Reativar o tipo devolve o ingresso: quem negou foi o tipo, e nada mais.
+        GravarTipo(banco, "MEIA", ativo: true);
+        Assert.True(repositorio.TentarUsar("ZET-M1", "portao-1", "catraca-01", Abertura.AddHours(1)).Resultado.Liberou);
+    }
+
+    [Fact]
+    public void Tipo_inativo_nega_tambem_pelo_apelido_do_provedor()
+    {
+        // A Zet manda "Meia Entrada"; o operador mapeou essa grafia para MEIA.
+        using var banco = new BancoTemporario();
+        var repositorio = PrepararComTipos(banco, IngressoDoTipo("M2", "Meia Entrada"));
+        GravarTipo(banco, "MEIA", ativo: false);
+        GravarApelido(banco, "Meia Entrada", "MEIA");
+
+        var (uso, _) = repositorio.TentarUsar("ZET-M2", "portao-1", "catraca-01", Abertura.AddHours(1));
+
+        Assert.Equal(MotivoDoUso.TipoInativo, uso.Motivo);
+        Assert.Equal(0, UsosFeitos(banco, "ZET-M2"));
+    }
+
+    [Fact]
+    public void Categoria_sem_tipo_cadastrado_continua_valendo()
+    {
+        using var banco = new BancoTemporario();
+        var repositorio = PrepararComTipos(
+            banco,
+            IngressoDoTipo("S1", "SOCIAL"),        // nenhum tipo SOCIAL cadastrado
+            IngressoDoTipo("S2", null),            // sem categoria
+            IngressoDoTipo("S3", "meia"),          // caixa diferente: não é o tipo MEIA
+            IngressoDoTipo("S4", "INTEIRA"));      // tipo cadastrado e ativo
+
+        // Existem tipos, e um deles está desativado: nada disso alcança quem não é dele.
+        GravarTipo(banco, "MEIA", ativo: false);
+        GravarTipo(banco, "INTEIRA", ativo: true);
+
+        foreach (var referencia in new[] { "S1", "S2", "S3", "S4" })
+        {
+            var (uso, _) = repositorio.TentarUsar($"ZET-{referencia}", "portao-1", "catraca-01", Abertura.AddHours(1));
+            Assert.True(uso.Liberou, $"{referencia} deveria valer: {uso.Motivo}");
+        }
+    }
+
+    [Fact]
+    public void Corrida_de_catracas_com_ingresso_de_tipo_ativo_ainda_tem_um_vencedor()
+    {
+        using var banco = new BancoTemporario();
+        var repositorio = PrepararComTipos(banco, IngressoDoTipo("D1", "MEIA"));
+        GravarTipo(banco, "MEIA", ativo: true);
+
+        const int catracas = 8;
+        var resultados = new ResultadoDoUso[catracas];
+        using var largada = new Barrier(catracas);
+
+        Parallel.For(0, catracas, i =>
+        {
+            largada.SignalAndWait();
+            resultados[i] = repositorio.TentarUsar("ZET-D1", $"portao-{i}", $"catraca-{i:00}", Abertura.AddHours(1)).Resultado;
+        });
+
+        Assert.Single(resultados, r => r.Liberou);
+        Assert.Equal(catracas - 1, resultados.Count(r => r.Motivo == MotivoDoUso.UsosEsgotados));
+        Assert.Equal(1, UsosFeitos(banco, "ZET-D1"));
+    }
+
+    [Fact]
+    public async Task Desativar_o_tipo_no_meio_da_corrida_nunca_consome_sem_liberar()
+    {
+        // Um ingresso de vários usos, oito catracas e o tipo sendo desativado ao mesmo tempo.
+        // Seja qual for a ordem, a conta fecha: cada uso gravado é uma liberação, cada
+        // negativa é "tipo inativo", e depois da desativação ninguém mais entra.
+        using var banco = new BancoTemporario();
+        var repositorio = PrepararComTipos(banco, IngressoDoTipo("V1", "MEIA", usos: 100));
+        GravarTipo(banco, "MEIA", ativo: true);
+
+        const int catracas = 8;
+        var resultados = new ResultadoDoUso[catracas];
+        using var largada = new Barrier(catracas + 1);
+
+        var desativar = Task.Run(() =>
+        {
+            largada.SignalAndWait();
+            GravarTipo(banco, "MEIA", ativo: false);
+        });
+
+        Parallel.For(0, catracas, i =>
+        {
+            largada.SignalAndWait();
+            resultados[i] = repositorio.TentarUsar("ZET-V1", $"portao-{i}", $"catraca-{i:00}", Abertura.AddHours(1)).Resultado;
+        });
+        await desativar;
+
+        Assert.All(resultados, r => Assert.True(r.Liberou || r.Motivo == MotivoDoUso.TipoInativo, r.Motivo.ToString()));
+        Assert.Equal(resultados.Count(r => r.Liberou), UsosFeitos(banco, "ZET-V1"));
+        Assert.Equal(MotivoDoUso.TipoInativo,
+            repositorio.TentarUsar("ZET-V1", "portao-1", "catraca-01", Abertura.AddHours(1)).Resultado.Motivo);
     }
 }
