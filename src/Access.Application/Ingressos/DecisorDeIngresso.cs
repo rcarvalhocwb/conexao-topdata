@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Access.Domain.Access;
+using Access.Domain.Credentials;
 using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 
@@ -67,6 +68,7 @@ public sealed class DecisorDeIngresso
     private readonly IValidadorDeIngressos _validador;
     private readonly Func<string, string> _portaoDoEquipamento;
     private readonly TimeProvider _relogio;
+    private readonly CredentialNormalization _perfilDaLeitura;
     private readonly Dictionary<string, Guid> _pendentes = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -77,15 +79,22 @@ public sealed class DecisorDeIngresso
     /// — suficiente para bancada, insuficiente para relatório por portão.
     /// </param>
     /// <param name="relogio">Relógio.</param>
+    /// <param name="perfilDaLeitura">
+    /// Perfil aplicado ao código lido. Nulo é <see cref="PerfisDeLeitura.DaLeitura"/>
+    /// (<c>raw</c>), o que a operação usa hoje. Outro perfil só entra com a parametrização
+    /// por catraca (docs/35, Etapa A), depois da bancada (docs/21, passo 3, linhas 8 a 12).
+    /// </param>
     public DecisorDeIngresso(
         IValidadorDeIngressos validador,
         Func<string, string>? portaoDoEquipamento = null,
-        TimeProvider? relogio = null)
+        TimeProvider? relogio = null,
+        CredentialNormalization? perfilDaLeitura = null)
     {
         ArgumentNullException.ThrowIfNull(validador);
         _validador = validador;
         _portaoDoEquipamento = portaoDoEquipamento ?? (d => d);
         _relogio = relogio ?? TimeProvider.System;
+        _perfilDaLeitura = perfilDaLeitura ?? PerfisDeLeitura.DaLeitura;
     }
 
     /// <summary>Giros confirmados desde a criação. Para o painel da bancada.</summary>
@@ -100,7 +109,9 @@ public sealed class DecisorDeIngresso
         ArgumentNullException.ThrowIfNull(evento);
 
         var inicio = Stopwatch.GetTimestamp();
-        var credencial = evento.RawCardData?.Trim();
+        // A mesma função que normaliza o cadastro (docs/34 §2, F8). Com o perfil raw de
+        // hoje, é o Trim de sempre.
+        var credencial = PerfisDeLeitura.Normalizar(evento.RawCardData, _perfilDaLeitura);
 
         if (string.IsNullOrEmpty(credencial))
         {

@@ -66,7 +66,7 @@ public static class ArquivoDeBancada
         var ingressos = new List<IngressoRecebido>();
         foreach (var i in arquivo.Ingressos)
         {
-            var qr = PerfisDeLeitura.QrCatraca4.Apply(i.Qr);
+            var qr = PerfisDeLeitura.Normalizar(i.Qr, PerfisDeLeitura.QrCatraca4) ?? string.Empty;
             if (!PerfisDeLeitura.QrCatraca4.IsLengthAccepted(qr))
             {
                 problemas.Add($"ingresso {i.Referencia}: QR com {qr.Length} caracteres — a catraca lê de 4 a 16.");
@@ -90,7 +90,7 @@ public static class ArquivoDeBancada
         var cartoes = 0;
         foreach (var c in arquivo.Cartoes)
         {
-            var codigo = PerfisDeLeitura.MifareCatraca4.Apply(c.Codigo);
+            var codigo = PerfisDeLeitura.Normalizar(c.Codigo, PerfisDeLeitura.MifareCatraca4) ?? string.Empty;
             if (!PerfisDeLeitura.MifareCatraca4.IsLengthAccepted(codigo))
             {
                 problemas.Add($"cartão {c.Codigo}: não tem 10 dígitos depois de completar os zeros — a catraca entrega 10.");

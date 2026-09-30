@@ -164,8 +164,11 @@ public sealed class FonteDeCartoesDoPainel : IFonteDeIngressos
                 {
                     if (TentarLerNumero(removido, $"removed_cards[{r}]", r, out var bruto, out var normalizado))
                     {
+                        // A referência é o código normalizado, igual à do cartão que ele
+                        // cancela: com o bruto, um perfil que completa zeros não acharia a
+                        // linha e o cancelamento viraria colisão.
                         itens.Add(new IngressoRecebido(
-                            Provedor, bruto, bruto, normalizado, UsosMaximos: 1, Cancelado: true));
+                            Provedor, normalizado, bruto, normalizado, UsosMaximos: 1, Cancelado: true));
                     }
 
                     r++;
@@ -231,7 +234,11 @@ public sealed class FonteDeCartoesDoPainel : IFonteDeIngressos
 
         ingresso = new IngressoRecebido(
             ProvedorId: Provedor,
-            ReferenciaExterna: bruto,
+            // O código normalizado, como a venda de balcão já grava: o cartão físico é
+            // um só, e a chave dele na base (provedor + referência) não pode depender da
+            // grafia com que o painel o mandou. Reenvio do mesmo cartão continua sendo
+            // atualização, com qualquer perfil (docs/34 §2, F8).
+            ReferenciaExterna: normalizado,
             QrBruto: bruto,
             QrNormalizado: normalizado,
             ValidoDe: de,
@@ -262,7 +269,7 @@ public sealed class FonteDeCartoesDoPainel : IFonteDeIngressos
         }
 
         bruto = valor.GetString()!.Trim();
-        normalizado = _normalizacao.Apply(bruto);
+        normalizado = PerfisDeLeitura.Normalizar(bruto, _normalizacao)!;
 
         if (!_normalizacao.IsLengthAccepted(normalizado))
         {

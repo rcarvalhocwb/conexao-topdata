@@ -1,5 +1,6 @@
 using Access.Application.Ingressos;
 using Access.Domain.Access;
+using Access.Domain.Credentials;
 using Access.Domain.Devices;
 using Access.Domain.Ticketing;
 
@@ -105,6 +106,48 @@ public sealed class DecisorDeIngressoTests
 
         Assert.Equal([3, 21, 11], validador.Origens);
         Assert.Equal([KnownEventOrigin.Leitor2, null, null], validador.Tentativas.Select(t => t.Leitor));
+    }
+
+    /// <summary>
+    /// Leitura e cadastro passam pela mesma normalização (docs/34 §2, F8): com cada perfil,
+    /// o texto que chega à base é o mesmo que o cadastro gravou, quando a leitura vem no
+    /// formato que o perfil espera. Números fictícios.
+    /// </summary>
+    [Theory]
+    [InlineData("raw", "9999000101", "9999000101")]
+    [InlineData("raw", "0000000101", " 0000000101 ")]
+    [InlineData("qr-catraca4", "00AB12cd", "00AB12cd")]
+    [InlineData("qr-catraca4", "1234", "1234 ")]
+    [InlineData("mifare-catraca4", "99994567", "0099994567")]
+    [InlineData("mifare-catraca4", "0099994567", "99994567")]
+    [InlineData("mifare-catraca4", "0000000101", "0000000101")]
+    public void Leitura_e_cadastro_do_mesmo_cartao_casam_com_cada_perfil(string nome, string cadastrado, string lido)
+    {
+        var perfil = PerfisDeLeitura.Todos[nome];
+        var cadastro = PerfisDeLeitura.Normalizar(cadastrado, perfil);
+        var validador = new ValidadorFalso();
+
+        new DecisorDeIngresso(validador, perfilDaLeitura: perfil).Decidir(Evento(KnownEventOrigin.Leitor2, lido));
+
+        Assert.Equal(cadastro, validador.Tentativas[0].Qr);
+    }
+
+    /// <summary>
+    /// Sem perfil informado, a leitura é a de sempre (só tira espaços): nada muda na
+    /// operação até a parametrização por catraca. Um cartão cadastrado com o perfil de 10
+    /// dígitos casa com a catraca que entrega os 10 dígitos — o formato que o perfil espera.
+    /// </summary>
+    [Fact]
+    public void Sem_perfil_informado_a_leitura_e_comparada_como_sempre_foi()
+    {
+        var validador = new ValidadorFalso();
+        var decisor = new DecisorDeIngresso(validador);
+
+        decisor.Decidir(Evento(KnownEventOrigin.Leitor1, " 0000000101 "));
+        decisor.Decidir(Evento(KnownEventOrigin.Leitor2, "0099994567"));
+
+        Assert.Equal("0000000101", validador.Tentativas[0].Qr);
+        Assert.Equal(PerfisDeLeitura.Normalizar("99994567", PerfisDeLeitura.MifareCatraca4), validador.Tentativas[1].Qr);
     }
 
     [Fact]

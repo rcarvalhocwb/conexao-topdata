@@ -38,14 +38,11 @@ public sealed record ConfiguracaoDaNuvem(
     int IntervaloSegundos = 30,
     string CabecalhoDoSegredo = "Authorization")
 {
-    /// <summary>Perfis que podem ser escolhidos pelo nome.</summary>
-    public static readonly IReadOnlyDictionary<string, CredentialNormalization> Perfis =
-        new Dictionary<string, CredentialNormalization>(StringComparer.Ordinal)
-        {
-            [CredentialNormalization.Raw.Name] = CredentialNormalization.Raw,
-            [PerfisDeLeitura.MifareCatraca4.Name] = PerfisDeLeitura.MifareCatraca4,
-            [PerfisDeLeitura.QrCatraca4.Name] = PerfisDeLeitura.QrCatraca4,
-        };
+    /// <summary>
+    /// Perfis que podem ser escolhidos pelo nome: os mesmos do domínio, para que a
+    /// sincronização, a consulta e a leitura conheçam exatamente a mesma lista.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, CredentialNormalization> Perfis = PerfisDeLeitura.Todos;
 
     public IReadOnlyList<string> Validar()
     {

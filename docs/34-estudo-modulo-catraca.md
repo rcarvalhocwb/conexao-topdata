@@ -87,7 +87,7 @@
 | F5 | **Bilhete coletado é descartado** (sai da memória da catraca e ninguém grava) | `DevicePump.cs:475-495` | dormente (coleta nunca disparada) | ao ligar a coleta | Etapa A.9 (gravar antes do próximo, R-68) |
 | F6 | **Retorno ≠ 0 vira "sem eventos"**, inclusive o 8 (falha de dependência) | `TopdataInnerAdapter.cs:216` | **ativo** (queda fica invisível até o watchdog) | já | Etapa 0.6 |
 | F7 | **Mensagem padrão enviada no meio da montagem** (viola ADR-0006) e buffer sujo se um passo falhar | `TopdataInnerAdapter.cs:155-183` | **ativo** | já | Etapa 0.5 |
-| F8 | **Normalização assimétrica** e `external_ref` bruto na sincronização | `DecisorDeIngresso.cs:88`; `FonteDeCartoesDoPainel.cs:234` | dormente (perfil `raw`) | ao escolher perfil pela bancada | Etapa 0.7 |
+| F8 | **Normalização assimétrica** e `external_ref` bruto na sincronização | `DecisorDeIngresso.cs:88`; `FonteDeCartoesDoPainel.cs:234` | dormente (perfil `raw`) | ao escolher perfil pela bancada | **corrigido na Etapa 0** (0.7): `PerfisDeLeitura.Normalizar` é a função única da leitura, cadastro, sincronização e consulta; a leitura segue `raw` até o perfil por catraca (Etapa A); a sincronização grava `external_ref` normalizado e adota a referência bruta antiga sem colidir |
 
 Menores, mas registrados:
 - **~30 campos do buffer vão com o padrão da DLL** (ADR-0020). Resolvido no modelo completo da

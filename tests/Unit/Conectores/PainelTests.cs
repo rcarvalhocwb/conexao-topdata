@@ -67,6 +67,28 @@ public sealed class PainelTests
     }
 
     /// <summary>
+    /// A referência externa do cartão é o código normalizado, como na venda de balcão, e a
+    /// do cancelamento também — para achar a mesma linha (docs/34 §2, F8).
+    /// </summary>
+    [Fact]
+    public async Task A_referencia_do_cartao_e_do_cancelamento_e_o_codigo_normalizado()
+    {
+        const string corpo = """
+            {"success":true,"cards":[{"card_number":"99994567","active":true}],
+             "removed_cards":["99994568"],"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}
+            """;
+        var (fonte, _) = Fonte(new Servidor(HttpStatusCode.OK, corpo));
+
+        var itens = (await fonte.LerAsync(null, CancellationToken.None)).Itens;
+
+        var cartao = itens.Single(i => !i.Cancelado);
+        Assert.Equal(("99994567", "0099994567", "0099994567"), (cartao.QrBruto, cartao.QrNormalizado, cartao.ReferenciaExterna));
+
+        var removido = itens.Single(i => i.Cancelado);
+        Assert.Equal(("99994568", "0099994568", "0099994568"), (removido.QrBruto, removido.QrNormalizado, removido.ReferenciaExterna));
+    }
+
+    /// <summary>
     /// Os formatos do cadastro real (backup de 29/09, docs/22 §9): 12 dígitos (inteira e meia),
     /// 14 (social, 156 deles começando com zero) e 11. Números fictícios aqui.
     /// Com o perfil "raw", o padrão do serviço, todos passam intactos. Com o perfil Mifare

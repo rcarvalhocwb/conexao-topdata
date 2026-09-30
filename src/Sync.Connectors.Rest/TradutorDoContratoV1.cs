@@ -136,7 +136,7 @@ public sealed class TradutorDoContratoV1 : ITradutorDeIngresso
                 $"ingressos[{posicao}].situacao = '{situacao}' não é reconhecido; use 'valido' ou 'cancelado'."),
         };
 
-        var normalizado = _normalizacao.Apply(qr);
+        var normalizado = PerfisDeLeitura.Normalizar(qr, _normalizacao)!;
 
         if (!_normalizacao.IsLengthAccepted(normalizado))
         {

@@ -214,6 +214,14 @@ public sealed class ConsultasDaOperacao
     /// O que se sabe de um código digitado pelo operador. Procura como foi cadastrado e
     /// como a catraca o leria; nulo se não existe.
     /// </summary>
+    /// <remarks>
+    /// O código digitado passa pela mesma normalização do cadastro
+    /// (<see cref="PerfisDeLeitura.Normalizar"/>), com o perfil de cada provedor: o
+    /// operador que digita <c>99994567</c> acha o cartão que um perfil de 10 dígitos
+    /// guardou como <c>0099994567</c> (docs/34 §2, F8). Com os perfis que só tiram espaços
+    /// (<c>raw</c> e <c>qr-catraca4</c>) a consulta é exatamente a de antes. Zeros à
+    /// esquerda nunca são removidos, então a consulta não acha grafias "parecidas".
+    /// </remarks>
     public SituacaoDoCodigo? ConsultarCodigo(string codigo)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(codigo);
@@ -226,11 +234,21 @@ public sealed class ConsultasDaOperacao
 
         using (var comando = conexao.CreateCommand())
         {
+            var onde = new StringBuilder("t.qr_normalized = $codigo OR t.qr_raw = $codigo");
+            var i = 0;
+            foreach (var (perfil, grafia) in GrafiasPorPerfil(conexao, procurado))
+            {
+                onde.Append(CultureInfo.InvariantCulture, $" OR (p.normalization_profile = $perfil{i} AND t.qr_normalized = $grafia{i})");
+                comando.Parameters.AddWithValue($"$perfil{i}", perfil);
+                comando.Parameters.AddWithValue($"$grafia{i}", grafia);
+                i++;
+            }
+
             comando.CommandText =
-                """
+                $"""
                 SELECT t.qr_normalized, p.name, t.category, t.status, t.used_count, t.max_uses, t.last_used_at
                 FROM ticket t JOIN ticket_provider p ON p.id = t.provider_id
-                WHERE t.qr_normalized = $codigo OR t.qr_raw = $codigo
+                WHERE {onde}
                 LIMIT 1;
                 """;
             comando.Parameters.AddWithValue("$codigo", procurado);
@@ -297,6 +315,32 @@ public sealed class ConsultasDaOperacao
         }
 
         return lista;
+    }
+
+    /// <summary>
+    /// Como cada perfil em uso pelos provedores grafaria o código, quando a grafia difere
+    /// do texto digitado. Perfil com nome desconhecido fica de fora: sem saber a regra, não
+    /// há grafia a procurar além do próprio texto.
+    /// </summary>
+    private static List<(string Perfil, string Grafia)> GrafiasPorPerfil(SqliteConnection conexao, string procurado)
+    {
+        using var comando = conexao.CreateCommand();
+        comando.CommandText = "SELECT DISTINCT normalization_profile FROM ticket_provider ORDER BY 1;";
+
+        var grafias = new List<(string, string)>();
+        using var leitor = comando.ExecuteReader();
+        while (leitor.Read())
+        {
+            var nome = leitor.GetString(0);
+            if (PerfisDeLeitura.Todos.TryGetValue(nome, out var perfil)
+                && PerfisDeLeitura.Normalizar(procurado, perfil) is { } grafia
+                && !string.Equals(grafia, procurado, StringComparison.Ordinal))
+            {
+                grafias.Add((nome, grafia));
+            }
+        }
+
+        return grafias;
     }
 
     private static List<LinhaDeContagem> Linhas(SqliteConnection conexao, string sql, (string, object)[] parametros)

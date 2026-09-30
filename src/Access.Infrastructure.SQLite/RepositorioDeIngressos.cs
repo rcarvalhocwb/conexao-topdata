@@ -279,6 +279,11 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
 
             var dono = DonoDoQr(conexao, transacao, item.QrNormalizado);
 
+            if (dono is { } antigo && AdotarReferenciaNormalizada(conexao, transacao, item, antigo))
+            {
+                dono = (antigo.Provedor, item.ReferenciaExterna);
+            }
+
             if (dono is { } d && (d.Provedor != item.ProvedorId || d.Referencia != item.ReferenciaExterna))
             {
                 colisoes.Add(new ColisaoDeQr(
@@ -894,6 +899,55 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
 
         using var leitor = comando.ExecuteReader();
         return leitor.Read() ? (leitor.GetString(0), leitor.GetString(1)) : null;
+    }
+
+    /// <summary>
+    /// Troca a referência de um cartão gravado com a grafia bruta pela normalizada, quando
+    /// o mesmo cartão chega de novo já com a referência normalizada.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Até a Etapa 0.7 (docs/35), a sincronização com o painel gravava a referência
+    /// externa do cartão <b>como veio</b>, e a venda de balcão, normalizada. Agora as duas
+    /// gravam normalizada. Com o perfil <c>raw</c> as duas grafias são iguais e nada aqui
+    /// acontece. Com um perfil que completa zeros, uma base sincronizada antes veria o
+    /// reenvio do mesmo cartão como colisão — e o cancelamento vindo do painel deixaria de
+    /// valer, com o cartão continuando a passar.
+    /// </para>
+    /// <para>
+    /// Só adota quando não há dúvida de que é o mesmo cartão: mesmo provedor, mesmo código
+    /// normalizado (a chave global), a referência gravada é exatamente o bruto que chegou,
+    /// e a nova referência é o próprio código normalizado. E só se a nova referência ainda
+    /// não existir, para nunca juntar duas linhas.
+    /// </para>
+    /// </remarks>
+    private static bool AdotarReferenciaNormalizada(
+        SqliteConnection conexao,
+        SqliteTransaction transacao,
+        IngressoRecebido item,
+        (string Provedor, string Referencia) dono)
+    {
+        if (!string.Equals(dono.Provedor, item.ProvedorId, StringComparison.Ordinal)
+            || string.Equals(dono.Referencia, item.ReferenciaExterna, StringComparison.Ordinal)
+            || !string.Equals(dono.Referencia, item.QrBruto, StringComparison.Ordinal)
+            || !string.Equals(item.ReferenciaExterna, item.QrNormalizado, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
+        comando.CommandText =
+            """
+            UPDATE ticket SET external_ref = $nova
+            WHERE provider_id = $provedor AND external_ref = $antiga AND qr_normalized = $qr
+              AND NOT EXISTS (SELECT 1 FROM ticket WHERE provider_id = $provedor AND external_ref = $nova);
+            """;
+        comando.Parameters.AddWithValue("$nova", item.ReferenciaExterna);
+        comando.Parameters.AddWithValue("$provedor", item.ProvedorId);
+        comando.Parameters.AddWithValue("$antiga", dono.Referencia);
+        comando.Parameters.AddWithValue("$qr", item.QrNormalizado);
+        return comando.ExecuteNonQuery() == 1;
     }
 
     private static bool Gravar(
