@@ -30,6 +30,9 @@ quatro deles já ativos: dígitos variáveis nunca enviados, sequência oficial 
 seguida, retorno de erro tratado como "sem eventos" e mensagem enviada no meio da montagem. O
 prompt de implementação, em etapas, está no [docs/35](35-prompt-modulo-catraca.md). As decisões
 do dono (D1–D8) e as 34 perguntas para a Topdata (T1–T34) estão no docs/34 §9 e §10.
+A situação de cada etapa fica no docs/34 §11: a Etapa 0 está concluída no código, e da Etapa A
+a A.1 (montador único da configuração da catraca, com o teste da ADR-0020 item 3) também; a
+parametrização por catraca começa na A.3.
 
 ## 2. Depende de outras pessoas (bloqueia ou muda o rumo)
 
