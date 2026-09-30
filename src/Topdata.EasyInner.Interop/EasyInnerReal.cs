@@ -49,6 +49,11 @@ public sealed class EasyInnerReal : IEasyInnerNative
     public byte DefinirQuantidadeDigitosCartao(byte quantidade) =>
         EasyInnerNative.DefinirQuantidadeDigitosCartao(quantidade);
 
+    // A declaração mora no arquivo gerado do SDK (EasyInnerGerada.cs), que não se edita à
+    // mão; declará-la de novo aqui duplicaria o símbolo.
+    public byte InserirQuantidadeDigitoVariavel(byte digito) =>
+        EasyInnerGerada.InserirQuantidadeDigitoVariavel(digito);
+
     public byte ConfigurarTipoLeitor(byte tipo) => EasyInnerNative.ConfigurarTipoLeitor(tipo);
 
     public byte ConfigurarLeitor1(byte operacao) => EasyInnerNative.ConfigurarLeitor1(operacao);

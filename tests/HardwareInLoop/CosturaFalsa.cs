@@ -70,6 +70,15 @@ internal sealed class CosturaFalsa : IEasyInnerNative
 
     public byte DefinirQuantidadeDigitosCartao(byte quantidade) => Registrar(nameof(DefinirQuantidadeDigitosCartao));
 
+    /// <summary>Tamanhos recebidos por InserirQuantidadeDigitoVariavel, na ordem.</summary>
+    public List<byte> DigitosVariaveis { get; } = [];
+
+    public byte InserirQuantidadeDigitoVariavel(byte digito)
+    {
+        DigitosVariaveis.Add(digito);
+        return Registrar(nameof(InserirQuantidadeDigitoVariavel));
+    }
+
     public byte ConfigurarTipoLeitor(byte tipo) => Registrar(nameof(ConfigurarTipoLeitor));
 
     public byte ConfigurarLeitor1(byte operacao) => Registrar(nameof(ConfigurarLeitor1));

@@ -87,4 +87,39 @@ public sealed class EventOriginTests
         Assert.Contains("Desconhecida", EventOrigin.FromRaw(14).ToString(), StringComparison.Ordinal);
         Assert.Contains("14", EventOrigin.FromRaw(14).ToString(), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Só teclado, leitor 1, leitor 2 e QR Code trazem leitura a decidir (F4, docs/34 §2).
+    /// </summary>
+    [Fact]
+    public void Somente_as_origens_1_2_3_e_21_sao_leitura()
+    {
+        int[] leituras = [1, 2, 3, 21];
+
+        foreach (var raw in Enumerable.Range(-1, 260))
+        {
+            Assert.True(
+                EventOrigin.FromRaw(raw).EhLeitura == leituras.Contains(raw),
+                $"origem {raw}: leitura esperada = {leituras.Contains(raw)}");
+        }
+    }
+
+    /// <summary>
+    /// Sinal da catraca e origem desconhecida não são leitura, e o valor bruto sobrevive
+    /// (ADR-0018).
+    /// </summary>
+    [Theory]
+    [InlineData(7)]  // cartão recolhido pela urna
+    [InlineData(8)]  // sensor 1
+    [InlineData(10)] // sensor 3
+    [InlineData(20)] // urna cheia
+    [InlineData(65)] // tecla de função
+    [InlineData(14)] // desconhecida
+    public void Sinal_da_catraca_nao_e_leitura_e_preserva_o_bruto(int raw)
+    {
+        var origem = EventOrigin.FromRaw(raw);
+
+        Assert.False(origem.EhLeitura);
+        Assert.Equal(raw, origem.Raw);
+    }
 }

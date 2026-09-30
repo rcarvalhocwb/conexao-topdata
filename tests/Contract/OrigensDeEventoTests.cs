@@ -122,4 +122,28 @@ public sealed class OrigensDeEventoTests
             semSelo.Count == 0,
             $"Linhas sem selo de procedência ou sem fonte: {string.Join(", ", semSelo)}");
     }
+
+    /// <summary>
+    /// Código e matriz concordam sobre o que é leitura a decidir: as linhas cuja ação padrão
+    /// é "tratar como leitura de credencial" ou "tratar como credencial PIN".
+    /// </summary>
+    /// <remarks>
+    /// A origem 12 ("credencial biométrica") fica fora de propósito: biometria está fora do
+    /// escopo (docs/35). Tudo o mais é sinal da catraca e não vai para a decisão (F4, docs/34 §2).
+    /// </remarks>
+    [Fact]
+    public void Matriz_e_dominio_concordam_sobre_o_que_e_leitura()
+    {
+        string[] acoesDeLeitura = ["tratar como leitura de credencial", "tratar como credencial PIN"];
+
+        foreach (var linha in Linhas)
+        {
+            var valor = RepositorioDeMatriz.ParaInteiro(linha["valor"]);
+            var matrizDizLeitura = acoesDeLeitura.Contains(linha["acao_padrao"], StringComparer.Ordinal);
+
+            Assert.True(
+                matrizDizLeitura == EventOrigin.FromRaw(valor).EhLeitura,
+                $"origem {valor}: a matriz diz leitura = {matrizDizLeitura}");
+        }
+    }
 }

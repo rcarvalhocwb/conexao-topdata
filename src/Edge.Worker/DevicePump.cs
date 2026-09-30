@@ -83,6 +83,16 @@ public sealed class DeviceSlot
     /// <summary>Quando este equipamento pode ser tentado de novo.</summary>
     public DateTimeOffset? EsperarAte { get; internal set; }
 
+    /// <summary>
+    /// Quantas vezes a espera por evento voltou com erro (retorno nativo ≠ 0 que não é
+    /// falha de dependência).
+    /// </summary>
+    /// <remarks>
+    /// Antes esses retornos viravam "sem eventos" e a queda só aparecia quando o watchdog
+    /// pegava (defeito F6, docs/34 §2; ADR-0018: contar, nunca calar).
+    /// </remarks>
+    public long ErrosDeRecepcao { get; internal set; }
+
     /// <summary>Identidade lida do equipamento, quando já conhecida.</summary>
     public FirmwareInfo? Firmware { get; internal set; }
 
@@ -444,16 +454,24 @@ public sealed class DevicePump
                     manual.Girou = true;
                 }
 
+                // Todo evento vai inteiro para quem registra, leitura ou não (ADR-0018).
                 _aoReceberEvento?.Invoke(evento);
-                Disparar(
-                    d,
-                    evento.Origin.ConfirmaPassagemFisica
-                        ? DeviceTrigger.GiroConfirmado
-                        : evento.Origin.Known is KnownEventOrigin.FimTempoAcionamento
-                            ? DeviceTrigger.TempoDeAcionamentoEsgotado
-                            : DeviceTrigger.EventoRecebido,
-                    agora);
-                return $"evento {evento.Origin}";
+
+                // Só leitura vai para a decisão. Sinal da catraca (cartão recolhido, sensor,
+                // urna cheia, tecla, origem desconhecida) sem código virava negação, com
+                // "Acesso nao autorizado" no display e o leitor rearmado (F4, docs/34 §2).
+                var gatilho = evento.Origin switch
+                {
+                    { ConfirmaPassagemFisica: true } => DeviceTrigger.GiroConfirmado,
+                    { Known: KnownEventOrigin.FimTempoAcionamento } => DeviceTrigger.TempoDeAcionamentoEsgotado,
+                    { EhLeitura: true } => DeviceTrigger.EventoRecebido,
+                    _ => DeviceTrigger.SinalDaCatraca,
+                };
+
+                Disparar(d, gatilho, agora);
+                return gatilho is DeviceTrigger.SinalDaCatraca
+                    ? $"sinal da catraca {evento.Origin} — registrado, sem decisão"
+                    : $"evento {evento.Origin}";
 
             case AdapterStatus.SemEventos:
                 d.Disjuntor.RegistrarSucesso();
@@ -467,8 +485,12 @@ public sealed class DevicePump
                 return $"falha de dependência ({resultado}) — worker inutilizável";
 
             default:
+                // Retorno ≠ 0 de ReceberDadosOnLine não é silêncio (F6, docs/34 §2): conta,
+                // registra com o bruto e segue pelo caminho de falha de sempre — disjuntor,
+                // backoff e reconexão —, sem derrubar o laço das outras catracas.
+                d.ErrosDeRecepcao++;
                 Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
-                return $"erro ao aguardar evento ({resultado})";
+                return $"erro ao aguardar evento ({resultado}) — erro de recepção nº {d.ErrosDeRecepcao}";
         }
     }
 
@@ -519,11 +541,10 @@ public sealed class DevicePump
 
     private string Liberar(DeviceSlot d, DateTimeOffset agora)
     {
-        // O sentido vem do perfil físico do portão, definido no comissionamento —
-        // nunca de constante em código. Ver docs/04, seção 3.
-        var direcao = d.Configuracao.PerfilFisico.SentidoInvertido
-            ? GateDirection.Saida
-            : GateDirection.Entrada;
+        // A função exata vem do perfil físico do portão, definido no comissionamento —
+        // nunca de constante em código nem de combinação de sinalizadores (docs/04, seção
+        // 3; defeito F1 do docs/34 §2). Ingresso e liberação manual passam por aqui.
+        var direcao = d.Configuracao.PerfilFisico.LiberacaoDaEntrada;
 
         var resultado = _adapter.LiberarGiro(d.Inner, direcao);
 

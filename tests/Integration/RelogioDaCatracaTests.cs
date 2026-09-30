@@ -45,7 +45,7 @@ public sealed class RelogioDaCatracaTests : IDisposable
         MudancaAutomatica = 2,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "Bem-vindo",
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     private (DevicePump Bomba, DeviceSlot Catraca) Montar(bool acertarAoDivergir = false) =>

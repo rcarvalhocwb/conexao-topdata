@@ -44,7 +44,7 @@ public sealed class WorkerTests
         MudancaAutomatica = 2,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "Bem-vindo",
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     private static Decision Autorizado() => new(

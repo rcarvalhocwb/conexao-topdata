@@ -1,10 +1,65 @@
 namespace Access.Application.Devices;
 
+/// <summary>
+/// A função nativa exata que libera o giro de quem <b>entra</b> nesta catraca.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Cada valor é uma função da DLL, e só uma: <c>LiberarCatracaEntrada</c> (EI-041),
+/// <c>LiberarCatracaEntradaInvertida</c> (EI-043), <c>LiberarCatracaSaida</c> (EI-042) e
+/// <c>LiberarCatracaSaidaInvertida</c> (EI-044).
+/// </para>
+/// <para>
+/// Existe para corrigir o defeito F1 do docs/34 §2: o perfil guardava só "sentido
+/// invertido", o laço trocava Entrada por Saída e o adapter, com o mesmo perfil, trocava de
+/// novo para a variante invertida — a catraca instalada à esquerda receberia
+/// <c>LiberarCatracaSaidaInvertida</c>. Agora a escolha é feita uma vez, no
+/// comissionamento, e ninguém combina sinalizadores depois (anexo 01 §1.11).
+/// </para>
+/// <para>
+/// Qual valor serve a uma catraca instalada à esquerda é <c>A_CONFIRMAR_COM_TOPDATA</c>:
+/// ensaios HIL-DIR-05 e HIL-DIR-06 do docs/21.
+/// </para>
+/// </remarks>
+public enum FuncaoDeLiberacao
+{
+    /// <summary><c>LiberarCatracaEntrada</c> (EI-041). O padrão de hoje.</summary>
+    Entrada,
+
+    /// <summary><c>LiberarCatracaEntradaInvertida</c> (EI-043).</summary>
+    EntradaInvertida,
+
+    /// <summary><c>LiberarCatracaSaida</c> (EI-042).</summary>
+    Saida,
+
+    /// <summary><c>LiberarCatracaSaidaInvertida</c> (EI-044).</summary>
+    SaidaInvertida,
+}
+
 /// <summary>Perfil físico do portão, resultado do comissionamento.</summary>
-/// <param name="SentidoInvertido">
-/// Verdadeiro quando a instalação exige as variantes invertidas de liberação.
+/// <param name="FuncaoDeLiberacaoDaEntrada">
+/// A função que libera quem entra. O padrão, <see cref="FuncaoDeLiberacao.Entrada"/>, é o
+/// comportamento de sempre.
 /// </param>
-public sealed record GatePhysicalProfile(bool SentidoInvertido);
+public sealed record GatePhysicalProfile(FuncaoDeLiberacao FuncaoDeLiberacaoDaEntrada = FuncaoDeLiberacao.Entrada)
+{
+    /// <summary>O perfil de uma catraca comissionada sem inversão.</summary>
+    public static GatePhysicalProfile Padrao { get; } = new();
+
+    /// <summary>
+    /// O pedido ao adapter que libera quem entra: tradução um para um, sem combinar nada.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">Valor fora do enum; <see cref="DeviceConfiguration.Validar"/> recusa antes.</exception>
+    public GateDirection LiberacaoDaEntrada => FuncaoDeLiberacaoDaEntrada switch
+    {
+        FuncaoDeLiberacao.Entrada => GateDirection.Entrada,
+        FuncaoDeLiberacao.EntradaInvertida => GateDirection.EntradaInvertida,
+        FuncaoDeLiberacao.Saida => GateDirection.Saida,
+        FuncaoDeLiberacao.SaidaInvertida => GateDirection.SaidaInvertida,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(FuncaoDeLiberacaoDaEntrada), FuncaoDeLiberacaoDaEntrada, "Função de liberação desconhecida."),
+    };
+}
 
 /// <summary>
 /// Configuração <b>completa</b> de um equipamento. Não existe configuração parcial.
@@ -27,7 +82,30 @@ public sealed record DeviceConfiguration
     public byte? QuantidadeFixaDeDigitos { get; init; }
 
     /// <summary>Comprimentos aceitos, quando o equipamento usa dígitos variáveis.</summary>
+    /// <remarks>
+    /// Só chega à catraca com <see cref="EnviarDigitosVariaveis"/> ligado. Desligado, a
+    /// catraca segue com o padrão da DLL para dígitos variáveis (docs/34 §2, F2).
+    /// </remarks>
     public IReadOnlyList<byte> QuantidadesVariaveisDeDigitos { get; init; } = [];
+
+    /// <summary>
+    /// Envia <see cref="QuantidadesVariaveisDeDigitos"/> à catraca, uma chamada de
+    /// <c>InserirQuantidadeDigitoVariavel</c> (EI-012) por tamanho.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Desligado por padrão, e desligado nada é enviado: a sequência nativa é a de sempre e a
+    /// catraca fica com o padrão da DLL para dígitos variáveis, valor que ninguém conhece
+    /// (defeito F2 do docs/34 §2; ADR-0020). Liga pela chave técnica
+    /// <c>catraca.enviar_digitos_variaveis</c>, sem tela.
+    /// </para>
+    /// <para>
+    /// Fica desligado até o ensaio HIL-CARD-02: o manual diz "uma chamada por tamanho aceito"
+    /// e "0 desabilita" (FUN:13), mas não diz se os tamanhos acumulam entre uma montagem e
+    /// outra depois de uma falha (T30) — <c>A_CONFIRMAR_COM_TOPDATA</c>.
+    /// </para>
+    /// </remarks>
+    public bool EnviarDigitosVariaveis { get; init; }
 
     /// <summary>Tecnologia do leitor: 0 a 8 (8 = QR Code por letras).</summary>
     public required byte TipoDeLeitor { get; init; }
@@ -153,6 +231,22 @@ public sealed record DeviceConfiguration
         foreach (var variavel in QuantidadesVariaveisDeDigitos.Where(v => v is < 1 or > 16))
         {
             problemas.Add($"Quantidade variável de dígitos vai de 1 a 16; recebido {variavel}.");
+        }
+
+        // Ligar o envio sem tamanho nenhum não mandaria nada e daria a impressão de que os
+        // dígitos variáveis foram configurados (docs/34 §4.2, regra 1).
+        if (EnviarDigitosVariaveis && QuantidadesVariaveisDeDigitos.Count == 0)
+        {
+            problemas.Add("O envio de dígitos variáveis está ligado, mas nenhum tamanho foi informado.");
+        }
+
+        // Um valor fora do enum chegaria ao adapter como "sentido desconhecido" no meio de
+        // uma passagem; aqui ele é recusado antes de qualquer chamada nativa (F1, docs/34 §2).
+        if (!Enum.IsDefined(PerfilFisico.FuncaoDeLiberacaoDaEntrada))
+        {
+            problemas.Add(
+                $"A função de liberação da entrada deve ser Entrada, EntradaInvertida, Saida ou SaidaInvertida; " +
+                $"recebido {(int)PerfilFisico.FuncaoDeLiberacaoDaEntrada}.");
         }
 
         // Sem leitor 2 não há como receber o cartão na fenda da urna.

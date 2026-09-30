@@ -252,4 +252,29 @@ public sealed class DeviceStateMachineTests
 
         Assert.Equal(DeviceState.ColetarBilhetes, m.Current);
     }
+
+    /// <summary>
+    /// Sinal da catraca em Polling fica na trilha e não sai de Polling: não decide, não
+    /// mostra negação e não rearma o leitor (F4, docs/34 §2).
+    /// </summary>
+    [Fact]
+    public void Sinal_da_catraca_em_polling_nao_sai_de_polling()
+    {
+        var m = Maquina(DeviceState.Polling);
+
+        Disparar(m, DeviceTrigger.SinalDaCatraca);
+
+        Assert.Equal(DeviceState.Polling, m.Current);
+        Assert.Equal(DeviceTrigger.SinalDaCatraca, m.History.Last().Trigger);
+    }
+
+    /// <summary>No meio de uma passagem, o sinal não muda nada: a vez é do giro.</summary>
+    [Fact]
+    public void Sinal_da_catraca_esperando_o_giro_nao_muda_o_estado()
+    {
+        var m = Maquina(DeviceState.MonitoraGiroCatraca);
+
+        Assert.False(m.TryFire(DeviceTrigger.SinalDaCatraca, Agora, Correlacao, out _));
+        Assert.Equal(DeviceState.MonitoraGiroCatraca, m.Current);
+    }
 }

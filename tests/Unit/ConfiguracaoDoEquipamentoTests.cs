@@ -35,7 +35,7 @@ public sealed class ConfiguracaoDoEquipamentoTests
         MudancaAutomatica = 1,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "ENTRADA - PISTA A",
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     [Fact]
@@ -119,5 +119,53 @@ public sealed class ConfiguracaoDoEquipamentoTests
     {
         var problemas = (Valida() with { MudancaAutomatica = 2, Online = false }).Validar();
         Assert.Contains(problemas, p => p.Contains("MudancaAutomatica", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// O perfil guarda a função exata e a traduz um para um (defeito F1, docs/34 §2).
+    /// </summary>
+    [Theory]
+    [InlineData(FuncaoDeLiberacao.Entrada, GateDirection.Entrada)]
+    [InlineData(FuncaoDeLiberacao.EntradaInvertida, GateDirection.EntradaInvertida)]
+    [InlineData(FuncaoDeLiberacao.Saida, GateDirection.Saida)]
+    [InlineData(FuncaoDeLiberacao.SaidaInvertida, GateDirection.SaidaInvertida)]
+    public void Perfil_traduz_a_funcao_de_liberacao_sem_combinar_nada(FuncaoDeLiberacao funcao, GateDirection esperada)
+    {
+        var configuracao = Valida() with { PerfilFisico = new GatePhysicalProfile(funcao) };
+
+        Assert.Empty(configuracao.Validar());
+        Assert.Equal(esperada, configuracao.PerfilFisico.LiberacaoDaEntrada);
+    }
+
+    /// <summary>O padrão é o de sempre: <c>LiberarCatracaEntrada</c>.</summary>
+    [Fact]
+    public void Perfil_padrao_libera_pela_entrada()
+    {
+        Assert.Equal(GateDirection.Entrada, GatePhysicalProfile.Padrao.LiberacaoDaEntrada);
+    }
+
+    /// <summary>Um valor fora do enum é recusado antes de chegar à catraca.</summary>
+    [Fact]
+    public void Funcao_de_liberacao_fora_do_enum_e_recusada()
+    {
+        var problemas = (Valida() with { PerfilFisico = new GatePhysicalProfile((FuncaoDeLiberacao)9) }).Validar();
+        Assert.Contains(problemas, p => p.Contains("função de liberação", StringComparison.Ordinal));
+    }
+
+    /// <summary>Envio de dígitos variáveis ligado sem tamanho nenhum não mandaria nada.</summary>
+    [Fact]
+    public void Digitos_variaveis_ligados_sem_tamanho_sao_recusados()
+    {
+        var problemas = (Valida() with { EnviarDigitosVariaveis = true, QuantidadesVariaveisDeDigitos = [] }).Validar();
+        Assert.Contains(problemas, p => p.Contains("dígitos variáveis", StringComparison.Ordinal));
+
+        Assert.Empty((Valida() with { EnviarDigitosVariaveis = true, QuantidadesVariaveisDeDigitos = [4, 16] }).Validar());
+    }
+
+    /// <summary>O padrão é não enviar: nenhuma configuração existente muda (F2, docs/34 §2).</summary>
+    [Fact]
+    public void Digitos_variaveis_nao_sao_enviados_por_padrao()
+    {
+        Assert.False(Valida().EnviarDigitosVariaveis);
     }
 }

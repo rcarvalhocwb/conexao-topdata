@@ -32,7 +32,6 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     private const byte EntradaTecladoELeitores = 7;
 
     private readonly IEasyInnerNative _nativo;
-    private readonly Dictionary<int, GatePhysicalProfile> _perfis = [];
 
     /// <summary>
     /// Identifica esta sessão do adapter, para a chave de deduplicação.
@@ -46,6 +45,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     private readonly string _bootId = Guid.CreateVersion7().ToString("N")[..12];
 
     private long _sequencia;
+    private long _errosDeRecepcao;
     private bool _portaAberta;
     private bool _descartado;
 
@@ -53,6 +53,16 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     {
         _nativo = nativo ?? new EasyInnerReal();
     }
+
+    /// <summary>
+    /// Quantas vezes <c>ReceberDadosOnLine</c> devolveu retorno diferente de zero, em todas as
+    /// catracas desta instância.
+    /// </summary>
+    /// <remarks>
+    /// Antes esses retornos viravam "sem eventos" e ninguém os via (F6, docs/34 §2). Contar
+    /// é o mínimo da ADR-0018; a contagem por catraca está em <c>DeviceSlot.ErrosDeRecepcao</c>.
+    /// </remarks>
+    public long ErrosDeRecepcao => Interlocked.Read(ref _errosDeRecepcao);
 
     public AdapterResult AbrirPorta(int porta)
     {
@@ -64,16 +74,16 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
             var tipo = _nativo.DefinirTipoConexao(ConexaoTcpPortaFixa);
             if (tipo != 0)
             {
-                return tipo;
+                return (nameof(IEasyInnerNative.DefinirTipoConexao), tipo);
             }
 
             var abertura = _nativo.AbrirPortaComunicacao(porta);
             _portaAberta = abertura == 0;
-            return abertura;
+            return (nameof(IEasyInnerNative.AbrirPortaComunicacao), abertura);
         });
     }
 
-    public AdapterResult FecharPorta() => Medir(() =>
+    public AdapterResult FecharPorta() => Medir(nameof(IEasyInnerNative.FecharPortaComunicacao), () =>
     {
         // Devolve void: quem não fecha vaza o socket e a próxima abertura dá retorno 3.
         _nativo.FecharPortaComunicacao();
@@ -81,16 +91,16 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         return (byte)0;
     });
 
-    public AdapterResult TestarConexao(int inner) => Medir(() => _nativo.Ping(inner));
+    public AdapterResult TestarConexao(int inner) => Medir(nameof(IEasyInnerNative.Ping), () => _nativo.Ping(inner));
 
-    public AdapterResult Ping(int inner) => Medir(() => _nativo.PingOnLine(inner));
+    public AdapterResult Ping(int inner) => Medir(nameof(IEasyInnerNative.PingOnLine), () => _nativo.PingOnLine(inner));
 
     public (AdapterResult Resultado, FirmwareInfo? Firmware) LerFirmware(int inner)
     {
         byte linha = 0, alta = 0, baixa = 0, sufixo = 0, bio = 0;
         short variacao = 0;
 
-        var resultado = Medir(() =>
+        var resultado = Medir(nameof(IEasyInnerNative.ReceberVersaoFirmware), () =>
             _nativo.ReceberVersaoFirmware(inner, ref linha, ref variacao, ref alta, ref baixa, ref sufixo, ref bio));
 
         return resultado.Status is AdapterStatus.Ok
@@ -102,7 +112,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     {
         byte dia = 0, mes = 0, ano = 0, hora = 0, minuto = 0, segundo = 0;
 
-        var resultado = Medir(() =>
+        var resultado = Medir(nameof(IEasyInnerNative.ReceberRelogio), () =>
             _nativo.ReceberRelogio(inner, ref dia, ref mes, ref ano, ref hora, ref minuto, ref segundo));
 
         if (resultado.Status is not AdapterStatus.Ok)
@@ -123,7 +133,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
             throw new ArgumentOutOfRangeException(nameof(instante), "o relógio da catraca só guarda anos de 2000 a 2099.");
         }
 
-        return Medir(() => _nativo.EnviarRelogio(
+        return Medir(nameof(IEasyInnerNative.EnviarRelogio), () => _nativo.EnviarRelogio(
             inner,
             (byte)local.Day,
             (byte)local.Month,
@@ -146,46 +156,61 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
                 nameof(configuracao));
         }
 
-        _perfis[inner] = configuracao.PerfilFisico;
-
         return Medir(() =>
         {
             // Cada chamada monta um pedaço no buffer da DLL; EnviarConfiguracoes aplica tudo.
             // Quem pula um passo não deixa "como estava": recebe o padrão da fábrica.
-            byte[] passos =
+            // Cada passo leva o nome da função: o mesmo retorno (128, 129) quer dizer coisas
+            // diferentes em funções diferentes (F6, docs/34 §2).
+            List<(string Funcao, byte Retorno)> passos =
             [
-                _nativo.DefinirPadraoCartao(configuracao.PadraoCartao),
-                configuracao.QuantidadeFixaDeDigitos is { } digitos
-                    ? _nativo.DefinirQuantidadeDigitosCartao(digitos)
-                    : (byte)0,
-                _nativo.ConfigurarTipoLeitor(configuracao.TipoDeLeitor),
-                _nativo.ConfigurarLeitor1(configuracao.OperacaoDoLeitor1),
-                _nativo.ConfigurarLeitor2(configuracao.OperacaoDoLeitor2),
-                _nativo.ConfigurarAcionamento1(configuracao.FuncaoDoAcionamento1, configuracao.TempoDoAcionamento1),
-                _nativo.ConfigurarAcionamento2(configuracao.FuncaoDoAcionamento2, configuracao.TempoDoAcionamento2),
-                configuracao.Online ? _nativo.ConfigurarInnerOnLine() : _nativo.ConfigurarInnerOffLine(),
-                _nativo.HabilitarTeclado(
+                (nameof(IEasyInnerNative.DefinirPadraoCartao), _nativo.DefinirPadraoCartao(configuracao.PadraoCartao)),
+                .. configuracao.QuantidadeFixaDeDigitos is { } digitos
+                    ? [(nameof(IEasyInnerNative.DefinirQuantidadeDigitosCartao), _nativo.DefinirQuantidadeDigitosCartao(digitos))]
+                    : Array.Empty<(string, byte)>(),
+
+                // Uma chamada por tamanho aceito (FUN:13), junto das demais funções de cartão
+                // e antes de EnviarConfiguracoes. Só com a chave ligada: desligada, a sequência
+                // é a de sempre e a catraca fica com o padrão da DLL (F2, docs/34 §2).
+                .. configuracao.EnviarDigitosVariaveis
+                    ? configuracao.QuantidadesVariaveisDeDigitos.Distinct().Select(tamanho =>
+                        (nameof(IEasyInnerNative.InserirQuantidadeDigitoVariavel), _nativo.InserirQuantidadeDigitoVariavel(tamanho)))
+                    : [],
+
+                (nameof(IEasyInnerNative.ConfigurarTipoLeitor), _nativo.ConfigurarTipoLeitor(configuracao.TipoDeLeitor)),
+                (nameof(IEasyInnerNative.ConfigurarLeitor1), _nativo.ConfigurarLeitor1(configuracao.OperacaoDoLeitor1)),
+                (nameof(IEasyInnerNative.ConfigurarLeitor2), _nativo.ConfigurarLeitor2(configuracao.OperacaoDoLeitor2)),
+                (nameof(IEasyInnerNative.ConfigurarAcionamento1),
+                    _nativo.ConfigurarAcionamento1(configuracao.FuncaoDoAcionamento1, configuracao.TempoDoAcionamento1)),
+                (nameof(IEasyInnerNative.ConfigurarAcionamento2),
+                    _nativo.ConfigurarAcionamento2(configuracao.FuncaoDoAcionamento2, configuracao.TempoDoAcionamento2)),
+                configuracao.Online
+                    ? (nameof(IEasyInnerNative.ConfigurarInnerOnLine), _nativo.ConfigurarInnerOnLine())
+                    : (nameof(IEasyInnerNative.ConfigurarInnerOffLine), _nativo.ConfigurarInnerOffLine()),
+                (nameof(IEasyInnerNative.HabilitarTeclado), _nativo.HabilitarTeclado(
                     configuracao.TecladoHabilitado ? (byte)1 : (byte)0,
-                    configuracao.EcoDoTeclado),
-                _nativo.HabilitarMudancaOnLineOffLine(
+                    configuracao.EcoDoTeclado)),
+                (nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine), _nativo.HabilitarMudancaOnLineOffLine(
                     configuracao.MudancaAutomatica,
-                    configuracao.TempoDaMudancaAutomatica),
+                    configuracao.TempoDaMudancaAutomatica)),
             ];
 
             foreach (var passo in passos)
             {
-                if (passo != 0)
+                if (passo.Retorno != 0)
                 {
                     return passo;
                 }
             }
 
-            var mensagem = _nativo.EnviarMensagemPadraoOnLine(inner, 0, configuracao.MensagemPadrao);
-            return mensagem != 0 ? mensagem : _nativo.EnviarConfiguracoes(inner);
+            // Nada com Inner entre montar e enviar (ADR-0006). A mensagem padrão ia aqui no
+            // meio, e três vezes por conexão; ela tem o seu passo próprio no laço
+            // (EnviarMsgPadrao), depois de rearmar o leitor (defeito F7, docs/34 §2).
+            return (nameof(IEasyInnerNative.EnviarConfiguracoes), _nativo.EnviarConfiguracoes(inner));
         });
     }
 
-    public AdapterResult ConfigurarEntradasOnline(int inner) => Medir(() =>
+    public AdapterResult ConfigurarEntradasOnline(int inner) => Medir(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), () =>
         // É este passo que rearma o leitor para a próxima leitura. Sem ele, a pista para de
         // ler sem dar erro nenhum — o modo de falha mais caro que existe numa fila.
         _nativo.EnviarFormasEntradasOnLine(
@@ -199,7 +224,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     public AdapterResult EnviarMensagemPadrao(int inner, string mensagem)
     {
         ArgumentNullException.ThrowIfNull(mensagem);
-        return Medir(() => _nativo.EnviarMensagemPadraoOnLine(inner, 0, Cortar(mensagem, 32)));
+        return Medir(nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine), () => _nativo.EnviarMensagemPadraoOnLine(inner, 0, Cortar(mensagem, 32)));
     }
 
     public (AdapterResult Resultado, DeviceEvent? Evento) AguardarEvento(int inner, TimeSpan limite)
@@ -207,13 +232,24 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         byte origem = 0, complemento = 0, dia = 0, mes = 0, ano = 0, hora = 0, minuto = 0, segundo = 0;
         var buffer = _nativo.NovoBufferDeCartao();
 
-        var resultado = Medir(() => _nativo.ReceberDadosOnLine(
+        var resultado = Medir(nameof(IEasyInnerNative.ReceberDadosOnLine), () => _nativo.ReceberDadosOnLine(
             inner, ref origem, ref complemento, buffer, ref dia, ref mes, ref ano, ref hora, ref minuto, ref segundo));
+
+        // Retorno diferente de zero não é silêncio. Antes, todo retorno ≠ 0 virava
+        // SemEventos — inclusive o 8 — e uma queda de comunicação só aparecia quando o
+        // watchdog pegava (defeito F6, docs/34 §2). Agora o bruto é preservado com o seu
+        // status (8 continua falha de dependência; o resto, erro) e contado (ADR-0018); o
+        // laço o trata como falha de recepção.
+        if (resultado.Status is not AdapterStatus.Ok)
+        {
+            Interlocked.Increment(ref _errosDeRecepcao);
+            return (resultado, null);
+        }
 
         // A_CONFIRMAR: o manual não diz como a DLL sinaliza "nada aconteceu". A leitura aqui
         // é que retorno 0 com origem 0 significa ausência de evento, e não um evento de
         // origem zero — que não existe na tabela. Ensaio HIL-EVT-01.
-        if (resultado.Status is not AdapterStatus.Ok || origem == 0)
+        if (origem == 0)
         {
             return (resultado with { Status = AdapterStatus.SemEventos }, null);
         }
@@ -235,35 +271,36 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         return (resultado, evento);
     }
 
-    public AdapterResult LiberarGiro(int inner, GateDirection direcao)
+    /// <remarks>
+    /// Um para um, sem consultar perfil: a inversão já foi resolvida no comissionamento
+    /// (<see cref="GatePhysicalProfile.LiberacaoDaEntrada"/>). Antes o adapter invertia de
+    /// novo o que o laço já tinha invertido (defeito F1, docs/34 §2).
+    /// </remarks>
+    public AdapterResult LiberarGiro(int inner, GateDirection direcao) => Medir(() => direcao switch
     {
-        var invertido = _perfis.TryGetValue(inner, out var perfil) && perfil.SentidoInvertido;
+        GateDirection.Entrada => (nameof(IEasyInnerNative.LiberarCatracaEntrada), _nativo.LiberarCatracaEntrada(inner)),
+        GateDirection.EntradaInvertida =>
+            (nameof(IEasyInnerNative.LiberarCatracaEntradaInvertida), _nativo.LiberarCatracaEntradaInvertida(inner)),
+        GateDirection.Saida => (nameof(IEasyInnerNative.LiberarCatracaSaida), _nativo.LiberarCatracaSaida(inner)),
+        GateDirection.SaidaInvertida =>
+            (nameof(IEasyInnerNative.LiberarCatracaSaidaInvertida), _nativo.LiberarCatracaSaidaInvertida(inner)),
 
-        return Medir(() => direcao switch
-        {
-            GateDirection.Entrada => invertido
-                ? _nativo.LiberarCatracaEntradaInvertida(inner)
-                : _nativo.LiberarCatracaEntrada(inner),
+        // Só para evacuação: permite carona e por isso não entra na operação normal.
+        GateDirection.DoisSentidos =>
+            (nameof(IEasyInnerNative.LiberarCatracaDoisSentidos), _nativo.LiberarCatracaDoisSentidos(inner)),
 
-            GateDirection.Saida => invertido
-                ? _nativo.LiberarCatracaSaidaInvertida(inner)
-                : _nativo.LiberarCatracaSaida(inner),
+        _ => throw new ArgumentOutOfRangeException(nameof(direcao), direcao, "Sentido desconhecido."),
+    });
 
-            // Só para evacuação: permite carona e por isso não entra na operação normal.
-            GateDirection.DoisSentidos => _nativo.LiberarCatracaDoisSentidos(inner),
-
-            _ => throw new ArgumentOutOfRangeException(nameof(direcao), direcao, "Sentido desconhecido."),
-        });
-    }
-
-    public AdapterResult AcionarReleDaUrna(int inner) => Medir(() => _nativo.AcionarRele2(inner));
+    public AdapterResult AcionarReleDaUrna(int inner) =>
+        Medir(nameof(IEasyInnerNative.AcionarRele2), () => _nativo.AcionarRele2(inner));
 
     public (AdapterResult Resultado, Bilhete? Bilhete) ColetarBilhete(int inner)
     {
         byte tipo = 0, dia = 0, mes = 0, ano = 0, hora = 0, minuto = 0;
         var buffer = _nativo.NovoBufferDeCartao();
 
-        var resultado = Medir(() =>
+        var resultado = Medir(nameof(IEasyInnerNative.ColetarBilhete), () =>
             _nativo.ColetarBilhete(inner, ref tipo, ref dia, ref mes, ref ano, ref hora, ref minuto, buffer));
 
         if (resultado.Status is not AdapterStatus.Ok)
@@ -291,7 +328,9 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
 
         var segundos = duracao.TotalSeconds > 255 ? (byte)255 : (byte)duracao.TotalSeconds;
 
-        return Medir(() => _nativo.EnviarMensagemTemporariaOnLine(inner, 0, Cortar(mensagem, 32), segundos));
+        return Medir(
+            nameof(IEasyInnerNative.EnviarMensagemTemporariaOnLine),
+            () => _nativo.EnviarMensagemTemporariaOnLine(inner, 0, Cortar(mensagem, 32), segundos));
     }
 
     public void Dispose()
@@ -335,12 +374,19 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     private static string Cortar(string texto, int limite) =>
         texto.Length <= limite ? texto : texto[..limite];
 
-    private static AdapterResult Medir(Func<byte> chamada)
+    /// <summary>
+    /// Mede uma chamada e interpreta o retorno à luz da função que o devolveu (F6, docs/34 §2).
+    /// </summary>
+    private static AdapterResult Medir(string funcao, Func<byte> chamada) =>
+        Medir(() => (funcao, chamada()));
+
+    /// <summary>Mede uma sequência de chamadas; quem a executa diz qual função deu o retorno final.</summary>
+    private static AdapterResult Medir(Func<(string Funcao, byte Retorno)> chamada)
     {
         var cronometro = Stopwatch.StartNew();
-        var retorno = chamada();
+        var (funcao, retorno) = chamada();
         cronometro.Stop();
 
-        return AdapterResult.FromNative(retorno, cronometro.Elapsed);
+        return AdapterResult.FromNative(retorno, cronometro.Elapsed, funcao);
     }
 }

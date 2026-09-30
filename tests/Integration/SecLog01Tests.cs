@@ -55,7 +55,7 @@ public sealed class SecLog01Tests
         MudancaAutomatica = 2,
         TempoDaMudancaAutomatica = 10,
         MensagemPadrao = "Bem-vindo",
-        PerfilFisico = new GatePhysicalProfile(SentidoInvertido: false),
+        PerfilFisico = GatePhysicalProfile.Padrao,
     };
 
     [Fact]
