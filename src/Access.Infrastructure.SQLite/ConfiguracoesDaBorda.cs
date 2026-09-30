@@ -21,6 +21,13 @@ namespace Access.Infrastructure.SQLite;
 /// divergência. Desligado: <c>A_CONFIRMAR_COM_TOPDATA</c> até o passo 6A do docs/21. Não
 /// aparece no painel; é chave técnica (<c>relogio.acertar_ao_divergir</c>).
 /// </param>
+/// <param name="EnviarDigitosVariaveis">
+/// Envia os tamanhos aceitos de dígitos variáveis à catraca
+/// (<c>InserirQuantidadeDigitoVariavel</c>, EI-012). Desligado: nada é enviado e a catraca
+/// segue com o padrão da DLL, como sempre foi (defeito F2, docs/34 §2). Fica desligado até
+/// o ensaio HIL-CARD-02 (<c>A_CONFIRMAR_COM_TOPDATA</c>). Não aparece no painel; é chave
+/// técnica (<c>catraca.enviar_digitos_variaveis</c>).
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -28,7 +35,8 @@ public sealed record ConfiguracaoDaOperacao(
     string MensagemPadrao = "Aproxime o ingresso",
     string ConectorDoEspelho = "",
     int EsperaPeloGiroSegundos = 10,
-    bool AcertarRelogioAoDivergir = false)
+    bool AcertarRelogioAoDivergir = false,
+    bool EnviarDigitosVariaveis = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -75,6 +83,7 @@ public sealed class ConfiguracoesDaBorda
     public const string ChaveConectorDoEspelho = "nuvem.conector_tentativas";
     public const string ChaveEsperaPeloGiro = "nuvem.espera_giro_segundos";
     public const string ChaveAcertarRelogioAoDivergir = "relogio.acertar_ao_divergir";
+    public const string ChaveEnviarDigitosVariaveis = "catraca.enviar_digitos_variaveis";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -149,7 +158,8 @@ public sealed class ConfiguracoesDaBorda
             MensagemPadrao: valores.GetValueOrDefault(ChaveMensagemPadrao, padrao.MensagemPadrao),
             ConectorDoEspelho: valores.GetValueOrDefault(ChaveConectorDoEspelho, padrao.ConectorDoEspelho),
             EsperaPeloGiroSegundos: Inteiro(ChaveEsperaPeloGiro, padrao.EsperaPeloGiroSegundos),
-            AcertarRelogioAoDivergir: Logico(ChaveAcertarRelogioAoDivergir, padrao.AcertarRelogioAoDivergir));
+            AcertarRelogioAoDivergir: Logico(ChaveAcertarRelogioAoDivergir, padrao.AcertarRelogioAoDivergir),
+            EnviarDigitosVariaveis: Logico(ChaveEnviarDigitosVariaveis, padrao.EnviarDigitosVariaveis));
 
         return (configuracao, ilegiveis);
     }
@@ -175,6 +185,7 @@ public sealed class ConfiguracoesDaBorda
             [ChaveConectorDoEspelho] = configuracao.ConectorDoEspelho,
             [ChaveEsperaPeloGiro] = configuracao.EsperaPeloGiroSegundos.ToString(CultureInfo.InvariantCulture),
             [ChaveAcertarRelogioAoDivergir] = configuracao.AcertarRelogioAoDivergir ? "1" : "0",
+            [ChaveEnviarDigitosVariaveis] = configuracao.EnviarDigitosVariaveis ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();

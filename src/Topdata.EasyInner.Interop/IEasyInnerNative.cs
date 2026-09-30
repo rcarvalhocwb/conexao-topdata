@@ -66,6 +66,12 @@ public interface IEasyInnerNative
     /// <summary>EI-011 — quantidade fixa de dígitos.</summary>
     byte DefinirQuantidadeDigitosCartao(byte quantidade);
 
+    /// <summary>
+    /// EI-012 — um tamanho aceito de dígitos variáveis: 1 a 16, uma chamada por tamanho;
+    /// 0 desabilita (manual 5.1.3). Monta no buffer; só vale com <c>EnviarConfiguracoes</c>.
+    /// </summary>
+    byte InserirQuantidadeDigitoVariavel(byte digito);
+
     /// <summary>EI-013 — tecnologia do leitor, 0 a 8.</summary>
     byte ConfigurarTipoLeitor(byte tipo);
 

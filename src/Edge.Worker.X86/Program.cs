@@ -195,11 +195,16 @@ internal static class Program
     }
 
     /// <summary>O que vai para cada catraca, a partir da configuração do evento.</summary>
+    /// <remarks>
+    /// <c>EnviarDigitosVariaveis</c> vem da chave técnica <c>catraca.enviar_digitos_variaveis</c>,
+    /// desligada por padrão até HIL-CARD-02 (docs/34 §2, F2). Passa também pelo "Aplicar agora".
+    /// </remarks>
     private static DeviceConfiguration ConfiguracaoDasCatracas(ConfiguracaoDaOperacao configuracao) =>
         ConfiguracaoDeBancada.TopFit4(configuracao.TipoDeLeitor, configuracao.LeitorDaUrna) with
         {
             TempoDoAcionamento1 = configuracao.TempoDeAcionamento,
             MensagemPadrao = configuracao.MensagemPadrao,
+            EnviarDigitosVariaveis = configuracao.EnviarDigitosVariaveis,
         };
 
     /// <summary>

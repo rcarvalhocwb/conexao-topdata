@@ -149,12 +149,20 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         {
             // Cada chamada monta um pedaço no buffer da DLL; EnviarConfiguracoes aplica tudo.
             // Quem pula um passo não deixa "como estava": recebe o padrão da fábrica.
-            byte[] passos =
+            List<byte> passos =
             [
                 _nativo.DefinirPadraoCartao(configuracao.PadraoCartao),
                 configuracao.QuantidadeFixaDeDigitos is { } digitos
                     ? _nativo.DefinirQuantidadeDigitosCartao(digitos)
                     : (byte)0,
+
+                // Uma chamada por tamanho aceito (FUN:13), junto das demais funções de cartão
+                // e antes de EnviarConfiguracoes. Só com a chave ligada: desligada, a sequência
+                // é a de sempre e a catraca fica com o padrão da DLL (F2, docs/34 §2).
+                .. configuracao.EnviarDigitosVariaveis
+                    ? configuracao.QuantidadesVariaveisDeDigitos.Distinct().Select(_nativo.InserirQuantidadeDigitoVariavel)
+                    : [],
+
                 _nativo.ConfigurarTipoLeitor(configuracao.TipoDeLeitor),
                 _nativo.ConfigurarLeitor1(configuracao.OperacaoDoLeitor1),
                 _nativo.ConfigurarLeitor2(configuracao.OperacaoDoLeitor2),

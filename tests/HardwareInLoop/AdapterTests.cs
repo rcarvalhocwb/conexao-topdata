@@ -207,6 +207,116 @@ public sealed class AdapterTests
         Assert.Contains("ConfigurarTipoLeitor", costura.Chamadas);
     }
 
+    /// <summary>
+    /// A sequência nativa de uma configuração de hoje, sem a chave de dígitos variáveis.
+    /// </summary>
+    private static readonly string[] SequenciaSemDigitosVariaveis =
+    [
+        "DefinirPadraoCartao",
+        "DefinirQuantidadeDigitosCartao",
+        "ConfigurarTipoLeitor",
+        "ConfigurarLeitor1",
+        "ConfigurarLeitor2",
+        "ConfigurarAcionamento1",
+        "ConfigurarAcionamento2",
+        "ConfigurarInnerOnLine",
+        "HabilitarTeclado",
+        "HabilitarMudancaOnLineOffLine",
+        "EnviarMensagemPadraoOnLine",
+        "EnviarConfiguracoes",
+    ];
+
+    /// <summary>
+    /// Sem a chave <c>catraca.enviar_digitos_variaveis</c>, nada muda: nem com tamanhos
+    /// variáveis informados a função EI-012 é chamada (F2, docs/34 §2).
+    /// </summary>
+    [Fact]
+    public void Sem_a_chave_os_digitos_variaveis_nao_sao_enviados_e_a_sequencia_e_a_de_hoje()
+    {
+        var semTamanhos = new CosturaFalsa();
+        using (var adapter = new TopdataInnerAdapter(semTamanhos))
+        {
+            adapter.EnviarConfiguracaoCompleta(1, Configuracao());
+        }
+
+        var comTamanhos = new CosturaFalsa();
+        using (var adapter = new TopdataInnerAdapter(comTamanhos))
+        {
+            adapter.EnviarConfiguracaoCompleta(1, Configuracao() with { QuantidadesVariaveisDeDigitos = [4, 10, 16] });
+        }
+
+        Assert.Equal(SequenciaSemDigitosVariaveis, semTamanhos.Chamadas);
+        Assert.Equal(SequenciaSemDigitosVariaveis, comTamanhos.Chamadas);
+        Assert.Empty(comTamanhos.DigitosVariaveis);
+    }
+
+    /// <summary>
+    /// Com a chave, uma chamada por tamanho, junto das funções de cartão e antes de
+    /// <c>EnviarConfiguracoes</c> — do contrário, não valeria (FUN:13, ADR-0006).
+    /// </summary>
+    [Fact]
+    public void Com_a_chave_cada_tamanho_vai_numa_chamada_antes_do_envio()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var configuracao = Configuracao() with
+        {
+            QuantidadeFixaDeDigitos = null,
+            QuantidadesVariaveisDeDigitos = [4, 10, 16],
+            EnviarDigitosVariaveis = true,
+        };
+
+        var resultado = adapter.EnviarConfiguracaoCompleta(1, configuracao);
+
+        Assert.Equal(AdapterStatus.Ok, resultado.Status);
+        Assert.Equal([4, 10, 16], costura.DigitosVariaveis);
+        Assert.Equal(
+            [
+                "DefinirPadraoCartao",
+                "InserirQuantidadeDigitoVariavel",
+                "InserirQuantidadeDigitoVariavel",
+                "InserirQuantidadeDigitoVariavel",
+                "ConfigurarTipoLeitor",
+            ],
+            costura.Chamadas.Take(5));
+        Assert.Equal("EnviarConfiguracoes", costura.Chamadas[^1]);
+    }
+
+    /// <summary>Tamanho repetido na lista não vira chamada repetida: é um por tamanho.</summary>
+    [Fact]
+    public void Tamanho_repetido_vai_uma_vez_so()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.EnviarConfiguracaoCompleta(1, Configuracao() with
+        {
+            QuantidadesVariaveisDeDigitos = [8, 8, 12],
+            EnviarDigitosVariaveis = true,
+        });
+
+        Assert.Equal([8, 12], costura.DigitosVariaveis);
+    }
+
+    /// <summary>Tamanho recusado pela catraca impede o envio, como qualquer outro passo.</summary>
+    [Fact]
+    public void Tamanho_recusado_impede_o_envio()
+    {
+        var costura = new CosturaFalsa();
+        costura.Retornos["InserirQuantidadeDigitoVariavel"] = 1;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.EnviarConfiguracaoCompleta(1, Configuracao() with
+        {
+            QuantidadesVariaveisDeDigitos = [10],
+            EnviarDigitosVariaveis = true,
+        });
+
+        Assert.NotEqual(AdapterStatus.Ok, resultado.Status);
+        Assert.DoesNotContain("EnviarConfiguracoes", costura.Chamadas);
+    }
+
     /// <summary>Um passo que falha interrompe a montagem.</summary>
     [Fact]
     public void Passo_que_falha_impede_o_envio()

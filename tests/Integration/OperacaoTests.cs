@@ -205,4 +205,33 @@ public sealed class OperacaoTests
         Assert.Throws<ArgumentException>(() => configuracoes.Gravar(
             nova with { MensagemPadrao = new string('x', 33) }, DateTimeOffset.UtcNow));
     }
+
+    /// <summary>
+    /// A chave técnica <c>catraca.enviar_digitos_variaveis</c> nasce desligada, vai e volta do
+    /// banco, e valor ilegível cai no padrão desligado (F2, docs/34 §2).
+    /// </summary>
+    [Fact]
+    public void Chave_de_digitos_variaveis_nasce_desligada_e_vai_e_volta_do_banco()
+    {
+        using var banco = new BancoTemporario();
+        banco.Migrar();
+        var configuracoes = new ConfiguracoesDaBorda(banco.Fabrica);
+
+        Assert.False(configuracoes.Ler().Configuracao.EnviarDigitosVariaveis);
+
+        configuracoes.Gravar(new ConfiguracaoDaOperacao(EnviarDigitosVariaveis: true), DateTimeOffset.UtcNow, "técnico");
+        Assert.True(configuracoes.Ler().Configuracao.EnviarDigitosVariaveis);
+
+        using (var conexao = banco.Fabrica.Abrir())
+        using (var comando = conexao.CreateCommand())
+        {
+            comando.CommandText = "UPDATE edge_setting SET value = 'sim' WHERE key = $chave;";
+            comando.Parameters.AddWithValue("$chave", ConfiguracoesDaBorda.ChaveEnviarDigitosVariaveis);
+            Assert.Equal(1, comando.ExecuteNonQuery());
+        }
+
+        var (lida, ilegiveis) = configuracoes.Ler();
+        Assert.False(lida.EnviarDigitosVariaveis);
+        Assert.Contains(ConfiguracoesDaBorda.ChaveEnviarDigitosVariaveis, ilegiveis);
+    }
 }

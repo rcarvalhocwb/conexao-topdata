@@ -82,7 +82,30 @@ public sealed record DeviceConfiguration
     public byte? QuantidadeFixaDeDigitos { get; init; }
 
     /// <summary>Comprimentos aceitos, quando o equipamento usa dígitos variáveis.</summary>
+    /// <remarks>
+    /// Só chega à catraca com <see cref="EnviarDigitosVariaveis"/> ligado. Desligado, a
+    /// catraca segue com o padrão da DLL para dígitos variáveis (docs/34 §2, F2).
+    /// </remarks>
     public IReadOnlyList<byte> QuantidadesVariaveisDeDigitos { get; init; } = [];
+
+    /// <summary>
+    /// Envia <see cref="QuantidadesVariaveisDeDigitos"/> à catraca, uma chamada de
+    /// <c>InserirQuantidadeDigitoVariavel</c> (EI-012) por tamanho.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Desligado por padrão, e desligado nada é enviado: a sequência nativa é a de sempre e a
+    /// catraca fica com o padrão da DLL para dígitos variáveis, valor que ninguém conhece
+    /// (defeito F2 do docs/34 §2; ADR-0020). Liga pela chave técnica
+    /// <c>catraca.enviar_digitos_variaveis</c>, sem tela.
+    /// </para>
+    /// <para>
+    /// Fica desligado até o ensaio HIL-CARD-02: o manual diz "uma chamada por tamanho aceito"
+    /// e "0 desabilita" (FUN:13), mas não diz se os tamanhos acumulam entre uma montagem e
+    /// outra depois de uma falha (T30) — <c>A_CONFIRMAR_COM_TOPDATA</c>.
+    /// </para>
+    /// </remarks>
+    public bool EnviarDigitosVariaveis { get; init; }
 
     /// <summary>Tecnologia do leitor: 0 a 8 (8 = QR Code por letras).</summary>
     public required byte TipoDeLeitor { get; init; }
@@ -208,6 +231,13 @@ public sealed record DeviceConfiguration
         foreach (var variavel in QuantidadesVariaveisDeDigitos.Where(v => v is < 1 or > 16))
         {
             problemas.Add($"Quantidade variável de dígitos vai de 1 a 16; recebido {variavel}.");
+        }
+
+        // Ligar o envio sem tamanho nenhum não mandaria nada e daria a impressão de que os
+        // dígitos variáveis foram configurados (docs/34 §4.2, regra 1).
+        if (EnviarDigitosVariaveis && QuantidadesVariaveisDeDigitos.Count == 0)
+        {
+            problemas.Add("O envio de dígitos variáveis está ligado, mas nenhum tamanho foi informado.");
         }
 
         // Um valor fora do enum chegaria ao adapter como "sentido desconhecido" no meio de

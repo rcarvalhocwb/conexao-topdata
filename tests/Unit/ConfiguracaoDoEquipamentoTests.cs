@@ -151,4 +151,21 @@ public sealed class ConfiguracaoDoEquipamentoTests
         var problemas = (Valida() with { PerfilFisico = new GatePhysicalProfile((FuncaoDeLiberacao)9) }).Validar();
         Assert.Contains(problemas, p => p.Contains("função de liberação", StringComparison.Ordinal));
     }
+
+    /// <summary>Envio de dígitos variáveis ligado sem tamanho nenhum não mandaria nada.</summary>
+    [Fact]
+    public void Digitos_variaveis_ligados_sem_tamanho_sao_recusados()
+    {
+        var problemas = (Valida() with { EnviarDigitosVariaveis = true, QuantidadesVariaveisDeDigitos = [] }).Validar();
+        Assert.Contains(problemas, p => p.Contains("dígitos variáveis", StringComparison.Ordinal));
+
+        Assert.Empty((Valida() with { EnviarDigitosVariaveis = true, QuantidadesVariaveisDeDigitos = [4, 16] }).Validar());
+    }
+
+    /// <summary>O padrão é não enviar: nenhuma configuração existente muda (F2, docs/34 §2).</summary>
+    [Fact]
+    public void Digitos_variaveis_nao_sao_enviados_por_padrao()
+    {
+        Assert.False(Valida().EnviarDigitosVariaveis);
+    }
 }
