@@ -163,6 +163,7 @@ Valores de `reason` que o XAcess envia (os mais comuns):
 | `INTERVALO_DE_REUSO` | Reapresentado cedo demais (repasse pela grade) |
 | `CREDENCIAL_FORA_DA_JANELA` | Fora da data ou do horário |
 | `FORA_DA_URNA` | Cartão de urna apresentado no leitor errado |
+| `TIPO_INATIVO` | O tipo de entrada do cartão foi desativado no PC (docs/26 §1) |
 | `CREDENCIAL_COMPRIMENTO_INVALIDO` | Leitura com tamanho que não existe no cadastro |
 | `LIBERACAO_MANUAL` | Operador liberou, com motivo registrado |
 

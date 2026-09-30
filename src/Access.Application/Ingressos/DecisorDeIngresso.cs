@@ -216,6 +216,7 @@ public sealed class DecisorDeIngresso
         MotivoDoUso.EmIntervaloDeReuso => ReasonCodes.IntervaloDeReuso,
         MotivoDoUso.VendaAnteriorNaoUsada => ReasonCodes.VendaAnteriorNaoUsada,
         MotivoDoUso.ForaDaUrna => ReasonCodes.ForaDaUrna,
+        MotivoDoUso.TipoInativo => ReasonCodes.TipoInativo,
         _ => ReasonCodes.MotivoNaoMapeado,
     };
 

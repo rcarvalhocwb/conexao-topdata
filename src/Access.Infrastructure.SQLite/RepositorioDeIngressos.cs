@@ -1019,6 +1019,28 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         return !jaExistia;
     }
 
+    /// <summary>
+    /// 1 quando o tipo de entrada do ingresso está ativo <b>ou não existe</b>; 0 quando é um
+    /// tipo cadastrado e desativado.
+    /// </summary>
+    /// <remarks>
+    /// O tipo é o <c>ticket_type</c> de código igual à categoria; sem ele, o apelido que o
+    /// provedor do ingresso usa para um tipo (<c>ticket_type_alias</c>). Categoria sem tipo
+    /// nem apelido — inclusive a nula — vale como sempre valeu: a categoria é texto aberto
+    /// (docs/19 §5.4), e um tipo novo na véspera não pode negar a entrada de ninguém. As duas
+    /// buscas vão pela chave primária de cada tabela. Uma expressão só, usada no consumo e no
+    /// diagnóstico, para que os dois nunca discordem.
+    /// </remarks>
+    private const string TipoAtivoDoIngresso =
+        """
+        COALESCE(
+                    (SELECT tt.active FROM ticket_type tt WHERE tt.code = ticket.category),
+                    (SELECT tt.active FROM ticket_type_alias a
+                       JOIN ticket_type tt ON tt.code = a.type_code
+                      WHERE a.provider_id = ticket.provider_id AND a.alias = ticket.category),
+                    1)
+        """;
+
     private static int ConsumirUmUso(
         SqliteConnection conexao,
         SqliteTransaction transacao,
@@ -1052,7 +1074,11 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
                       -- cliente, é o cartão passado por cima da grade. A revenda NÃO zera
                       -- last_used_epoch, então revender na hora não contorna isto.
                       AND (ticket.last_used_epoch IS NULL
-                           OR ticket.last_used_epoch + p.reuse_interval_seconds <= $epoch));
+                           OR ticket.last_used_epoch + p.reuse_interval_seconds <= $epoch))
+              -- Tipo de entrada desativado nega (migração 011, Etapa B.2). Na MESMA
+              -- instrução, e não numa consulta antes: desativar o tipo e consumir o
+              -- ingresso não têm "entre" — ou o consumo viu o tipo ativo, ou não consumiu.
+              AND {TipoAtivoDoIngresso} = 1;
             """;
         comando.Parameters.AddWithValue("$qr", qr);
         comando.Parameters.AddWithValue("$em", Iso(agora));
@@ -1077,20 +1103,22 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         long? UltimoUsoEpoch,
         long IntervaloDeReusoSegundos,
         bool Reutilizavel,
-        bool SomenteNaUrna);
+        bool SomenteNaUrna,
+        bool TipoAtivo);
 
     private static EstadoDoIngresso? Estado(SqliteConnection conexao, SqliteTransaction transacao, string qr)
     {
         using var comando = conexao.CreateCommand();
         comando.Transaction = transacao;
         comando.CommandText =
-            """
-            SELECT t.id, t.provider_id, t.sector, t.status, t.used_count, t.max_uses,
-                   t.valid_from, t.valid_to, t.external_ref, p.enabled,
-                   t.category, t.last_used_epoch, p.reuse_interval_seconds, p.reusable, p.urn_only
-            FROM ticket t
-            JOIN ticket_provider p ON p.id = t.provider_id
-            WHERE t.qr_normalized = $qr;
+            $"""
+            SELECT ticket.id, ticket.provider_id, ticket.sector, ticket.status, ticket.used_count, ticket.max_uses,
+                   ticket.valid_from, ticket.valid_to, ticket.external_ref, p.enabled,
+                   ticket.category, ticket.last_used_epoch, p.reuse_interval_seconds, p.reusable, p.urn_only,
+                   {TipoAtivoDoIngresso}
+            FROM ticket
+            JOIN ticket_provider p ON p.id = ticket.provider_id
+            WHERE ticket.qr_normalized = $qr;
             """;
         comando.Parameters.AddWithValue("$qr", qr);
 
@@ -1115,7 +1143,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             leitor.IsDBNull(11) ? null : leitor.GetInt64(11),
             leitor.GetInt64(12),
             leitor.GetInt32(13) == 1,
-            leitor.GetInt32(14) == 1);
+            leitor.GetInt32(14) == 1,
+            leitor.GetInt32(15) == 1);
     }
 
     private static MotivoDoUso Diagnosticar(EstadoDoIngresso? estado, DateTimeOffset agora, bool naUrna)
@@ -1128,6 +1157,13 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         if (!estado.ProvedorHabilitado)
         {
             return MotivoDoUso.ProvedorDesabilitado;
+        }
+
+        // Como o provedor desabilitado, vale para todos os ingressos do tipo de uma vez, e
+        // vem antes de "use a urna": na urna, o cartão seria negado do mesmo jeito.
+        if (!estado.TipoAtivo)
+        {
+            return MotivoDoUso.TipoInativo;
         }
 
         // Vem cedo de propósito: para quem está na frente da catraca com o cartão na mão,

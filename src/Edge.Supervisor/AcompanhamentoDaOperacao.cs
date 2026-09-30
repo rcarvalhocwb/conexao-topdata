@@ -113,6 +113,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             "EmIntervaloDeReuso" => "Negado · cartão usado há pouco",
             "VendaAnteriorNaoUsada" => "Negado · venda anterior não usada",
             "ForaDaUrna" => "Negado · use a fenda da urna",
+            "TipoInativo" => "Negado · tipo de entrada desativado",
             _ => $"Negado · {t.Motivo}",
         };
     }

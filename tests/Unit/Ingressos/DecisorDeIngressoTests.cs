@@ -209,6 +209,7 @@ public sealed class DecisorDeIngressoTests
     [InlineData(MotivoDoUso.EmIntervaloDeReuso, "INTERVALO_DE_REUSO")]
     [InlineData(MotivoDoUso.ForaDaUrna, "FORA_DA_URNA")]
     [InlineData(MotivoDoUso.ProvedorDesabilitado, "PROVEDOR_DESABILITADO")]
+    [InlineData(MotivoDoUso.TipoInativo, "TIPO_INATIVO")]
     public void Cada_motivo_vira_um_codigo_proprio(MotivoDoUso motivo, string codigo)
     {
         var validador = new ValidadorFalso { Responder = _ => new ResultadoDoUso(motivo) };

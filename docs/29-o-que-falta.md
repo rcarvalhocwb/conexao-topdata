@@ -33,7 +33,9 @@ do dono (D1–D8) e as 34 perguntas para a Topdata (T1–T34) estão no docs/34 
 A situação de cada etapa fica no docs/34 §11: a Etapa 0 está concluída no código, e da Etapa A
 a A.1 (montador único da configuração da catraca, com o teste da ADR-0020 item 3) e a A.2 (modelo
 completo da configuração, com cinco parâmetros novos atrás de chaves técnicas desligadas — ensaios
-no docs/21 §6C) também; a parametrização por catraca começa na A.3.
+no docs/21 §6C) também; a parametrização por catraca começa na A.3. Da Etapa B, a D1 foi decidida
+(ADR-0025) e B.1–B.3 estão no código: migração 011 (tipos, trilha do cadastro, lotes de importação),
+tipo desativado negando na catraca e a prévia da importação (CSV e .xlsx, sem gravar).
 
 ## 2. Depende de outras pessoas (bloqueia ou muda o rumo)
 
@@ -86,14 +88,15 @@ As fases do docs/24 §3, em ordem de impacto para o evento.
 > e no [docs/35](35-prompt-modulo-catraca.md), Etapa B.
 
 ### Fase 3 — Cartões (alta)
-- Cadastro de **tipos** (nome, ordem, cor, ativo); cada cartão atrelado a um tipo ou a uma pessoa.
+- Cadastro de **tipos** (nome, ordem, cor, ativo): ~~tabela~~ **feita (B.1, migração 011)**, e ~~tipo inativo negando~~ **feito (B.2)**. Falta a tela e o caminho que grava tipos (B.6/B.7).
 - Tela de cadastro (um cartão, com leitura pelo leitor do balcão se houver).
 - Importação do modelo do docs/26 (.xlsx/.csv):
-  - prévia, erros por linha e duplicados;
-  - zeros à esquerda preservados;
-  - importação atômica e desfazer a última importação;
-  - teste com 100 mil linhas.
-- Relação com a nuvem: o cadastro local e o `sync-cards` do painel não podem se sobrescrever. É preciso definir quem é a fonte da verdade de cada campo.
+  - ~~prévia, erros por linha e duplicados~~ **feito (B.3, `Access.Importacao`)**;
+  - ~~zeros à esquerda preservados~~ **feito (B.3)**;
+  - importação atômica e desfazer a última importação (B.4);
+  - ~~teste com 100 mil linhas~~ **feito para a prévia (B.3)**; o LOAD-IMPORT-01 da aplicação com catracas lendo é da B.4.
+- ~~Relação com a nuvem~~ **decidida (ADR-0025):** com conexão, a nuvem manda; sem conexão, o cadastro local substitui e sobe ao reconectar. Falta a fila de subida, a lista de conflitos e o contrato da função da nuvem que recebe a fila (PROPOSTA FUTURA).
+- O modelo `cartoes-modelo.csv` traz um exemplo com titular; a prévia o recusa até a B.9 (cifra do titular e prazos do jurídico).
 
 ### Fase 4 — Gerenciar catraca (alta)
 - ~~Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.~~ **Feito (fase 4a):** acerto a cada conexão, conferência 1 min depois e a cada hora, aviso no cartão da catraca. O acerto automático durante a operação fica desligado até o passo 6A do docs/21.

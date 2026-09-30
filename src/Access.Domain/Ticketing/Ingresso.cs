@@ -75,6 +75,17 @@ public enum MotivoDoUso
     /// para o outro lado da grade. A urna existe para que o cartão fique.
     /// </remarks>
     ForaDaUrna,
+
+    /// <summary>
+    /// A categoria do ingresso é um tipo de entrada cadastrado e desativado.
+    /// </summary>
+    /// <remarks>
+    /// Desativar um tipo (docs/26 §1) é a forma de a operação parar de aceitar, de uma vez,
+    /// todos os ingressos daquele tipo — sem apagar o tipo, que continua nos relatórios.
+    /// Categoria sem tipo cadastrado continua valendo: a categoria é texto aberto
+    /// (docs/19 §5.4). Etapa B.2 do docs/35.
+    /// </remarks>
+    TipoInativo,
 }
 
 /// <summary>
