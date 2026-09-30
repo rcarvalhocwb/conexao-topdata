@@ -109,6 +109,22 @@ public sealed record FichaDaPeca(
 /// </remarks>
 public static class CatalogoDaFit4
 {
+    /// <summary>
+    /// Por que os sinais liberado/bloqueado não são "Disponível" (docs/34 §7.1, P16).
+    /// </summary>
+    /// <remarks>
+    /// A documentação da Topdata diz que as luzes verde e vermelha acionáveis pelo sistema só
+    /// existem na Linha 3; na Linha 4 (a TopFit 4) a catraca avisa a pessoa pelo display e pelo
+    /// bip (docs/02-matriz-compatibilidade.md, notas de linha; docs/11, "Sinalização"). Não há
+    /// fonte de que o pictograma da TopFit 4 acenda sozinho ao liberar ou negar. Até a bancada
+    /// confirmar (A_CONFIRMAR_COM_TOPDATA), o gêmeo continua acendendo o sinal no desenho, mas
+    /// só para marcar o momento, e a ficha diz isso.
+    /// </remarks>
+    internal const string ExplicacaoDosSinais =
+        "Na TopFit 4, o aviso que a pessoa vê é o display. As luzes verde e vermelha comandadas pelo sistema " +
+        "só existem na linha anterior de catracas (Linha 3); se o pictograma da TopFit 4 acende sozinho ao liberar " +
+        "ou negar, ainda falta confirmar com a Topdata e na bancada. No desenho, o sinal só marca o momento.";
+
     private static readonly Dictionary<PecaDaCatraca, FichaDaPeca> Fichas = Montar();
 
     /// <summary>Todas as peças, na ordem em que aparecem na lista da tela.</summary>
@@ -213,19 +229,17 @@ public static class CatalogoDaFit4
             new FichaDaPeca(
                 PecaDaCatraca.SinalLiberado,
                 "Sinal de liberado",
-                "Pictograma luminoso na tampa. Quem acende é a própria catraca, quando libera o giro.",
+                "Pictograma na tampa. No desenho, o sinal acende para marcar o momento em que a catraca libera.",
                 [
-                    new("Acender ao liberar", SituacaoDaFuncao.Disponivel,
-                        "Automático da catraca. O gêmeo acende junto para mostrar o momento."),
+                    new("Acender ao liberar", SituacaoDaFuncao.AguardandoConfirmacao, ExplicacaoDosSinais),
                 ],
                 nenhuma),
             new FichaDaPeca(
                 PecaDaCatraca.SinalBloqueado,
                 "Sinal de bloqueado",
-                "Pictograma luminoso na tampa, aceso quando a catraca recusa.",
+                "Pictograma na tampa. No desenho, o sinal acende para marcar o momento em que a catraca recusa.",
                 [
-                    new("Acender ao negar", SituacaoDaFuncao.Disponivel,
-                        "Automático da catraca, junto com a mensagem de negação no display."),
+                    new("Acender ao negar", SituacaoDaFuncao.AguardandoConfirmacao, ExplicacaoDosSinais),
                 ],
                 nenhuma),
             new FichaDaPeca(
