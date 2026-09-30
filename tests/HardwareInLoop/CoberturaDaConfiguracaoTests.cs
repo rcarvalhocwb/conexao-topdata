@@ -116,6 +116,36 @@ public sealed class CoberturaDaConfiguracaoTests
         [nameof(DeviceConfiguration.MensagemPadrao)] = new(
             c => c with { MensagemPadrao = "Pista sintetica 9" },
             nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine), [Inner, (byte)0, "Pista sintetica 9"]),
+
+        // Etapa A.2 (docs/34 §4.1). Cada um só com a sua chave técnica, desligada por padrão.
+        [nameof(DeviceConfiguration.DataHoraNoEventoOnLine)] = new(
+            c => c with { DataHoraNoEventoOnLine = false, EnviarDataHoraNoEventoOnLine = true },
+            nameof(IEasyInnerNative.ReceberDataHoraDadosOnLine), [(byte)0]),
+
+        // A chave catraca.registrar_acesso_negado é o próprio valor (EI-021).
+        [nameof(DeviceConfiguration.RegistrarAcessoNegado)] = new(
+            c => c with { RegistrarAcessoNegado = 2 },
+            nameof(IEasyInnerNative.RegistrarAcessoNegado), [(byte)2]),
+
+        // Só o 0 é válido na A.2 (sem lista gravada): a prova é que ele chega com a chave e
+        // que a configuração de hoje não chama a função.
+        [nameof(DeviceConfiguration.TipoDeLista)] = new(
+            c => c with { TipoDeLista = 0, EnviarTipoDeLista = true },
+            nameof(IEasyInnerNative.DefinirTipoListaAcesso), [(byte)0]),
+
+        [nameof(DeviceConfiguration.WiegandDoisLeitores)] = new(
+            c => c with { WiegandDoisLeitores = new WiegandDoisLeitores(true, true), EnviarWiegandDoisLeitores = true },
+            nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores), [(byte)1, (byte)1]),
+
+        // Fora da montagem: no rearme do leitor (ConfigurarEntradasOnline).
+        [nameof(DeviceConfiguration.FormasDeEntradaOnLine)] = new(
+            c => c with { FormasDeEntradaOnLine = new FormasDeEntradaOnLine(4, 1, 10, 5, 2), EnviarFormasDeEntradaOnLine = true },
+            nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), [Inner, (byte)4, (byte)1, (byte)10, (byte)5, (byte)2]),
+
+        // Sem origem na A.2 (custódia DPAPI é PROPOSTA FUTURA); aqui, um número sintético.
+        [nameof(DeviceConfiguration.CartaoMaster)] = new(
+            c => c with { CartaoMaster = new CodigoDoCartaoMaster("99990000000101") },
+            nameof(IEasyInnerNative.DefinirNumeroCartaoMaster), ["99990000000101"]),
     };
 
     /// <summary>
@@ -132,6 +162,51 @@ public sealed class CoberturaDaConfiguracaoTests
         [nameof(DeviceConfiguration.PerfilFisico)] =
             "não é parâmetro do buffer de configuração: escolhe qual função de liberação (EI-041 a EI-044) " +
             "o laço chama a cada giro autorizado (F1, docs/34 §2). Coberto por LiberacaoDePontaAPontaTests.",
+
+        // Etapa A.2 (docs/34 §4.1).
+        [nameof(DeviceConfiguration.ModoDeDigitos)] =
+            "não é parâmetro da DLL: declara Fixo ou Variável e liga as regras 1 e 2 do docs/34 §4.2; quem vai " +
+            "à DLL são QuantidadeFixaDeDigitos (EI-011) e QuantidadesVariaveisDeDigitos (EI-012).",
+
+        [nameof(DeviceConfiguration.EnviarDataHoraNoEventoOnLine)] =
+            "chave técnica catraca.enviar_data_hora_no_evento: decide se DataHoraNoEventoOnLine vai à DLL (EI-027). " +
+            "Desligada até INT-CFG-07. Coberta por ChavesDaConfiguracaoTests.",
+
+        [nameof(DeviceConfiguration.EnviarTipoDeLista)] =
+            "chave técnica catraca.enviar_tipo_de_lista: decide se TipoDeLista vai à DLL (EI-033). Desligada até " +
+            "INT-OFF-02. Coberta por ChavesDaConfiguracaoTests.",
+
+        [nameof(DeviceConfiguration.EnviarWiegandDoisLeitores)] =
+            "chave técnica catraca.enviar_wiegand_dois_leitores: decide se WiegandDoisLeitores vai à DLL (EI-024). " +
+            "Desligada até HIL-CARD-05. Coberta por ChavesDaConfiguracaoTests.",
+
+        [nameof(DeviceConfiguration.EnviarFormasDeEntradaOnLine)] =
+            "chave técnica catraca.enviar_formas_de_entrada: decide se o rearme usa FormasDeEntradaOnLine ou as " +
+            "constantes de sempre (EI-032). Desligada até INT-SM-032 (T26). Coberta por ChavesDaConfiguracaoTests.",
+
+        [nameof(DeviceConfiguration.WebServerDesabilitado)] =
+            "A_CONFIRMAR_COM_TOPDATA: DesabilitarWebServer só tem assinatura do SDK (inventário linha 83), sem linha " +
+            "na matriz FUN; o sentido de 0/1 e se persiste são INFERIDO (T32, NOVO-SEC-WEB-01).",
+
+        [nameof(DeviceConfiguration.MensagemDeApresentacaoDaEntrada)] =
+            "A_CONFIRMAR_COM_TOPDATA: DefinirMensagemApresentacaoEntrada só tem assinatura do SDK (inventário linha 62), " +
+            "sem linha na matriz FUN; limite e ExibirData INFERIDO (NOVO-INT-MSG-03).",
+
+        [nameof(DeviceConfiguration.MensagemDeApresentacaoDaSaida)] =
+            "A_CONFIRMAR_COM_TOPDATA: DefinirMensagemApresentacaoSaida só tem assinatura do SDK (inventário linha 63), " +
+            "sem linha na matriz FUN (NOVO-INT-MSG-03).",
+
+        [nameof(DeviceConfiguration.MensagemPadraoOffLine)] =
+            "A_CONFIRMAR_COM_TOPDATA: DefinirMensagemPadraoOffLine (inventário linha 68) e o enviador " +
+            "EnviarMensagensOffLine (linha 113) sem linha na matriz FUN; entram com a sequência oficial (A.7, NOVO-INT-MSG-04).",
+
+        [nameof(DeviceConfiguration.MensagemDeEntradaOffLine)] =
+            "A_CONFIRMAR_COM_TOPDATA: DefinirMensagemEntradaOffLine (inventário linha 64) sem linha na matriz FUN; " +
+            "sequência oficial (A.7, NOVO-INT-MSG-04).",
+
+        [nameof(DeviceConfiguration.MensagemDeSaidaOffLine)] =
+            "A_CONFIRMAR_COM_TOPDATA: DefinirMensagemSaidaOffLine (inventário linha 69) sem linha na matriz FUN; " +
+            "sequência oficial (A.7, NOVO-INT-MSG-04).",
     };
 
     public static TheoryData<string> CamposEnviados()
@@ -263,5 +338,59 @@ public sealed class CoberturaDaConfiguracaoTests
         Assert.DoesNotContain(chamadas, c => c.Funcao == nameof(IEasyInnerNative.InserirQuantidadeDigitoVariavel));
         Assert.Single(chamadas, c => c.Funcao == nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine)
                                      && c.Argumentos.SequenceEqual([Inner, (byte)0, "Aproxime o ingresso"]));
+    }
+
+    /// <summary>
+    /// Etapa A.2: com as chaves desligadas, mudar <b>todos</b> os valores novos não muda nada do
+    /// que a DLL recebe numa conexão inteira — nem função, nem argumento, nem ordem.
+    /// </summary>
+    /// <remarks>
+    /// <c>RegistrarAcessoNegado</c> e <c>CartaoMaster</c> ficam de fora porque "desligado", para
+    /// eles, é o próprio valor nulo (a chave é o valor; o master não tem origem).
+    /// </remarks>
+    [Fact]
+    public void Com_as_chaves_desligadas_nenhum_campo_novo_chega_a_dll()
+    {
+        var hoje = DeHoje();
+        var mudada = hoje with
+        {
+            ModoDeDigitos = ModoDeDigitos.Variavel,
+            DataHoraNoEventoOnLine = false,
+            WiegandDoisLeitores = new WiegandDoisLeitores(true, true),
+            FormasDeEntradaOnLine = new FormasDeEntradaOnLine(4, 1, 10, 5, 2),
+            WebServerDesabilitado = true,
+            MensagemDeApresentacaoDaEntrada = new MensagemDoDisplay("Bom evento"),
+            MensagemDeApresentacaoDaSaida = new MensagemDoDisplay("Volte sempre"),
+            MensagemPadraoOffLine = new MensagemDoDisplay("Contingencia", ExibirData: true),
+            MensagemDeEntradaOffLine = new MensagemDoDisplay("Entrada sintetica"),
+            MensagemDeSaidaOffLine = new MensagemDoDisplay("Saida sintetica"),
+        };
+
+        Assert.Empty(mudada.Validar());
+        Assert.False(mudada.EnviarDataHoraNoEventoOnLine || mudada.EnviarTipoDeLista
+                     || mudada.EnviarWiegandDoisLeitores || mudada.EnviarFormasDeEntradaOnLine);
+
+        var deHoje = Conectar(hoje);
+        var daMudada = Conectar(mudada);
+
+        Assert.Equal(deHoje.Count, daMudada.Count);
+        for (var i = 0; i < deHoje.Count; i++)
+        {
+            Assert.Equal(deHoje[i].Funcao, daMudada[i].Funcao);
+            Assert.Equal(deHoje[i].Argumentos, daMudada[i].Argumentos);
+        }
+
+        string[] novas =
+        [
+            nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores),
+            nameof(IEasyInnerNative.RegistrarAcessoNegado),
+            nameof(IEasyInnerNative.ReceberDataHoraDadosOnLine),
+            nameof(IEasyInnerNative.DefinirNumeroCartaoMaster),
+            nameof(IEasyInnerNative.DefinirTipoListaAcesso),
+        ];
+        Assert.DoesNotContain(daMudada, c => novas.Contains(c.Funcao));
+        Assert.All(
+            daMudada.Where(c => c.Funcao == nameof(IEasyInnerNative.EnviarFormasEntradasOnLine)),
+            c => Assert.Equal([Inner, (byte)0, (byte)0, (byte)7, (byte)0, (byte)0], c.Argumentos));
     }
 }

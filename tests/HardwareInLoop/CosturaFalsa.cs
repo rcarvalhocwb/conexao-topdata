@@ -112,6 +112,19 @@ internal sealed class CosturaFalsa : IEasyInnerNative
     public byte HabilitarMudancaOnLineOffLine(byte habilita, byte tempo) =>
         Registrar(nameof(HabilitarMudancaOnLineOffLine), habilita, tempo);
 
+    // Etapa A.2: funções de montagem que o adapter só chama com a chave técnica de cada uma.
+    public byte ConfigurarWiegandDoisLeitores(byte habilita, byte exibirMensagem) =>
+        Registrar(nameof(ConfigurarWiegandDoisLeitores), habilita, exibirMensagem);
+
+    public byte RegistrarAcessoNegado(byte tipoRegistro) => Registrar(nameof(RegistrarAcessoNegado), tipoRegistro);
+
+    public byte ReceberDataHoraDadosOnLine(byte recebe) => Registrar(nameof(ReceberDataHoraDadosOnLine), recebe);
+
+    // Só números sintéticos chegam aqui (regra do docs/35); o registro é da costura de teste.
+    public byte DefinirNumeroCartaoMaster(string master) => Registrar(nameof(DefinirNumeroCartaoMaster), master);
+
+    public byte DefinirTipoListaAcesso(byte tipo) => Registrar(nameof(DefinirTipoListaAcesso), tipo);
+
     public byte EnviarConfiguracoes(int inner) => Registrar(nameof(EnviarConfiguracoes), inner);
 
     public byte EnviarFormasEntradasOnLine(

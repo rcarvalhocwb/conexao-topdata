@@ -138,7 +138,11 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
         });
     }
 
-    public AdapterResult ConfigurarEntradasOnline(int inner) =>
+    /// <remarks>
+    /// A configuração não muda nada aqui: o simulador trabalha no nível do adapter e já recebe a
+    /// <see cref="DeviceConfiguration"/> inteira em <see cref="EnviarConfiguracaoCompleta"/>.
+    /// </remarks>
+    public AdapterResult ConfigurarEntradasOnline(int inner, DeviceConfiguration? configuracao = null) =>
         ComDispositivo(inner, d =>
         {
             if (d.Desconectado)

@@ -1,3 +1,6 @@
+using Access.Domain.Credentials;
+using Access.Domain.Devices;
+
 namespace Access.Application.Devices;
 
 /// <summary>
@@ -116,7 +119,7 @@ public sealed record DeviceConfiguration
     /// <summary>Operação do leitor 2. É o leitor da fenda da urna.</summary>
     public required byte OperacaoDoLeitor2 { get; init; }
 
-    /// <summary>Função do relé 1: 0 a 5.</summary>
+    /// <summary>Função do relé 1: 0 a 9 (enum do SDK; o manual parava em 5).</summary>
     public required byte FuncaoDoAcionamento1 { get; init; }
 
     /// <summary>Tempo do relé 1, de 0 a 50 segundos.</summary>
@@ -129,6 +132,13 @@ public sealed record DeviceConfiguration
     public required byte TempoDoAcionamento2 { get; init; }
 
     /// <summary>Verdadeiro para modo on-line; falso para off-line.</summary>
+    /// <remarks>
+    /// É o <c>RegimeAlvo</c> do docs/34 §4.1 (anexo 01 §3.1: "<c>Online</c> → <c>RegimeAlvo</c>"),
+    /// reaproveitado em vez de duplicado (Etapa A.2). Hoje há um envio só por passo, e este
+    /// campo escolhe <c>ConfigurarInnerOnLine</c> (EI-018) ou <c>ConfigurarInnerOffLine</c>
+    /// (EI-019). Com a sequência oficial (Etapa A.7, cfg off-line → mudança → cfg on-line) ele
+    /// passa a dizer em qual regime a catraca <b>termina</b>, e é lá que vira enum.
+    /// </remarks>
     public required bool Online { get; init; }
 
     public required bool TecladoHabilitado { get; init; }
@@ -146,7 +156,151 @@ public sealed record DeviceConfiguration
     public required string MensagemPadrao { get; init; }
 
     /// <summary>Perfil físico do portão, do comissionamento.</summary>
+    /// <remarks>
+    /// Guarda a <c>FuncaoDeLiberacaoDaEntrada</c> do docs/34 §4.1 (Etapa 0.1, F1): o campo do
+    /// modelo completo já existe aqui e não é duplicado.
+    /// </remarks>
     public required GatePhysicalProfile PerfilFisico { get; init; }
+
+    // ─────────────────────────────────────────────────────────────────────────────────────
+    // Etapa A.2 do docs/35: o resto do modelo do docs/34 §4.1.
+    //
+    // Nenhum campo novo é "required", e o valor inicial de cada um não muda nada na catraca.
+    // O valor inicial é o padrão proposto no anexo 01 §3.1 quando há fonte para ele, ou nulo
+    // quando não há. O que depende de bancada só chega à DLL com a sua chave técnica
+    // (edge_setting, sem tela, desligada): desligada = não enviado = o comportamento de antes,
+    // com a catraca no padrão da DLL para aquele parâmetro (ADR-0020, registrado no docs/34).
+    // As exceções são nulas por construção: RegistrarAcessoNegado (a chave é o próprio valor)
+    // e CartaoMaster (sem origem até a custódia DPAPI existir). Sem função com linha na matriz
+    // FUN, o campo fica no modelo e não é enviado (WebServer e mensagens).
+    // ─────────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fixo ou variável. Nulo = não declarado: vale o comportamento de antes da Etapa A.2
+    /// (quantidade fixa se preenchida; tamanhos variáveis só com a chave).
+    /// </summary>
+    /// <remarks>
+    /// Declarado, liga as regras 1 e 2 do docs/34 §4.2. O padrão de fábrica ainda não declara
+    /// (seria <see cref="Devices.ModoDeDigitos.Variavel"/>): declarar sem a chave
+    /// <c>catraca.enviar_digitos_variaveis</c> ligada não mudaria nada na catraca, e a
+    /// configuração da Etapa A.1 fica idêntica. Não é enviado: escolhe EI-011 ou EI-012.
+    /// </remarks>
+    public ModoDeDigitos? ModoDeDigitos { get; init; }
+
+    /// <summary>
+    /// A catraca manda data e hora junto do evento on-line: <c>ReceberDataHoraDadosOnLine</c>
+    /// (EI-027, FUN:28, 0 ou 1). Padrão proposto: ligado (anexo 01 §3.1).
+    /// </summary>
+    /// <remarks>
+    /// Só é enviado com <see cref="EnviarDataHoraNoEventoOnLine"/>. Hoje vai o padrão da DLL e o
+    /// adapter monta a data com o que vier — se vier zerada, <c>AguardarEvento</c> já trata data
+    /// inválida.
+    /// </remarks>
+    public bool DataHoraNoEventoOnLine { get; init; } = true;
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_data_hora_no_evento</c>. Desligada até o ensaio
+    /// INT-CFG-07 (<c>A_CONFIRMAR_COM_TOPDATA</c>: o padrão da DLL não é conhecido, T13).
+    /// </summary>
+    public bool EnviarDataHoraNoEventoOnLine { get; init; }
+
+    /// <summary>
+    /// <c>RegistrarAcessoNegado(TipoRegistro)</c> — EI-021, FUN:22, faixa 0 a 3. Nulo = não
+    /// enviado (a catraca fica com o padrão da DLL).
+    /// </summary>
+    /// <remarks>
+    /// A matriz dá a faixa, não o significado de cada valor: nenhum valor é escolhido aqui. A
+    /// chave técnica <c>catraca.registrar_acesso_negado</c> leva o próprio valor (vazia =
+    /// desligada), para o ensaio INT-OFF-08 descobrir o que cada um faz. Cada negação
+    /// registrada ocupa a memória circular de 30.000 marcações (docs/34 §3.3).
+    /// </remarks>
+    public byte? RegistrarAcessoNegado { get; init; }
+
+    /// <summary>
+    /// <c>DefinirTipoListaAcesso</c> — EI-033, FUN:34: 0 não usar, 1 lista branca, 2 lista
+    /// negra. Padrão: 0.
+    /// </summary>
+    /// <remarks>
+    /// Na Etapa A.2 só o 0 é válido: não existe lista gravada na catraca (Etapa D, decisões D3
+    /// e D5). Enviar o 0 explícito tira do padrão da DLL a decisão "usar lista ou não".
+    /// </remarks>
+    public byte TipoDeLista { get; init; }
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_tipo_de_lista</c>. Desligada até o ensaio INT-OFF-02.
+    /// </summary>
+    public bool EnviarTipoDeLista { get; init; }
+
+    /// <summary><c>ConfigurarWiegandDoisLeitores</c> — EI-024, FUN:25. Padrão proposto: (0, 0).</summary>
+    public WiegandDoisLeitores WiegandDoisLeitores { get; init; }
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_wiegand_dois_leitores</c>. Desligada até o ensaio HIL-CARD-05.
+    /// </summary>
+    public bool EnviarWiegandDoisLeitores { get; init; }
+
+    /// <summary>
+    /// Os parâmetros de <c>EnviarFormasEntradasOnLine</c> (EI-032), o rearme do leitor.
+    /// Padrão: os valores de sempre (<see cref="FormasDeEntradaOnLine.DeHoje"/>).
+    /// </summary>
+    public FormasDeEntradaOnLine FormasDeEntradaOnLine { get; init; } = FormasDeEntradaOnLine.DeHoje;
+
+    /// <summary>
+    /// Chave técnica <c>catraca.enviar_formas_de_entrada</c>. Desligada, o rearme vai com os
+    /// valores de sempre; ligada, com <see cref="FormasDeEntradaOnLine"/>. Desligada até
+    /// INT-SM-032 (T26: significado de cada <c>FormaEntrada</c>).
+    /// </summary>
+    public bool EnviarFormasDeEntradaOnLine { get; init; }
+
+    /// <summary>
+    /// O cartão master (<c>DefinirNumeroCartaoMaster</c>, EI-023). Nulo = não enviado.
+    /// </summary>
+    /// <remarks>
+    /// Vai à DLL sempre que existir; na Etapa A.2 ele nunca existe, porque a custódia (número
+    /// aleatório, cifrado com DPAPI) é PROPOSTA FUTURA — ver <see cref="CodigoDoCartaoMaster"/>.
+    /// </remarks>
+    public CodigoDoCartaoMaster? CartaoMaster { get; init; }
+
+    /// <summary>
+    /// WebServer da catraca desabilitado. Nulo = não definido. <b>Não é enviado.</b>
+    /// </summary>
+    /// <remarks>
+    /// A função existe no SDK (<c>DesabilitarWebServer(byte)</c>, inventário linha 83), mas não
+    /// tem linha na matriz FUN, e o sentido de 0/1, se persiste e como reabilitar são
+    /// <c>INFERIDO</c> (T32, NOVO-SEC-WEB-01). A senha do WebServer fica fora do modelo:
+    /// nenhuma função conhecida a grava (PROPOSTA FUTURA).
+    /// </remarks>
+    public bool? WebServerDesabilitado { get; init; }
+
+    /// <summary>
+    /// Mensagem de apresentação de quem entra. Nula = não definida. <b>Não é enviada.</b>
+    /// </summary>
+    /// <remarks>
+    /// <c>DefinirMensagemApresentacaoEntrada</c> só tem assinatura do SDK (inventário linha 62),
+    /// sem linha na matriz FUN; o limite e o <c>ExibirData</c> são <c>INFERIDO</c>. Importa por
+    /// LGPD: a primeira linha pode mostrar o número do cartão por padrão (anexo 01 §1.9;
+    /// ensaio NOVO-INT-MSG-03).
+    /// </remarks>
+    public MensagemDoDisplay? MensagemDeApresentacaoDaEntrada { get; init; }
+
+    /// <summary>Mensagem de apresentação de quem sai (inventário linha 63). <b>Não é enviada.</b></summary>
+    public MensagemDoDisplay? MensagemDeApresentacaoDaSaida { get; init; }
+
+    /// <summary>
+    /// Mensagem padrão em off-line (inventário linha 68). <b>Não é enviada.</b>
+    /// </summary>
+    /// <remarks>
+    /// As mensagens off-line têm enviador próprio com Inner (<c>EnviarMensagensOffLine</c>,
+    /// inventário linha 113), que o docs/34 §4.3 põe depois do envio da configuração off-line —
+    /// um passo da sequência oficial (Etapa A.7) que hoje não existe. Ensaio NOVO-INT-MSG-04.
+    /// </remarks>
+    public MensagemDoDisplay? MensagemPadraoOffLine { get; init; }
+
+    /// <summary>Mensagem de entrada em off-line (inventário linha 64). <b>Não é enviada.</b></summary>
+    public MensagemDoDisplay? MensagemDeEntradaOffLine { get; init; }
+
+    /// <summary>Mensagem de saída em off-line (inventário linha 69). <b>Não é enviada.</b></summary>
+    public MensagemDoDisplay? MensagemDeSaidaOffLine { get; init; }
 
     /// <summary>
     /// Valida os limites documentados no manual, antes de qualquer chamada nativa.
@@ -263,6 +417,201 @@ public sealed record DeviceConfiguration
             problemas.Add("MudancaAutomatica=2 pressupõe operação on-line com PingOnline periódico.");
         }
 
+        ValidarCamposDaEtapaA2(problemas);
         return problemas;
+    }
+
+    /// <summary>
+    /// O que é permitido, mas depende de uma resposta da Topdata ou da bancada: não impede o
+    /// envio, e quem sobe o worker registra.
+    /// </summary>
+    /// <remarks>
+    /// Duas regras do docs/34 §4.2 não podem ser erro sem recusar a configuração de hoje:
+    /// a 9 (o tipo de leitor padrão é 8 com recepção numérica, e só muda depois de T25) e a 11
+    /// (o evento aceita tempo do relé 1 até 50 s). Ficam aqui até a bancada decidir.
+    /// </remarks>
+    /// <returns>Lista vazia quando não há nada a observar.</returns>
+    public IReadOnlyList<string> Alertas()
+    {
+        var alertas = new List<string>();
+
+        // Regra 9 (docs/34 §4.2): o 8 é "QR Code por letras" (FUN:14), mas o adapter recebe pela
+        // variante numérica de ReceberDadosOnLine; se a DLL só entregar letras pela variante
+        // _QRCodeComLetras, o QR alfanumérico chega vazio. Receber letras exige buffer maior
+        // que os 64 bytes de hoje e terminador validado (docs/34 §8). A_CONFIRMAR: T25,
+        // NOVO-HIL-QR-02. O QR numérico de 4 a 16 dígitos segue valendo (docs/20 §5).
+        if (TipoDeLeitor == 8)
+        {
+            alertas.Add(
+                "TipoDeLeitor 8 (QR por letras) com recepção numérica: QR com letras pode chegar vazio. " +
+                "A_CONFIRMAR_COM_TOPDATA (T25, NOVO-HIL-QR-02).");
+        }
+
+        // Regra 11 (docs/34 §4.2): a liberação dura o tempo do relé 1, e o laço desiste de
+        // esperar o giro em MonitoraGiroCatraca (8 s, DeviceStateMachine). Tempo igual ou maior
+        // que essa espera faz o laço voltar a ler com a catraca ainda liberada. A margem é
+        // medida na bancada (NOVO-LOAD-LOOP-01), não escolhida aqui.
+        if (DeviceStateMachine.TimeoutFor(DeviceState.MonitoraGiroCatraca) is { } espera
+            && TimeSpan.FromSeconds(TempoDoAcionamento1) >= espera)
+        {
+            alertas.Add(
+                $"TempoDoAcionamento1 de {TempoDoAcionamento1} s não é menor que a espera pelo giro " +
+                $"({espera.TotalSeconds:0} s): o laço pode voltar a ler com a catraca liberada.");
+        }
+
+        return alertas;
+    }
+
+    /// <summary>Faixas e regras entre campos dos campos da Etapa A.2 (docs/34 §4.1 e §4.2).</summary>
+    private void ValidarCamposDaEtapaA2(List<string> problemas)
+    {
+        ValidarDigitos(problemas);
+
+        // FUN:22: TipoRegistro de 0 a 3. O significado de cada valor é A_CONFIRMAR (INT-OFF-08).
+        if (RegistrarAcessoNegado is > 3)
+        {
+            problemas.Add($"RegistrarAcessoNegado vai de 0 a 3; recebido {RegistrarAcessoNegado}.");
+        }
+
+        ValidarLista(problemas);
+
+        // Regra 10 (docs/34 §4.2), na parte que tem fonte: a faixa de FormaEntrada (FUN:33). A
+        // coerência com teclado e leitores ativos precisa da tabela de FormaEntrada (T26).
+        if (!FormasDeEntradaOnLine.FormaEntradaDocumentada(FormasDeEntradaOnLine.FormaEntrada))
+        {
+            problemas.Add(
+                "FormaEntrada deve estar em 0–7, 10–14 ou 100–105 (FUN:33); " +
+                $"recebido {FormasDeEntradaOnLine.FormaEntrada}.");
+        }
+
+        if (CartaoMaster is { } master)
+        {
+            // FUN:24: "até 14 dígitos", "válido para padrão Livre". A mensagem nunca leva o número.
+            if (!master.Valido)
+            {
+                problemas.Add($"O cartão master tem só dígitos, de 1 a {CodigoDoCartaoMaster.MaximoDeDigitos}.");
+            }
+
+            if (PadraoCartao != 1)
+            {
+                problemas.Add("O cartão master só vale com o padrão de cartão Livre (1) (FUN:24).");
+            }
+        }
+
+        ValidarMensagem(problemas, nameof(MensagemDeApresentacaoDaEntrada), MensagemDeApresentacaoDaEntrada);
+        ValidarMensagem(problemas, nameof(MensagemDeApresentacaoDaSaida), MensagemDeApresentacaoDaSaida);
+        ValidarMensagem(problemas, nameof(MensagemPadraoOffLine), MensagemPadraoOffLine);
+        ValidarMensagem(problemas, nameof(MensagemDeEntradaOffLine), MensagemDeEntradaOffLine);
+        ValidarMensagem(problemas, nameof(MensagemDeSaidaOffLine), MensagemDeSaidaOffLine);
+    }
+
+    /// <summary>Regras 1 e 2 do docs/34 §4.2, só quando o modo é declarado.</summary>
+    private void ValidarDigitos(List<string> problemas)
+    {
+        switch (ModoDeDigitos)
+        {
+            case null:
+                // Não declarado: as regras de antes da Etapa A.2, acima, continuam valendo.
+                return;
+
+            case Devices.ModoDeDigitos.Fixo:
+                // Regra 1: Fixo ⇒ 4–16. O manual também fala em 1–16 (T6); fica o mais estreito.
+                if (QuantidadeFixaDeDigitos is not { } fixa || fixa < 4 || fixa > 16)
+                {
+                    problemas.Add(
+                        "Com dígitos fixos, QuantidadeFixaDeDigitos é obrigatória e vai de 4 a 16 " +
+                        $"(docs/34 §4.2, regra 1); recebido {QuantidadeFixaDeDigitos?.ToString(provider: null) ?? "nada"}.");
+                }
+
+                if (EnviarDigitosVariaveis)
+                {
+                    problemas.Add("Com dígitos fixos, o envio de dígitos variáveis não pode estar ligado.");
+                }
+
+                return;
+
+            case Devices.ModoDeDigitos.Variavel:
+                // Regra 1: Variável ⇒ conjunto não vazio.
+                if (QuantidadesVariaveisDeDigitos.Count == 0)
+                {
+                    problemas.Add("Com dígitos variáveis, informe ao menos um tamanho (docs/34 §4.2, regra 1).");
+                }
+
+                if (QuantidadeFixaDeDigitos is not null)
+                {
+                    // Senão DefinirQuantidadeDigitosCartao iria junto e a catraca receberia os dois.
+                    problemas.Add("Com dígitos variáveis, QuantidadeFixaDeDigitos fica vazia.");
+                }
+
+                // Regra 2: padrão Livre com leitor de QR ⇒ os tamanhos cobrem todo QR que o
+                // produto aceita (perfil qr-catraca4, 4 a 16; docs/20 §5). O leitor de QR é o 8
+                // (QR por letras, FUN:14) ou o 5 (barras serial, pela página da Topdata; T25).
+                if (PadraoCartao == 1
+                    && TipoDeLeitor is 5 or 8
+                    && PerfisDeLeitura.QrCatraca4.AllowedLengths is { } aceitos)
+                {
+                    var faltando = aceitos.Where(n => !QuantidadesVariaveisDeDigitos.Contains((byte)n)).Order().ToList();
+                    if (faltando.Count > 0)
+                    {
+                        problemas.Add(
+                            "Com padrão Livre e leitor de QR, os tamanhos variáveis precisam cobrir todo QR aceito " +
+                            $"(4 a 16, docs/34 §4.2, regra 2); faltam {string.Join(", ", faltando)}.");
+                    }
+                }
+
+                return;
+
+            default:
+                problemas.Add($"ModoDeDigitos deve ser Fixo ou Variavel; recebido {(int)ModoDeDigitos}.");
+                return;
+        }
+    }
+
+    /// <summary>FUN:34 e regras 7 e 8 do docs/34 §4.2, na forma que valem enquanto a lista não existe.</summary>
+    private void ValidarLista(List<string> problemas)
+    {
+        if (TipoDeLista > 2)
+        {
+            problemas.Add($"TipoDeLista deve ser 0, 1 ou 2 (FUN:34); recebido {TipoDeLista}.");
+            return;
+        }
+
+        // Regra 7: tipo de lista ≠ 0 ⇒ a lista cabe (em posições). Não há lista gravada na
+        // catraca (Etapa D, decisão D3), então não há o que caber: só o 0 é possível.
+        if (TipoDeLista != 0)
+        {
+            problemas.Add(
+                "TipoDeLista diferente de 0 exige a lista gravada na catraca, que ainda não existe " +
+                "(docs/34 §4.2, regra 7; Etapa D, decisão D3).");
+        }
+
+        // Regra 8: lista negra ⇒ decisão D5 (fail-safe × fail-secure) registrada. Não há.
+        if (TipoDeLista == 2)
+        {
+            problemas.Add("Lista negra exige a decisão D5 registrada (docs/34 §4.2, regra 8; §9).");
+        }
+    }
+
+    /// <summary>Regra 6 do docs/34 §4.2: exibir data ⇒ mensagem de até 16 caracteres.</summary>
+    private static void ValidarMensagem(List<string> problemas, string campo, MensagemDoDisplay? mensagem)
+    {
+        if (mensagem is null)
+        {
+            return;
+        }
+
+        if (mensagem.Texto is null)
+        {
+            problemas.Add($"{campo}: o texto é obrigatório.");
+            return;
+        }
+
+        var limite = mensagem.ExibirData ? MensagemDoDisplay.LimiteComData : MensagemDoDisplay.LimiteSemData;
+        if (mensagem.Texto.Length > limite)
+        {
+            problemas.Add(
+                $"{campo} tem no máximo {limite} caracteres{(mensagem.ExibirData ? " com a data (docs/34 §4.2, regra 6)" : string.Empty)}; " +
+                $"recebida com {mensagem.Texto.Length}.");
+        }
     }
 }
