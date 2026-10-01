@@ -337,6 +337,11 @@ enum TipoDeComando {
   TIPO_DE_COMANDO_LIBERACAO_MANUAL = 3;
   TIPO_DE_COMANDO_REINICIAR_CONEXAO = 4;
   TIPO_DE_COMANDO_APLICAR_CONFIGURACAO = 5;
+  // 6 a 9 são da Etapa A.8 (bip curto e longo, liberar saída, dois sentidos).
+  // Coleta os bilhetes da memória da catraca, gravando cada um antes do próximo (EI-039,
+  // R-68; Etapa A.9). Só por catraca (inner 1 a 99). Recusado enquanto a chave técnica
+  // catraca.coletar_bilhetes estiver desligada (INT-REC-03 e CHAOS-REC-01).
+  TIPO_DE_COMANDO_COLETAR_BILHETES = 10;
 }
 
 enum SituacaoDoComando {

@@ -109,6 +109,9 @@ public static class Textos
         TipoDeComando.LiberacaoManual => "Liberação manual",
         TipoDeComando.ReiniciarConexao => "Refazer conexão",
         TipoDeComando.AplicarConfiguracao => "Aplicar configuração",
+
+        // Só no histórico: não há botão para pedir (Etapa A.9; chave técnica desligada, sem tela).
+        TipoDeComando.ColetarBilhetes => "Coletar marcações",
         _ => "Comando",
     };
 
