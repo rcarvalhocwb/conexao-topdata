@@ -102,6 +102,11 @@ internal static class CapturaDeTela
             }
         }
 
+        // Etapa A.6: a Parametrização fica fora do menu (abre pela "Gerenciar catraca"), então
+        // o laço acima não passa por ela e ela entra aqui, com o número que o docs/35 deu à
+        // captura (as do menu não foram renumeradas).
+        gravados.AddRange(await GravarParametrizacaoAsync(pasta, janela, falhas).ConfigureAwait(true));
+
         // Relatório em arquivo porque num WinExe a saída de console não é confiável. Cada
         // imagem sai com o tamanho em pixels, o DPI e o tamanho lógico: o gêmeo saía com
         // 1044×768 e ninguém percebia (docs/34 §7.1, P4).
@@ -236,6 +241,67 @@ internal static class CapturaDeTela
             fonte.RootVisual = null;
             fonte.Dispose();
             janela.Close();
+        }
+
+        return gravados;
+    }
+
+    /// <summary>
+    /// Duas fotos da Parametrização da catraca (Etapa A.6 do docs/35):
+    /// <c>09-parametrizacao-{tema}</c>, como a tela abre (modo guiado, aba Leitura), e
+    /// <c>09-parametrizacao-diff-{tema}</c>, com duas alterações não salvas na lista "o que
+    /// muda (atual → novo)", no modo técnico e na aba Instalação, onde ficam os campos que
+    /// aguardam confirmação (desabilitados, com o selo e o motivo).
+    /// </summary>
+    /// <remarks>
+    /// Nada é salvo nem aplicado: as alterações ficam só na tela e são desfeitas no fim, para o
+    /// serviço da captura continuar como estava.
+    /// </remarks>
+    private static async Task<IReadOnlyList<Captura>> GravarParametrizacaoAsync(string pasta, JanelaViewModel janela, List<string> falhas)
+    {
+        var tema = Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant();
+        var nome = $"09-parametrizacao-{tema}";
+        var gravados = new List<Captura>();
+        var tela = janela.Parametrizacao;
+
+        try
+        {
+            tela.ModoTecnico = false;
+            tela.AbaSelecionada = (int)AbaDaParametrizacao.Leitura;
+            janela.TelaAtual = tela;
+            await janela.AtualizarAsync().ConfigureAwait(true);
+            await tela.AtualizarAsync().ConfigureAwait(true);
+            gravados.Add(await GravarAsync(Path.Combine(pasta, nome + ".png"), janela).ConfigureAwait(true));
+
+            // O rascunho que um operador faria: duas mudanças, nada salvo.
+            foreach (var campo in tela.Campos)
+            {
+                if (campo.Campo is CampoDaCatraca.TempoDoAcionamento1)
+                {
+                    campo.Herda = false;
+                    campo.Valor = "7";
+                }
+                else if (campo.Campo is CampoDaCatraca.MensagemPadrao)
+                {
+                    campo.Herda = false;
+                    campo.Valor = "Entrada pelo portao 2";
+                }
+            }
+
+            tela.ModoTecnico = true;
+            tela.AbaSelecionada = (int)AbaDaParametrizacao.Instalacao;
+            gravados.Add(await GravarAsync(Path.Combine(pasta, $"09-parametrizacao-diff-{tema}.png"), janela).ConfigureAwait(true));
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            var caminho = Path.Combine(pasta, nome + "-erro.txt");
+            File.WriteAllText(caminho, erro.ToString());
+            falhas.Add(caminho);
+        }
+        finally
+        {
+            tela.ModoTecnico = false;
+            tela.AbaSelecionada = (int)AbaDaParametrizacao.Leitura;
         }
 
         return gravados;
