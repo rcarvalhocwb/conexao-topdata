@@ -96,6 +96,9 @@ public sealed class SimulatedDevice : IDisposable
     /// <summary>Contagem de liberações de giro pedidas, por sentido.</summary>
     public Dictionary<GateDirection, int> LiberacoesPedidas { get; } = [];
 
+    /// <summary>Bips pedidos, na ordem (comando manual do operador, Etapa A.8).</summary>
+    public List<TipoDeBip> BipsAcionados { get; } = [];
+
     /// <summary>Quantas vezes o relé da urna foi acionado.</summary>
     public int AcionamentosDaUrna { get; private set; }
 
@@ -170,6 +173,8 @@ public sealed class SimulatedDevice : IDisposable
 
     internal void RegistrarLiberacao(GateDirection direcao) =>
         LiberacoesPedidas[direcao] = LiberacoesPedidas.GetValueOrDefault(direcao) + 1;
+
+    internal void RegistrarBip(TipoDeBip bip) => BipsAcionados.Add(bip);
 
     internal void RegistrarAcionamentoDaUrna() => AcionamentosDaUrna++;
 

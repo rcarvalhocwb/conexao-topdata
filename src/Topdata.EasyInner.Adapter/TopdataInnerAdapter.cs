@@ -366,6 +366,14 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
         _ => throw new ArgumentOutOfRangeException(nameof(direcao), direcao, "Sentido desconhecido."),
     });
 
+    /// <remarks>Um para um, como a liberação: cada valor é uma função, só com o Inner (EI-048/049).</remarks>
+    public AdapterResult AcionarBip(int inner, TipoDeBip bip) => Medir(() => bip switch
+    {
+        TipoDeBip.Curto => (nameof(IEasyInnerNative.AcionarBipCurto), _nativo.AcionarBipCurto(inner)),
+        TipoDeBip.Longo => (nameof(IEasyInnerNative.AcionarBipLongo), _nativo.AcionarBipLongo(inner)),
+        _ => throw new ArgumentOutOfRangeException(nameof(bip), bip, "Bip desconhecido."),
+    });
+
     public AdapterResult AcionarReleDaUrna(int inner) =>
         Medir(nameof(IEasyInnerNative.AcionarRele2), () => _nativo.AcionarRele2(inner));
 

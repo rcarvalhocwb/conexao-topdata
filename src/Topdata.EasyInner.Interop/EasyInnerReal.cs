@@ -140,6 +140,10 @@ public sealed class EasyInnerReal : IEasyInnerNative
 
     public byte AcionarRele2(int inner) => EasyInnerNative.AcionarRele2(inner);
 
+    public byte AcionarBipCurto(int inner) => EasyInnerNative.AcionarBipCurto(inner);
+
+    public byte AcionarBipLongo(int inner) => EasyInnerNative.AcionarBipLongo(inner);
+
     public byte EnviarMensagemPadraoOnLine(int inner, byte exibirData, string mensagem) =>
         EasyInnerNative.EnviarMensagemPadraoOnLine(inner, exibirData, mensagem);
 

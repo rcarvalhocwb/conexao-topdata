@@ -69,11 +69,11 @@ public sealed class LiberacaoDePontaAPontaTests
 
     /// <summary>Leva a catraca até Polling, com o relógio já acertado, e limpa o registro.</summary>
     private static (CosturaFalsa Costura, DevicePump Laco, DeviceSlot Catraca, TopdataInnerAdapter Adapter) EmOperacao(
-        FuncaoDeLiberacao funcao)
+        FuncaoDeLiberacao funcao, Func<DeviceEvent, Decision>? decidir = null)
     {
         var costura = new CosturaFalsa { OrigemADevolver = 0 };
         var adapter = new TopdataInnerAdapter(costura);
-        var laco = new DevicePump(adapter, () => Agora, LinhaDaCosturaFalsa, decidir: _ => Autorizado());
+        var laco = new DevicePump(adapter, () => Agora, LinhaDaCosturaFalsa, decidir: decidir ?? (_ => Autorizado()));
         var catraca = new DeviceSlot(1, Configuracao(funcao), () => Agora);
 
         Ate(laco, catraca, DeviceState.Polling);
@@ -83,6 +83,7 @@ public sealed class LiberacaoDePontaAPontaTests
         Assert.Contains("EnviarRelogio", costura.Chamadas);
 
         costura.Chamadas.Clear();
+        costura.ChamadasComArgumentos.Clear();
         return (costura, laco, catraca, adapter);
     }
 
@@ -129,6 +130,116 @@ public sealed class LiberacaoDePontaAPontaTests
         laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
 
         Assert.Equal([esperada], costura.Chamadas);
+    }
+
+    /// <summary>
+    /// Etapa A.8: "Liberar saída" chama a outra função do par da entrada comissionada (EI-041/042
+    /// na instalação direta, EI-043/044 na invertida), só com o Inner, pelo mesmo estado
+    /// <see cref="DeviceState.LiberarCatraca"/>.
+    /// </summary>
+    [Theory]
+    [InlineData(FuncaoDeLiberacao.Entrada, "LiberarCatracaSaida")]
+    [InlineData(FuncaoDeLiberacao.EntradaInvertida, "LiberarCatracaSaidaInvertida")]
+    [InlineData(FuncaoDeLiberacao.Saida, "LiberarCatracaEntrada")]
+    [InlineData(FuncaoDeLiberacao.SaidaInvertida, "LiberarCatracaEntradaInvertida")]
+    public void Liberar_saida_chama_a_outra_funcao_do_par_do_perfil(FuncaoDeLiberacao funcao, string esperada)
+    {
+        var (costura, laco, catraca, adapter) = EmOperacao(funcao);
+        using var _ = adapter;
+
+        var (comando, problemas) = ComandoDeCatraca.Criar(
+            1, TipoDeComando.LiberarSaida, "Operador de teste", Agora, motivo: "ensaio sintético");
+        Assert.Empty(problemas);
+        catraca.Enfileirar(comando!);
+
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        Assert.Equal(DeviceState.LiberarCatraca, catraca.Maquina.Current);
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+
+        var (chamada, argumentos) = Assert.Single(costura.ChamadasComArgumentos);
+        Assert.Equal(esperada, chamada);
+        Assert.Equal(new object[] { 1 }, argumentos);
+        Assert.Equal(DeviceState.MonitoraGiroCatraca, catraca.Maquina.Current);
+    }
+
+    /// <summary>Dois sentidos é uma função só (EI-045), qualquer que seja o perfil.</summary>
+    [Theory]
+    [InlineData(FuncaoDeLiberacao.Entrada)]
+    [InlineData(FuncaoDeLiberacao.EntradaInvertida)]
+    [InlineData(FuncaoDeLiberacao.Saida)]
+    [InlineData(FuncaoDeLiberacao.SaidaInvertida)]
+    public void Liberar_dois_sentidos_chama_so_a_funcao_dos_dois_sentidos(FuncaoDeLiberacao funcao)
+    {
+        var (costura, laco, catraca, adapter) = EmOperacao(funcao);
+        using var _ = adapter;
+
+        var (comando, problemas) = ComandoDeCatraca.Criar(
+            1, TipoDeComando.LiberarDoisSentidos, "Operador de teste", Agora, motivo: "ensaio sintético", confirmacao: "EVACUAR 1");
+        Assert.Empty(problemas);
+        catraca.Enfileirar(comando!);
+
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+
+        var (chamada, argumentos) = Assert.Single(costura.ChamadasComArgumentos);
+        Assert.Equal("LiberarCatracaDoisSentidos", chamada);
+        Assert.Equal(new object[] { 1 }, argumentos);
+    }
+
+    /// <summary>
+    /// Etapa A.8: o bip pedido pelo operador é uma chamada só, em Polling, e a catraca segue
+    /// em Polling — nada de reconectar nem de rearmar o leitor.
+    /// </summary>
+    [Theory]
+    [InlineData(TipoDeComando.BipCurto, "AcionarBipCurto")]
+    [InlineData(TipoDeComando.BipLongo, "AcionarBipLongo")]
+    public void Bip_do_operador_e_uma_chamada_so_e_a_catraca_segue_em_polling(TipoDeComando tipo, string esperada)
+    {
+        var (costura, laco, catraca, adapter) = EmOperacao(FuncaoDeLiberacao.Entrada);
+        using var _ = adapter;
+
+        var (comando, problemas) = ComandoDeCatraca.Criar(1, tipo, "Operador de teste", Agora);
+        Assert.Empty(problemas);
+        catraca.Enfileirar(comando!);
+
+        Assert.Equal($"comando {tipo}: bip acionado", laco.Passo(catraca, TimeSpan.FromMilliseconds(10)));
+
+        var (chamada, argumentos) = Assert.Single(costura.ChamadasComArgumentos);
+        Assert.Equal(esperada, chamada);
+        Assert.Equal(new object[] { 1 }, argumentos);
+        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+    }
+
+    /// <summary>
+    /// Bip não é acoplado à decisão nesta etapa: nem a passagem autorizada nem a negada chamam
+    /// bip (cada chamada a mais no caminho da passagem reduz a vazão, docs/34 §8).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Decisao_automatica_nunca_bipa(bool autorizado)
+    {
+        var negado = new Decision(
+            DecisionOutcome.Denied, ReasonCodes.CredencialDesconhecida, DegradationTier.T1SemInternet, TimeSpan.FromMilliseconds(3), []);
+        var (costura, laco, catraca, adapter) = EmOperacao(FuncaoDeLiberacao.Entrada, _ => autorizado ? Autorizado() : negado);
+        using var _ = adapter;
+
+        costura.OrigemADevolver = (byte)KnownEventOrigin.QrCode;
+        costura.CartaoADevolver = "0000000101";
+        Ate(laco, catraca, autorizado ? DeviceState.MonitoraGiroCatraca : DeviceState.EnviarMsgAcessoNegado);
+
+        // Autorizado: a pessoa gira; negado: nada mais chega. Depois, silêncio até voltar a Polling.
+        costura.OrigemADevolver = autorizado ? (byte)KnownEventOrigin.GiroConfirmado : (byte)0;
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        costura.OrigemADevolver = 0;
+        for (var i = 0; i < 5; i++)
+        {
+            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        }
+
+        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+        Assert.DoesNotContain(costura.Chamadas, c => c.StartsWith("AcionarBip", StringComparison.Ordinal));
+        Assert.Contains(autorizado ? "LiberarCatracaEntrada" : "EnviarMensagemTemporariaOnLine", costura.Chamadas);
     }
 
     /// <summary>

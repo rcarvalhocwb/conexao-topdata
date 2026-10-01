@@ -44,7 +44,11 @@ passo 9). A A.7 (a sequência oficial de conexão — cfg off-line → mudança 
 cfg on-line) está no código atrás da chave técnica `catraca.sequencia_oficial`, **desligada** até
 INT-SM-021 (docs/21 §6D): desligada, a catraca recebe os três envios iguais de sempre; ligada, não
 liga a contingência (mudança automática 0; D8). A tela vem na A.6, que compara a versão do salvo
-com a aplicada. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+com a aplicada. A A.8 também está no código: bip curto e longo, liberar saída e liberar nos dois
+sentidos, cada um com a sua chave técnica desligada (o serviço recusa antes de enfileirar; ensaios
+no docs/21 §6E). Os dois sentidos são recusados também pela **decisão D5, ainda não tomada** —
+ligar exige D5 + bancada (HIL-DIR-07). Entrar e sair de manutenção ficaram de fora (sem função na
+matriz; `A_CONFIRMAR_COM_TOPDATA`). Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
@@ -54,7 +58,7 @@ importação (CSV e .xlsx, sem gravar).
 |---|---|---|---|
 | E1 | Redistribuir a `EasyInner.dll` no Setup | Topdata | Setup que já funciona com catraca real, sem instalar o SDK à parte |
 | E2 | B2 — parque real: quantas TopFit 4, firmware, se todas têm urna **e** leitor de QR | cliente | divisão das catracas (docs/19) e perfil do cartão |
-| E3 | B4 — fail-safe × fail-secure (o que a catraca faz sem PC ou sem energia) | responsável pela segurança do evento | configuração de contingência, RB-10 (evacuação) |
+| E3 | B4 / D5 — fail-safe × fail-secure (o que a catraca faz sem PC ou sem energia) e evacuação | responsável pela segurança do evento | configuração de contingência, RB-10 (evacuação) e o comando "Liberar nos dois sentidos", que já existe no serviço e é recusado até a decisão (A.8) |
 | E4 | B7 — público, janela de pico e número de portões | cliente | dimensionamento (docs/14): pode faltar catraca |
 | E5 | B8 — cartão de proximidade ou Mifare; 10 ou 14 dígitos | cliente + bancada | normalização do código (zeros à esquerda) |
 | E6 | B9 — biometria/facial no escopo? | negócio + jurídico | fase 5 (só com base legal) |
@@ -112,7 +116,8 @@ As fases do docs/24 §3, em ordem de impacto para o evento.
 ### Fase 4 — Gerenciar catraca (alta)
 - ~~Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.~~ **Feito (fase 4a):** acerto a cada conexão, conferência 1 min depois e a cada hora, aviso no cartão da catraca. O acerto automático durante a operação fica desligado até o passo 6A do docs/21.
 - ~~Tela por catraca~~ **Feito (fase 4b/4c, [docs/32](32-gerenciar-catraca.md)):** mensagem temporária, refazer a conexão, acertar o relógio, liberação manual com motivo e auditoria, e "Aplicar agora" em Configurações. Bip, relés, urna e sentido aparecem desabilitados com o selo "Aguardando confirmação"; bancada no passo 6B do docs/21.
-- Falta: somar as liberações manuais nos relatórios da fase 6.
+- Comandos da Etapa A.8 (bip curto e longo, liberar saída, liberar nos dois sentidos) no serviço, cada um com a sua chave técnica **desligada**; falta a bancada (docs/21 §6E), a D5 para os dois sentidos e os botões na tela (A.6).
+- Falta: somar as liberações manuais nos relatórios da fase 6 (e as de saída, quando ligadas).
 
 ### Fase 5 — Alertas e notificações (alta)
 Catálogo do docs/24 §1:

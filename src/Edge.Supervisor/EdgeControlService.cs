@@ -38,6 +38,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly IReadOnlyDictionary<int, string> _nomes;
     private readonly Access.Infrastructure.SQLite.LeiturasSimuladas? _simulacao;
     private readonly Access.Infrastructure.SQLite.FilaDeComandosSqlite? _comandos;
+    private readonly Access.Infrastructure.SQLite.ChavesDosComandos? _chavesDosComandos;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -54,6 +55,10 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="nomesDasCatracas">Nome de cada catraca no painel.</param>
     /// <param name="simulacao">Fila de leituras simuladas; presente só no modo simulação.</param>
     /// <param name="comandos">Fila de comandos por catraca; sem ela, "Gerenciar" responde que não há base.</param>
+    /// <param name="chavesDosComandos">
+    /// Chaves técnicas dos comandos da Etapa A.8 (bip, liberar saída, dois sentidos). Sem elas,
+    /// todas contam como desligadas e esses comandos são recusados.
+    /// </param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -66,7 +71,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         bool semConfiguracao = false,
         IReadOnlyDictionary<int, string>? nomesDasCatracas = null,
         Access.Infrastructure.SQLite.LeiturasSimuladas? simulacao = null,
-        Access.Infrastructure.SQLite.FilaDeComandosSqlite? comandos = null)
+        Access.Infrastructure.SQLite.FilaDeComandosSqlite? comandos = null,
+        Access.Infrastructure.SQLite.ChavesDosComandos? chavesDosComandos = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -81,6 +87,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         _nomes = nomesDasCatracas ?? new Dictionary<int, string>();
         _simulacao = simulacao;
         _comandos = comandos;
+        _chavesDosComandos = chavesDosComandos;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -512,6 +519,15 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
             return Task.FromResult(resposta);
         }
 
+        // Comandos da Etapa A.8: cada um com a sua chave técnica, desligada; e os dois sentidos
+        // também pela decisão D5. Recusado aqui, nada chega à fila nem à auditoria.
+        var recusas = Access.Application.Devices.ComandoDeCatraca.RecusasDoServico(tipo, ChaveLigada(tipo));
+        if (recusas.Count > 0)
+        {
+            resposta.Problemas.AddRange(recusas);
+            return Task.FromResult(resposta);
+        }
+
         var cadastradas = _supervisor.Workers.SelectMany(w => w.Inners).Distinct().Order().ToList();
         List<int> alvos;
 
@@ -541,7 +557,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
                 agora,
                 request.Texto,
                 request.DuracaoSegundos == 0 ? 10 : request.DuracaoSegundos,
-                request.Motivo);
+                request.Motivo,
+                request.Confirmacao);
 
             if (comando is null)
             {
@@ -622,6 +639,24 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         return Task.FromResult(resposta);
     }
 
+    // Base ocupada ou ilegível conta como desligada: comando de catraca não liga por engano.
+    private bool ChaveLigada(Access.Application.Devices.TipoDeComando tipo)
+    {
+        if (_chavesDosComandos is null || Access.Application.Devices.ComandoDeCatraca.ChaveTecnica(tipo) is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return _chavesDosComandos.Ligada(tipo);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            return false;
+        }
+    }
+
     private static Access.Application.Devices.TipoDeComando? Tipo(TipoDeComando tipo) => tipo switch
     {
         TipoDeComando.AcertarRelogio => Access.Application.Devices.TipoDeComando.AcertarRelogio,
@@ -629,6 +664,10 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         TipoDeComando.LiberacaoManual => Access.Application.Devices.TipoDeComando.LiberacaoManual,
         TipoDeComando.ReiniciarConexao => Access.Application.Devices.TipoDeComando.ReiniciarConexao,
         TipoDeComando.AplicarConfiguracao => Access.Application.Devices.TipoDeComando.AplicarConfiguracao,
+        TipoDeComando.BipCurto => Access.Application.Devices.TipoDeComando.BipCurto,
+        TipoDeComando.BipLongo => Access.Application.Devices.TipoDeComando.BipLongo,
+        TipoDeComando.LiberarSaida => Access.Application.Devices.TipoDeComando.LiberarSaida,
+        TipoDeComando.LiberarDoisSentidos => Access.Application.Devices.TipoDeComando.LiberarDoisSentidos,
         _ => null,
     };
 
@@ -639,6 +678,10 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Application.Devices.TipoDeComando.LiberacaoManual => TipoDeComando.LiberacaoManual,
         Access.Application.Devices.TipoDeComando.ReiniciarConexao => TipoDeComando.ReiniciarConexao,
         Access.Application.Devices.TipoDeComando.AplicarConfiguracao => TipoDeComando.AplicarConfiguracao,
+        Access.Application.Devices.TipoDeComando.BipCurto => TipoDeComando.BipCurto,
+        Access.Application.Devices.TipoDeComando.BipLongo => TipoDeComando.BipLongo,
+        Access.Application.Devices.TipoDeComando.LiberarSaida => TipoDeComando.LiberarSaida,
+        Access.Application.Devices.TipoDeComando.LiberarDoisSentidos => TipoDeComando.LiberarDoisSentidos,
         _ => TipoDeComando.NaoEspecificado,
     };
 

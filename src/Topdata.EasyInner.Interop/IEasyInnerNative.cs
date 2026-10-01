@@ -186,6 +186,18 @@ public interface IEasyInnerNative
     /// <summary>EI-047 — aciona o relé da urna. A duração vem da configuração.</summary>
     byte AcionarRele2(int inner);
 
+    /// <summary>
+    /// EI-048 — bip curto. Só o Inner (manual 4.6.2; SDK <c>byte AcionarBipCurto(int Inner)</c>).
+    /// Comando manual do operador, atrás da chave <c>comando.bip_curto</c> (Etapa A.8, docs/35).
+    /// </summary>
+    byte AcionarBipCurto(int inner);
+
+    /// <summary>
+    /// EI-049 — bip longo. Só o Inner (manual 4.6.2; SDK <c>byte AcionarBipLongo(int Inner)</c>).
+    /// Comando manual do operador, atrás da chave <c>comando.bip_longo</c> (Etapa A.8, docs/35).
+    /// </summary>
+    byte AcionarBipLongo(int inner);
+
     /// <summary>EI-056 — mensagem fixa do display ocioso.</summary>
     byte EnviarMensagemPadraoOnLine(int inner, byte exibirData, string mensagem);
 

@@ -81,10 +81,13 @@ Aparece na tela **desabilitado**, com o selo "Aguardando confirmação" e o moti
 
 | Função | Por que não | O que destrava |
 |---|---|---|
-| Bip curto e longo | Documentado no manual (4.6.2), mas não ligado nem ensaiado | Bancada, INT-UX-03 |
+| Bip curto e longo | Documentado no manual (4.6.2), não ensaiado. O serviço já executa (Etapa A.8), mas recusa enquanto as chaves `comando.bip_curto` e `comando.bip_longo` estiverem desligadas | Bancada, INT-UX-03 (docs/21 §6E) |
 | Relés avulsos | O que cada relé faz na TopFit 4 não está documentado | Topdata |
 | Recolher cartão na urna | A função do relé 2 não está documentada (docs/21 §8) | Topdata + bancada (HIL-URNA-01) |
-| Liberar nos dois sentidos / trocar o sentido | Permite carona; depende da decisão sobre evacuação | Topdata + B4 (docs/29) |
+| Liberar nos dois sentidos / trocar o sentido | Permite carona; depende da decisão sobre evacuação. O serviço já executa os dois sentidos (Etapa A.8, motivo e confirmação digitada), mas recusa com "Aguardando decisão D5 do dono do produto", além da chave `comando.liberar_dois_sentidos` | D5 (docs/34 §9) + bancada HIL-DIR-07 |
+
+"Liberar saída" (Etapa A.8, chave `comando.liberar_saida`, ensaio HIL-DIR-04) também existe no
+serviço, recusado com a chave desligada, e ainda não aparece na tela: entra com a A.6.
 
 ## 6. Limitações conhecidas
 

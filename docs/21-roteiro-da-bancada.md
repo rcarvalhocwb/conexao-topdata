@@ -308,6 +308,30 @@ Topdata respondeu T13 (qual enviador aplica `HabilitarMudancaOnLineOffLine`: se 
 unidade do tempo, período do ping; modo 2, parar o ping, cronometrar a queda, voltar), e só depois
 da D8.
 
+## 6E. Comandos novos do painel (Etapa A.8)
+
+Comandos que o serviço já sabe executar, mas **recusa** enquanto a chave técnica de cada um
+estiver desligada ([`34`](34-estudo-modulo-catraca.md) §11). Precisa do **sistema instalado**,
+como o 6B. Ligue a chave como no 6C (valor `1`; **só `1` liga**), uma por vez, e volte a `0`
+depois do ensaio. **Ainda não há botão:** a tela **Gerenciar catraca** mostra esses comandos
+desabilitados, com o selo "Aguardando confirmação", e habilitá-los é da A.6. Até lá, o pedido
+precisa de um cliente do serviço local (`EnviarComando`, com o `TipoDeComando` da coluna 3, pelo
+pipe com token) — ou o ensaio espera a A.6. Não grave o pedido direto em `operator_command`: a
+recusa pela chave e pela D5 é do serviço. Todo pedido fica no histórico
+(`operator_command`), executa **só com a catraca livre** (Polling) e expira se ela não ficar
+livre a tempo (bip 60 s; liberações 15 s).
+
+| # | Chave | Comando | Ensaio | Função (matriz) | Faça e anote | Liga de vez quando |
+|---|---|---|---|---|---|---|
+| 1 | `comando.bip_curto` | `BIP_CURTO` (6) | INT-UX-03 | `AcionarBipCurto(Inner)` (EI-048) | Peça o bip com a catraca parada e depois logo após uma passagem: soa? Quanto dura? O display muda? O próximo QR é lido normalmente? | soa 5 de 5 vezes e a leitura seguinte não é afetada |
+| 2 | `comando.bip_longo` | `BIP_LONGO` (7) | INT-UX-03 | `AcionarBipLongo(Inner)` (EI-049) | Igual à linha 1; anote a diferença de duração para o curto | igual à linha 1, e dá para distinguir do curto |
+| 3 | `comando.liberar_saida` | `LIBERAR_SAIDA` (8), motivo obrigatório | HIL-DIR-04 (direta); HIL-DIR-05/06 (invertida) | a outra função do par do perfil: `LiberarCatracaSaida` (EI-042) com o perfil `Entrada`; `LiberarCatracaSaidaInvertida` (EI-044) com `EntradaInvertida`; `LiberarCatracaEntrada`/`EntradaInvertida` com `Saida`/`SaidaInvertida` | Peça e **gire no sentido de quem sai**; depois tente girar no de quem entra. Histórico: "liberada na saída; girou". A prestação de contas **não** conta passagem de ingresso | gira só no sentido de saída, em cada perfil usado no evento |
+| 4 | `comando.liberar_dois_sentidos` | `LIBERAR_DOIS_SENTIDOS` (9), motivo e confirmação digitada `EVACUAR n` | HIL-DIR-07 | `LiberarCatracaDoisSentidos(Inner)` (EI-045) | **Não roda hoje:** o serviço recusa com "Aguardando decisão D5 do dono do produto" mesmo com a chave ligada. Quando a D5 for tomada: peça e gire nos dois sentidos; anote por quanto tempo fica livre e quantos giros passam (carona) | **D5 decidida** pelo dono do produto (docs/34 §9) **e** este ensaio aprovado |
+
+Não está aqui, de propósito: **entrar e sair de manutenção**. A matriz não tem função da DLL
+para isso (o estado existe só no programa da catraca, no PC); o que a catraca faz quando o PC
+para de atendê-la é `A_CONFIRMAR_COM_TOPDATA`.
+
 ---
 
 ## 7. Encerrar e conferir
@@ -355,6 +379,7 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 6B: os oito pedidos se comportam como a tabela diz; linha 5 com o QR sem giro
 - [ ] Passo 6C: cada chave ensaiada tem a linha preenchida (ou "não ensaiada") e voltou desligada se o resultado foi ruim
 - [ ] Passo 6D: com a sequência oficial ligada, as linhas 2–6 iguais à referência (ou "não ensaiada"); a chave voltou desligada se o resultado foi ruim
+- [ ] Passo 6E: cada comando ensaiado tem a linha preenchida (ou "não ensaiado"); a linha 4 fica "não ensaiada" até a D5; toda chave voltou a `0`
 - [ ] Passo 7: o resumo bate com o que foi feito
 
 **Mande a tabela do passo 3, as dos passos 6A, 6B, 6C e 6D e o resumo do passo 7.** São eles que fecham as perguntas

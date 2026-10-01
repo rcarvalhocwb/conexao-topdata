@@ -62,6 +62,35 @@ public sealed record GatePhysicalProfile(FuncaoDeLiberacao FuncaoDeLiberacaoDaEn
         _ => throw new ArgumentOutOfRangeException(
             nameof(FuncaoDeLiberacaoDaEntrada), FuncaoDeLiberacaoDaEntrada, "Função de liberação desconhecida."),
     };
+
+    /// <summary>
+    /// O pedido ao adapter que libera quem <b>sai</b>, para o comando "Liberar saída" do
+    /// operador (Etapa A.8 do docs/35): a outra função do mesmo par da matriz.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A matriz agrupa as funções em dois pares: instalação direta, <c>LiberarCatracaEntrada</c>
+    /// (EI-041) e <c>LiberarCatracaSaida</c> (EI-042); instalação invertida,
+    /// <c>LiberarCatracaEntradaInvertida</c> (EI-043) e <c>LiberarCatracaSaidaInvertida</c>
+    /// (EI-044). Quem sai é liberado pela outra função do par da entrada comissionada; nada é
+    /// combinado com sinalizador (defeito F1, docs/34 §2).
+    /// </para>
+    /// <para>
+    /// Que a outra função do par gire mesmo no sentido de quem sai, em cada instalação, é
+    /// <c>A_CONFIRMAR_COM_TOPDATA</c>: ensaios HIL-DIR-04 (direta) e HIL-DIR-05/06 (invertida).
+    /// Por isso o comando fica atrás da chave técnica <c>comando.liberar_saida</c>, desligada.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">Valor fora do enum; <see cref="DeviceConfiguration.Validar"/> recusa antes.</exception>
+    public GateDirection LiberacaoDaSaida => FuncaoDeLiberacaoDaEntrada switch
+    {
+        FuncaoDeLiberacao.Entrada => GateDirection.Saida,
+        FuncaoDeLiberacao.EntradaInvertida => GateDirection.SaidaInvertida,
+        FuncaoDeLiberacao.Saida => GateDirection.Entrada,
+        FuncaoDeLiberacao.SaidaInvertida => GateDirection.EntradaInvertida,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(FuncaoDeLiberacaoDaEntrada), FuncaoDeLiberacaoDaEntrada, "Função de liberação desconhecida."),
+    };
 }
 
 /// <summary>
