@@ -266,6 +266,27 @@ quando alguém passa: se aparecer o número do cartão, é o padrão da DLL (LGP
 
 ---
 
+## 6D. Parametrização da catraca pelo painel (`INT-PAR-01`, Etapa A.6)
+
+Precisa do **sistema instalado**, como o 6B. Abra **Gerenciar catraca**, escolha a catraca,
+digite seu nome e clique em **Parametrização desta catraca**. Faça com duas catracas ligadas: a
+que você muda e uma testemunha.
+
+| # | Faça | Deve acontecer | Anote |
+|---|---|---|---|
+| 1 | Abra a tela no modo guiado | Só leitor de ingressos, leitor da urna, tempo e mensagem; o leitor com o selo "Aguardando confirmação"; nenhum termo técnico | Algum texto que o operador não entenderia? |
+| 2 | Mude só a mensagem ("BANCADA 1") | "O que muda" lista **uma** linha, do padrão do evento para a nova; Salvar habilita só com o nome | — |
+| 3 | Salvar | "Salva, não aplicada"; a testemunha, aberta na mesma tela, não mudou | — |
+| 4 | Aplicar nesta catraca… → Aplicar agora | Pede confirmação; "Aplicando" até o pedido terminar; depois "Aplicada" e a mensagem nova no display; a testemunha continua com a do evento | Quantos s sem atender? Quanto tempo até "Aplicada"? |
+| 5 | Mude o tempo para 7 s, Salvar, **tire o cabo** e Aplicar | Fica "Aplicando"; depois de ~2 min o pedido falha e a tela diz "Salva, não aplicada: o último pedido falhou" — **nunca** "Aplicada" | O texto do resultado no histórico |
+| 6 | Ponha o cabo de volta e espere "Atendendo" | O worker já tinha trocado a configuração no pedido que falhou: ao reconectar, envia o salvo. A tela diz "A catraca está com a configuração salva, mas o último pedido não foi concluído" (versões iguais, pedido falho); Aplicar de novo leva a "Aplicada" | Veio sozinha em quantos s? |
+| 7 | Modo técnico, aba Instalação | Wiegand e rearme do leitor **desabilitados**, com o selo e o ensaio que os libera (HIL-CARD-05, INT-SM-032); na aba Liberação só "Entrada" pode ser escolhida (HIL-DIR-05/06) | — |
+
+Ensaio aprovado: os passos 4 e 5 batem (aplicada só depois de concluído e com a versão igual;
+falha nunca vira aplicada), e a testemunha não muda em nenhum passo.
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
