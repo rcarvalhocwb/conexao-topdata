@@ -39,8 +39,12 @@ configuração, o "Aplicar agora" relê só a catraca do comando, e configuraç�
 cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) e a A.5 (salva ×
 aplicada: cada catraca publica a versão — SHA-256 canônico, sem o número do cartão master — e o
 momento da configuração que ela **aceitou**, só depois do envio com retorno 0; migração 013 e
-dois campos novos no `Equipamento` do contrato) também. A tela vem na A.6, que compara a versão
-do salvo com a aplicada; falta o ensaio INT-CFG-05 (docs/21 §6B, passo 9). Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+dois campos novos no `Equipamento` do contrato) também; falta o ensaio INT-CFG-05 (docs/21 §6B,
+passo 9). A A.7 (a sequência oficial de conexão — cfg off-line → mudança automática, EI-029 →
+cfg on-line) está no código atrás da chave técnica `catraca.sequencia_oficial`, **desligada** até
+INT-SM-021 (docs/21 §6D): desligada, a catraca recebe os três envios iguais de sempre; ligada, não
+liga a contingência (mudança automática 0; D8). A tela vem na A.6, que compara a versão do salvo
+com a aplicada. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
@@ -86,6 +90,7 @@ Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado 
 8. Mensagens no visor, bip e relés: o que cada função faz de fato (`A_CONFIRMAR_COM_TOPDATA`).
 9. Leitor externo de QR: tensão, velocidade, terminador e alimentação (docs/20).
 10. Ensaios de caos com hardware: CHAOS-DEV-01 (isolamento entre grupos), CHAOS-REC-01 (bilhetes sem duplicar).
+11. **INT-SM-021 — sequência oficial de conexão (Etapa A.7):** com a chave `catraca.sequencia_oficial` ligada, a catraca entra em operação e libera igual a hoje? `EnviarConfiguracoesMudancaAutomaticaOnLineOffLine` devolve 0? O segundo `EnviarConfiguracoes` desfaz o que a mudança mandou (T13)? Roteiro no docs/21 §6D. A contingência de verdade (mudança 2, `PingOnLine` periódico, T24) só depois da D8.
 
 ## 4. Desenvolvimento que dá para fazer já (sem hardware)
 

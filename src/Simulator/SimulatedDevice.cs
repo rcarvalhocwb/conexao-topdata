@@ -111,6 +111,12 @@ public sealed class SimulatedDevice : IDisposable
     /// <summary>Configurações completas recebidas, na ordem.</summary>
     public List<DeviceConfiguration> ConfiguracoesRecebidas { get; } = [];
 
+    /// <summary>
+    /// Etapas da sequência oficial de conexão recebidas, na ordem (Etapa A.7 do docs/35; chave
+    /// <c>catraca.sequencia_oficial</c>). Vazia com a chave desligada.
+    /// </summary>
+    public List<EtapaDaSequenciaOficial> EtapasDaSequenciaOficial { get; } = [];
+
     /// <summary>Programa eventos para serem entregues em ordem.</summary>
     public SimulatedDevice Roteirizar(params ScriptedEvent[] eventos)
     {

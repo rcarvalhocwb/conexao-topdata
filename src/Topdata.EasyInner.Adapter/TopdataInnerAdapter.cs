@@ -3,6 +3,7 @@ using Access.Application.Devices;
 using Access.Domain.Devices;
 using Access.Domain.Tempo;
 using Topdata.EasyInner.Interop;
+using Passo = System.Func<(string Funcao, byte Retorno)>;
 
 namespace Topdata.EasyInner.Adapter;
 
@@ -166,16 +167,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
 
     public AdapterResult EnviarConfiguracaoCompleta(int inner, DeviceConfiguration configuracao)
     {
-        ArgumentNullException.ThrowIfNull(configuracao);
-
-        var problemas = configuracao.Validar();
-        if (problemas.Count > 0)
-        {
-            throw new ArgumentException(
-                "Configuração inválida, e enviá-la assim gravaria valores padrão da DLL por cima do " +
-                $"equipamento: {string.Join(" ", problemas)}",
-                nameof(configuracao));
-        }
+        RecusarSeInvalida(configuracao);
 
         return Medir(() =>
         {
@@ -183,65 +175,27 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
             // Quem pula um passo não deixa "como estava": recebe o padrão da fábrica.
             // Cada passo leva o nome da função: o mesmo retorno (128, 129) quer dizer coisas
             // diferentes em funções diferentes (F6, docs/34 §2).
-            List<(string Funcao, byte Retorno)> passos =
+            // A ordem é a de sempre, congelada por CoberturaDaConfiguracaoTests: o regime e a
+            // mudança automática no meio dos campos comuns, num envio só. A sequência oficial
+            // (EnviarEtapaDaSequenciaOficial) usa os mesmos passos, em outra ordem.
+            List<Passo> passos =
             [
-                (nameof(IEasyInnerNative.DefinirPadraoCartao), _nativo.DefinirPadraoCartao(configuracao.PadraoCartao)),
-                .. configuracao.QuantidadeFixaDeDigitos is { } digitos
-                    ? [(nameof(IEasyInnerNative.DefinirQuantidadeDigitosCartao), _nativo.DefinirQuantidadeDigitosCartao(digitos))]
-                    : Array.Empty<(string, byte)>(),
-
-                // Uma chamada por tamanho aceito (FUN:13), junto das demais funções de cartão
-                // e antes de EnviarConfiguracoes. Só com a chave ligada: desligada, a sequência
-                // é a de sempre e a catraca fica com o padrão da DLL (F2, docs/34 §2).
-                .. configuracao.EnviarDigitosVariaveis
-                    ? configuracao.QuantidadesVariaveisDeDigitos.Distinct().Select(tamanho =>
-                        (nameof(IEasyInnerNative.InserirQuantidadeDigitoVariavel), _nativo.InserirQuantidadeDigitoVariavel(tamanho)))
-                    : [],
-
-                (nameof(IEasyInnerNative.ConfigurarTipoLeitor), _nativo.ConfigurarTipoLeitor(configuracao.TipoDeLeitor)),
-                (nameof(IEasyInnerNative.ConfigurarLeitor1), _nativo.ConfigurarLeitor1(configuracao.OperacaoDoLeitor1)),
-                (nameof(IEasyInnerNative.ConfigurarLeitor2), _nativo.ConfigurarLeitor2(configuracao.OperacaoDoLeitor2)),
-                (nameof(IEasyInnerNative.ConfigurarAcionamento1),
-                    _nativo.ConfigurarAcionamento1(configuracao.FuncaoDoAcionamento1, configuracao.TempoDoAcionamento1)),
-                (nameof(IEasyInnerNative.ConfigurarAcionamento2),
-                    _nativo.ConfigurarAcionamento2(configuracao.FuncaoDoAcionamento2, configuracao.TempoDoAcionamento2)),
-                configuracao.Online
-                    ? (nameof(IEasyInnerNative.ConfigurarInnerOnLine), _nativo.ConfigurarInnerOnLine())
-                    : (nameof(IEasyInnerNative.ConfigurarInnerOffLine), _nativo.ConfigurarInnerOffLine()),
-                (nameof(IEasyInnerNative.HabilitarTeclado), _nativo.HabilitarTeclado(
-                    configuracao.TecladoHabilitado ? (byte)1 : (byte)0,
-                    configuracao.EcoDoTeclado)),
-                (nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine), _nativo.HabilitarMudancaOnLineOffLine(
-                    configuracao.MudancaAutomatica,
-                    configuracao.TempoDaMudancaAutomatica)),
-
-                // Etapa A.2: o que ia com o padrão da DLL (ADR-0020). Cada um só com a sua
-                // chave técnica (desligadas = a sequência acima, idêntica à de antes), no fim da
-                // montagem e antes de EnviarConfiguracoes, na ordem dos campos comuns do anexo
-                // 01 §3.3. A ordem dentro do buffer é INFERIDO (T13).
-                .. Se(configuracao.EnviarWiegandDoisLeitores, () =>
-                    (nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores), _nativo.ConfigurarWiegandDoisLeitores(
-                        Byte(configuracao.WiegandDoisLeitores.Habilitado),
-                        Byte(configuracao.WiegandDoisLeitores.ExibirMensagem)))),
-                .. Se(configuracao.RegistrarAcessoNegado is not null, () =>
-                    (nameof(IEasyInnerNative.RegistrarAcessoNegado), _nativo.RegistrarAcessoNegado(configuracao.RegistrarAcessoNegado!.Value))),
-                .. Se(configuracao.EnviarDataHoraNoEventoOnLine, () =>
-                    (nameof(IEasyInnerNative.ReceberDataHoraDadosOnLine), _nativo.ReceberDataHoraDadosOnLine(
-                        Byte(configuracao.DataHoraNoEventoOnLine)))),
-
-                // O número só existe aqui, na chamada; nunca no resultado nem no registro.
-                .. Se(configuracao.CartaoMaster is not null, () =>
-                    (nameof(IEasyInnerNative.DefinirNumeroCartaoMaster), _nativo.DefinirNumeroCartaoMaster(
-                        configuracao.CartaoMaster!.RevelarParaADll()))),
-                .. Se(configuracao.EnviarTipoDeLista, () =>
-                    (nameof(IEasyInnerNative.DefinirTipoListaAcesso), _nativo.DefinirTipoListaAcesso(configuracao.TipoDeLista))),
+                .. CartaoLeitoresERele(configuracao),
+                Regime(configuracao.Online),
+                Teclado(configuracao),
+                Mudanca(configuracao),
+                .. CamposDaEtapaA2(configuracao),
             ];
 
-            foreach (var passo in passos)
+            // Todas as funções são chamadas antes de olhar os retornos, como sempre foi; só
+            // então o primeiro recusado volta, sem EnviarConfiguracoes. Mudar isto mudaria o
+            // que a DLL recebe numa falha com a chave catraca.sequencia_oficial desligada.
+            var feitos = passos.Select(passo => passo()).ToList();
+            foreach (var feito in feitos)
             {
-                if (passo.Retorno != 0)
+                if (feito.Retorno != 0)
                 {
-                    return passo;
+                    return feito;
                 }
             }
 
@@ -249,6 +203,74 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
             // meio, e três vezes por conexão; ela tem o seu passo próprio no laço
             // (EnviarMsgPadrao), depois de rearmar o leitor (defeito F7, docs/34 §2).
             return (nameof(IEasyInnerNative.EnviarConfiguracoes), _nativo.EnviarConfiguracoes(inner));
+        });
+    }
+
+    /// <remarks>
+    /// <para>
+    /// A ordem é a do docs/34 §4.3 (anexo 01 §3.3), que segue o manual (2.1.2):
+    /// </para>
+    /// <list type="number">
+    /// <item>cfg off-line: <c>ConfigurarInnerOffLine</c> + campos comuns → <c>EnviarConfiguracoes</c>;</item>
+    /// <item>mudança: <c>HabilitarMudancaOnLineOffLine</c> →
+    /// <c>EnviarConfiguracoesMudancaAutomaticaOnLineOffLine</c> (EI-028, EI-029);</item>
+    /// <item>cfg on-line: <c>ConfigurarInnerOnLine</c> (ou off-line, pelo <see cref="RegimeAlvo"/>)
+    /// + os <b>mesmos</b> campos comuns → <c>EnviarConfiguracoes</c>.</item>
+    /// </list>
+    /// <para>
+    /// Campos comuns: os de <see cref="EnviarConfiguracaoCompleta"/> menos o regime e a mudança,
+    /// na mesma ordem — cartão e dígitos, leitores, relés, teclado e os da Etapa A.2, cada um com
+    /// a sua chave (o tipo de lista fica no fim, nos dois envios, para não voltar ao padrão da
+    /// DLL no segundo). A ordem dentro do buffer e qual enviador aplica cada função são
+    /// <c>INFERIDO</c> até T13.
+    /// </para>
+    /// <para>
+    /// <b>Fora, sem linha na matriz FUN</b> (<c>A_CONFIRMAR_COM_TOPDATA</c>): mensagens off-line e
+    /// o enviador <c>EnviarMensagensOffLine</c> (NOVO-INT-MSG-04), entradas e mensagens da
+    /// mudança (<c>DefinirEntradasMudanca*</c>, <c>DefinirMensagemPadraoMudanca*</c>,
+    /// NOVO-INT-SM-022, NOVO-INT-MSG-05).
+    /// </para>
+    /// <para>
+    /// Diferente da configuração completa, a montagem <b>para no primeiro passo recusado</b>: nada
+    /// mais é escrito num buffer que já não vai ser enviado. O que já foi escrito fica no buffer
+    /// global (F7, docs/34 §2): não há função com linha na matriz que o limpe sem enviar, e
+    /// enviar aplicaria uma configuração pela metade. A próxima montagem reescreve os mesmos
+    /// campos; o que pode acumular é <c>InserirQuantidadeDigitoVariavel</c> (T30).
+    /// </para>
+    /// </remarks>
+    public AdapterResult EnviarEtapaDaSequenciaOficial(int inner, DeviceConfiguration configuracao, EtapaDaSequenciaOficial etapa)
+    {
+        RecusarSeInvalida(configuracao);
+
+        Passo enviarConfiguracoes = () => (nameof(IEasyInnerNative.EnviarConfiguracoes), _nativo.EnviarConfiguracoes(inner));
+
+        // Etapa desconhecida é recusada antes de qualquer chamada nativa.
+        (List<Passo> Montagem, Passo Enviador) unidade = etapa switch
+        {
+            EtapaDaSequenciaOficial.ConfiguracaoOffLine =>
+                ([Regime(online: false), .. CamposComuns(configuracao)], enviarConfiguracoes),
+            EtapaDaSequenciaOficial.MudancaAutomatica =>
+                ([Mudanca(configuracao)], () => (
+                    nameof(IEasyInnerNative.EnviarConfiguracoesMudancaAutomaticaOnLineOffLine),
+                    _nativo.EnviarConfiguracoesMudancaAutomaticaOnLineOffLine(inner))),
+            EtapaDaSequenciaOficial.ConfiguracaoOnLine =>
+                ([Regime(configuracao.RegimeAlvo() is RegimeAlvo.OnLine), .. CamposComuns(configuracao)], enviarConfiguracoes),
+            _ => throw new ArgumentOutOfRangeException(nameof(etapa), etapa, "Etapa da sequência oficial desconhecida."),
+        };
+
+        return Medir(() =>
+        {
+            foreach (var passo in unidade.Montagem)
+            {
+                var feito = passo();
+                if (feito.Retorno != 0)
+                {
+                    return feito;
+                }
+            }
+
+            // Nada com Inner entre montar e enviar (ADR-0006).
+            return unidade.Enviador();
         });
     }
 
@@ -426,10 +448,118 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     private static string Cortar(string texto, int limite) =>
         texto.Length <= limite ? texto : texto[..limite];
 
-    /// <summary>Um passo da montagem que só acontece com a condição (a chave técnica) verdadeira.</summary>
-    /// <remarks>A chamada nativa só é feita aqui dentro: desligada, a DLL nem fica sabendo.</remarks>
-    private static (string Funcao, byte Retorno)[] Se(bool condicao, Func<(string Funcao, byte Retorno)> chamada) =>
-        condicao ? [chamada()] : [];
+    /// <summary>Validação completa antes da primeira chamada nativa (ADR-0020).</summary>
+    private static void RecusarSeInvalida(DeviceConfiguration configuracao)
+    {
+        ArgumentNullException.ThrowIfNull(configuracao);
+
+        var problemas = configuracao.Validar();
+        if (problemas.Count > 0)
+        {
+            throw new ArgumentException(
+                "Configuração inválida, e enviá-la assim gravaria valores padrão da DLL por cima do " +
+                $"equipamento: {string.Join(" ", problemas)}",
+                nameof(configuracao));
+        }
+    }
+
+    // Os passos de montagem. Cada um só chama a DLL quando executado: o que a chave técnica
+    // desliga nem vira passo, e a DLL nem fica sabendo.
+
+    /// <summary>Cartão, dígitos, leitores e relés: o começo dos campos comuns.</summary>
+    private IEnumerable<Passo> CartaoLeitoresERele(DeviceConfiguration configuracao)
+    {
+        yield return () => (nameof(IEasyInnerNative.DefinirPadraoCartao), _nativo.DefinirPadraoCartao(configuracao.PadraoCartao));
+
+        if (configuracao.QuantidadeFixaDeDigitos is { } digitos)
+        {
+            yield return () => (nameof(IEasyInnerNative.DefinirQuantidadeDigitosCartao), _nativo.DefinirQuantidadeDigitosCartao(digitos));
+        }
+
+        // Uma chamada por tamanho aceito (FUN:13), junto das demais funções de cartão e antes
+        // de EnviarConfiguracoes. Só com a chave ligada: desligada, a sequência é a de sempre e
+        // a catraca fica com o padrão da DLL (F2, docs/34 §2).
+        if (configuracao.EnviarDigitosVariaveis)
+        {
+            foreach (var tamanho in configuracao.QuantidadesVariaveisDeDigitos.Distinct())
+            {
+                yield return () => (
+                    nameof(IEasyInnerNative.InserirQuantidadeDigitoVariavel), _nativo.InserirQuantidadeDigitoVariavel(tamanho));
+            }
+        }
+
+        yield return () => (nameof(IEasyInnerNative.ConfigurarTipoLeitor), _nativo.ConfigurarTipoLeitor(configuracao.TipoDeLeitor));
+        yield return () => (nameof(IEasyInnerNative.ConfigurarLeitor1), _nativo.ConfigurarLeitor1(configuracao.OperacaoDoLeitor1));
+        yield return () => (nameof(IEasyInnerNative.ConfigurarLeitor2), _nativo.ConfigurarLeitor2(configuracao.OperacaoDoLeitor2));
+        yield return () => (
+            nameof(IEasyInnerNative.ConfigurarAcionamento1),
+            _nativo.ConfigurarAcionamento1(configuracao.FuncaoDoAcionamento1, configuracao.TempoDoAcionamento1));
+        yield return () => (
+            nameof(IEasyInnerNative.ConfigurarAcionamento2),
+            _nativo.ConfigurarAcionamento2(configuracao.FuncaoDoAcionamento2, configuracao.TempoDoAcionamento2));
+    }
+
+    /// <summary><c>ConfigurarInnerOnLine</c> (EI-018) ou <c>ConfigurarInnerOffLine</c> (EI-019).</summary>
+    private Passo Regime(bool online) => online
+        ? () => (nameof(IEasyInnerNative.ConfigurarInnerOnLine), _nativo.ConfigurarInnerOnLine())
+        : () => (nameof(IEasyInnerNative.ConfigurarInnerOffLine), _nativo.ConfigurarInnerOffLine());
+
+    private Passo Teclado(DeviceConfiguration configuracao) => () => (
+        nameof(IEasyInnerNative.HabilitarTeclado),
+        _nativo.HabilitarTeclado(Byte(configuracao.TecladoHabilitado), configuracao.EcoDoTeclado));
+
+    /// <summary>
+    /// <c>HabilitarMudancaOnLineOffLine</c> (EI-028). O padrão é 0: a chave da sequência oficial
+    /// muda a forma de envio, não liga a contingência (D8, docs/34 §9).
+    /// </summary>
+    private Passo Mudanca(DeviceConfiguration configuracao) => () => (
+        nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine),
+        _nativo.HabilitarMudancaOnLineOffLine(configuracao.MudancaAutomatica, configuracao.TempoDaMudancaAutomatica));
+
+    /// <summary>
+    /// Etapa A.2: o que ia com o padrão da DLL (ADR-0020). Cada um só com a sua chave técnica
+    /// (desligadas = nenhum passo), no fim da montagem, na ordem dos campos comuns do anexo 01
+    /// §3.3. A ordem dentro do buffer é INFERIDO (T13).
+    /// </summary>
+    private IEnumerable<Passo> CamposDaEtapaA2(DeviceConfiguration configuracao)
+    {
+        if (configuracao.EnviarWiegandDoisLeitores)
+        {
+            yield return () => (nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores), _nativo.ConfigurarWiegandDoisLeitores(
+                Byte(configuracao.WiegandDoisLeitores.Habilitado),
+                Byte(configuracao.WiegandDoisLeitores.ExibirMensagem)));
+        }
+
+        if (configuracao.RegistrarAcessoNegado is { } registrar)
+        {
+            yield return () => (nameof(IEasyInnerNative.RegistrarAcessoNegado), _nativo.RegistrarAcessoNegado(registrar));
+        }
+
+        if (configuracao.EnviarDataHoraNoEventoOnLine)
+        {
+            yield return () => (nameof(IEasyInnerNative.ReceberDataHoraDadosOnLine), _nativo.ReceberDataHoraDadosOnLine(
+                Byte(configuracao.DataHoraNoEventoOnLine)));
+        }
+
+        // O número só existe aqui, na chamada; nunca no resultado nem no registro.
+        if (configuracao.CartaoMaster is { } master)
+        {
+            yield return () => (nameof(IEasyInnerNative.DefinirNumeroCartaoMaster), _nativo.DefinirNumeroCartaoMaster(
+                master.RevelarParaADll()));
+        }
+
+        if (configuracao.EnviarTipoDeLista)
+        {
+            yield return () => (nameof(IEasyInnerNative.DefinirTipoListaAcesso), _nativo.DefinirTipoListaAcesso(configuracao.TipoDeLista));
+        }
+    }
+
+    /// <summary>
+    /// Os campos comuns da sequência oficial: os mesmos nos dois <c>EnviarConfiguracoes</c>
+    /// (docs/34 §4.3), sem o regime e sem a mudança.
+    /// </summary>
+    private List<Passo> CamposComuns(DeviceConfiguration configuracao) =>
+        [.. CartaoLeitoresERele(configuracao), Teclado(configuracao), .. CamposDaEtapaA2(configuracao)];
 
     private static byte Byte(bool valor) => valor ? (byte)1 : (byte)0;
 

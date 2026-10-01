@@ -253,6 +253,14 @@ internal static class Program
             }
         }
 
+        // Sequência oficial de conexão (cfg off-line → mudança → cfg on-line): só com a chave
+        // técnica, desligada até INT-SM-021 (Etapa A.7, docs/34 §4.3). É do laço: vale para todas
+        // as catracas deste worker e muda no próximo início, não no "Aplicar agora".
+        if (configuracao.SequenciaOficial)
+        {
+            Registrar("sequência oficial de conexão ligada (chave técnica, ensaio INT-SM-021)");
+        }
+
         var espelho = configuracao.EspelhoLigado
             ? new EspelhoDeTentativas(configuracao.ConectorDoEspelho, TimeSpan.FromSeconds(configuracao.EsperaPeloGiroSegundos))
             : null;
@@ -325,7 +333,8 @@ internal static class Program
                     c.ConfiguracaoAplicadaEm, c.ConfiguracaoVersao))]),
             comandos: new FilaDeComandosSqlite(fabrica),
             recarregarConfiguracao: Recarregar,
-            acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir);
+            acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir,
+            sequenciaOficial: configuracao.SequenciaOficial);
 
         using var cancelamento = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>

@@ -127,6 +127,10 @@ internal sealed class CosturaFalsa : IEasyInnerNative
 
     public byte EnviarConfiguracoes(int inner) => Registrar(nameof(EnviarConfiguracoes), inner);
 
+    // Etapa A.7: só chamada na sequência oficial de conexão (chave catraca.sequencia_oficial).
+    public byte EnviarConfiguracoesMudancaAutomaticaOnLineOffLine(int inner) =>
+        Registrar(nameof(EnviarConfiguracoesMudancaAutomaticaOnLineOffLine), inner);
+
     public byte EnviarFormasEntradasOnLine(
         int inner, byte qtdeDigitosTeclado, byte ecoTeclado,
         byte formaEntrada, byte tempoTeclado, byte posicaoCursorTeclado) =>

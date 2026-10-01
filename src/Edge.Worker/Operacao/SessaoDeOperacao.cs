@@ -78,6 +78,9 @@ public sealed class SessaoDeOperacao
     /// mesma para qualquer catraca. Devolve a configuração nova, ou os problemas que impedem usá-la.
     /// </param>
     /// <param name="acertarRelogioAoDivergir">Ver <see cref="DevicePump"/>. Desligado por padrão.</param>
+    /// <param name="sequenciaOficial">
+    /// Sequência oficial de conexão (Etapa A.7; ver <see cref="DevicePump"/>). Desligada por padrão.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -89,7 +92,8 @@ public sealed class SessaoDeOperacao
         Func<DateTimeOffset>? relogio = null,
         IFilaDeComandos? comandos = null,
         Func<(DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
-        bool acertarRelogioAoDivergir = false)
+        bool acertarRelogioAoDivergir = false,
+        bool sequenciaOficial = false)
         : this(
             adapter,
             inners,
@@ -101,7 +105,8 @@ public sealed class SessaoDeOperacao
             relogio,
             comandos,
             recarregarConfiguracao is null ? null : _ => recarregarConfiguracao(),
-            acertarRelogioAoDivergir)
+            acertarRelogioAoDivergir,
+            sequenciaOficial)
     {
     }
 
@@ -134,6 +139,9 @@ public sealed class SessaoDeOperacao
     /// Devolve a configuração nova, ou os problemas que impedem usá-la.
     /// </param>
     /// <param name="acertarRelogioAoDivergir">Ver <see cref="DevicePump"/>. Desligado por padrão.</param>
+    /// <param name="sequenciaOficial">
+    /// Sequência oficial de conexão (Etapa A.7; ver <see cref="DevicePump"/>). Desligada por padrão.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -145,7 +153,8 @@ public sealed class SessaoDeOperacao
         Func<DateTimeOffset>? relogio = null,
         IFilaDeComandos? comandos = null,
         Func<int, (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
-        bool acertarRelogioAoDivergir = false)
+        bool acertarRelogioAoDivergir = false,
+        bool sequenciaOficial = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
@@ -188,7 +197,8 @@ public sealed class SessaoDeOperacao
             aoReceberEvento: Receber,
             acertarRelogioAoDivergir: acertarRelogioAoDivergir,
             aoConcluirComando: Concluir,
-            antesDaLiberacaoManual: decisor.DescartarPendente);
+            antesDaLiberacaoManual: decisor.DescartarPendente,
+            sequenciaOficial: sequenciaOficial);
 
         _laco = new DeviceGroupLoop(
             adapter,

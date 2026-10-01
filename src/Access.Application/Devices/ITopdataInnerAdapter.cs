@@ -197,6 +197,25 @@ public interface ITopdataInnerAdapter : IDisposable
     AdapterResult EnviarConfiguracaoCompleta(int inner, DeviceConfiguration configuracao);
 
     /// <summary>
+    /// Monta e envia <b>uma</b> etapa da sequência oficial de conexão: cfg off-line, mudança
+    /// automática ou cfg on-line (Etapa A.7 do docs/35; docs/34 §4.3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// O laço só chama isto com a chave técnica <c>catraca.sequencia_oficial</c> ligada,
+    /// desligada até o ensaio INT-SM-021; desligada, os três estados chamam
+    /// <see cref="EnviarConfiguracaoCompleta"/>, como sempre (defeito F3, docs/34 §2).
+    /// </para>
+    /// <para>
+    /// As duas configurações levam os <b>mesmos</b> campos comuns, porque cada
+    /// <c>EnviarConfiguracoes</c> limpa o buffer e manda o padrão da DLL para o que faltar
+    /// (ADR-0020). Cada etapa é uma unidade de montagem e envio: nada com Inner no meio
+    /// (ADR-0006), e uma etapa por passo do laço.
+    /// </para>
+    /// </remarks>
+    AdapterResult EnviarEtapaDaSequenciaOficial(int inner, DeviceConfiguration configuracao, EtapaDaSequenciaOficial etapa);
+
+    /// <summary>
     /// Configura as formas de entrada aceitas no modo on-line.
     /// </summary>
     /// <remarks>
