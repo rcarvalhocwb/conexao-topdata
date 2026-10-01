@@ -108,6 +108,7 @@ public sealed partial class ContratoIpcTests
                 ["TIPO_DE_COMANDO_BIP_LONGO"] = 7,
                 ["TIPO_DE_COMANDO_LIBERAR_SAIDA"] = 8,
                 ["TIPO_DE_COMANDO_LIBERAR_DOIS_SENTIDOS"] = 9,
+                ["TIPO_DE_COMANDO_COLETAR_BILHETES"] = 10,
             },
             valores);
     }
