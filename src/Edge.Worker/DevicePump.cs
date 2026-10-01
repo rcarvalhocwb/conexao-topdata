@@ -30,6 +30,24 @@ public sealed class DeviceSlot
     /// <summary>Configuração relida, esperando o comando que a aplica.</summary>
     internal DeviceConfiguration? ConfiguracaoNova { get; set; }
 
+    /// <summary>
+    /// Quando a catraca aceitou pela última vez a configuração (retorno 0 de
+    /// <c>EnviarConfiguracoes</c>, EI-030). Nulo até o primeiro envio aceito deste worker.
+    /// </summary>
+    /// <remarks>
+    /// Etapa A.5 do docs/35: "salva × aplicada". Não muda quando <see cref="Configuracao"/> é
+    /// trocada pelo "Aplicar agora" — essa troca acontece antes da reconexão —, só quando o
+    /// envio dá certo. Muda a cada envio aceito, inclusive na reconexão com a mesma
+    /// configuração: é a última vez que a catraca a recebeu.
+    /// </remarks>
+    public DateTimeOffset? ConfiguracaoAplicadaEm { get; internal set; }
+
+    /// <summary>
+    /// A versão (<see cref="VersaoDaConfiguracao"/>) da configuração que a catraca aceitou por
+    /// último. Nula até o primeiro envio aceito deste worker.
+    /// </summary>
+    public string? ConfiguracaoVersao { get; internal set; }
+
     /// <summary>Comandos do operador esperando a catraca ficar livre (Polling).</summary>
     internal Queue<ComandoDeCatraca> Comandos { get; } = new();
 
@@ -395,6 +413,11 @@ public sealed class DevicePump
 
         if (resultado.IsOk)
         {
+            // Só aqui a configuração passa a ser "aplicada" (Etapa A.5): EnviarConfiguracoes
+            // devolveu 0. Falha em qualquer passo da montagem ou no envio não toca a versão.
+            // Calcular é CPU pura, sem chamada nativa: o passo continua com uma só.
+            d.ConfiguracaoVersao = VersaoDaConfiguracao.Calcular(d.Configuracao);
+            d.ConfiguracaoAplicadaEm = agora;
             Disparar(d, DeviceTrigger.ConfiguracaoEnviada, agora);
             return etapa + " enviada";
         }

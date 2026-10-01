@@ -321,7 +321,8 @@ internal static class Program
                     c.TentativasDeReconexao, c.UltimoEventoEm, c.UltimaDecisao, DateTimeOffset.UtcNow,
                     c.RelogioAcertadoEm, c.RelogioConferidoEm,
                     c.DivergenciaDoRelogio is { } divergencia ? (int)divergencia.TotalSeconds : null,
-                    c.RelogioDivergente))]),
+                    c.RelogioDivergente,
+                    c.ConfiguracaoAplicadaEm, c.ConfiguracaoVersao))]),
             comandos: new FilaDeComandosSqlite(fabrica),
             recarregarConfiguracao: Recarregar,
             acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir);

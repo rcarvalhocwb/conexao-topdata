@@ -133,6 +133,11 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
                 return 1;
             }
 
+            if (d.RetornoDaConfiguracao is { } recusa)
+            {
+                return recusa;
+            }
+
             d.ConfiguracoesRecebidas.Add(configuracao);
             return 0;
         });

@@ -191,6 +191,14 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
                     {
                         equipamento.UltimoEvento = Timestamp.FromDateTimeOffset(evento);
                     }
+
+                    // Etapa A.5: o que a catraca aceitou, como o worker publicou.
+                    if (c.Situacao.ConfiguracaoAplicadaEm is { } aplicada)
+                    {
+                        equipamento.ConfiguracaoAplicadaEm = Timestamp.FromDateTimeOffset(aplicada);
+                    }
+
+                    equipamento.ConfiguracaoVersao = c.Situacao.ConfiguracaoVersao ?? string.Empty;
                 }
                 else if (_operacao is not null)
                 {

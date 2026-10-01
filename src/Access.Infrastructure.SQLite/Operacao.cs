@@ -5,6 +5,11 @@ using Microsoft.Data.Sqlite;
 namespace Access.Infrastructure.SQLite;
 
 /// <summary>A situação de uma catraca, como o worker que a atende a vê.</summary>
+/// <remarks>
+/// <c>ConfiguracaoAplicadaEm</c> e <c>ConfiguracaoVersao</c> (migração 013, Etapa A.5 do docs/35)
+/// dizem o que a catraca <b>aceitou</b> — retorno 0 de <c>EnviarConfiguracoes</c> —, não o que
+/// está salvo. Nulos até o primeiro envio aceito do worker que a atende.
+/// </remarks>
 public sealed record SituacaoDoEquipamento(
     string DeviceId,
     int Inner,
@@ -19,7 +24,9 @@ public sealed record SituacaoDoEquipamento(
     DateTimeOffset? RelogioAcertadoEm = null,
     DateTimeOffset? RelogioConferidoEm = null,
     int? DivergenciaDoRelogioSegundos = null,
-    bool RelogioDivergente = false);
+    bool RelogioDivergente = false,
+    DateTimeOffset? ConfiguracaoAplicadaEm = null,
+    string? ConfiguracaoVersao = null);
 
 /// <summary>
 /// Uma tentativa, pronta para a tela: o código já vem mascarado. <c>Sequencia</c> é a
@@ -94,10 +101,12 @@ public sealed class Operacao
                 INSERT INTO device_status
                     (device_id, inner_number, worker, state, online, firmware, reconnect_attempts,
                      last_event_at, last_decision, updated_at,
-                     clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent)
+                     clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent,
+                     config_applied_at, config_version)
                 VALUES ($id, $inner, $worker, $estado, $online, $firmware, $reconexoes,
                         $evento, $decisao, $em,
-                        $relogioAcertado, $relogioConferido, $divergencia, $divergente)
+                        $relogioAcertado, $relogioConferido, $divergencia, $divergente,
+                        $configuracaoAplicada, $configuracaoVersao)
                 ON CONFLICT (device_id) DO UPDATE SET
                     inner_number = excluded.inner_number, worker = excluded.worker,
                     state = excluded.state, online = excluded.online, firmware = excluded.firmware,
@@ -106,7 +115,9 @@ public sealed class Operacao
                     updated_at = excluded.updated_at,
                     clock_set_at = excluded.clock_set_at, clock_checked_at = excluded.clock_checked_at,
                     clock_drift_seconds = excluded.clock_drift_seconds,
-                    clock_divergent = excluded.clock_divergent;
+                    clock_divergent = excluded.clock_divergent,
+                    config_applied_at = excluded.config_applied_at,
+                    config_version = excluded.config_version;
                 """;
             comando.Parameters.AddWithValue("$id", s.DeviceId);
             comando.Parameters.AddWithValue("$inner", s.Inner);
@@ -122,6 +133,8 @@ public sealed class Operacao
             comando.Parameters.AddWithValue("$relogioConferido", (object?)IsoOuNulo(s.RelogioConferidoEm) ?? DBNull.Value);
             comando.Parameters.AddWithValue("$divergencia", (object?)s.DivergenciaDoRelogioSegundos ?? DBNull.Value);
             comando.Parameters.AddWithValue("$divergente", s.RelogioDivergente ? 1 : 0);
+            comando.Parameters.AddWithValue("$configuracaoAplicada", (object?)IsoOuNulo(s.ConfiguracaoAplicadaEm) ?? DBNull.Value);
+            comando.Parameters.AddWithValue("$configuracaoVersao", (object?)s.ConfiguracaoVersao ?? DBNull.Value);
             comando.ExecuteNonQuery();
         }
 
@@ -137,7 +150,8 @@ public sealed class Operacao
             """
             SELECT device_id, inner_number, worker, state, online, firmware, reconnect_attempts,
                    last_event_at, last_decision, updated_at,
-                   clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent
+                   clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent,
+                   config_applied_at, config_version
             FROM device_status
             ORDER BY inner_number;
             """;
@@ -161,7 +175,9 @@ public sealed class Operacao
                 leitor.IsDBNull(10) ? null : Data(leitor.GetString(10)),
                 leitor.IsDBNull(11) ? null : Data(leitor.GetString(11)),
                 leitor.IsDBNull(12) ? null : leitor.GetInt32(12),
-                leitor.GetInt64(13) == 1));
+                leitor.GetInt64(13) == 1,
+                leitor.IsDBNull(14) ? null : Data(leitor.GetString(14)),
+                leitor.IsDBNull(15) ? null : leitor.GetString(15)));
         }
 
         return lista;

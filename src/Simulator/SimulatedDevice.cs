@@ -53,6 +53,17 @@ public sealed class SimulatedDevice : IDisposable
     /// <summary>Quando definido, só as funções de relógio devolvem este retorno bruto.</summary>
     public int? RetornoDoRelogio { get; set; }
 
+    /// <summary>
+    /// Quando definido, só o envio da configuração completa devolve este retorno bruto, e a
+    /// configuração não conta como recebida.
+    /// </summary>
+    /// <remarks>
+    /// É o <c>EnviarConfiguracoes</c> (EI-030) recusado com a conexão de pé: o teste da Etapa
+    /// A.5 (salva × aplicada) precisa dele para provar que a versão aplicada não muda sem o
+    /// retorno 0. <see cref="RetornoForcado"/> não serve, porque derruba também a conexão.
+    /// </remarks>
+    public int? RetornoDaConfiguracao { get; set; }
+
     /// <summary>Quando definido, toda chamada devolve este retorno bruto.</summary>
     /// <remarks>Use 8 para reproduzir o GPF documentado.</remarks>
     public int? RetornoForcado { get; set; }

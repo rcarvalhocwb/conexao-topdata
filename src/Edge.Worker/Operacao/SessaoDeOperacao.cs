@@ -20,7 +20,9 @@ public sealed record SituacaoDaCatraca(
     DateTimeOffset? RelogioAcertadoEm = null,
     DateTimeOffset? RelogioConferidoEm = null,
     TimeSpan? DivergenciaDoRelogio = null,
-    bool RelogioDivergente = false);
+    bool RelogioDivergente = false,
+    DateTimeOffset? ConfiguracaoAplicadaEm = null,
+    string? ConfiguracaoVersao = null);
 
 /// <summary>
 /// A operação de verdade: o mesmo laço da bancada, sem tela, publicando a situação de cada
@@ -262,7 +264,9 @@ public sealed class SessaoDeOperacao
             d.RelogioAcertadoEm,
             d.RelogioConferidoEm,
             d.DivergenciaDoRelogio,
-            d.RelogioDivergente))];
+            d.RelogioDivergente,
+            d.ConfiguracaoAplicadaEm,
+            d.ConfiguracaoVersao))];
 
     /// <summary>De quanto em quanto tempo o worker olha a fila de comandos.</summary>
     public static readonly TimeSpan IntervaloDosComandos = TimeSpan.FromMilliseconds(500);

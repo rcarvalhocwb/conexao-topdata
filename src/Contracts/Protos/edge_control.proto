@@ -114,6 +114,15 @@ message Equipamento {
   optional int32 divergencia_do_relogio_segundos = 17;
   // Acima de 30 s, ou a catraca devolveu uma data impossível.
   bool relogio_divergente = 18;
+
+  // Configuração salva × aplicada (Etapa A.5 do docs/35). O que a catraca ACEITOU: a última vez
+  // que o envio completo da configuração devolveu 0. Ausente até o primeiro envio aceito do
+  // worker que a atende. Não muda quando a configuração é salva, só quando chega à catraca.
+  google.protobuf.Timestamp configuracao_aplicada_em = 19;
+  // SHA-256 (64 hexadecimais minúsculos) da forma canônica do que foi enviado
+  // (VersaoDaConfiguracao). Vazio até o primeiro envio aceito. Igual à versão calculada do que
+  // está salvo = a catraca está com o salvo.
+  string configuracao_versao = 20;
 }
 
 message AcompanharEventosRequest {
