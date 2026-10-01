@@ -5,7 +5,7 @@
 -- na rede, o painel mostrava três catracas "Atendendo", com o firmware 4.2.0 do simulador.
 -- Causa: workers de uma partida anterior do serviço, que morreu sem encerrá-los, continuaram
 -- gravando device_status fresco na mesma base, e o serviço novo, em modo real, acreditou
--- neles (ADR-0024: a base é o canal entre worker e serviço). Ver docs/29 e docs/21 §6G.
+-- neles (ADR-0024: a base é o canal entre worker e serviço). Ver docs/29 §1A e docs/21 §6H.
 --
 -- session_id: o identificador que o serviço gerou na partida e passou ao worker
 --   (--sessao). O serviço só acredita na linha da partida dele; linha de outra partida conta

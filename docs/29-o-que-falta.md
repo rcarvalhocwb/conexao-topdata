@@ -16,7 +16,7 @@
 - gerenciar catraca (fase 4): relógio acertado e conferido, liberação manual com motivo, mensagem no display, refazer a conexão, aplicar agora — tudo auditado ([docs/32](32-gerenciar-catraca.md));
 - gêmeo digital da TopFit 4: a catraca em 3D, fichas das peças, cenários de demonstração e espelho ao vivo — ainda não visto numa tela Windows ([docs/33](33-gemeo-digital.md));
 - MSI e Setup em português;
-- prestação de contas atual (totais e CSV);
+- prestação de contas atual: resumo do período por categoria, catraca, hora e motivo, e o CSV dele (os relatórios R1–R8 ainda não existem; ver §1A);
 - pacote web `rayzer-ui`.
 
 642 testes .NET e 24 da web (29/09, depois da fase 4).
@@ -58,6 +58,65 @@ atrás da chave técnica `catraca.coletar_bilhetes`, **desligada** até INT-REC-
 resposta de T35 (docs/21 §6F); a coleta automática na volta do off-line depende da D8. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
+
+## 1A. Defeitos relatados pelo dono do produto (01/10) e o que foi feito
+
+### "Desliguei o simulador e o sistema ainda reconhecia como atendendo"
+
+**Causa confirmada.** O `Kill(entireProcessTree)` dos workers só rodava na parada limpa do
+serviço (`WorkerSupervisor.Encerrar`, em `ApplicationStopping`). Com o serviço morto de outro
+jeito (Gerenciador de Tarefas, queda, terminal fechado), os workers x86 — filhos, mas não
+presos ao serviço — ficavam vivos. Os simulados seguiam gravando `device_status` com
+`Polling`, `online = 1`, firmware 4.2.0 (o `FirmwareInfo(16,1,4,2,0)` do `SimulatedDevice`) e
+relógio conferido de hora em hora. O serviço seguinte, já em modo real, acreditava em qualquer
+linha com menos de 15 s (`NoticiaVelha`), sem saber quem a gravou: três catracas "Atendendo",
+sem o chip "Modo simulação" (que é do serviço, e o serviço estava em modo real). Os mesmos 15 s
+de crença também apareciam ao alternar o modo simulação com reinício limpo. O worker órfão não
+segura a porta TCP no modo simulação (o `InnerSimulator` não abre socket); um órfão **real**
+seguraria a porta 3570 e o worker novo não subiria.
+
+**O que mudou (defesa em profundidade, sem tocar no caminho do giro):**
+- **Job Object** (`ContencaoDosWorkers`, kernel32): o kernel mata os workers quando o serviço
+  some, de qualquer jeito. Recusado pelo Windows, o motivo vai ao diagnóstico do worker.
+- **Vigia do pai** no worker (`--pai`, `VigiaDoProcessoPai`): sem o serviço, encerra limpo; à
+  força em 10 s se a DLL o prender. À prova de PID reaproveitado.
+- **Faxina na partida** (`FaxinaDeOrfaos`): encerra só workers desta instalação (caminho
+  completo) cujo pai morreu; pai vivo (outra instância, bancada) é poupado. Encerra também os
+  órfãos da versão anterior, que não têm a vigia.
+- **Situação só vale da partida atual** (migração 016, `--sessao`): o serviço ignora linha de
+  outra partida ou sem partida; a catraca aparece "Aguardando a catraca conectar".
+- **Selo "Simulação" por catraca** (`Equipamento.simulacao`), coerente com o aviso geral.
+- Só catracas cadastradas contam em "N/M online".
+
+Provado por teste em qualquer sistema: `SessaoDoServicoTests`, `WorkerMorreComOServicoTests`
+(contenção e regra da faxina por abstração) e `VigiaDoProcessoPaiTests`. **Só no Windows**
+(rodam no CI Windows, voltam sem afirmar nada no Linux): o Job Object matando o worker e a
+faxina achando um órfão de verdade. Ensaio para o dono: docs/21 §6H (`CHAOS-SVC-01`).
+
+**Limitação conhecida:** a versão anterior do worker não conhece as colunas da 016 e, ao
+regravar a linha, deixa a partida que estava lá. Se um worker órfão da versão anterior
+sobreviver à faxina (Windows recusou encerrá-lo) **e** o worker novo gravar a mesma catraca, a
+linha alterna entre os dois a cada 2 s com a partida do novo. A faxina registra a recusa
+("não pôde ser encerrado") no `registros/servico-*.log`; nesse caso, reinicie o PC antes do evento.
+
+### "Os relatórios não estão funcionais"
+
+**O que existe:** a tela **Prestação de contas**, com o resumo do período (autorizados, com giro,
+negados; por categoria, por catraca, por hora e por motivo de negativa) e o CSV dele.
+
+**O que estava quebrado e foi corrigido (com teste que falhava antes):**
+- "De" vazio não mandava o início e o serviço contava **só as últimas 24 h**, sem dizer. Agora
+  vazio = desde o começo, como em Acessos, e o período vai sempre explícito.
+- Nem a tela nem o CSV diziam **que período** os números cobriam; mudar o filtro sem gerar de
+  novo exportava outro período sem aviso. O serviço devolve o período aplicado
+  (`periodo_desde`/`periodo_ate`), mostrado na tela e na linha "Período" do CSV.
+- Exportar para um arquivo **aberto no Excel** (ou pasta que sumiu) estourava como "erro
+  inesperado"; agora vira mensagem. "Exportar" fica desabilitado antes de gerar.
+- O nome do arquivo usava o fuso do Windows; agora a hora de Brasília.
+
+**O que nunca existiu** (fase 6, abaixo): R1–R8 do docs/25, PDF, corte fechado com código de
+conferência, dia de operação com hora de corte (E9), pessoas distintas, liberações manuais nos
+números. A tela agora os lista em "Ainda não disponível", desabilitados, com o selo e o motivo.
 
 ## 2. Depende de outras pessoas (bloqueia ou muda o rumo)
 
@@ -160,7 +219,7 @@ Formas de aviso: faixa, som, notificação do Windows, ícone na bandeja, histó
 ### Itens menores, mas que faltam
 - **Aviso de fuso:** o docs/24 pede avisar quando o Windows não estiver em Brasília. Hoje o sistema só ignora o fuso do Windows (o que está certo), sem avisar.
 - **Autoria nos executáveis:** `Directory.Build.props` ainda diz `<Product>Conexão Topdata</Product>`; deveria ser "Rayzer XAcess". A tela "Sobre" também não existe (decisão de 28/09).
-- **CSV da prestação:** o nome do arquivo usa `DateTime.Now` (fuso do Windows), não o horário de Brasília.
+- ~~**CSV da prestação:** o nome do arquivo usa `DateTime.Now` (fuso do Windows)~~ **corrigido em 01/10 (§1A):** hora de Brasília.
 - **Runbooks:** nenhum escrito. Já dá para escrever:
   - RB-01 (worker não inicia);
   - RB-02 (porta e firewall);

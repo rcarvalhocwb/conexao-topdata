@@ -401,6 +401,25 @@ que você muda e uma testemunha.
 Ensaio aprovado: os passos 4 e 5 batem (aplicada só depois de concluído e com a versão igual;
 falha nunca vira aplicada), e a testemunha não muda em nenhum passo.
 
+## 6H. O programa das catracas morre com o serviço (`CHAOS-SVC-01`)
+
+Defeito relatado pelo dono do produto em 01/10 ([docs/29](29-o-que-falta.md) §1A): depois de
+desligar o simulador, o painel mostrava três catracas "Atendendo", firmware 4.2.0, sem nenhuma
+catraca na rede. Eram workers simulados órfãos de uma partida anterior do serviço. Precisa do
+**sistema instalado** (é o serviço do Windows que importa) e do Gerenciador de Tarefas aberto na
+aba **Detalhes**. Não precisa de catraca: o ensaio é feito primeiro em modo simulação.
+
+| # | Faça | Deve acontecer | Anote |
+|---|---|---|---|
+| 1 | Com o Assistente, ligue o **modo simulação** e inicie o serviço | Um `Edge.Worker.X86.exe` por grupo na aba Detalhes; o painel mostra as catracas "Atendendo", **cada cartão com o selo "Simulação"** e o aviso geral "Modo simulação" | Quantos `Edge.Worker.X86.exe`? |
+| 2 | No Gerenciador de Tarefas, **finalize** o `Edge.Supervisor.exe` (Finalizar tarefa — não use "Parar o serviço") | Em até 2 s **nenhum** `Edge.Worker.X86.exe` sobra (Job Object); o painel diz "Sem resposta" no serviço | Sobrou algum? Quanto tempo levou? |
+| 3 | Com o Assistente, **desligue** o modo simulação (nenhuma catraca ligada na rede) e inicie o serviço | Nenhuma catraca "Atendendo": cada uma "Aguardando a catraca conectar" ou "Conectando…", sem firmware e sem "Relógio conferido"; nenhum selo "Simulação"; "0/N online" | O texto de cada cartão |
+| 4 | (Órfão da versão anterior) Com a versão **anterior** instalada, repita o passo 2 e confira que sobram workers; então instale esta versão e inicie o serviço | O registro do serviço (`registros/servico-*.log`) tem "faxina: worker órfão N encerrado"; os workers antigos somem; o painel como no passo 3 | As linhas "faxina:" |
+| 5 | Abra um terminal e rode `Edge.Worker.X86.exe --bancada` da pasta instalada (sem o serviço), depois inicie o serviço | A faxina **poupa** o worker da bancada ("poupado: o processo que o criou continua de pé"); ele só para quando você fechar o terminal | — |
+
+Ensaio aprovado: no passo 2 nenhum worker sobrevive ao serviço, e no passo 3 nenhuma catraca
+aparece como "Atendendo" sem catraca na rede.
+
 ---
 
 ## 7. Encerrar e conferir
