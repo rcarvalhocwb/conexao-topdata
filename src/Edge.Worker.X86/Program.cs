@@ -5,6 +5,7 @@ using Access.Infrastructure.SQLite;
 using Edge.Worker;
 using Edge.Worker.Bancada;
 using Edge.Worker.Operacao;
+using Edge.Worker.Resiliencia;
 using Topdata.EasyInner.Adapter;
 
 namespace Edge.Worker.X86;
@@ -326,6 +327,22 @@ internal static class Program
             : null;
         var configuracoesDaBorda = new ConfiguracoesDaBorda(fabrica);
 
+        // A partida do serviço que subiu este worker (migração 016). Vai junto de cada situação
+        // gravada, com "simulada ou real": o serviço só acredita na situação da partida dele, e um
+        // worker órfão de uma partida anterior nunca mais aparece como "Atendendo" (docs/29).
+        var partida = Valor(args, "--sessao");
+        if (partida is { Length: > 64 } || string.IsNullOrWhiteSpace(partida))
+        {
+            if (partida is not null)
+            {
+                Registrar("identificador de sessão do serviço inválido; a situação vai sem ele.");
+            }
+
+            partida = null;
+        }
+
+        var simulada = simulador is not null;
+
         var sessao = new SessaoDeOperacao(
             adapter,
             inners,
@@ -339,7 +356,8 @@ internal static class Program
                     c.RelogioAcertadoEm, c.RelogioConferidoEm,
                     c.DivergenciaDoRelogio is { } divergencia ? (int)divergencia.TotalSeconds : null,
                     c.RelogioDivergente,
-                    c.ConfiguracaoAplicadaEm, c.ConfiguracaoVersao))]),
+                    c.ConfiguracaoAplicadaEm, c.ConfiguracaoVersao,
+                    partida, simulada))]),
             comandos: new FilaDeComandosSqlite(fabrica),
             recarregarConfiguracao: Recarregar,
             acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir,
@@ -355,6 +373,12 @@ internal static class Program
             e.Cancel = true;
             cancelamento.Cancel();
         };
+
+        // O worker morre com o serviço (--pai): se o processo que o subiu sumir sem matá-lo
+        // (Gerenciador de Tarefas, queda), ele encerra sozinho em vez de seguir gravando
+        // situação na base como órfão. Parada limpa primeiro; à força se a DLL o prender.
+        using var vigia = VigiaDoPai(args, cancelamento, Registrar);
+        vigia?.Iniciar();
 
         Action? aCadaVolta = null;
 
@@ -403,6 +427,39 @@ internal static class Program
         }
 
         return new Access.Domain.Credentials.ImpressaoDeCodigo(chave.AsSpan(0, tamanho));
+    }
+
+    /// <summary>
+    /// A vigia do processo pai, quando o serviço informa <c>--pai &lt;pid&gt;</c>. Sem o
+    /// argumento (bancada, terminal), nada: quem roda à mão encerra à mão.
+    /// </summary>
+    private static VigiaDoProcessoPai? VigiaDoPai(string[] args, CancellationTokenSource cancelamento, Action<string> registrar)
+    {
+        if (Valor(args, "--pai") is not { } texto)
+        {
+            return null;
+        }
+
+        if (!int.TryParse(texto, NumberStyles.None, CultureInfo.InvariantCulture, out var pid) || pid <= 0)
+        {
+            registrar("--pai inválido; o worker não vigia o serviço.");
+            return null;
+        }
+
+        return new VigiaDoProcessoPai(
+            VigiaDoProcessoPai.PaiPorPid(pid),
+            encerrar: () =>
+            {
+                registrar(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"o serviço que subiu este worker (processo {pid}) não existe mais: encerrando."));
+                cancelamento.Cancel();
+            },
+            encerrarAForca: () =>
+            {
+                registrar("a parada limpa não terminou a tempo: saída forçada.");
+                Environment.Exit(3);
+            });
     }
 
     private static string? Valor(string[] args, string nome)
