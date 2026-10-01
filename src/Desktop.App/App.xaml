@@ -94,6 +94,11 @@
                 <StackPanel>
                   <TextBlock Style="{StaticResource Rayzer.Type.Overline}" Text="{Binding Rotulo}" />
                   <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,2,0,0" Text="{Binding Nome}" TextTrimming="CharacterEllipsis" />
+                  <!-- Selo por catraca: a situação veio de uma catraca simulada (migração 016). -->
+                  <rz:RayzerStatusPill Margin="0,4,0,0" HorizontalAlignment="Left" Tom="Atencao" Texto="Simulação"
+                                       AutomationProperties.Name="Catraca simulada"
+                                       ToolTip="Catraca simulada: nenhuma catraca física é acionada."
+                                       Visibility="{Binding Simulacao, Converter={StaticResource BoolParaVisibilidade}}" />
                 </StackPanel>
                 <rz:RayzerStatusPill Grid.Column="1" VerticalAlignment="Top"
                                      Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}"

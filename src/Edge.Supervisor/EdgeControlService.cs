@@ -41,6 +41,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly Access.Infrastructure.SQLite.ChavesDosComandos? _chavesDosComandos;
     private readonly Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? _configuracoesDasCatracas;
     private readonly Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? _configuracaoPorCatraca;
+    private readonly string? _sessao;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -68,6 +69,13 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="configuracaoPorCatraca">
     /// A mesma leitura que o worker usa no "Aplicar agora" (Etapa A.4), para a versão do salvo.
     /// </param>
+    /// <param name="sessao">
+    /// O identificador desta partida do serviço, que ele passa a cada worker (<c>--sessao</c>).
+    /// Com ele, só a situação gravada por um worker desta partida conta: a de outra partida —
+    /// um worker órfão de um serviço que morreu sem encerrá-lo, ou a sobra de antes de
+    /// alternar o modo simulação — é tratada como "sem notícia", nunca como "Atendendo"
+    /// (migração 016; docs/29, defeito de 01/10). Nulo: acredita em toda situação (testes).
+    /// </param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -83,7 +91,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.FilaDeComandosSqlite? comandos = null,
         Access.Infrastructure.SQLite.ChavesDosComandos? chavesDosComandos = null,
         Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? configuracoesDasCatracas = null,
-        Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null)
+        Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null,
+        string? sessao = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -101,6 +110,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _chavesDosComandos = chavesDosComandos;
         _configuracoesDasCatracas = configuracoesDasCatracas;
         _configuracaoPorCatraca = configuracaoPorCatraca;
+        _sessao = string.IsNullOrWhiteSpace(sessao) ? null : sessao;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -119,9 +129,12 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             Versao = _versao,
             WorkersAtivos = situacoes.Count(x => x.Value is SituacaoDoWorker.Saudavel),
             EquipamentosCadastrados = _supervisor.Workers.Sum(w => w.Inners.Count),
+            // Só as catracas cadastradas nesta instalação: a situação de uma catraca que saiu da
+            // configuração continua na base e não pode contar como conectada.
             EquipamentosConectados = _operacao is null
                 ? _supervisor.Workers.Where(w => situacoes[w.Nome] is SituacaoDoWorker.Saudavel).Sum(w => w.Inners.Count)
-                : catracas.Values.Count(c => c.EmOperacao),
+                : _supervisor.Workers.SelectMany(w => w.Inners).Distinct()
+                    .Count(inner => catracas.TryGetValue(inner, out var c) && c.EmOperacao),
 
             // Sem internet é o regime NORMAL de um evento, não uma anomalia.
             // Ver docs/ADR/ADR-0017.
@@ -219,6 +232,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
                     }
 
                     equipamento.ConfiguracaoVersao = c.Situacao.ConfiguracaoVersao ?? string.Empty;
+                    equipamento.Simulacao = c.Situacao.Simulacao == true;
                 }
                 else if (_operacao is not null)
                 {
@@ -760,7 +774,11 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
 
         try
         {
+            // Situação de outra partida do serviço não é notícia desta: fica de fora, e a catraca
+            // aparece como aguardando conectar. É a defesa contra o worker órfão que segue
+            // gravando "Polling" fresco depois de o serviço que o subiu morrer (migração 016).
             return _operacao.ListarSituacao()
+                .Where(s => _sessao is null || string.Equals(s.Sessao, _sessao, StringComparison.Ordinal))
                 .GroupBy(s => s.Inner)
                 .ToDictionary(
                     g => g.Key,

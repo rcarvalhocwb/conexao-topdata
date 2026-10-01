@@ -9,6 +9,13 @@ namespace Access.Infrastructure.SQLite;
 /// <c>ConfiguracaoAplicadaEm</c> e <c>ConfiguracaoVersao</c> (migração 013, Etapa A.5 do docs/35)
 /// dizem o que a catraca <b>aceitou</b> — retorno 0 de <c>EnviarConfiguracoes</c> —, não o que
 /// está salvo. Nulos até o primeiro envio aceito do worker que a atende.
+/// <para>
+/// <c>Sessao</c> e <c>Simulacao</c> (migração 016): a partida do serviço que subiu o worker
+/// (<c>--sessao</c>) e se a catraca é simulada. Nulos quando quem gravou não foi subido pelo
+/// serviço (bancada, ferramentas, testes) ou na linha gravada antes da migração. O serviço só
+/// acredita na situação da partida dele: é o que impede um worker órfão de uma partida
+/// anterior de aparecer como "Atendendo" (docs/29, defeito de 01/10).
+/// </para>
 /// </remarks>
 public sealed record SituacaoDoEquipamento(
     string DeviceId,
@@ -26,7 +33,9 @@ public sealed record SituacaoDoEquipamento(
     int? DivergenciaDoRelogioSegundos = null,
     bool RelogioDivergente = false,
     DateTimeOffset? ConfiguracaoAplicadaEm = null,
-    string? ConfiguracaoVersao = null);
+    string? ConfiguracaoVersao = null,
+    string? Sessao = null,
+    bool? Simulacao = null);
 
 /// <summary>
 /// Uma tentativa, pronta para a tela: o código já vem mascarado. <c>Sequencia</c> é a
@@ -102,11 +111,11 @@ public sealed class Operacao
                     (device_id, inner_number, worker, state, online, firmware, reconnect_attempts,
                      last_event_at, last_decision, updated_at,
                      clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent,
-                     config_applied_at, config_version)
+                     config_applied_at, config_version, session_id, simulated)
                 VALUES ($id, $inner, $worker, $estado, $online, $firmware, $reconexoes,
                         $evento, $decisao, $em,
                         $relogioAcertado, $relogioConferido, $divergencia, $divergente,
-                        $configuracaoAplicada, $configuracaoVersao)
+                        $configuracaoAplicada, $configuracaoVersao, $sessao, $simulacao)
                 ON CONFLICT (device_id) DO UPDATE SET
                     inner_number = excluded.inner_number, worker = excluded.worker,
                     state = excluded.state, online = excluded.online, firmware = excluded.firmware,
@@ -117,7 +126,8 @@ public sealed class Operacao
                     clock_drift_seconds = excluded.clock_drift_seconds,
                     clock_divergent = excluded.clock_divergent,
                     config_applied_at = excluded.config_applied_at,
-                    config_version = excluded.config_version;
+                    config_version = excluded.config_version,
+                    session_id = excluded.session_id, simulated = excluded.simulated;
                 """;
             comando.Parameters.AddWithValue("$id", s.DeviceId);
             comando.Parameters.AddWithValue("$inner", s.Inner);
@@ -135,6 +145,8 @@ public sealed class Operacao
             comando.Parameters.AddWithValue("$divergente", s.RelogioDivergente ? 1 : 0);
             comando.Parameters.AddWithValue("$configuracaoAplicada", (object?)IsoOuNulo(s.ConfiguracaoAplicadaEm) ?? DBNull.Value);
             comando.Parameters.AddWithValue("$configuracaoVersao", (object?)s.ConfiguracaoVersao ?? DBNull.Value);
+            comando.Parameters.AddWithValue("$sessao", (object?)s.Sessao ?? DBNull.Value);
+            comando.Parameters.AddWithValue("$simulacao", s.Simulacao is { } simulada ? (simulada ? 1 : 0) : (object)DBNull.Value);
             comando.ExecuteNonQuery();
         }
 
@@ -151,7 +163,7 @@ public sealed class Operacao
             SELECT device_id, inner_number, worker, state, online, firmware, reconnect_attempts,
                    last_event_at, last_decision, updated_at,
                    clock_set_at, clock_checked_at, clock_drift_seconds, clock_divergent,
-                   config_applied_at, config_version
+                   config_applied_at, config_version, session_id, simulated
             FROM device_status
             ORDER BY inner_number;
             """;
@@ -177,7 +189,9 @@ public sealed class Operacao
                 leitor.IsDBNull(12) ? null : leitor.GetInt32(12),
                 leitor.GetInt64(13) == 1,
                 leitor.IsDBNull(14) ? null : Data(leitor.GetString(14)),
-                leitor.IsDBNull(15) ? null : leitor.GetString(15)));
+                leitor.IsDBNull(15) ? null : leitor.GetString(15),
+                leitor.IsDBNull(16) ? null : leitor.GetString(16),
+                leitor.IsDBNull(17) ? null : leitor.GetInt64(17) == 1));
         }
 
         return lista;

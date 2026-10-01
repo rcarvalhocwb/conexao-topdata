@@ -130,6 +130,12 @@ message Equipamento {
   // (VersaoDaConfiguracao). Vazio até o primeiro envio aceito. Igual à versão calculada do que
   // está salvo = a catraca está com o salvo.
   string configuracao_versao = 20;
+
+  // A situação veio de uma catraca simulada (modo simulação; migração 016). O painel mostra o
+  // selo "Simulação" no cartão da catraca, coerente com o aviso geral do modo simulação.
+  // Falso também quando não há situação desta partida do serviço: situação de outra partida
+  // não é usada (docs/29, defeito de 01/10).
+  bool simulacao = 21;
 }
 
 message AcompanharEventosRequest {

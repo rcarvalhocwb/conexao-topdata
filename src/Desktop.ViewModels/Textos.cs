@@ -136,6 +136,11 @@ public static class Textos
 }
 
 /// <summary>Uma catraca, pronta para a tela.</summary>
+/// <remarks>
+/// <c>Simulacao</c>: a situação veio de uma catraca simulada desta partida do serviço. O cartão
+/// mostra o selo "Simulação", coerente com o aviso geral do modo simulação — nunca uma catraca
+/// simulada passando por real (docs/29, defeito de 01/10).
+/// </remarks>
 public sealed record LinhaDeCatraca(
     int Inner,
     string Nome,
@@ -148,7 +153,8 @@ public sealed record LinhaDeCatraca(
     int Porta,
     int Reconexoes,
     string Relogio = "não conferido",
-    bool RelogioDivergente = false)
+    bool RelogioDivergente = false,
+    bool Simulacao = false)
 {
     /// <summary>"CATRACA 01": como a catraca é chamada no cartão do dispositivo.</summary>
     public string Rotulo => string.Create(CultureInfo.InvariantCulture, $"CATRACA {Inner:D2}");

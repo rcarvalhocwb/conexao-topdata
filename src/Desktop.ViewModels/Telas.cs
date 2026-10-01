@@ -297,7 +297,8 @@ public sealed class PainelAoVivoViewModel : TelaBase
             e.Porta,
             e.TentativasDeReconexao,
             relogio,
-            relogioDivergente);
+            relogioDivergente,
+            e.Simulacao);
     }
 }
 
