@@ -36,8 +36,11 @@ completo da configuração, com cinco parâmetros novos atrás de chaves técnic
 no docs/21 §6C) e a A.3 (configuração por catraca na base: migração 012, com histórico só-INSERT,
 e a camada da catraca no montador) e a A.4 (o worker aplica por catraca: cada uma sobe com a sua
 configuração, o "Aplicar agora" relê só a catraca do comando, e configuração recusada numa catraca
-cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) também. A tela vem
-na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) e a A.5 (salva ×
+aplicada: cada catraca publica a versão — SHA-256 canônico, sem o número do cartão master — e o
+momento da configuração que ela **aceitou**, só depois do envio com retorno 0; migração 013 e
+dois campos novos no `Equipamento` do contrato) também. A tela vem na A.6, que compara a versão
+do salvo com a aplicada; falta o ensaio INT-CFG-05 (docs/21 §6B, passo 9). Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 

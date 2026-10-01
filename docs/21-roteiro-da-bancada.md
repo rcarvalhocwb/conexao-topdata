@@ -226,6 +226,7 @@ escolha a catraca e digite seu nome.
 | 6 | Acertar o relógio agora | "Feito"; passo 6A de novo dá 0 s | — |
 | 7 | Refazer a conexão | A catraca some e volta a "Atendendo"; "reconectada" | Quantos s sem atender? |
 | 8 | Configurações → mude a mensagem → Salvar → Aplicar agora | A mensagem nova aparece no display sem reiniciar o serviço | Quantos s sem atender? |
+| 9 | **Salva × aplicada (`INT-CFG-05`, Etapa A.5).** Na base: `SELECT inner_number, config_version, config_applied_at FROM device_status;` e anote. Mude a mensagem, Salvar, **tire o cabo da catraca** e Aplicar agora; espere 1 min e consulte de novo. Ponha o cabo de volta, espere "Atendendo" e consulte de novo | Com o cabo fora: versão e momento **iguais** aos anotados (a catraca não recebeu). Com o cabo de volta: versão **nova** e momento novo, e a mensagem nova no display. As outras catracas não mudam | Algum retorno de `EnviarConfiguracoes` ≠ 0 no registro do worker com o cabo no lugar? Qual? |
 
 ---
 
