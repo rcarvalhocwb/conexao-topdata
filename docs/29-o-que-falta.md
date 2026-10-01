@@ -29,7 +29,7 @@ cartões e o gêmeo acompanhando cada função. Ele também acha **oito defeitos
 quatro deles já ativos: dígitos variáveis nunca enviados, sequência oficial de conexão não
 seguida, retorno de erro tratado como "sem eventos" e mensagem enviada no meio da montagem. O
 prompt de implementação, em etapas, está no [docs/35](35-prompt-modulo-catraca.md). As decisões
-do dono (D1–D8) e as 34 perguntas para a Topdata (T1–T34) estão no docs/34 §9 e §10.
+do dono (D1–D8) e as 35 perguntas para a Topdata (T1–T35) estão no docs/34 §9 e §10.
 A situação de cada etapa fica no docs/34 §11: a Etapa 0 está concluída no código, e da Etapa A
 a A.1 (montador único da configuração da catraca, com o teste da ADR-0020 item 3) e a A.2 (modelo
 completo da configuração, com cinco parâmetros novos atrás de chaves técnicas desligadas — ensaios
@@ -43,7 +43,11 @@ dois campos novos no `Equipamento` do contrato) também; falta o ensaio INT-CFG-
 passo 9). A A.7 (a sequência oficial de conexão — cfg off-line → mudança automática, EI-029 →
 cfg on-line) está no código atrás da chave técnica `catraca.sequencia_oficial`, **desligada** até
 INT-SM-021 (docs/21 §6D): desligada, a catraca recebe os três envios iguais de sempre; ligada, não
-liga a contingência (mudança automática 0; D8). A tela vem na A.6, que compara a versão do salvo
+liga a contingência (mudança automática 0; D8). A A.9 (coleta de bilhetes real: cada marcação da
+memória da catraca gravada na base — migração 015, só máscara e impressão HMAC — **antes** de pedir a
+próxima, R-68; deduplicação pelo conteúdo e pelo tipo 128) está no código, só por comando manual e
+atrás da chave técnica `catraca.coletar_bilhetes`, **desligada** até INT-REC-03, CHAOS-REC-01 e a
+resposta de T35 (docs/21 §6E); a coleta automática na volta do off-line depende da D8. A tela vem na A.6, que compara a versão do salvo
 com a aplicada. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
@@ -89,8 +93,9 @@ Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado 
 7. Relógio: `EnviarRelogio`/`ReceberRelogio`, semântica e formato. É pré-requisito da fase 4.
 8. Mensagens no visor, bip e relés: o que cada função faz de fato (`A_CONFIRMAR_COM_TOPDATA`).
 9. Leitor externo de QR: tensão, velocidade, terminador e alimentação (docs/20).
-10. Ensaios de caos com hardware: CHAOS-DEV-01 (isolamento entre grupos), CHAOS-REC-01 (bilhetes sem duplicar).
+10. Ensaios de caos com hardware: CHAOS-DEV-01 (isolamento entre grupos), CHAOS-REC-01 (bilhetes sem duplicar; roteiro no docs/21 §6E).
 11. **INT-SM-021 — sequência oficial de conexão (Etapa A.7):** com a chave `catraca.sequencia_oficial` ligada, a catraca entra em operação e libera igual a hoje? `EnviarConfiguracoesMudancaAutomaticaOnLineOffLine` devolve 0? O segundo `EnviarConfiguracoes` desfaz o que a mudança mandou (T13)? Roteiro no docs/21 §6D. A contingência de verdade (mudança 2, `PingOnLine` periódico, T24) só depois da D8.
+12. **Coleta de bilhetes (Etapa A.9): HIL-BIL-01, INT-REC-03, CHAOS-REC-01 e NOVO-INT-REC-07:** o que `ColetarBilhete` devolve com a memória vazia (T3); 10 marcações off-line coletadas e contadas; matar o worker no meio da coleta e conferir que nenhuma se perde nem duplica; e quando a memória apaga o bilhete — ao devolver ou só no próximo pedido (T35). Roteiro no docs/21 §6E; só então a chave `catraca.coletar_bilhetes` liga.
 
 ## 4. Desenvolvimento que dá para fazer já (sem hardware)
 
