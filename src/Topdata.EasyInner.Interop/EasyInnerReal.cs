@@ -89,6 +89,10 @@ public sealed class EasyInnerReal : IEasyInnerNative
 
     public byte EnviarConfiguracoes(int inner) => EasyInnerNative.EnviarConfiguracoes(inner);
 
+    // EI-029: a declaração já existia no P/Invoke; entra na costura com a sequência oficial (A.7).
+    public byte EnviarConfiguracoesMudancaAutomaticaOnLineOffLine(int inner) =>
+        EasyInnerNative.EnviarConfiguracoesMudancaAutomaticaOnLineOffLine(inner);
+
     public byte EnviarFormasEntradasOnLine(
         int inner,
         byte qtdeDigitosTeclado,

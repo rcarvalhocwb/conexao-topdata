@@ -195,6 +195,7 @@ public sealed class DevicePump
     private readonly bool _acertarRelogioAoDivergir;
     private readonly Action<ComandoDeCatraca, SituacaoDoComando, string>? _aoConcluirComando;
     private readonly Action<string>? _antesDaLiberacaoManual;
+    private readonly bool _sequenciaOficial;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -213,6 +214,15 @@ public sealed class DevicePump
     /// para encerrar a tentativa pendente: o giro que vier é do operador, não do último
     /// ingresso lido.
     /// </param>
+    /// <param name="sequenciaOficial">
+    /// Segue a sequência oficial de conexão (docs/34 §4.3): os estados <c>EnviarCfgOffline</c>,
+    /// <c>EnviarConfigMudOnlineOffline</c> e <c>EnviarCfgOnline</c> mandam, cada um, a sua etapa
+    /// (<see cref="ITopdataInnerAdapter.EnviarEtapaDaSequenciaOficial"/>). Desligado por padrão: os
+    /// três mandam a mesma configuração completa, como sempre (defeito F3, docs/34 §2). Chave
+    /// técnica <c>catraca.sequencia_oficial</c>, <c>A_CONFIRMAR_COM_TOPDATA</c> até o ensaio
+    /// INT-SM-021 (Etapa A.7 do docs/35). Não liga a contingência: a mudança automática segue com
+    /// o valor da configuração, 0 no padrão (D8).
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -221,9 +231,11 @@ public sealed class DevicePump
         Action<DeviceEvent>? aoReceberEvento = null,
         bool acertarRelogioAoDivergir = false,
         Action<ComandoDeCatraca, SituacaoDoComando, string>? aoConcluirComando = null,
-        Action<string>? antesDaLiberacaoManual = null)
+        Action<string>? antesDaLiberacaoManual = null,
+        bool sequenciaOficial = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
+        _sequenciaOficial = sequenciaOficial;
         _acertarRelogioAoDivergir = acertarRelogioAoDivergir;
         _aoConcluirComando = aoConcluirComando;
         _antesDaLiberacaoManual = antesDaLiberacaoManual;
@@ -313,9 +325,12 @@ public sealed class DevicePump
             DeviceState.Conectar => Conectar(dispositivo, agora),
             DeviceState.LendoIdentidade => LerIdentidade(dispositivo, agora),
             DeviceState.VerificandoCompatibilidade => VerificarCompatibilidade(dispositivo, agora),
-            DeviceState.EnviarCfgOffline => EnviarConfiguracao(dispositivo, agora, "cfg offline"),
-            DeviceState.EnviarConfigMudOnlineOffline => EnviarConfiguracao(dispositivo, agora, "cfg mudança automática"),
-            DeviceState.EnviarCfgOnline => EnviarConfiguracao(dispositivo, agora, "cfg online"),
+            DeviceState.EnviarCfgOffline =>
+                EnviarConfiguracao(dispositivo, agora, "cfg offline", EtapaDaSequenciaOficial.ConfiguracaoOffLine),
+            DeviceState.EnviarConfigMudOnlineOffline =>
+                EnviarConfiguracao(dispositivo, agora, "cfg mudança automática", EtapaDaSequenciaOficial.MudancaAutomatica),
+            DeviceState.EnviarCfgOnline =>
+                EnviarConfiguracao(dispositivo, agora, "cfg online", EtapaDaSequenciaOficial.ConfiguracaoOnLine),
             DeviceState.SincronizandoDadosOffline => SincronizarDadosOffline(dispositivo, agora),
             DeviceState.ConfigurarEntradasOnline => ConfigurarEntradas(dispositivo, agora),
             DeviceState.EnviarMsgPadrao => EnviarMensagemPadrao(dispositivo, agora),
@@ -387,11 +402,15 @@ public sealed class DevicePump
         return $"firmware não homologado (linha {d.Firmware?.Linha.ToString(provider: null) ?? "?"}) — não será configurado";
     }
 
-    private string EnviarConfiguracao(DeviceSlot d, DateTimeOffset agora, string etapa)
+    private string EnviarConfiguracao(DeviceSlot d, DateTimeOffset agora, string etapa, EtapaDaSequenciaOficial daSequenciaOficial)
     {
         // Sempre a configuração COMPLETA: o que não for setado volta ao padrão da DLL.
-        // Ver ADR-0020.
-        var resultado = _adapter.EnviarConfiguracaoCompleta(d.Inner, d.Configuracao);
+        // Ver ADR-0020. Com a sequência oficial, cada estado manda a sua etapa — e as duas
+        // configurações levam os mesmos campos comuns (docs/34 §4.3). Uma chamada ao adapter
+        // por passo, nos dois casos: a máquina de estados não muda.
+        var resultado = _sequenciaOficial
+            ? _adapter.EnviarEtapaDaSequenciaOficial(d.Inner, d.Configuracao, daSequenciaOficial)
+            : _adapter.EnviarConfiguracaoCompleta(d.Inner, d.Configuracao);
 
         if (resultado.IsOk)
         {

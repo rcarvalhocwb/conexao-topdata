@@ -124,6 +124,17 @@ public interface IEasyInnerNative
     /// <summary>EI-030 — aplica a configuração montada. Envia também os padrões da DLL.</summary>
     byte EnviarConfiguracoes(int inner);
 
+    /// <summary>
+    /// EI-029 — aplica o buffer de mudança automática on-line/off-line (manual 4.1.9). Retorno
+    /// 0 sucesso, 1 erro (FUN:30).
+    /// </summary>
+    /// <remarks>
+    /// Só é chamada na sequência oficial de conexão (Etapa A.7 do docs/35, docs/34 §4.3), com a
+    /// chave técnica <c>catraca.sequencia_oficial</c> ligada, desligada até INT-SM-021. Quais
+    /// funções de montagem este enviador aplica é <c>INFERIDO</c> até a Topdata responder T13.
+    /// </remarks>
+    byte EnviarConfiguracoesMudancaAutomaticaOnLineOffLine(int inner);
+
     /// <summary>EI-032 — formas de entrada. É esta que rearma o leitor a cada ciclo.</summary>
     byte EnviarFormasEntradasOnLine(
         int inner,

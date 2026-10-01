@@ -134,10 +134,13 @@ public sealed record DeviceConfiguration
     /// <summary>Verdadeiro para modo on-line; falso para off-line.</summary>
     /// <remarks>
     /// É o <c>RegimeAlvo</c> do docs/34 §4.1 (anexo 01 §3.1: "<c>Online</c> → <c>RegimeAlvo</c>"),
-    /// reaproveitado em vez de duplicado (Etapa A.2). Hoje há um envio só por passo, e este
-    /// campo escolhe <c>ConfigurarInnerOnLine</c> (EI-018) ou <c>ConfigurarInnerOffLine</c>
-    /// (EI-019). Com a sequência oficial (Etapa A.7, cfg off-line → mudança → cfg on-line) ele
-    /// passa a dizer em qual regime a catraca <b>termina</b>, e é lá que vira enum.
+    /// reaproveitado em vez de duplicado (Etapa A.2). Sem a sequência oficial, cada passo manda
+    /// a configuração completa e este campo escolhe <c>ConfigurarInnerOnLine</c> (EI-018) ou
+    /// <c>ConfigurarInnerOffLine</c> (EI-019). Com ela (Etapa A.7, chave
+    /// <c>catraca.sequencia_oficial</c>: cfg off-line → mudança → cfg on-line) a cfg off-line
+    /// usa off-line sempre, e este campo diz em qual regime a catraca <b>termina</b>, lido como
+    /// <see cref="Devices.RegimeAlvo"/> por <see cref="RegimeDaConfiguracao.RegimeAlvo"/>. Não foi
+    /// renomeado nem duplicado: um campo novo mudaria a cobertura da ADR-0020 sem valor novo.
     /// </remarks>
     public required bool Online { get; init; }
 

@@ -139,6 +139,46 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
     }
 
     /// <remarks>
+    /// Cada etapa fica em <see cref="SimulatedDevice.EtapasDaSequenciaOficial"/>; as duas que
+    /// levam a configuração inteira (cfg off-line e cfg on-line) entram também em
+    /// <see cref="SimulatedDevice.ConfiguracoesRecebidas"/>, como os envios completos de sempre.
+    /// O simulador não modela o regime: a catraca simulada segue atendendo como on-line.
+    /// </remarks>
+    public AdapterResult EnviarEtapaDaSequenciaOficial(int inner, DeviceConfiguration configuracao, EtapaDaSequenciaOficial etapa)
+    {
+        ArgumentNullException.ThrowIfNull(configuracao);
+
+        if (!Enum.IsDefined(etapa))
+        {
+            throw new ArgumentOutOfRangeException(nameof(etapa), etapa, "Etapa da sequência oficial desconhecida.");
+        }
+
+        var problemas = configuracao.Validar();
+        if (problemas.Count > 0)
+        {
+            throw new ArgumentException(
+                $"Configuração inválida: {string.Join(" | ", problemas)}",
+                nameof(configuracao));
+        }
+
+        return ComDispositivo(inner, d =>
+        {
+            if (d.Desconectado)
+            {
+                return 1;
+            }
+
+            d.EtapasDaSequenciaOficial.Add(etapa);
+            if (etapa is not EtapaDaSequenciaOficial.MudancaAutomatica)
+            {
+                d.ConfiguracoesRecebidas.Add(configuracao);
+            }
+
+            return 0;
+        });
+    }
+
+    /// <remarks>
     /// A configuração não muda nada aqui: o simulador trabalha no nível do adapter e já recebe a
     /// <see cref="DeviceConfiguration"/> inteira em <see cref="EnviarConfiguracaoCompleta"/>.
     /// </remarks>
