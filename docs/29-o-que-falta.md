@@ -36,8 +36,12 @@ completo da configuração, com cinco parâmetros novos atrás de chaves técnic
 no docs/21 §6C) e a A.3 (configuração por catraca na base: migração 012, com histórico só-INSERT,
 e a camada da catraca no montador) e a A.4 (o worker aplica por catraca: cada uma sobe com a sua
 configuração, o "Aplicar agora" relê só a catraca do comando, e configuração recusada numa catraca
-cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) também. A tela vem
-na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) também. A A.8 também
+está no código: bip curto e longo, liberar saída e liberar nos dois sentidos, cada um com a sua chave
+técnica desligada (o serviço recusa antes de enfileirar; ensaios no docs/21 §6D). Os dois sentidos
+são recusados também pela **decisão D5, ainda não tomada** — ligar exige D5 + bancada (HIL-DIR-07).
+Entrar e sair de manutenção ficaram de fora (sem função na matriz; `A_CONFIRMAR_COM_TOPDATA`). A tela
+vem na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
@@ -47,7 +51,7 @@ importação (CSV e .xlsx, sem gravar).
 |---|---|---|---|
 | E1 | Redistribuir a `EasyInner.dll` no Setup | Topdata | Setup que já funciona com catraca real, sem instalar o SDK à parte |
 | E2 | B2 — parque real: quantas TopFit 4, firmware, se todas têm urna **e** leitor de QR | cliente | divisão das catracas (docs/19) e perfil do cartão |
-| E3 | B4 — fail-safe × fail-secure (o que a catraca faz sem PC ou sem energia) | responsável pela segurança do evento | configuração de contingência, RB-10 (evacuação) |
+| E3 | B4 / D5 — fail-safe × fail-secure (o que a catraca faz sem PC ou sem energia) e evacuação | responsável pela segurança do evento | configuração de contingência, RB-10 (evacuação) e o comando "Liberar nos dois sentidos", que já existe no serviço e é recusado até a decisão (A.8) |
 | E4 | B7 — público, janela de pico e número de portões | cliente | dimensionamento (docs/14): pode faltar catraca |
 | E5 | B8 — cartão de proximidade ou Mifare; 10 ou 14 dígitos | cliente + bancada | normalização do código (zeros à esquerda) |
 | E6 | B9 — biometria/facial no escopo? | negócio + jurídico | fase 5 (só com base legal) |
@@ -104,7 +108,8 @@ As fases do docs/24 §3, em ordem de impacto para o evento.
 ### Fase 4 — Gerenciar catraca (alta)
 - ~~Acertar o relógio da catraca ao conectar e a cada hora, com alerta se divergir mais de 30 s.~~ **Feito (fase 4a):** acerto a cada conexão, conferência 1 min depois e a cada hora, aviso no cartão da catraca. O acerto automático durante a operação fica desligado até o passo 6A do docs/21.
 - ~~Tela por catraca~~ **Feito (fase 4b/4c, [docs/32](32-gerenciar-catraca.md)):** mensagem temporária, refazer a conexão, acertar o relógio, liberação manual com motivo e auditoria, e "Aplicar agora" em Configurações. Bip, relés, urna e sentido aparecem desabilitados com o selo "Aguardando confirmação"; bancada no passo 6B do docs/21.
-- Falta: somar as liberações manuais nos relatórios da fase 6.
+- Comandos da Etapa A.8 (bip curto e longo, liberar saída, liberar nos dois sentidos) no serviço, cada um com a sua chave técnica **desligada**; falta a bancada (docs/21 §6D), a D5 para os dois sentidos e os botões na tela (A.6).
+- Falta: somar as liberações manuais nos relatórios da fase 6 (e as de saída, quando ligadas).
 
 ### Fase 5 — Alertas e notificações (alta)
 Catálogo do docs/24 §1:
