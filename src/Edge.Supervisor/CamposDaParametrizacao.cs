@@ -51,6 +51,13 @@ internal static class CamposDaParametrizacao
         nameof(FuncaoDeLiberacao.SaidaInvertida),
     ];
 
+    /// <summary>
+    /// Operações dos leitores 1 e 2 (FUN:15/16) que leem na saída: 2 somente saída, 3 entrada e
+    /// saída, 4 entrada e saída invertida. O produto só decide e libera entrada, e saída e dois
+    /// sentidos estão fora até a bancada e a decisão B4 (docs/32; docs/34-anexos/04 §3.1).
+    /// </summary>
+    private static readonly string[] LeiturasNaSaida = ["2", "3", "4"];
+
     /// <summary>Nome do campo nos problemas devolvidos à tela.</summary>
     public static string Rotulo(CampoDaCatraca campo) => campo switch
     {
@@ -141,6 +148,10 @@ internal static class CamposDaParametrizacao
             FuncoesAguardando,
             "Qual função libera a entrada numa catraca instalada ao contrário só se sabe na bancada " +
             "(HIL-DIR-05/06, EI-042 a EI-044; docs/34 §2, F1). Até lá, só \"Entrada\" pode ser escolhida."),
+        CampoDaCatraca.OperacaoDoLeitor1 or CampoDaCatraca.OperacaoDoLeitor2 => (
+            LeiturasNaSaida,
+            "Ler na saída: o sistema só decide e libera entrada; saída e dois sentidos aguardam a bancada " +
+            "(HIL-DIR-01/02, EI-014/EI-015) e a decisão sobre evacuação (B4, docs/32)."),
         _ => ([], string.Empty),
     };
 

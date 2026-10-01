@@ -121,6 +121,7 @@ public sealed class ParametrizacaoDaCatracaTests : IDisposable
         Assert.Equal(SituacaoDoCampo.Enviado, funcao.Situacao);
         Assert.Equal(["EntradaInvertida", "Saida", "SaidaInvertida"], funcao.ValoresAguardando);
         Assert.Contains("HIL-DIR-05/06", funcao.MotivoDosValoresAguardando, StringComparison.Ordinal);
+        Assert.Equal(["2", "3", "4"], Campo(c, CampoDaCatraca.OperacaoDoLeitor2).ValoresAguardando);
 
         // 5 × 8 continua A_CONFIRMAR: aviso, sem impedir.
         Assert.Contains("NOVO-HIL-QR-02", Campo(c, CampoDaCatraca.TipoDeLeitor).Aviso, StringComparison.Ordinal);
@@ -192,16 +193,22 @@ public sealed class ParametrizacaoDaCatracaTests : IDisposable
         var wiegand = Gravar(1, "Operadora", (CampoDaCatraca.WiegandDoisLeitores, "1,0"));
         var formas = Gravar(1, "Operadora", (CampoDaCatraca.FormasDeEntradaOnLine, "0,0,3,0,0"));
         var invertida = Gravar(1, "Operadora", (CampoDaCatraca.FuncaoDeLiberacaoDaEntrada, "EntradaInvertida"));
+        var saida = Gravar(1, "Operadora", (CampoDaCatraca.OperacaoDoLeitor1, "2"));
 
         Assert.False(wiegand.Gravada);
         Assert.Contains(wiegand.Problemas, p => p.Contains("HIL-CARD-05", StringComparison.Ordinal));
         Assert.False(formas.Gravada);
         Assert.False(invertida.Gravada);
         Assert.Contains(invertida.Problemas, p => p.Contains("HIL-DIR-05/06", StringComparison.Ordinal));
+        Assert.False(saida.Gravada);
+        Assert.Contains(saida.Problemas, p => p.Contains("B4", StringComparison.Ordinal));
         Assert.Empty(new ConfiguracoesDasCatracas(_banco.Fabrica).Historico(1));
 
-        // "Entrada", a de sempre, pode.
-        Assert.True(Gravar(1, "Operadora", (CampoDaCatraca.FuncaoDeLiberacaoDaEntrada, "Entrada")).Gravada);
+        // "Entrada", a de sempre, pode; leitor desligado ou só de entrada também.
+        Assert.True(Gravar(1, "Operadora",
+            (CampoDaCatraca.FuncaoDeLiberacaoDaEntrada, "Entrada"),
+            (CampoDaCatraca.OperacaoDoLeitor1, "1"),
+            (CampoDaCatraca.OperacaoDoLeitor2, "0")).Gravada);
     }
 
     [Fact]
