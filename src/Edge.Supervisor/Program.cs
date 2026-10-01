@@ -116,6 +116,16 @@ if (OperatingSystem.IsWindows())
     }
 }
 
+// Esta partida do serviço (migração 016). Cada worker grava a situação das catracas com ela, e
+// o serviço só acredita na situação desta partida: um worker órfão de uma partida anterior —
+// o serviço morreu sem encerrá-lo — não aparece mais como "Atendendo" (docs/29, defeito de 01/10).
+var sessaoDoServico = Guid.CreateVersion7().ToString("N", CultureInfo.InvariantCulture);
+var pidDoServico = Environment.ProcessId;
+
+// O worker morre com o serviço: Job Object no Windows (o kernel mata os workers quando o
+// serviço some, de qualquer jeito) e, em todo sistema, a vigia do pai no worker (--pai).
+var contencao = ContencaoDosWorkers.Criar();
+
 var workers = configuracao.Grupos
     .Select(g => new ProcessoDeWorker(
         g.Nome,
@@ -124,9 +134,12 @@ var workers = configuracao.Grupos
         ConfiguracaoDoSupervisor.ResolverExecutavel(g.Executavel),
         argumentosExtras: [
             "--banco", caminhoDoBanco, "--worker", g.Nome,
+            "--sessao", sessaoDoServico,
+            "--pai", pidDoServico.ToString(CultureInfo.InvariantCulture),
             .. configuracao.Simulacao ? ["--simulador"] : Array.Empty<string>(),
             .. chaveDaImpressao is null ? Array.Empty<string>() : ["--chave-da-impressao-na-entrada"]],
-        entradaPadrao: chaveDaImpressao is null ? null : () => chaveDaImpressao))
+        entradaPadrao: chaveDaImpressao is null ? null : () => chaveDaImpressao,
+        contencao: contencao))
     .ToList();
 
 // Modo simulação: ingressos e cartões de teste carregados a cada partida (idempotente).
@@ -153,6 +166,21 @@ void Registrar(string linha)
 {
     registro.Escrever(linha);
     Console.WriteLine(linha);
+}
+
+Registrar($"partida {sessaoDoServico} · contenção dos workers: {contencao.Descricao}");
+
+// Antes de subir os workers desta partida: encerrar os que uma partida anterior deixou órfãos.
+// Só os desta instalação (mesmo executável, caminho completo) cujo pai não existe mais.
+if (OperatingSystem.IsWindows())
+{
+    foreach (var linha in FaxinaDeOrfaos.Executar(
+        configuracao.Grupos.Select(g => ConfiguracaoDoSupervisor.ResolverExecutavel(g.Executavel)),
+        pidDoServico,
+        new ProcessosDoWindows()))
+    {
+        Registrar("faxina: " + linha);
+    }
 }
 
 SincronizacaoComANuvem? sincronizacao = null;
@@ -208,7 +236,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     comandos: new FilaDeComandosSqlite(fabrica),
     chavesDosComandos: new ChavesDosComandos(fabrica),
     configuracoesDasCatracas: new ConfiguracoesDasCatracas(fabrica),
-    configuracaoPorCatraca: new ConfiguracaoPorCatraca(fabrica)));
+    configuracaoPorCatraca: new ConfiguracaoPorCatraca(fabrica),
+    sessao: sessaoDoServico));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();

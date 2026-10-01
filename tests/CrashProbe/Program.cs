@@ -18,6 +18,15 @@ if (args.Length > 0 && args[0] == "--bilhetes")
     return await CrashProbe.ColetaDaCobaia.Executar(args[1..]).ConfigureAwait(false);
 }
 
+// Uso: CrashProbe --esperar
+// Só fica de pé, calado, até ser morto. É o "worker" dos testes de contenção (Job Object) e da
+// faxina de órfãos do supervisor (docs/29, defeito de 01/10).
+if (args.Length > 0 && args[0] == "--esperar")
+{
+    await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
+    return 0;
+}
+
 var tagarela = Array.IndexOf(args, "--tagarela");
 if (tagarela >= 0 && tagarela + 1 < args.Length)
 {

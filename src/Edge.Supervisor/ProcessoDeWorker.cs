@@ -26,6 +26,7 @@ public sealed class ProcessoDeWorker : IWorkerHost
     private string _ultimaSaida = "ainda não iniciado";
     private readonly IReadOnlyList<string> _argumentosExtras;
     private readonly Func<string?>? _entradaPadrao;
+    private readonly IContencaoDeProcessos? _contencao;
     private readonly Queue<string> _ultimasLinhas = new();
     private readonly Lock _travaDasLinhas = new();
 
@@ -39,7 +40,8 @@ public sealed class ProcessoDeWorker : IWorkerHost
         string executavel,
         Func<DateTimeOffset>? relogio = null,
         IReadOnlyList<string>? argumentosExtras = null,
-        Func<string?>? entradaPadrao = null)
+        Func<string?>? entradaPadrao = null,
+        IContencaoDeProcessos? contencao = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nome);
         ArgumentException.ThrowIfNullOrWhiteSpace(executavel);
@@ -53,6 +55,7 @@ public sealed class ProcessoDeWorker : IWorkerHost
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
         _argumentosExtras = argumentosExtras ?? [];
         _entradaPadrao = entradaPadrao;
+        _contencao = contencao;
     }
 
     public string Nome { get; }
@@ -126,6 +129,15 @@ public sealed class ProcessoDeWorker : IWorkerHost
         {
             _ultimaSaida = "o sistema operacional não criou o processo";
             return;
+        }
+
+        // O worker morre com o serviço (Job Object no Windows): sem isto, o serviço morto pelo
+        // Gerenciador de Tarefas deixava o worker órfão gravando "em operação" na base (docs/29,
+        // defeito de 01/10). Recusado, o worker roda assim mesmo — a vigia do pai (--pai) cobre —
+        // e o motivo fica nas últimas linhas, para o diagnóstico.
+        if (_contencao is not null && !_contencao.Conter(_processo))
+        {
+            Guardar($"[supervisor] worker fora da contenção ({_contencao.Descricao}).");
         }
 
         // A saída precisa ser LIDA enquanto o worker roda. Redirecionada e não lida, ela
