@@ -36,8 +36,11 @@ completo da configuração, com cinco parâmetros novos atrás de chaves técnic
 no docs/21 §6C) e a A.3 (configuração por catraca na base: migração 012, com histórico só-INSERT,
 e a camada da catraca no montador) e a A.4 (o worker aplica por catraca: cada uma sobe com a sua
 configuração, o "Aplicar agora" relê só a catraca do comando, e configuração recusada numa catraca
-cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) também. A tela vem
-na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) também. A A.7 (a
+sequência oficial de conexão — cfg off-line → mudança automática, EI-029 → cfg on-line) está no
+código atrás da chave técnica `catraca.sequencia_oficial`, **desligada** até INT-SM-021 (docs/21
+§6D): desligada, a catraca recebe os três envios iguais de sempre; ligada, não liga a contingência
+(mudança automática 0; D8). A tela vem na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
@@ -83,6 +86,7 @@ Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado 
 8. Mensagens no visor, bip e relés: o que cada função faz de fato (`A_CONFIRMAR_COM_TOPDATA`).
 9. Leitor externo de QR: tensão, velocidade, terminador e alimentação (docs/20).
 10. Ensaios de caos com hardware: CHAOS-DEV-01 (isolamento entre grupos), CHAOS-REC-01 (bilhetes sem duplicar).
+11. **INT-SM-021 — sequência oficial de conexão (Etapa A.7):** com a chave `catraca.sequencia_oficial` ligada, a catraca entra em operação e libera igual a hoje? `EnviarConfiguracoesMudancaAutomaticaOnLineOffLine` devolve 0? O segundo `EnviarConfiguracoes` desfaz o que a mudança mandou (T13)? Roteiro no docs/21 §6D. A contingência de verdade (mudança 2, `PingOnLine` periódico, T24) só depois da D8.
 
 ## 4. Desenvolvimento que dá para fazer já (sem hardware)
 

@@ -265,6 +265,50 @@ quando alguém passa: se aparecer o número do cartão, é o padrão da DLL (LGP
 
 ---
 
+## 6D. Sequência oficial de conexão (`INT-SM-021`, Etapa A.7)
+
+Hoje, a cada conexão, a catraca recebe **a mesma configuração três vezes** (regime on-line, mudança
+automática 0) e `EnviarConfiguracoesMudancaAutomaticaOnLineOffLine` (EI-029) nunca é chamada
+([`34`](34-estudo-modulo-catraca.md) §2, F3). A sequência do manual — **cfg off-line → mudança
+automática → cfg on-line** — está no código atrás da chave técnica `catraca.sequencia_oficial`,
+**desligada**. Ela muda **só a ordem e a forma** do envio:
+
+| Envio | Chamadas à DLL (docs/34 §4.3) |
+|---|---|
+| cfg off-line | `ConfigurarInnerOffLine` + campos comuns → `EnviarConfiguracoes` |
+| mudança | `HabilitarMudancaOnLineOffLine(0, 10)` → `EnviarConfiguracoesMudancaAutomaticaOnLineOffLine` |
+| cfg on-line | `ConfigurarInnerOnLine` + **os mesmos** campos comuns → `EnviarConfiguracoes` |
+
+Os campos comuns são os de hoje (cartão, leitor, leitores 1 e 2, relés 1 e 2, teclado e as chaves
+do 6C que estiverem ligadas). A mudança vai com **0: a contingência continua desligada** (decisão
+D8 do docs/34 §9); a chave não faz a catraca operar sozinha sem o PC. Ficam de fora, por não terem
+linha na matriz: mensagens off-line e `EnviarMensagensOffLine` (NOVO-INT-MSG-04), entradas e
+mensagens da mudança (NOVO-INT-SM-022, NOVO-INT-MSG-05) e o `PingOnLine` periódico (T24).
+
+Precisa do **sistema instalado**, como o 6C. Ligue com o mesmo SQL do 6C, chave
+`catraca.sequencia_oficial`, valor `1`, e **reinicie o serviço**: a chave é do laço e vale no
+próximo início do worker, não no "Aplicar agora". O registro do worker mostra `sequência oficial de
+conexão ligada` e, por catraca, `cfg offline enviada`, `cfg mudança automática enviada` e
+`cfg online enviada`.
+
+| # | Faça | Deve acontecer | Anote |
+|---|---|---|---|
+| 1 | Suba com a chave **desligada**; repita o passo 4 (QR e cartão) | Libera e gira como sempre | — (é a referência) |
+| 2 | Ligue a chave e suba de novo | Os três envios aparecem no registro, nessa ordem, e a catraca chega a "Atendendo" | Algum `falha em cfg …`? Com qual função e retorno? |
+| 3 | Repita o passo 4 (QR, cartão na frente e na urna) | Igual à linha 1: o segundo `EnviarConfiguracoes` não pode ter desfeito leitor, relé ou urna | Igual? Se não, o que mudou |
+| 4 | Passe 20 leituras seguidas | 20 de 20 liberam; o leitor rearma todas as vezes | Quantas? |
+| 5 | Tire o cabo por 30 s e ponha de volta | A catraca **não** passa a liberar sozinha sem o PC (mudança 0); ao voltar, a sequência se repete e ela volta a atender | Liberou sem o PC? Quanto tempo sem atender? |
+| 6 | Com a catraca em operação, refaça a conexão pelo painel (6B, linha 7) | Volta a "Atendendo" | Quantos s sem atender, comparado com a chave desligada |
+
+**Liga de vez quando:** as linhas 2 a 6 saem iguais à referência, nenhum envio volta com erro, e a
+Topdata respondeu T13 (qual enviador aplica `HabilitarMudancaOnLineOffLine`: se for o
+`EnviarConfiguracoes`, o segundo envio a devolve ao padrão da DLL). A **contingência de verdade**
+— mudança 2, tempo e `PingOnLine` — é a segunda parte do INT-SM-021 (T24: significado de 0/1/2,
+unidade do tempo, período do ping; modo 2, parar o ping, cronometrar a queda, voltar), e só depois
+da D8.
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
@@ -309,7 +353,8 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 6A: relógio conferido com no máximo ±1 s, e o QR logo após o reacerto libera
 - [ ] Passo 6B: os oito pedidos se comportam como a tabela diz; linha 5 com o QR sem giro
 - [ ] Passo 6C: cada chave ensaiada tem a linha preenchida (ou "não ensaiada") e voltou desligada se o resultado foi ruim
+- [ ] Passo 6D: com a sequência oficial ligada, as linhas 2–6 iguais à referência (ou "não ensaiada"); a chave voltou desligada se o resultado foi ruim
 - [ ] Passo 7: o resumo bate com o que foi feito
 
-**Mande a tabela do passo 3, as dos passos 6A, 6B e 6C e o resumo do passo 7.** São eles que fecham as perguntas
+**Mande a tabela do passo 3, as dos passos 6A, 6B, 6C e 6D e o resumo do passo 7.** São eles que fecham as perguntas
 em aberto sobre leitor, QR e cartão.
