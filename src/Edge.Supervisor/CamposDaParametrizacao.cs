@@ -40,18 +40,6 @@ internal static class CamposDaParametrizacao
     ];
 
     /// <summary>
-    /// As variantes da função de liberação que não podem ser escolhidas pela tela. Qual delas
-    /// serve à catraca instalada ao contrário só a bancada diz (HIL-DIR-05/06, docs/34 §2, F1):
-    /// até lá, só <see cref="FuncaoDeLiberacao.Entrada"/>, a de sempre.
-    /// </summary>
-    private static readonly string[] FuncoesAguardando =
-    [
-        nameof(FuncaoDeLiberacao.EntradaInvertida),
-        nameof(FuncaoDeLiberacao.Saida),
-        nameof(FuncaoDeLiberacao.SaidaInvertida),
-    ];
-
-    /// <summary>
     /// Operações dos leitores 1 e 2 (FUN:15/16) que leem na saída: 2 somente saída, 3 entrada e
     /// saída, 4 entrada e saída invertida. O produto só decide e libera entrada, e saída e dois
     /// sentidos estão fora até a bancada e a decisão B4 (docs/32; docs/34-anexos/04 §3.1).
@@ -144,10 +132,6 @@ internal static class CamposDaParametrizacao
     /// <summary>Valores que a tela mostra e não deixa escolher, com o motivo.</summary>
     public static (IReadOnlyList<string> Valores, string Motivo) Aguardando(CampoDaCatraca campo) => campo switch
     {
-        CampoDaCatraca.FuncaoDeLiberacaoDaEntrada => (
-            FuncoesAguardando,
-            "Qual função libera a entrada numa catraca instalada ao contrário só se sabe na bancada " +
-            "(HIL-DIR-05/06, EI-042 a EI-044; docs/34 §2, F1). Até lá, só \"Entrada\" pode ser escolhida."),
         CampoDaCatraca.OperacaoDoLeitor1 or CampoDaCatraca.OperacaoDoLeitor2 => (
             LeiturasNaSaida,
             "Ler na saída: o sistema só decide e libera entrada; saída e dois sentidos aguardam a bancada " +
@@ -156,8 +140,18 @@ internal static class CamposDaParametrizacao
     };
 
     /// <summary>Aviso que não impede a escolha.</summary>
+    /// <remarks>
+    /// A função de liberação deixou de aguardar a bancada (decisão D9 do dono do produto, docs/34
+    /// §9: a nomenclatura de sentido é do sistema). Qualquer uma das quatro pode ser escolhida; o
+    /// que continua do mundo físico — para que lado o braço gira com ela nesta instalação — é a
+    /// conferência de comissionamento do mapa de giro (aba Giro, NOVO-HIL-DIR-11).
+    /// </remarks>
     public static string Aviso(CampoDaCatraca campo) => campo switch
     {
+        CampoDaCatraca.FuncaoDeLiberacaoDaEntrada =>
+            "É a função que as origens sem regra própria seguem no mapa de giro. Para que lado o braço gira com ela " +
+            "nesta instalação se confere girando uma vez, na aba Giro (NOVO-HIL-DIR-11); até lá, a catraca mostra " +
+            "o selo \"sentido ainda não conferido\".",
         CampoDaCatraca.TipoDeLeitor =>
             "Tipo 5 (barras serial) ou 8 (QR Code por letras) para o QR da TopFit 4: aguardando confirmação " +
             "(NOVO-HIL-QR-02, T25; EI-013). Na bancada, 8; troque para 5 se o QR não for lido.",

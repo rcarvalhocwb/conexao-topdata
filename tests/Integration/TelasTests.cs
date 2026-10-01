@@ -785,18 +785,18 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Contains(CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.WiegandDoisLeitores).Selos, s => s.Contains("HIL-CARD-05", StringComparison.Ordinal));
         Assert.Contains(CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.FormasDeEntradaOnLine).Selos, s => s.Contains("INT-SM-032", StringComparison.Ordinal));
 
+        // Decisão D9 (docs/34 §9): as quatro funções podem ser escolhidas; o sentido nesta
+        // instalação é conferido no mapa de giro (aba Giro), e o aviso diz isso.
         var funcao = Assert.Single(tela.CamposDaLiberacao, x => x.Campo == Contracts.Edge.V1.CampoDaCatraca.FuncaoDeLiberacaoDaEntrada);
         Assert.True(funcao.Disponivel);
-        Assert.Equal(["Entrada"], funcao.Opcoes.Where(o => o.Disponivel).Select(o => o.Valor));
-        Assert.All(funcao.Opcoes.Where(o => !o.Disponivel), o => Assert.EndsWith("aguardando confirmação", o.Nome, StringComparison.Ordinal));
-        Assert.Contains(funcao.Selos, s => s.Contains("HIL-DIR-05/06", StringComparison.Ordinal));
+        Assert.Equal(4, funcao.Opcoes.Count(o => o.Disponivel));
+        Assert.Contains(funcao.Selos, s => s.Contains("NOVO-HIL-DIR-11", StringComparison.Ordinal));
 
-        // Escolher uma variante pela tela vira erro no campo, e não salva.
         funcao.Herda = false;
         funcao.Escolhida = funcao.Opcoes.Single(o => o.Valor == "EntradaInvertida");
-        Assert.StartsWith("Aguardando confirmação", funcao.Erro, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, funcao.Erro);
         tela.Operador = "Ana";
-        Assert.False(tela.Salvar.CanExecute(null));
+        Assert.True(tela.Salvar.CanExecute(null));
 
         // 5 × 8 continua a confirmar: o selo aparece no tipo de leitor, que segue editável.
         var tipo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor);

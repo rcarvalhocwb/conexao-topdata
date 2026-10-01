@@ -48,6 +48,15 @@ service EdgeControl {
   // Erro volta em "problemas", nunca como exceção.
   rpc ObterConfiguracaoDaCatraca(ObterConfiguracaoDaCatracaRequest) returns (ConfiguracaoDaCatraca);
   rpc GravarConfiguracaoDaCatraca(GravarConfiguracaoDaCatracaRequest) returns (GravarConfiguracaoDaCatracaResponse);
+
+  // Mapa de giro (decisão D9 do docs/34 §9: a nomenclatura de sentido é do sistema). Para cada
+  // origem que libera a catraca, qual função da DLL liberar (EI-041 a EI-044) e como o giro é
+  // contado. Gravar não aplica: a aplicação é o APLICAR_CONFIGURACAO da catraca, como na
+  // Parametrização. A conferência registra, com nome e hora, para que lado o braço girou com uma
+  // função nesta instalação. Erro volta em "problemas", nunca como exceção.
+  rpc ObterMapaDeGiro(ObterMapaDeGiroRequest) returns (MapaDeGiroDaCatraca);
+  rpc GravarMapaDeGiro(GravarMapaDeGiroRequest) returns (GravarMapaDeGiroResponse);
+  rpc RegistrarConferenciaDoGiro(RegistrarConferenciaDoGiroRequest) returns (RegistrarConferenciaDoGiroResponse);
 }
 
 message ObterEstadoRequest {}
@@ -84,6 +93,10 @@ message ObterEstadoResponse {
 
   // Catracas simuladas: nenhuma catraca física é acionada.
   bool simulacao = 16;
+
+  // Giros confirmados pelo rótulo do mapa de giro (D9). Sem regra no mapa, conta como entrada.
+  int64 entradas = 17;
+  int64 saidas = 18;
 }
 
 message ListarEquipamentosRequest {}
@@ -162,6 +175,10 @@ message EventoDeAcesso {
   // Categoria do ingresso no instante da tentativa (meia, inteira, social...).
   string categoria = 14;
   string portao = 15;
+
+  // Como o giro desta leitura é contado pelo mapa de giro: "entrada", "saida", ou vazio quando
+  // a catraca não tem regra para a origem (conta como entrada, como sempre).
+  string conta_como = 16;
 }
 
 enum ResultadoDoAcesso {
@@ -263,6 +280,9 @@ message PrestacaoDeContas {
   int64 giros = 6;
   int64 negados = 7;
   google.protobuf.Timestamp gerada_em = 8;
+  // Giros pelo rótulo do mapa de giro (D9); sem rótulo, entrada.
+  int64 entradas = 9;
+  int64 saidas = 10;
 }
 
 message LinhaPorCategoria {
@@ -276,6 +296,8 @@ message LinhaPorCatraca {
   int64 liberados = 2;
   int64 giros = 3;
   int64 negados = 4;
+  int64 entradas = 5;
+  int64 saidas = 6;
 }
 
 message LinhaPorHora {
@@ -515,4 +537,119 @@ message GravarConfiguracaoDaCatracaResponse {
   repeated string problemas = 2;
   // A versão do salvo depois da gravação, para comparar com a aplicada.
   string versao_salva = 3;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mapa de giro (D9). "Entrada" e "saída" na DLL são o nome do sentido FÍSICO do braço, do ponto
+// de vista da catraca; o que o evento conta é decisão do sistema.
+
+// De onde vem o pedido de liberar. O leitor 1 cobre a frente e o QR da tampa (origens 2 e 21);
+// o leitor 2 é a fenda da urna (origem 3); o teclado é a origem 1.
+enum OrigemDoGiro {
+  ORIGEM_DO_GIRO_NAO_ESPECIFICADO = 0;
+  ORIGEM_DO_GIRO_LEITOR_1 = 1;
+  ORIGEM_DO_GIRO_LEITOR_2 = 2;
+  ORIGEM_DO_GIRO_TECLADO = 3;
+  ORIGEM_DO_GIRO_LIBERACAO_MANUAL = 4;
+}
+
+// A função da DLL que libera o braço. Os dois sentidos (EI-045) não entram: evacuação, D5.
+enum FuncaoDoGiro {
+  FUNCAO_DO_GIRO_NAO_ESPECIFICADO = 0;
+  FUNCAO_DO_GIRO_ENTRADA = 1;            // LiberarCatracaEntrada, EI-041
+  FUNCAO_DO_GIRO_SAIDA = 2;              // LiberarCatracaSaida, EI-042
+  FUNCAO_DO_GIRO_ENTRADA_INVERTIDA = 3;  // LiberarCatracaEntradaInvertida, EI-043
+  FUNCAO_DO_GIRO_SAIDA_INVERTIDA = 4;    // LiberarCatracaSaidaInvertida, EI-044
+}
+
+// Como o giro é contado no painel, nos acessos, nos totais e na prestação de contas.
+enum ContagemDoGiro {
+  CONTAGEM_DO_GIRO_NAO_ESPECIFICADO = 0;
+  CONTAGEM_DO_GIRO_ENTRADA = 1;
+  CONTAGEM_DO_GIRO_SAIDA = 2;
+}
+
+// Se a função já foi conferida girando uma vez nesta instalação (comissionamento, NOVO-HIL-DIR-11).
+enum SituacaoDaConferencia {
+  SITUACAO_DA_CONFERENCIA_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_CONFERENCIA_NAO_CONFERIDA = 1;
+  SITUACAO_DA_CONFERENCIA_COMO_ESPERADO = 2;
+  SITUACAO_DA_CONFERENCIA_AO_CONTRARIO = 3;
+}
+
+message ObterMapaDeGiroRequest {
+  int32 inner = 1;
+}
+
+message RegraDoMapaDeGiro {
+  OrigemDoGiro origem = 1;
+  // Falso: a origem segue o padrão (a função do perfil da catraca, conta como entrada).
+  bool definida = 2;
+  // O que vale: a regra gravada, ou o padrão.
+  FuncaoDoGiro funcao = 3;
+  ContagemDoGiro conta_como = 4;
+  // O texto curto do giro que vale (até 32 caracteres).
+  string texto = 5;
+  // Verdadeiro quando o texto foi escrito pelo operador; falso = o padrão do rótulo.
+  bool texto_personalizado = 6;
+  // A função gravada segue a do perfil (não escolhida no mapa).
+  bool funcao_do_perfil = 7;
+  // A última conferência da função desta regra nesta catraca.
+  SituacaoDaConferencia conferencia = 8;
+  string conferida_por = 9;
+  google.protobuf.Timestamp conferida_em = 10;
+  // Aviso que não impede (ex.: teclado desligado nesta catraca).
+  string aviso = 11;
+}
+
+message MapaDeGiroDaCatraca {
+  int32 inner = 1;
+  // Sempre as quatro origens, na ordem da tela.
+  repeated RegraDoMapaDeGiro regras = 2;
+  // A função do perfil da catraca (Parametrização), que a origem sem função própria segue.
+  FuncaoDoGiro funcao_do_perfil = 3;
+  string alterado_por = 4;
+  google.protobuf.Timestamp alterado_em = 5;
+  // As mesmas versões da Parametrização: o mapa entra na versão do salvo.
+  string versao_salva = 6;
+  string versao_aplicada = 7;
+  repeated string problemas = 8;
+}
+
+message RegraDeGiroPedida {
+  OrigemDoGiro origem = 1;
+  // Verdadeiro: volta ao padrão; os outros campos são ignorados.
+  bool herdar = 2;
+  // NAO_ESPECIFICADO = a função do perfil da catraca.
+  FuncaoDoGiro funcao = 3;
+  ContagemDoGiro conta_como = 4;
+  // Vazio = o texto padrão do rótulo.
+  string texto = 5;
+}
+
+message GravarMapaDeGiroRequest {
+  int32 inner = 1;
+  // O mapa inteiro: origem que não vier volta ao padrão.
+  repeated RegraDeGiroPedida regras = 2;
+  // Nome de quem grava. Não há login: é o que a pessoa digitou.
+  string operador = 3;
+}
+
+message GravarMapaDeGiroResponse {
+  bool gravado = 1;
+  repeated string problemas = 2;
+  string versao_salva = 3;
+}
+
+message RegistrarConferenciaDoGiroRequest {
+  int32 inner = 1;
+  FuncaoDoGiro funcao = 2;
+  // Verdadeiro: o braço girou para o lado da seta do gêmeo.
+  bool como_esperado = 3;
+  string operador = 4;
+}
+
+message RegistrarConferenciaDoGiroResponse {
+  bool registrada = 1;
+  repeated string problemas = 2;
 }
