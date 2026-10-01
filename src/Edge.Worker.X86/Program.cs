@@ -202,17 +202,6 @@ internal static class Program
         return 0;
     }
 
-    /// <summary>O que vai para cada catraca, a partir da configuração do evento.</summary>
-    /// <remarks>
-    /// Delega ao <see cref="MontadorDaConfiguracao"/> (Etapa A.1 do docs/35): fábrica → evento →
-    /// catraca, esta ainda vazia até a Etapa A.3. <c>EnviarDigitosVariaveis</c> vem da chave
-    /// técnica <c>catraca.enviar_digitos_variaveis</c>, desligada por padrão até HIL-CARD-02
-    /// (docs/34 §2, F2), e as chaves da Etapa A.2 (docs/34 §4.1) vêm do mesmo jeito, todas
-    /// desligadas. Passa também pelo "Aplicar agora".
-    /// </remarks>
-    private static DeviceConfiguration ConfiguracaoDasCatracas(ConfiguracaoDaOperacao configuracao) =>
-        MontadorDaConfiguracao.Montar(PadroesDeFabrica.TopFit4, configuracao.ParaACatraca(), SobreposicoesDaCatraca.Nenhuma);
-
     /// <summary>
     /// Operação: o laço de verdade, sem tela, decidindo pela base local compartilhada com o
     /// serviço. É como o serviço sobe o worker (ADR-0024).
@@ -275,27 +264,45 @@ internal static class Program
             .Select(v => int.Parse(v, CultureInfo.InvariantCulture))
             .ToList();
 
-        var configuracaoDasCatracas = ConfiguracaoDasCatracas(configuracao);
-
-        // O que é permitido mas depende de bancada (docs/34 §4.2, regras 9 e 11): fica no
-        // registro do worker, sem impedir a subida.
-        foreach (var alerta in configuracaoDasCatracas.Alertas())
+        // Etapa A.4 do docs/35: cada catraca com a sua configuração — fábrica → evento →
+        // camada da catraca (device_config, A.3), pelo MontadorDaConfiguracao. Camada ilegível
+        // ou recusada vira aviso e aquela catraca sobe com o padrão dela (fábrica + evento),
+        // sem derrubar as outras (ConfiguracaoComRecuo). Com a tabela vazia, é o de antes.
+        // EnviarDigitosVariaveis e as chaves da Etapa A.2 continuam do evento, desligadas por
+        // padrão (docs/34 §2, F2, e §4.1).
+        var porCatraca = new ConfiguracaoPorCatraca(fabrica);
+        var configuracaoDasCatracas = new Dictionary<int, DeviceConfiguration>();
+        foreach (var inner in inners)
         {
-            Registrar("configuração da catraca, atenção: " + alerta);
+            var (daCatraca, avisos) = porCatraca.NaSubida(inner, configuracao);
+            foreach (var aviso in avisos)
+            {
+                Registrar("configuração da catraca, aviso: " + aviso);
+            }
+
+            // O que é permitido mas depende de bancada (docs/34 §4.2, regras 9 e 11): fica no
+            // registro do worker, sem impedir a subida.
+            foreach (var alerta in daCatraca.Alertas())
+            {
+                Registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{inner}: configuração da catraca, atenção: {alerta}"));
+            }
+
+            Registrar(string.Create(
+                CultureInfo.InvariantCulture,
+                $"inner-{inner}: leitor {daCatraca.TipoDeLeitor} · leitor 2 {daCatraca.OperacaoDoLeitor2} · " +
+                $"relé 1 {daCatraca.TempoDoAcionamento1} s · liberação {daCatraca.PerfilFisico.FuncaoDeLiberacaoDaEntrada}"));
+
+            configuracaoDasCatracas[inner] = daCatraca;
         }
 
-        // "Aplicar agora" (fase 4b): relê o que o operador gravou. Só o que vai para a
-        // catraca muda sem reiniciar — leitor, urna, tempo, mensagem e as chaves técnicas da
-        // configuração (dígitos variáveis e as da Etapa A.2). Nuvem e espera pelo
-        // giro continuam valendo a partir do próximo início do worker.
-        (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas) Recarregar()
-        {
-            var (relida, ilegiveisAgora) = new ConfiguracoesDaBorda(fabrica).Ler();
-            var problemasAgora = relida.Validar();
-            return ilegiveisAgora.Count > 0 || problemasAgora.Count > 0
-                ? (null, [.. ilegiveisAgora.Select(c => $"'{c}' ilegível."), .. problemasAgora])
-                : (ConfiguracaoDasCatracas(relida), []);
-        }
+        // "Aplicar agora" (fase 4b), por catraca desde a A.4: relê o evento e a camada da
+        // catraca do comando, e só ela reconecta. Só o que vai para a catraca muda sem
+        // reiniciar — leitor, urna, tempo, mensagem, a camada da catraca e as chaves técnicas
+        // da configuração. Nuvem e espera pelo giro continuam valendo a partir do próximo
+        // início do worker. Qualquer problema (do evento, de leitura da camada ou do
+        // Validar) faz o comando falhar e a catraca segue com o que tinha.
+        (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas) Recarregar(int inner) =>
+            porCatraca.ParaAplicar(inner);
 
         Registrar(string.Create(
             CultureInfo.InvariantCulture,
@@ -305,7 +312,7 @@ internal static class Program
         var sessao = new SessaoDeOperacao(
             adapter,
             inners,
-            configuracaoDasCatracas,
+            inner => configuracaoDasCatracas[inner],
             new DecisorDeIngresso(repositorio),
             Registrar,
             situacoes => operacao.GravarSituacao(

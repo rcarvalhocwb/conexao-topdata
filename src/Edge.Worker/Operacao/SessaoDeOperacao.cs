@@ -52,15 +52,16 @@ public sealed class SessaoDeOperacao
     private readonly Func<DateTimeOffset> _relogio;
     private readonly Dictionary<string, string> _ultimaDecisao = new(StringComparer.Ordinal);
     private readonly IFilaDeComandos? _comandos;
-    private readonly Func<(DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? _recarregarConfiguracao;
+    private readonly Func<int, (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? _recarregarConfiguracao;
     private readonly List<(Guid Id, SituacaoDoComando Situacao, string Resultado, DateTimeOffset Em)> _desfechosAGravar = [];
     private DateTimeOffset _comandosConsultadosEm = DateTimeOffset.MinValue;
     private IReadOnlyList<SituacaoDaCatraca> _publicada = [];
     private DateTimeOffset _publicadaEm = DateTimeOffset.MinValue;
 
+    /// <summary>Todas as catracas com a mesma configuração (bancada, testes, quem não lê a base).</summary>
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="inners">Catracas deste worker.</param>
-    /// <param name="configuracao">Configuração enviada às catracas.</param>
+    /// <param name="configuracao">Configuração enviada a todas as catracas.</param>
     /// <param name="decisor">Quem decide, pela base local.</param>
     /// <param name="registrar">Linha de registro, já mascarada.</param>
     /// <param name="publicar">Recebe a situação das catracas.</param>
@@ -71,8 +72,8 @@ public sealed class SessaoDeOperacao
     /// <param name="relogio">Relógio.</param>
     /// <param name="comandos">Fila de comandos do operador. Sem ela, a catraca só opera.</param>
     /// <param name="recarregarConfiguracao">
-    /// Relê a configuração do evento para <see cref="TipoDeComando.AplicarConfiguracao"/>.
-    /// Devolve a configuração nova, ou os problemas que impedem usá-la.
+    /// Relê a configuração do evento para <see cref="TipoDeComando.AplicarConfiguracao"/>, a
+    /// mesma para qualquer catraca. Devolve a configuração nova, ou os problemas que impedem usá-la.
     /// </param>
     /// <param name="acertarRelogioAoDivergir">Ver <see cref="DevicePump"/>. Desligado por padrão.</param>
     public SessaoDeOperacao(
@@ -87,20 +88,86 @@ public sealed class SessaoDeOperacao
         IFilaDeComandos? comandos = null,
         Func<(DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
         bool acertarRelogioAoDivergir = false)
+        : this(
+            adapter,
+            inners,
+            MesmaParaTodas(configuracao),
+            decisor,
+            registrar,
+            publicar,
+            intervaloDePublicacao,
+            relogio,
+            comandos,
+            recarregarConfiguracao is null ? null : _ => recarregarConfiguracao(),
+            acertarRelogioAoDivergir)
+    {
+    }
+
+    /// <summary>Cada catraca com a sua configuração (Etapa A.4 do docs/35).</summary>
+    /// <remarks>
+    /// <para>
+    /// É como o worker x86 sobe: fábrica → evento → camada da catraca (<c>device_config</c>),
+    /// com o recuo para o padrão <b>da catraca</b> já resolvido por quem leu a base
+    /// (<see cref="ConfiguracaoComRecuo"/>). Configuração inválida que chegue aqui é erro de
+    /// quem chama e derruba a subida, como antes da A.4.
+    /// </para>
+    /// <para>
+    /// O "Aplicar agora" relê só a catraca do comando: cada comando de
+    /// <see cref="TipoDeComando.AplicarConfiguracao"/> já é de uma catraca (o "aplicar em todas"
+    /// do painel é um comando por catraca, gravado pelo serviço), e uma configuração recusada
+    /// numa catraca dá <see cref="SituacaoDoComando.Falhou"/> só naquele comando.
+    /// </para>
+    /// </remarks>
+    /// <param name="adapter">Acesso à EasyInner.</param>
+    /// <param name="inners">Catracas deste worker.</param>
+    /// <param name="configuracaoDaCatraca">A configuração de cada catraca, pelo número; lida uma vez, na subida.</param>
+    /// <param name="decisor">Quem decide, pela base local.</param>
+    /// <param name="registrar">Linha de registro, já mascarada.</param>
+    /// <param name="publicar">Recebe a situação das catracas.</param>
+    /// <param name="intervaloDePublicacao">Ver o outro construtor.</param>
+    /// <param name="relogio">Relógio.</param>
+    /// <param name="comandos">Fila de comandos do operador. Sem ela, a catraca só opera.</param>
+    /// <param name="recarregarConfiguracao">
+    /// Relê evento e camada da catraca informada, para <see cref="TipoDeComando.AplicarConfiguracao"/>.
+    /// Devolve a configuração nova, ou os problemas que impedem usá-la.
+    /// </param>
+    /// <param name="acertarRelogioAoDivergir">Ver <see cref="DevicePump"/>. Desligado por padrão.</param>
+    public SessaoDeOperacao(
+        ITopdataInnerAdapter adapter,
+        IEnumerable<int> inners,
+        Func<int, DeviceConfiguration> configuracaoDaCatraca,
+        DecisorDeIngresso decisor,
+        Action<string> registrar,
+        Action<IReadOnlyList<SituacaoDaCatraca>> publicar,
+        TimeSpan? intervaloDePublicacao = null,
+        Func<DateTimeOffset>? relogio = null,
+        IFilaDeComandos? comandos = null,
+        Func<int, (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
+        bool acertarRelogioAoDivergir = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
-        ArgumentNullException.ThrowIfNull(configuracao);
+        ArgumentNullException.ThrowIfNull(configuracaoDaCatraca);
         ArgumentNullException.ThrowIfNull(decisor);
         ArgumentNullException.ThrowIfNull(registrar);
         ArgumentNullException.ThrowIfNull(publicar);
 
-        var problemas = configuracao.Validar();
-        if (problemas.Count > 0)
+        var catracas = inners.ToList();
+        var configuracoes = new List<(int Inner, DeviceConfiguration Configuracao)>(catracas.Count);
+        foreach (var inner in catracas)
         {
-            throw new ArgumentException(
-                "Configuração das catracas inválida: " + string.Join(" ", problemas),
-                nameof(configuracao));
+            var configuracao = configuracaoDaCatraca(inner)
+                ?? throw new ArgumentException($"Sem configuração para a catraca {inner}.", nameof(configuracaoDaCatraca));
+
+            var problemas = configuracao.Validar();
+            if (problemas.Count > 0)
+            {
+                throw new ArgumentException(
+                    $"Configuração da catraca {inner} inválida: " + string.Join(" ", problemas),
+                    nameof(configuracaoDaCatraca));
+            }
+
+            configuracoes.Add((inner, configuracao));
         }
 
         _decisor = decisor;
@@ -123,9 +190,25 @@ public sealed class SessaoDeOperacao
 
         _laco = new DeviceGroupLoop(
             adapter,
-            inners.Select(i => new DeviceSlot(i, configuracao, _relogio)),
+            configuracoes.Select(c => new DeviceSlot(c.Inner, c.Configuracao, _relogio)),
             new Watchdog(TimeSpan.FromSeconds(30), _relogio),
             bomba);
+    }
+
+    // A configuração única do construtor de antes, validada com a mensagem de antes.
+    private static Func<int, DeviceConfiguration> MesmaParaTodas(DeviceConfiguration configuracao)
+    {
+        ArgumentNullException.ThrowIfNull(configuracao);
+
+        var problemas = configuracao.Validar();
+        if (problemas.Count > 0)
+        {
+            throw new ArgumentException(
+                "Configuração das catracas inválida: " + string.Join(" ", problemas),
+                nameof(configuracao));
+        }
+
+        return _ => configuracao;
     }
 
     /// <summary>As catracas deste worker.</summary>
@@ -232,12 +315,18 @@ public sealed class SessaoDeOperacao
 
     private DeviceConfiguration? Recarregar(ComandoDeCatraca comando, DateTimeOffset agora)
     {
-        var (configuracao, problemas) = _recarregarConfiguracao?.Invoke()
+        // Só a catraca do comando é relida (Etapa A.4): as outras não são tocadas.
+        var (configuracao, problemas) = _recarregarConfiguracao?.Invoke(comando.Inner)
             ?? (null, ["este worker não sabe reler a configuração"]);
 
         var invalida = configuracao?.Validar() ?? [];
         if (configuracao is null || problemas.Count > 0 || invalida.Count > 0)
         {
+            // A catraca segue com a configuração que já tinha, sem sair de Polling: o comando
+            // nem chega à fila dela. Os problemas vão para o histórico do comando.
+            _registrar(string.Create(
+                CultureInfo.InvariantCulture,
+                $"inner-{comando.Inner}: configuração não aplicada ({problemas.Count + invalida.Count} problema(s)); segue com a que tinha"));
             _desfechosAGravar.Add((comando.Id, SituacaoDoComando.Falhou,
                 "configuração não aplicada: " + string.Join(" ", problemas.Concat(invalida)), agora));
             GravarDesfechos();
