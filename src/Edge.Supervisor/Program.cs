@@ -206,7 +206,9 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     nomesDasCatracas: configuracao.NomesDasCatracas,
     simulacao: leiturasSimuladas,
     comandos: new FilaDeComandosSqlite(fabrica),
-    chavesDosComandos: new ChavesDosComandos(fabrica)));
+    chavesDosComandos: new ChavesDosComandos(fabrica),
+    configuracoesDasCatracas: new ConfiguracoesDasCatracas(fabrica),
+    configuracaoPorCatraca: new ConfiguracaoPorCatraca(fabrica)));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();

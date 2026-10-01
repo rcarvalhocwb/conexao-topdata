@@ -940,6 +940,37 @@ public sealed class JanelaViewModel : Notificavel
             new SimuladorViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
+
+        // Etapa A.6: o detalhe da catraca, aberto pela "Gerenciar catraca" (docs/34 §7.3).
+        // Fica fora do menu: só faz sentido com uma catraca escolhida.
+        Parametrizacao = new ParametrizacaoViewModel(cliente, relogio);
+        Parametrizar = new ComandoComParametro(async parametro =>
+        {
+            if (parametro is not int inner || inner <= 0)
+            {
+                return;
+            }
+
+            // Quem já digitou o nome no Gerenciar não precisa digitar de novo.
+            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+            if (Parametrizacao.Operador.Length == 0)
+            {
+                Parametrizacao.Operador = gerenciar.Operador;
+            }
+
+            var mesmaTela = ReferenceEquals(TelaAtual, Parametrizacao);
+            var mesmaCatraca = Parametrizacao.Catraca == inner;
+            Parametrizacao.Catraca = inner;
+
+            if (!mesmaTela)
+            {
+                TelaAtual = Parametrizacao;
+            }
+            else if (mesmaCatraca)
+            {
+                await Parametrizacao.AtualizarAsync().ConfigureAwait(true);
+            }
+        });
         AbrirDiagnostico = new ComandoAssincrono(() =>
         {
             TelaAtual = Telas.OfType<DiagnosticoViewModel>().First();
@@ -985,6 +1016,12 @@ public sealed class JanelaViewModel : Notificavel
         });
     }
 
+    /// <summary>A Parametrização da catraca (Etapa A.6), aberta pela "Gerenciar catraca".</summary>
+    public ParametrizacaoViewModel Parametrizacao { get; }
+
+    /// <summary>Abre a Parametrização de uma catraca (parâmetro: o número do Inner).</summary>
+    public ComandoComParametro Parametrizar { get; }
+
     /// <summary>A ação "Gerenciar" do cartão da catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro Gerenciar { get; }
 
@@ -1023,6 +1060,11 @@ public sealed class JanelaViewModel : Notificavel
             or GemeoDigitalViewModel)
         {
             await TelaAtual.AtualizarAsync(cancelamento).ConfigureAwait(true);
+        }
+        else if (TelaAtual is ParametrizacaoViewModel parametrizacao)
+        {
+            // Só a situação na catraca e o histórico: os campos não mudam por cima do operador.
+            await parametrizacao.AcompanharAsync(cancelamento).ConfigureAwait(true);
         }
     }
 }

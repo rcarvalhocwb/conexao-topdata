@@ -14,6 +14,7 @@
 | Liberação manual | `LiberarCatracaEntrada`/`…Invertida` (EI-041/043) | Gerenciar catraca | Só no sentido de entrada, com motivo obrigatório |
 | Refazer a conexão | a sequência de conexão inteira | Gerenciar catraca | Reenvia a configuração completa (ADR-0020) |
 | Aplicar a configuração agora | a mesma sequência, com a configuração relida | Configurações | Todas as catracas; cada uma fica alguns segundos sem atender |
+| Aplicar nesta catraca | a mesma sequência, só para a catraca | Gerenciar catraca → Parametrização desta catraca (Etapa A.6) | Pede confirmação; "aplicada" só quando o pedido termina e a versão que a catraca aceitou é a do salvo |
 
 Automático, sem pedido do operador (fase 4a):
 - **Relógio acertado a cada conexão.** O fluxo oficial acerta na passagem para on-line.

@@ -18,7 +18,7 @@ namespace Edge.Supervisor;
 /// para isso.
 /// </para>
 /// </remarks>
-public sealed class EdgeControlService : EdgeControl.EdgeControlBase
+public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
 {
     /// <summary>
     /// Sem notícia do worker há mais que isto, a catraca deixa de contar como em operação.
@@ -39,6 +39,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly Access.Infrastructure.SQLite.LeiturasSimuladas? _simulacao;
     private readonly Access.Infrastructure.SQLite.FilaDeComandosSqlite? _comandos;
     private readonly Access.Infrastructure.SQLite.ChavesDosComandos? _chavesDosComandos;
+    private readonly Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? _configuracoesDasCatracas;
+    private readonly Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? _configuracaoPorCatraca;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -59,6 +61,13 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
     /// Chaves técnicas dos comandos da Etapa A.8 (bip, liberar saída, dois sentidos). Sem elas,
     /// todas contam como desligadas e esses comandos são recusados.
     /// </param>
+    /// <param name="configuracoesDasCatracas">
+    /// Camada de cada catraca (<c>device_config</c>, Etapa A.3); sem ela, a Parametrização
+    /// responde que não há base.
+    /// </param>
+    /// <param name="configuracaoPorCatraca">
+    /// A mesma leitura que o worker usa no "Aplicar agora" (Etapa A.4), para a versão do salvo.
+    /// </param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -72,7 +81,9 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         IReadOnlyDictionary<int, string>? nomesDasCatracas = null,
         Access.Infrastructure.SQLite.LeiturasSimuladas? simulacao = null,
         Access.Infrastructure.SQLite.FilaDeComandosSqlite? comandos = null,
-        Access.Infrastructure.SQLite.ChavesDosComandos? chavesDosComandos = null)
+        Access.Infrastructure.SQLite.ChavesDosComandos? chavesDosComandos = null,
+        Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? configuracoesDasCatracas = null,
+        Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -88,6 +99,8 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         _simulacao = simulacao;
         _comandos = comandos;
         _chavesDosComandos = chavesDosComandos;
+        _configuracoesDasCatracas = configuracoesDasCatracas;
+        _configuracaoPorCatraca = configuracaoPorCatraca;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>

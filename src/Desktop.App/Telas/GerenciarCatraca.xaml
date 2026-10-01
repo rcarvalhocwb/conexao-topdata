@@ -33,6 +33,13 @@
               <Run Text="Relógio: " /><Run Text="{Binding Selecionada.Relogio, Mode=OneWay}" />
             </TextBlock>
           </StackPanel>
+          <!-- O detalhe da catraca: o que ela usa de diferente do evento (Etapa A.6). -->
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}" VerticalAlignment="Bottom">
+            <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="_Parametrização desta catraca"
+                    Command="{Binding DataContext.Parametrizar, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Catraca}" AutomationProperties.Name="Parametrização desta catraca"
+                    ToolTip="Tipo de leitor, urna, tempo de liberação e mensagem desta catraca: salvar, ver o que muda e aplicar." />
+          </StackPanel>
         </WrapPanel>
       </Border>
 

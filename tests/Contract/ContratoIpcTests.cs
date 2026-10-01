@@ -135,6 +135,34 @@ public sealed partial class ContratoIpcTests
         Assert.Contains("option csharp_namespace", proto, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Parametrização por catraca (Etapa A.6 do docs/35): os dois RPCs existem, cada resposta
+    /// tem onde devolver problema (nunca exceção para a tela) e o valor pode faltar ("herda"),
+    /// que é diferente de vazio.
+    /// </summary>
+    [Fact]
+    public void Parametrizacao_por_catraca_devolve_problemas_e_distingue_herdar_de_vazio()
+    {
+        var proto = Proto();
+
+        Assert.Contains(
+            "rpc ObterConfiguracaoDaCatraca(ObterConfiguracaoDaCatracaRequest) returns (ConfiguracaoDaCatraca);",
+            proto,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "rpc GravarConfiguracaoDaCatraca(GravarConfiguracaoDaCatracaRequest) returns (GravarConfiguracaoDaCatracaResponse);",
+            proto,
+            StringComparison.Ordinal);
+
+        var mensagens = Mensagens().Matches(proto).ToDictionary(m => m.Groups["nome"].Value, m => m.Groups["corpo"].Value);
+        Assert.Contains("repeated string problemas", mensagens["ConfiguracaoDaCatraca"], StringComparison.Ordinal);
+        Assert.Contains("repeated string problemas", mensagens["GravarConfiguracaoDaCatracaResponse"], StringComparison.Ordinal);
+        Assert.Contains("optional string valor_da_catraca", mensagens["CampoConfiguradoDaCatraca"], StringComparison.Ordinal);
+        Assert.Contains("optional string valor", mensagens["ValorDaCatraca"], StringComparison.Ordinal);
+        Assert.Contains("string versao_salva", mensagens["ConfiguracaoDaCatraca"], StringComparison.Ordinal);
+        Assert.Contains("string versao_aplicada", mensagens["ConfiguracaoDaCatraca"], StringComparison.Ordinal);
+    }
+
     [GeneratedRegex(@"message\s+(?<nome>\w+)\s*\{(?<corpo>[^}]*)\}", RegexOptions.Singleline, matchTimeoutMilliseconds: 2000)]
     private static partial Regex Mensagens();
 

@@ -43,8 +43,11 @@ dois campos novos no `Equipamento` do contrato) também; falta o ensaio INT-CFG-
 passo 9). A A.7 (a sequência oficial de conexão — cfg off-line → mudança automática, EI-029 →
 cfg on-line) está no código atrás da chave técnica `catraca.sequencia_oficial`, **desligada** até
 INT-SM-021 (docs/21 §6D): desligada, a catraca recebe os três envios iguais de sempre; ligada, não
-liga a contingência (mudança automática 0; D8). A tela vem na A.6, que compara a versão do salvo
-com a aplicada. A A.8 também está no código: bip curto e longo, liberar saída e liberar nos dois
+liga a contingência (mudança automática 0; D8). A A.6 (tela **Parametrização da catraca**, aberta
+pela Gerenciar catraca: abas, modo guiado × técnico, "o que muda (atual → novo)", salvar e aplicar com
+nome e confirmação, "aplicada" só quando o pedido terminou e a versão aceita é a do salvo; o que aguarda
+confirmação aparece desabilitado com o selo) também está no código; falta o ensaio INT-PAR-01
+(docs/21 §6G). A A.8 também está no código: bip curto e longo, liberar saída e liberar nos dois
 sentidos, cada um com a sua chave técnica desligada (o serviço recusa antes de enfileirar; ensaios
 no docs/21 §6E). Os dois sentidos são recusados também pela **decisão D5, ainda não tomada** —
 ligar exige D5 + bancada (HIL-DIR-07). Entrar e sair de manutenção ficaram de fora (sem função na
