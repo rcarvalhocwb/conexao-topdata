@@ -59,6 +59,15 @@ namespace Access.Infrastructure.SQLite;
 /// os mesmos). Chave técnica <c>catraca.enviar_formas_de_entrada</c>, desligada até INT-SM-032
 /// (T26).
 /// </param>
+/// <param name="SequenciaOficial">
+/// Conecta pela sequência oficial — cfg off-line → mudança automática
+/// (<c>EnviarConfiguracoesMudancaAutomaticaOnLineOffLine</c>, EI-029) → cfg on-line, com os mesmos
+/// campos comuns nos dois envios (docs/34 §4.3). Desligada: os três envios iguais de sempre
+/// (defeito F3, docs/34 §2). Só muda a ordem e a forma de envio, <b>não liga a contingência</b> (a
+/// mudança automática segue 0, D8). Chave técnica <c>catraca.sequencia_oficial</c>, desligada até o
+/// ensaio INT-SM-021 (Etapa A.7). É do laço, não da catraca: vale para todas as catracas do worker e
+/// muda no próximo início dele, como <see cref="ReconectarEmErroDeRecepcao"/>.
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -73,7 +82,8 @@ public sealed record ConfiguracaoDaOperacao(
     byte? RegistrarAcessoNegado = null,
     bool EnviarTipoDeLista = false,
     bool EnviarWiegandDoisLeitores = false,
-    bool EnviarFormasDeEntrada = false)
+    bool EnviarFormasDeEntrada = false,
+    bool SequenciaOficial = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -86,7 +96,7 @@ public sealed record ConfiguracaoDaOperacao(
     /// Todo campo sai preenchido: o que o operador não mudou já chega aqui com o padrão deste
     /// registro, igual ao de fábrica. Ficam de fora, de propósito, o que não é parâmetro da
     /// catraca: o conector e a espera da nuvem (repositório), <see cref="AcertarRelogioAoDivergir"/>
-    /// (laço) e <see cref="ReconectarEmErroDeRecepcao"/> (adapter).
+    /// e <see cref="SequenciaOficial"/> (laço) e <see cref="ReconectarEmErroDeRecepcao"/> (adapter).
     /// </remarks>
     public SobreposicoesDoEvento ParaACatraca() => new()
     {
@@ -162,6 +172,9 @@ public sealed class ConfiguracoesDaBorda
     public const string ChaveEnviarTipoDeLista = "catraca.enviar_tipo_de_lista";
     public const string ChaveEnviarWiegandDoisLeitores = "catraca.enviar_wiegand_dois_leitores";
     public const string ChaveEnviarFormasDeEntrada = "catraca.enviar_formas_de_entrada";
+
+    /// <summary>Etapa A.7 (docs/34 §4.3): sequência oficial de conexão; desligada até INT-SM-021.</summary>
+    public const string ChaveSequenciaOficial = "catraca.sequencia_oficial";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -260,7 +273,8 @@ public sealed class ConfiguracoesDaBorda
             RegistrarAcessoNegado: ByteOpcional(ChaveRegistrarAcessoNegado),
             EnviarTipoDeLista: Logico(ChaveEnviarTipoDeLista, padrao.EnviarTipoDeLista),
             EnviarWiegandDoisLeitores: Logico(ChaveEnviarWiegandDoisLeitores, padrao.EnviarWiegandDoisLeitores),
-            EnviarFormasDeEntrada: Logico(ChaveEnviarFormasDeEntrada, padrao.EnviarFormasDeEntrada));
+            EnviarFormasDeEntrada: Logico(ChaveEnviarFormasDeEntrada, padrao.EnviarFormasDeEntrada),
+            SequenciaOficial: Logico(ChaveSequenciaOficial, padrao.SequenciaOficial));
 
         return (configuracao, ilegiveis);
     }
@@ -293,6 +307,7 @@ public sealed class ConfiguracoesDaBorda
             [ChaveEnviarTipoDeLista] = configuracao.EnviarTipoDeLista ? "1" : "0",
             [ChaveEnviarWiegandDoisLeitores] = configuracao.EnviarWiegandDoisLeitores ? "1" : "0",
             [ChaveEnviarFormasDeEntrada] = configuracao.EnviarFormasDeEntrada ? "1" : "0",
+            [ChaveSequenciaOficial] = configuracao.SequenciaOficial ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();
