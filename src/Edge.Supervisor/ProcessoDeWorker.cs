@@ -25,6 +25,7 @@ public sealed class ProcessoDeWorker : IWorkerHost
     private DateTimeOffset? _iniciadoEm;
     private string _ultimaSaida = "ainda não iniciado";
     private readonly IReadOnlyList<string> _argumentosExtras;
+    private readonly Func<string?>? _entradaPadrao;
     private readonly Queue<string> _ultimasLinhas = new();
     private readonly Lock _travaDasLinhas = new();
 
@@ -37,7 +38,8 @@ public sealed class ProcessoDeWorker : IWorkerHost
         IReadOnlyList<int> inners,
         string executavel,
         Func<DateTimeOffset>? relogio = null,
-        IReadOnlyList<string>? argumentosExtras = null)
+        IReadOnlyList<string>? argumentosExtras = null,
+        Func<string?>? entradaPadrao = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nome);
         ArgumentException.ThrowIfNullOrWhiteSpace(executavel);
@@ -50,6 +52,7 @@ public sealed class ProcessoDeWorker : IWorkerHost
         _executavel = executavel;
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
         _argumentosExtras = argumentosExtras ?? [];
+        _entradaPadrao = entradaPadrao;
     }
 
     public string Nome { get; }
@@ -98,6 +101,10 @@ public sealed class ProcessoDeWorker : IWorkerHost
             UseShellExecute = false,
             RedirectStandardError = true,
             RedirectStandardOutput = true,
+
+            // Segredo para o worker (a chave da impressão, Etapa A.9): pela entrada padrão,
+            // nunca pela linha de comando, que qualquer processo da máquina lê.
+            RedirectStandardInput = _entradaPadrao is not null,
         };
 
         inicio.ArgumentList.Add("--porta");
@@ -131,6 +138,20 @@ public sealed class ProcessoDeWorker : IWorkerHost
         _processo.EnableRaisingEvents = true;
         _processo.BeginOutputReadLine();
         _processo.BeginErrorReadLine();
+
+        if (_entradaPadrao is not null)
+        {
+            // Uma linha e fecha: o worker lê ao subir e não espera mais nada pela entrada.
+            try
+            {
+                _processo.StandardInput.WriteLine(_entradaPadrao() ?? string.Empty);
+                _processo.StandardInput.Close();
+            }
+            catch (IOException)
+            {
+                // O worker morreu antes de ler: a saída dele explica, e o supervisor reinicia.
+            }
+        }
     }
 
     public void Matar()

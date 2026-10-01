@@ -317,6 +317,15 @@ internal static class Program
             $"worker {nome} · porta {porta} · catracas {string.Join(", ", inners)} · leitor {configuracao.TipoDeLeitor} · " +
             $"urna {(configuracao.LeitorDaUrna ? "ligada" : "desligada")} · nuvem {(espelho is null ? "desligada" : "ligada")}"));
 
+        // Coleta de bilhetes (Etapa A.9): cada bilhete vai para collected_ticket (015) antes do
+        // próximo, com máscara e impressão — a chave chega do serviço pela entrada padrão. Sem
+        // ela, não há gravador e o comando de coleta falha sem tocar na catraca. O comando só
+        // é aceito com a chave técnica catraca.coletar_bilhetes, lida a cada pedido.
+        var gravadorDeBilhetes = LerChaveDaImpressao(args, Registrar) is { } impressao
+            ? new BilhetesColetados(fabrica, impressao)
+            : null;
+        var configuracoesDaBorda = new ConfiguracoesDaBorda(fabrica);
+
         var sessao = new SessaoDeOperacao(
             adapter,
             inners,
@@ -334,7 +343,11 @@ internal static class Program
             comandos: new FilaDeComandosSqlite(fabrica),
             recarregarConfiguracao: Recarregar,
             acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir,
-            sequenciaOficial: configuracao.SequenciaOficial);
+            sequenciaOficial: configuracao.SequenciaOficial,
+            gravadorDeBilhetes: gravadorDeBilhetes,
+            coletaLigada: () => configuracoesDaBorda.Ler() is var (lida, ilegiveis)
+                && lida.ColetarBilhetes
+                && !ilegiveis.Contains(ConfiguracoesDaBorda.ChaveColetarBilhetes));
 
         using var cancelamento = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
@@ -365,6 +378,31 @@ internal static class Program
         sessao.Executar(cancelamento.Token, aCadaVolta);
         Registrar("encerrado.");
         return 0;
+    }
+
+    /// <summary>
+    /// A chave da impressão de código, entregue pelo serviço na entrada padrão (uma linha em
+    /// Base64), quando ele passa <c>--chave-da-impressao-na-entrada</c>. Nunca vai para o registro.
+    /// </summary>
+    private static Access.Domain.Credentials.ImpressaoDeCodigo? LerChaveDaImpressao(string[] args, Action<string> registrar)
+    {
+        if (Array.IndexOf(args, "--chave-da-impressao-na-entrada") < 0)
+        {
+            registrar("sem a chave da impressão de código: a coleta de bilhetes fica recusada neste worker.");
+            return null;
+        }
+
+        var linha = Console.In.ReadLine();
+        var chave = new byte[linha?.Length ?? 0];
+        if (linha is null
+            || !Convert.TryFromBase64String(linha.Trim(), chave, out var tamanho)
+            || tamanho < Access.Domain.Credentials.ImpressaoDeCodigo.TamanhoMinimoDaChave)
+        {
+            registrar("chave da impressão de código ilegível na entrada: a coleta de bilhetes fica recusada neste worker.");
+            return null;
+        }
+
+        return new Access.Domain.Credentials.ImpressaoDeCodigo(chave.AsSpan(0, tamanho));
     }
 
     private static string? Valor(string[] args, string nome)
