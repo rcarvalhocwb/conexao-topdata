@@ -166,6 +166,10 @@ internal sealed class CosturaFalsa : IEasyInnerNative
 
     public byte AcionarRele2(int inner) => Registrar(nameof(AcionarRele2), inner);
 
+    public byte AcionarBipCurto(int inner) => Registrar(nameof(AcionarBipCurto), inner);
+
+    public byte AcionarBipLongo(int inner) => Registrar(nameof(AcionarBipLongo), inner);
+
     public byte EnviarMensagemPadraoOnLine(int inner, byte exibirData, string mensagem)
     {
         UltimaMensagem = mensagem;

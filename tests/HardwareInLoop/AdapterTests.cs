@@ -412,6 +412,59 @@ public sealed class AdapterTests
         Assert.Equal(["LiberarCatracaEntrada"], costura.Chamadas);
     }
 
+    /// <summary>
+    /// Etapa A.8: cada bip é exatamente uma função da DLL, e só o Inner vai para ela — é a
+    /// assinatura do SDK (EI-048/049, <c>byte AcionarBipX(int Inner)</c>).
+    /// </summary>
+    [Theory]
+    [InlineData(TipoDeBip.Curto, "AcionarBipCurto")]
+    [InlineData(TipoDeBip.Longo, "AcionarBipLongo")]
+    public void Cada_bip_chama_exatamente_uma_funcao_so_com_o_inner(TipoDeBip bip, string esperada)
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.AcionarBip(7, bip);
+
+        Assert.True(resultado.IsOk);
+        Assert.Equal(esperada, resultado.Funcao);
+        var (funcao, argumentos) = Assert.Single(costura.ChamadasComArgumentos);
+        Assert.Equal(esperada, funcao);
+        Assert.Equal(new object[] { 7 }, argumentos);
+    }
+
+    /// <summary>Bip recusado volta com a função e o retorno bruto, nunca como sucesso.</summary>
+    [Fact]
+    public void Bip_recusado_diz_a_funcao_e_o_retorno()
+    {
+        var costura = new CosturaFalsa();
+        costura.Retornos["AcionarBipLongo"] = 1;
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        var resultado = adapter.AcionarBip(3, TipoDeBip.Longo);
+
+        Assert.Equal(AdapterStatus.Erro, resultado.Status);
+        Assert.Equal(1, resultado.NativeReturn);
+        Assert.Equal("AcionarBipLongo", resultado.Funcao);
+    }
+
+    /// <summary>Etapa A.8: a liberação leva só o Inner, para cada função (EI-041 a EI-045).</summary>
+    [Theory]
+    [InlineData(GateDirection.Saida, "LiberarCatracaSaida")]
+    [InlineData(GateDirection.SaidaInvertida, "LiberarCatracaSaidaInvertida")]
+    [InlineData(GateDirection.DoisSentidos, "LiberarCatracaDoisSentidos")]
+    public void Liberacao_leva_so_o_inner(GateDirection direcao, string esperada)
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.LiberarGiro(12, direcao);
+
+        var (funcao, argumentos) = Assert.Single(costura.ChamadasComArgumentos);
+        Assert.Equal(esperada, funcao);
+        Assert.Equal(new object[] { 12 }, argumentos);
+    }
+
     /// <summary>Origem zero não existe na tabela: é ausência de evento.</summary>
     [Fact]
     public void Sem_evento_a_origem_vem_zerada()

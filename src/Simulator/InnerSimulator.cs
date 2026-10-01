@@ -236,6 +236,19 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
             return 0;
         });
 
+    /// <summary>Registra o bip pedido; desconectado, a chamada falha como a DLL falharia.</summary>
+    public AdapterResult AcionarBip(int inner, TipoDeBip bip) =>
+        ComDispositivo(inner, d =>
+        {
+            if (d.Desconectado)
+            {
+                return 1;
+            }
+
+            d.RegistrarBip(bip);
+            return 0;
+        });
+
     /// <summary>
     /// Aciona o relé da urna. Sem tempo: ele vem da configuração do equipamento.
     /// </summary>

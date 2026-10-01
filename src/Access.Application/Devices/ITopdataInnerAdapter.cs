@@ -34,6 +34,21 @@ public enum GateDirection
     SaidaInvertida,
 }
 
+/// <summary>O bip a acionar: cada valor é exatamente uma função da DLL.</summary>
+/// <remarks>
+/// Só por comando manual do operador (Etapa A.8 do docs/35), cada um atrás da sua chave
+/// técnica desligada. Nunca acoplado à decisão automática: cada chamada a mais no caminho da
+/// passagem reduz a vazão, e o bip, quando vier, é só para negação ou erro (docs/34 §8).
+/// </remarks>
+public enum TipoDeBip
+{
+    /// <summary><c>AcionarBipCurto</c> (EI-048).</summary>
+    Curto,
+
+    /// <summary><c>AcionarBipLongo</c> (EI-049).</summary>
+    Longo,
+}
+
 /// <summary>Como o retorno nativo foi interpretado.</summary>
 public enum AdapterStatus
 {
@@ -223,6 +238,16 @@ public interface ITopdataInnerAdapter : IDisposable
     /// do portão (<see cref="GatePhysicalProfile.LiberacaoDaEntrada"/>), e mais ninguém.
     /// </summary>
     AdapterResult LiberarGiro(int inner, GateDirection direcao);
+
+    /// <summary>
+    /// Aciona o bip pedido, chamando exatamente a função dele (EI-048 ou EI-049). Só o Inner
+    /// vai para a DLL: é a assinatura do SDK, e a matriz não documenta outro parâmetro.
+    /// </summary>
+    /// <remarks>
+    /// Se a Linha 4 emite os dois bips e como soam é <c>A_CONFIRMAR_COM_TOPDATA</c> (INT-UX-03,
+    /// docs/21 §6D); por isso só sai por comando do operador com a chave ligada.
+    /// </remarks>
+    AdapterResult AcionarBip(int inner, TipoDeBip bip);
 
     /// <summary>Aciona o relé 2, que abre a fenda da urna.</summary>
     /// <remarks>
