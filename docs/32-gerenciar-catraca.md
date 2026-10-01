@@ -93,7 +93,10 @@ Aparece na tela **desabilitado**, com o selo "Aguardando confirmação" e o moti
   não informou giro nem fim do tempo". Isso vale para a liberação por ingresso também.
   `A_CONFIRMAR` na bancada.
 - **"Aplicar agora" reconecta todas as catracas ao mesmo tempo.** Cada uma fica alguns
-  segundos sem atender. A tela avisa: prefira fora do pico.
+  segundos sem atender. A tela avisa: prefira fora do pico. Desde a Etapa A.4 (docs/35), o
+  pedido vira um comando por catraca e cada uma relê o evento **e a sua própria configuração**
+  (`device_config`); se a de uma catraca for recusada, só o comando dela termina como falho,
+  com o motivo no histórico, e ela segue atendendo com a configuração que tinha.
 - **O relógio do PC é a referência.** Se o Windows estiver com a hora errada, a catraca é
   acertada errada. O Windows precisa sincronizar a hora pela internet ou pela rede do
   evento.

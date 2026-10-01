@@ -34,8 +34,10 @@ A situação de cada etapa fica no docs/34 §11: a Etapa 0 está concluída no c
 a A.1 (montador único da configuração da catraca, com o teste da ADR-0020 item 3) e a A.2 (modelo
 completo da configuração, com cinco parâmetros novos atrás de chaves técnicas desligadas — ensaios
 no docs/21 §6C) e a A.3 (configuração por catraca na base: migração 012, com histórico só-INSERT,
-e a camada da catraca no montador) também. O worker passa a aplicar por catraca na A.4; a tela
-vem na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+e a camada da catraca no montador) e a A.4 (o worker aplica por catraca: cada uma sobe com a sua
+configuração, o "Aplicar agora" relê só a catraca do comando, e configuração recusada numa catraca
+cai no padrão dela na subida ou faz o comando falhar, sem derrubar as outras) também. A tela vem
+na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
