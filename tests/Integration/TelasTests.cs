@@ -302,6 +302,93 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal("O fim do período é antes do começo.", contas.Mensagem);
     }
 
+    /// <summary>
+    /// Defeito (relatório "não funcional", 01/10): com o campo "De" vazio a tela não mandava o
+    /// início, e o serviço contava só as últimas 24 h — sem dizer. Vazio quer dizer "desde o
+    /// começo", como na tela de Acessos.
+    /// </summary>
+    [Fact]
+    public async Task Prestacao_de_contas_sem_data_inicial_conta_desde_o_comeco_e_nao_so_24_horas()
+    {
+        var agora = DateTimeOffset.UtcNow;
+        _repositorio.TentarUsar("9999000001", "p1", "inner-1", agora.AddDays(-3));
+        _repositorio.TentarUsar("9999000002", "p1", "inner-1", agora.AddMinutes(-5));
+
+        var contas = new ContasViewModel(Cliente(), () => agora) { Desde = null };
+        await contas.Gerar.ExecutarAsync();
+
+        Assert.Equal(2, contas.Contas!.Negados);
+        Assert.StartsWith("desde o começo até ", contas.Periodo, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Defeito: o CSV não dizia que período os números cobriam — e quem mudava o filtro depois de
+    /// gerar exportava números de outro período sem saber. O período vem do serviço, como ele
+    /// aplicou, no horário de Brasília.
+    /// </summary>
+    [Fact]
+    public async Task Prestacao_de_contas_diz_na_tela_e_no_csv_o_periodo_que_os_numeros_cobrem()
+    {
+        // 01/10/2026 15:30 em Brasília.
+        var agora = new DateTimeOffset(2026, 10, 1, 18, 30, 0, TimeSpan.Zero);
+        var contas = new ContasViewModel(Cliente(), () => agora) { HoraDesde = "08:00" };
+        Assert.False(contas.PodeExportar);
+
+        await contas.Gerar.ExecutarAsync();
+
+        Assert.True(contas.PodeExportar);
+        Assert.Equal("de 01/10/2026 08:00 a 01/10/2026 15:30 (horário de Brasília)", contas.Periodo);
+
+        // Mudar o filtro sem gerar de novo não muda o período dos números.
+        contas.HoraDesde = "10:00";
+        Assert.Contains("Período;de 01/10/2026 08:00 a 01/10/2026 15:30 (horário de Brasília)", contas.ParaCsv(), StringComparison.Ordinal);
+    }
+
+    /// <summary>Defeito: o nome sugerido do arquivo usava a hora do Windows, não a do evento.</summary>
+    [Fact]
+    public void Nome_do_arquivo_da_prestacao_usa_a_hora_de_brasilia()
+    {
+        // 02:30 UTC de 02/10 = 23:30 de 01/10 em Brasília.
+        var contas = new ContasViewModel(Cliente(), () => new DateTimeOffset(2026, 10, 2, 2, 30, 0, TimeSpan.Zero));
+        Assert.Equal("prestacao-de-contas-2026-10-01-2330.csv", contas.NomeDoArquivoSugerido());
+    }
+
+    /// <summary>
+    /// A tela não pode parecer ter o que não tem: R1–R8 (docs/25) e o corte fechado aparecem
+    /// como ainda não disponíveis, cada um com o motivo.
+    /// </summary>
+    [Fact]
+    public void Relatorios_da_fase_6_aparecem_como_ainda_nao_disponiveis_com_motivo()
+    {
+        var contas = new ContasViewModel(Cliente());
+
+        foreach (var r in new[] { "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8" })
+        {
+            var item = Assert.Single(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith(r + " ", StringComparison.Ordinal));
+            Assert.Contains("Fase 6", item.Valor, StringComparison.Ordinal);
+        }
+
+        Assert.Contains(contas.AindaNaoDisponivel, i => i.Rotulo.Contains("código de conferência", StringComparison.Ordinal));
+        Assert.Contains("(PDF)", contas.AindaNaoDisponivel[0].Rotulo, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Defeito: exportar para um arquivo que não pode ser gravado (aberto no Excel, pasta que
+    /// sumiu, sem permissão) estourava como "erro inesperado" em vez de dizer o que houve.
+    /// </summary>
+    [Fact]
+    public async Task Prestacao_de_contas_que_nao_pode_ser_gravada_vira_mensagem_e_nao_erro()
+    {
+        var contas = new ContasViewModel(Cliente());
+        await contas.Gerar.ExecutarAsync();
+
+        var caminho = Path.Combine(Path.GetTempPath(), $"nao-existe-{Guid.NewGuid():N}", "contas.csv");
+        await contas.ExportarAsync(caminho);
+
+        Assert.StartsWith("Não foi possível gravar o arquivo", contas.Mensagem, StringComparison.Ordinal);
+        Assert.False(File.Exists(caminho));
+    }
+
     [Fact]
     public async Task Barra_operacional_resume_servico_catracas_e_nuvem()
     {

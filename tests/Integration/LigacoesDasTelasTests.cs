@@ -28,7 +28,7 @@ public sealed partial class LigacoesDasTelasTests
         ["Telas/Contas.xaml"] =
         [
             typeof(ContasViewModel), typeof(PrestacaoDeContas), typeof(LinhaPorCategoria), typeof(LinhaPorCatraca),
-            typeof(LinhaPorHora), typeof(LinhaDeNegativa),
+            typeof(LinhaPorHora), typeof(LinhaDeNegativa), typeof(ParDeTexto),
         ],
         ["Telas/GerenciarCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeComando), typeof(ParDeTexto)],
         ["Telas/Gemeo.xaml"] =

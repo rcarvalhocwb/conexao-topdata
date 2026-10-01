@@ -554,6 +554,18 @@ public sealed class SincronizacaoViewModel : TelaBase
 }
 
 /// <summary>Prestação de contas: o que entrou, por onde, de que categoria, e o que foi negado.</summary>
+/// <remarks>
+/// <para>
+/// Defeitos corrigidos em 01/10 ("os relatórios não estão funcionais", docs/29): "De" vazio
+/// contava só as últimas 24 h, sem dizer; o CSV não dizia o período; exportar para um arquivo
+/// aberto no Excel estourava como erro inesperado; o nome do arquivo usava o fuso do Windows.
+/// </para>
+/// <para>
+/// O que existe é o resumo do período (por categoria, catraca, hora e motivo de negativa) e o
+/// CSV dele. Os relatórios R1–R8 do docs/25, o PDF e o corte fechado com código de conferência
+/// são da fase 6: aparecem em <see cref="AindaNaoDisponivel"/>, desabilitados e com o motivo.
+/// </para>
+/// </remarks>
 public sealed class ContasViewModel : TelaBase
 {
     private DateTime? _desde;
@@ -573,7 +585,7 @@ public sealed class ContasViewModel : TelaBase
 
     public ComandoAssincrono Gerar { get; }
 
-    /// <summary>Primeiro dia do período, no fuso do evento. Começa em hoje.</summary>
+    /// <summary>Primeiro dia do período, no fuso do evento. Começa em hoje; vazio = desde o começo.</summary>
     public DateTime? Desde { get => _desde; set => Definir(ref _desde, value); }
 
     /// <summary>"hh:mm"; vazio = começo do dia.</summary>
@@ -585,7 +597,44 @@ public sealed class ContasViewModel : TelaBase
     /// <summary>"hh:mm", inclusive; vazio = fim do dia.</summary>
     public string HoraAte { get => _horaAte; set => Definir(ref _horaAte, value ?? string.Empty); }
 
-    public PrestacaoDeContas? Contas { get => _contas; private set => Definir(ref _contas, value); }
+    public PrestacaoDeContas? Contas
+    {
+        get => _contas;
+        private set
+        {
+            if (Definir(ref _contas, value))
+            {
+                Avisar(nameof(PodeExportar));
+                Avisar(nameof(Periodo));
+            }
+        }
+    }
+
+    /// <summary>Só há o que exportar depois de gerar.</summary>
+    public bool PodeExportar => Contas is not null;
+
+    /// <summary>
+    /// O período que os números na tela cobrem, como o serviço aplicou — e não o que está
+    /// digitado nos campos, que pode ter mudado depois de gerar.
+    /// </summary>
+    public string Periodo => Contas is { } c ? TextoDoPeriodo(c) : string.Empty;
+
+    /// <summary>
+    /// O que a prestação de contas ainda não tem (docs/25; fase 6 do docs/29): aparece
+    /// desabilitado, com o motivo, para a tela não parecer ter o que não tem.
+    /// </summary>
+    public IReadOnlyList<ParDeTexto> AindaNaoDisponivel { get; } =
+    [
+        new("R1 · Boletim do dia (PDF)", "Fase 6. Depende da hora de corte do dia de operação (E9) e da regra da meia-entrada (E10), e dos tipos cadastrados (fase 3). Hoje: o resumo \"Por categoria\" abaixo."),
+        new("R2 · Fluxo por hora e por tipo", "Fase 6. Hoje: \"Por hora\" abaixo, no total, sem separar por tipo."),
+        new("R3 · Por catraca e disponibilidade", "Fase 6. Hoje: \"Por catraca\" abaixo, sem o tempo fora do ar."),
+        new("R4 · Por origem do ingresso", "Fase 6: validados por provedor (bilheteria, venda online, cortesia)."),
+        new("R5 · Conciliação (cadastrado × usado)", "Fase 6: depende do cadastro de cartões (fase 3)."),
+        new("R6 · Ocorrências e auditoria", "Fase 6: negativas repetidas, liberações manuais e comandos. As liberações manuais ainda não entram nos números."),
+        new("R7 · Consolidado do evento", "Fase 6: depende da hora de corte do dia de operação (E9)."),
+        new("R8 · Saúde da operação", "Fase 6: quedas de catraca, do serviço e da sincronização, com duração."),
+        new("Fechar o corte com código de conferência", "Fase 6: números congelados com SHA-256 (docs/25 §4)."),
+    ];
 
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)
     {
@@ -596,14 +645,14 @@ public sealed class ContasViewModel : TelaBase
 
         await Tentar(async () =>
         {
-            var pedido = new ObterPrestacaoDeContasRequest();
-
-            if (inicio is { } desde)
+            // O período vai sempre explícito: sem o início, o serviço assumiria as últimas 24 h,
+            // e "De" vazio quer dizer "desde o começo", como na tela de Acessos.
+            var pedido = new ObterPrestacaoDeContasRequest
             {
-                pedido.Desde = Timestamp.FromDateTimeOffset(desde);
-            }
+                Desde = Timestamp.FromDateTimeOffset(inicio ?? DateTimeOffset.UnixEpoch),
+                Ate = Timestamp.FromDateTimeOffset(fim ?? Relogio()),
+            };
 
-            pedido.Ate = Timestamp.FromDateTimeOffset(fim ?? Relogio());
             Contas = await Cliente.ObterPrestacaoDeContasAsync(pedido, cancellationToken: cancelamento);
             Mensagem = Contas.Liberados + Contas.Negados == 0 ? "Nenhuma tentativa no período." : string.Empty;
         }).ConfigureAwait(true);
@@ -623,6 +672,7 @@ public sealed class ContasViewModel : TelaBase
         var cultura = CultureInfo.InvariantCulture;
 
         csv.AppendLine(string.Create(cultura, $"Prestação de contas;gerada em {FusoDoEvento.NoEvento(c.GeradaEm.ToDateTimeOffset()):dd/MM/yyyy HH:mm:ss} (horário de Brasília)"));
+        csv.AppendLine(string.Create(cultura, $"Período;{TextoDoPeriodo(c)}"));
         csv.AppendLine(string.Create(cultura, $"Liberados;{c.Liberados}"));
         csv.AppendLine(string.Create(cultura, $"Com giro confirmado;{c.Giros}"));
         csv.AppendLine(string.Create(cultura, $"Negados;{c.Negados}"));
@@ -657,7 +707,14 @@ public sealed class ContasViewModel : TelaBase
         return csv.ToString();
     }
 
-    /// <summary>Grava o CSV no caminho escolhido pelo operador.</summary>
+    /// <summary>
+    /// O nome sugerido para o arquivo, com a hora do evento (Brasília) — e não a do Windows,
+    /// que pode estar em outro fuso.
+    /// </summary>
+    public string NomeDoArquivoSugerido() =>
+        string.Create(CultureInfo.InvariantCulture, $"prestacao-de-contas-{FusoDoEvento.NoEvento(Relogio()):yyyy-MM-dd-HHmm}.csv");
+
+    /// <summary>Grava o CSV no caminho escolhido pelo operador. Falha vira mensagem, nunca exceção.</summary>
     public async Task ExportarAsync(string caminho)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(caminho);
@@ -668,8 +725,30 @@ public sealed class ContasViewModel : TelaBase
             return;
         }
 
-        await File.WriteAllTextAsync(caminho, ParaCsv(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)).ConfigureAwait(true);
-        Mensagem = $"Exportado para {caminho}";
+        try
+        {
+            await File.WriteAllTextAsync(caminho, ParaCsv(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)).ConfigureAwait(true);
+            Mensagem = $"Exportado para {caminho}";
+        }
+        catch (Exception erro) when (erro is IOException or UnauthorizedAccessException)
+        {
+            // O caso comum: o arquivo anterior está aberto no Excel, que o tranca.
+            Mensagem = $"Não foi possível gravar o arquivo ({erro.Message}). Se ele estiver aberto no Excel, feche e exporte de novo, ou escolha outro nome.";
+        }
+    }
+
+    private static string TextoDoPeriodo(PrestacaoDeContas c)
+    {
+        var cultura = CultureInfo.InvariantCulture;
+        var ate = c.PeriodoAte is null ? "—" : FusoDoEvento.NoEvento(c.PeriodoAte.ToDateTimeOffset()).ToString("dd/MM/yyyy HH:mm", cultura);
+
+        if (c.PeriodoDesde is null || c.PeriodoDesde.ToDateTimeOffset() <= DateTimeOffset.UnixEpoch)
+        {
+            return $"desde o começo até {ate} (horário de Brasília)";
+        }
+
+        var desde = FusoDoEvento.NoEvento(c.PeriodoDesde.ToDateTimeOffset()).ToString("dd/MM/yyyy HH:mm", cultura);
+        return $"de {desde} a {ate} (horário de Brasília)";
     }
 
     // Célula que começa com =, +, - ou @ vira fórmula no Excel: um motivo vindo de fora

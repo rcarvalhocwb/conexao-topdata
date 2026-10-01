@@ -21,7 +21,8 @@ public partial class Contas : UserControl
         {
             Title = "Exportar prestação de contas",
             Filter = "Planilha CSV (*.csv)|*.csv",
-            FileName = $"prestacao-de-contas-{DateTime.Now:yyyy-MM-dd-HHmm}.csv",
+            // Hora do evento (Brasília), não a do Windows (docs/29).
+            FileName = contas.NomeDoArquivoSugerido(),
         };
 
         if (dialogo.ShowDialog(Window.GetWindow(this)) == true)

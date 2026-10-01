@@ -269,6 +269,11 @@ message PrestacaoDeContas {
   int64 giros = 6;
   int64 negados = 7;
   google.protobuf.Timestamp gerada_em = 8;
+
+  // O período que os números cobrem, como o serviço aplicou (inclusive nas pontas). Vai no CSV
+  // e na tela: um número de prestação de contas sem o período não é conferível (docs/25 §4).
+  google.protobuf.Timestamp periodo_desde = 9;
+  google.protobuf.Timestamp periodo_ate = 10;
 }
 
 message LinhaPorCategoria {

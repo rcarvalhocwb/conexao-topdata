@@ -402,11 +402,13 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             return Task.FromResult(resposta);
         }
 
-        // Sem intervalo: o dia inteiro até agora. O corte é sempre explícito na resposta,
-        // para o relatório ser reproduzível (docs/16).
+        // Sem intervalo: as últimas 24 h até agora (o painel sempre manda o período). O corte
+        // volta explícito na resposta, para o relatório ser reproduzível (docs/16, docs/25 §4).
         var desde = request.Desde?.ToDateTimeOffset() ?? agora.AddDays(-1);
         var ate = request.Ate?.ToDateTimeOffset() ?? agora;
         var contas = _consultas.Contas(desde, ate);
+        resposta.PeriodoDesde = Timestamp.FromDateTimeOffset(desde);
+        resposta.PeriodoAte = Timestamp.FromDateTimeOffset(ate);
 
         resposta.Liberados = contas.Liberados;
         resposta.Giros = contas.Giros;

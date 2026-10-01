@@ -5,7 +5,7 @@
              AutomationProperties.Name="Prestação de contas">
   <DockPanel>
     <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Prestação de contas"
-                         Descricao="O que aconteceu nas catracas no período, no horário de Brasília. Autorizado = a catraca liberou; com giro = a pessoa passou. Os relatórios completos (docs/25) estão em desenvolvimento." />
+                         Descricao="O resumo do que aconteceu nas catracas no período, no horário de Brasília, e o CSV dele. Autorizado = a catraca liberou; com giro = a pessoa passou. &quot;De&quot; vazio = desde o começo. Os relatórios R1–R8 ainda não existem: veja &quot;Ainda não disponível&quot; no fim da página." />
 
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
@@ -28,6 +28,7 @@
         <Button Style="{StaticResource Rayzer.Button.Primary}" VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}"
                 Content="_Gerar" IsDefault="True" Command="{Binding Gerar}" />
         <Button VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}" Click="Exportar"
+                IsEnabled="{Binding PodeExportar}" ToolTip="Gere a prestação de contas antes de exportar."
                 AutomationProperties.Name="Exportar para Excel">
           <StackPanel Orientation="Horizontal">
             <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="14" Text="{DynamicResource Rayzer.Icon.Download}" />
@@ -40,6 +41,12 @@
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
 
+    <!-- O período que os números cobrem, como o serviço aplicou (o mesmo que vai no CSV). -->
+    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Rayzer.Type.Secondary}"
+               Visibility="{Binding Periodo, Converter={StaticResource VazioSome}}">
+      <Run Text="Período: " /><Run FontWeight="SemiBold" Text="{Binding Periodo, Mode=OneWay}" />
+    </TextBlock>
+
     <UniformGrid DockPanel.Dock="Top" Rows="1" Margin="0,0,-12,12" DataContext="{Binding Contas}">
       <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Autorizados" Valor="{Binding Liberados}" Tom="Sucesso"
                            Icone="{DynamicResource Rayzer.Icon.Check}" Detalhe="✓ a catraca liberou" />
@@ -49,8 +56,9 @@
                            Icone="{DynamicResource Rayzer.Icon.Denied}" Detalhe="× veja os motivos abaixo" />
     </UniformGrid>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding Contas}">
-      <Grid>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+      <Grid DataContext="{Binding Contas}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="16" />
@@ -94,6 +102,27 @@
           </DataGrid>
         </StackPanel>
       </Grid>
+
+      <!-- O que não existe aparece desabilitado, com o motivo: nada de fingir (docs/25, fase 6). -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,4,0,0">
+        <StackPanel>
+          <rz:RayzerSectionHeader Titulo="Ainda não disponível" />
+          <ItemsControl ItemsSource="{Binding AindaNaoDisponivel}" AutomationProperties.Name="Relatórios ainda não disponíveis">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <DockPanel Margin="0,4,0,4">
+                  <Button DockPanel.Dock="Left" Style="{StaticResource Rayzer.Button.Ghost}" MinWidth="260" IsEnabled="False"
+                          Content="{Binding Rotulo}" />
+                  <rz:RayzerStatusPill DockPanel.Dock="Left" Margin="12,0,12,0" VerticalAlignment="Center" Tom="Atencao"
+                                       Texto="Aguardando confirmação" />
+                  <TextBlock VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Valor}" />
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+      </StackPanel>
     </ScrollViewer>
   </DockPanel>
 </UserControl>
