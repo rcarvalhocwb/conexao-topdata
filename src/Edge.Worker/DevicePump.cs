@@ -568,14 +568,20 @@ public sealed class DevicePump
     {
         // A função exata vem do perfil físico do portão, definido no comissionamento —
         // nunca de constante em código nem de combinação de sinalizadores (docs/04, seção
-        // 3; defeito F1 do docs/34 §2). Ingresso e liberação manual passam por aqui.
-        var direcao = d.Configuracao.PerfilFisico.LiberacaoDaEntrada;
+        // 3; defeito F1 do docs/34 §2). Ingresso e liberação manual passam por aqui, e
+        // também as liberações de saída e nos dois sentidos pedidas pelo operador (Etapa A.8).
+        var direcao = d.EmCurso?.Comando.Tipo switch
+        {
+            TipoDeComando.LiberarSaida => d.Configuracao.PerfilFisico.LiberacaoDaSaida,
+            TipoDeComando.LiberarDoisSentidos => GateDirection.DoisSentidos,
+            _ => d.Configuracao.PerfilFisico.LiberacaoDaEntrada,
+        };
 
         var resultado = _adapter.LiberarGiro(d.Inner, direcao);
 
         if (resultado.IsOk)
         {
-            if (d.EmCurso is { Comando.Tipo: TipoDeComando.LiberacaoManual } manual)
+            if (d.EmCurso is { } manual && ComandoDeCatraca.EhLiberacao(manual.Comando.Tipo))
             {
                 manual.Liberou = true;
             }
@@ -633,12 +639,33 @@ public sealed class DevicePump
             }
 
             case TipoDeComando.LiberacaoManual:
+            case TipoDeComando.LiberarSaida:
+            case TipoDeComando.LiberarDoisSentidos:
                 // O giro que vier é do operador: a tentativa pendente do último ingresso
-                // termina aqui, sem giro, e não leva a passagem de outra pessoa.
+                // termina aqui, sem giro, e não leva a passagem de outra pessoa. Saída e dois
+                // sentidos seguem o mesmo caminho da liberação manual — liberar, monitorar o
+                // giro, reabilitar o leitor —; só a função nativa muda, em Liberar.
                 _antesDaLiberacaoManual?.Invoke(d.Maquina.DeviceId);
                 d.EmCurso = new ComandoEmCurso(comando, agora);
                 Disparar(d, DeviceTrigger.LiberacaoManualSolicitada, agora);
-                return $"{rotulo}: liberação manual pedida";
+                return comando.Tipo switch
+                {
+                    TipoDeComando.LiberarSaida => $"{rotulo}: liberação de saída pedida",
+                    TipoDeComando.LiberarDoisSentidos => $"{rotulo}: liberação nos dois sentidos pedida",
+                    _ => $"{rotulo}: liberação manual pedida",
+                };
+
+            case TipoDeComando.BipCurto:
+            case TipoDeComando.BipLongo:
+            {
+                // Uma chamada, como a mensagem temporária. Só por pedido do operador: o bip
+                // nunca é acoplado à decisão automática (cada chamada reduz a vazão, docs/34 §8).
+                var bip = comando.Tipo is TipoDeComando.BipCurto ? TipoDeBip.Curto : TipoDeBip.Longo;
+                var resultado = _adapter.AcionarBip(d.Inner, bip);
+                var feito = resultado.IsOk ? "bip acionado" : $"a catraca recusou o bip ({resultado})";
+                Concluir(comando, resultado.IsOk ? SituacaoDoComando.Concluido : SituacaoDoComando.Falhou, feito);
+                return $"{rotulo}: {feito}";
+            }
 
             case TipoDeComando.ReiniciarConexao:
             case TipoDeComando.AplicarConfiguracao:
@@ -674,8 +701,15 @@ public sealed class DevicePump
 
         var estado = d.Maquina.Current;
 
-        if (emCurso.Comando.Tipo is TipoDeComando.LiberacaoManual)
+        if (ComandoDeCatraca.EhLiberacao(emCurso.Comando.Tipo))
         {
+            var liberada = emCurso.Comando.Tipo switch
+            {
+                TipoDeComando.LiberarSaida => "liberada na saída",
+                TipoDeComando.LiberarDoisSentidos => "liberada nos dois sentidos",
+                _ => "liberada",
+            };
+
             if (estado is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
             {
                 // A_CONFIRMAR: a saída de MonitoraGiro depende da origem 5 (fim do tempo de
@@ -687,8 +721,8 @@ public sealed class DevicePump
 
                 d.EmCurso = null;
                 var semSinal = emCurso.Girou
-                    ? "liberada; girou"
-                    : $"liberada; a catraca não informou giro nem fim do tempo em {LimiteDaLiberacaoManual.TotalSeconds:0} s";
+                    ? $"{liberada}; girou"
+                    : $"{liberada}; a catraca não informou giro nem fim do tempo em {LimiteDaLiberacaoManual.TotalSeconds:0} s";
                 Concluir(emCurso.Comando, SituacaoDoComando.Concluido, semSinal);
                 return semSinal;
             }
@@ -697,8 +731,8 @@ public sealed class DevicePump
             var (situacao, resultado) = emCurso switch
             {
                 { Liberou: false } => (SituacaoDoComando.Falhou, "a catraca não recebeu a liberação"),
-                { Girou: true } => (SituacaoDoComando.Concluido, "liberada; girou"),
-                _ => (SituacaoDoComando.Concluido, "liberada; ninguém girou"),
+                { Girou: true } => (SituacaoDoComando.Concluido, $"{liberada}; girou"),
+                _ => (SituacaoDoComando.Concluido, $"{liberada}; ninguém girou"),
             };
             Concluir(emCurso.Comando, situacao, resultado);
             return resultado;

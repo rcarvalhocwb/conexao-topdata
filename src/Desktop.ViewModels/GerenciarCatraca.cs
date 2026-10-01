@@ -25,7 +25,7 @@ public sealed record LinhaDeComando(
             Textos.NomeDoComando(c.Tipo),
             c.Tipo switch
             {
-                TipoDeComando.LiberacaoManual => c.Motivo,
+                TipoDeComando.LiberacaoManual or TipoDeComando.LiberarSaida or TipoDeComando.LiberarDoisSentidos => c.Motivo,
                 TipoDeComando.MensagemTemporaria => $"“{c.Texto}”",
                 _ => string.Empty,
             },
@@ -152,10 +152,10 @@ public sealed class GerenciarCatracaViewModel : TelaBase
     /// </summary>
     public IReadOnlyList<ParDeTexto> AguardandoConfirmacao { get; } =
     [
-        new("Bip curto e longo", "Aguardando bancada: documentado no manual (4.6.2), ainda não ensaiado (INT-UX-03)."),
+        new("Bip curto e longo", "Aguardando bancada: documentado no manual (4.6.2), ainda não ensaiado (INT-UX-03). O serviço recusa até lá."),
         new("Acionar relés avulsos", "Aguardando confirmação da Topdata: o que cada relé faz na TopFit 4."),
         new("Recolher cartão na urna", "Aguardando confirmação da Topdata: a função do relé 2 não está documentada (docs/21 §8)."),
-        new("Liberar nos dois sentidos / trocar o sentido", "Aguardando confirmação da Topdata e a decisão sobre evacuação (B4)."),
+        new("Liberar nos dois sentidos / trocar o sentido", "Aguardando decisão D5 do dono do produto (evacuação) e a bancada (HIL-DIR-07). O serviço recusa até lá."),
     ];
 
     public override Task AtualizarAsync(CancellationToken cancelamento = default) =>

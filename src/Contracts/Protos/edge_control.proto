@@ -319,8 +319,10 @@ message SimularLeituraResponse {
   string mensagem = 2;
 }
 
-// Só o que usa função documentada e já exercitada. Bip, relés, urna e sentido ficam de
-// fora até a bancada (docs/32).
+// De 1 a 5: função documentada e já exercitada (fase 4b). De 6 em diante (Etapa A.8 do
+// docs/35): função com linha na matriz, cada uma atrás da sua chave técnica desligada; com a
+// chave desligada o serviço recusa em `problemas`, sem enfileirar. Relés, urna e troca de
+// sentido continuam de fora até a bancada (docs/32). Número nunca reaproveitado.
 enum TipoDeComando {
   TIPO_DE_COMANDO_NAO_ESPECIFICADO = 0;
   TIPO_DE_COMANDO_ACERTAR_RELOGIO = 1;
@@ -328,6 +330,14 @@ enum TipoDeComando {
   TIPO_DE_COMANDO_LIBERACAO_MANUAL = 3;
   TIPO_DE_COMANDO_REINICIAR_CONEXAO = 4;
   TIPO_DE_COMANDO_APLICAR_CONFIGURACAO = 5;
+  // Manual, nunca acoplado à decisão (EI-048 e EI-049; ensaio INT-UX-03).
+  TIPO_DE_COMANDO_BIP_CURTO = 6;
+  TIPO_DE_COMANDO_BIP_LONGO = 7;
+  // Um giro no sentido de saída, com motivo (EI-042/EI-044 pelo perfil; HIL-DIR-04).
+  TIPO_DE_COMANDO_LIBERAR_SAIDA = 8;
+  // Só evacuação: permite carona. Motivo e confirmação digitada; recusado enquanto a
+  // decisão D5 do dono do produto não for tomada (EI-045; HIL-DIR-07; docs/34 §9).
+  TIPO_DE_COMANDO_LIBERAR_DOIS_SENTIDOS = 9;
 }
 
 enum SituacaoDoComando {
@@ -348,8 +358,10 @@ message EnviarComandoRequest {
   // Mensagem temporária (até 32 caracteres) e quanto tempo fica no display (1 a 60 s).
   string texto = 4;
   int32 duracao_segundos = 5;
-  // Obrigatório na liberação manual (5 a 200 caracteres).
+  // Obrigatório na liberação manual, na de saída e na dos dois sentidos (5 a 200 caracteres).
   string motivo = 6;
+  // Só em LIBERAR_DOIS_SENTIDOS: o operador digita "EVACUAR <numero da catraca>". Não é gravado.
+  string confirmacao = 7;
 }
 
 message EnviarComandoResponse {

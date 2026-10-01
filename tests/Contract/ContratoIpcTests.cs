@@ -83,6 +83,48 @@ public sealed partial class ContratoIpcTests
             $"Enums sem valor 0 neutro: {string.Join(", ", semZeroSeguro)}");
     }
 
+    /// <summary>
+    /// Números de <c>TipoDeComando</c> nunca mudam nem são reaproveitados: o histórico de comandos
+    /// (<c>operator_command</c>) é lido por painéis de versões diferentes. Os da Etapa A.8 entram a
+    /// partir do 6 (docs/35).
+    /// </summary>
+    [Fact]
+    public void Os_tipos_de_comando_nunca_mudam_de_numero()
+    {
+        var corpo = Enums().Matches(Proto()).Cast<Match>().Single(m => m.Groups["nome"].Value == "TipoDeComando").Groups["corpo"].Value;
+        var valores = ValoresDeEnum().Matches(corpo).Cast<Match>()
+            .ToDictionary(m => m.Groups["nome"].Value, m => int.Parse(m.Groups["numero"].Value, provider: null), StringComparer.Ordinal);
+
+        Assert.Equal(
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["TIPO_DE_COMANDO_NAO_ESPECIFICADO"] = 0,
+                ["TIPO_DE_COMANDO_ACERTAR_RELOGIO"] = 1,
+                ["TIPO_DE_COMANDO_MENSAGEM_TEMPORARIA"] = 2,
+                ["TIPO_DE_COMANDO_LIBERACAO_MANUAL"] = 3,
+                ["TIPO_DE_COMANDO_REINICIAR_CONEXAO"] = 4,
+                ["TIPO_DE_COMANDO_APLICAR_CONFIGURACAO"] = 5,
+                ["TIPO_DE_COMANDO_BIP_CURTO"] = 6,
+                ["TIPO_DE_COMANDO_BIP_LONGO"] = 7,
+                ["TIPO_DE_COMANDO_LIBERAR_SAIDA"] = 8,
+                ["TIPO_DE_COMANDO_LIBERAR_DOIS_SENTIDOS"] = 9,
+            },
+            valores);
+    }
+
+    /// <summary>Todo comando que o worker sabe executar tem um valor no contrato.</summary>
+    [Fact]
+    public void Todo_tipo_de_comando_do_dominio_esta_no_contrato()
+    {
+        var proto = Proto();
+        var faltando = Enum.GetNames<Access.Application.Devices.TipoDeComando>()
+            .Select(n => "TIPO_DE_COMANDO_" + MaiusculaSeguida().Replace(n, "$1_$2").ToUpperInvariant())
+            .Where(n => !proto.Contains(n + " =", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(faltando.Count == 0, $"Sem valor no contrato: {string.Join(", ", faltando)}");
+    }
+
     [Fact]
     public void O_contrato_declara_pacote_versionado()
     {
@@ -100,4 +142,10 @@ public sealed partial class ContratoIpcTests
 
     [GeneratedRegex(@"=\s*(?<numero>\d+)\s*;", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex Campos();
+
+    [GeneratedRegex(@"(?<nome>[A-Z_]+)\s*=\s*(?<numero>\d+)\s*;", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex ValoresDeEnum();
+
+    [GeneratedRegex(@"([a-z])([A-Z])", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex MaiusculaSeguida();
 }

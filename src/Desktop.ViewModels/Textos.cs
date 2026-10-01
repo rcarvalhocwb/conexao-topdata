@@ -109,6 +109,10 @@ public static class Textos
         TipoDeComando.LiberacaoManual => "Liberação manual",
         TipoDeComando.ReiniciarConexao => "Refazer conexão",
         TipoDeComando.AplicarConfiguracao => "Aplicar configuração",
+        TipoDeComando.BipCurto => "Bip curto",
+        TipoDeComando.BipLongo => "Bip longo",
+        TipoDeComando.LiberarSaida => "Liberar saída",
+        TipoDeComando.LiberarDoisSentidos => "Liberar nos dois sentidos",
         _ => "Comando",
     };
 
