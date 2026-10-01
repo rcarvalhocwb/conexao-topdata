@@ -10,6 +10,14 @@ using Access.Infrastructure.SQLite;
 // Escreve muito mais do que cabe no buffer de um pipe e, se não travar, cria o arquivo
 // marcador. É como o supervisor prova que lê a saída do worker enquanto ele roda.
 
+// Uso: CrashProbe --bilhetes <banco> <memoria.json> <quantidade> [--cair-antes-de-gravar N |
+// --cair-depois-de-gravar N] [--remove-ao-devolver]
+// Coleta bilhetes de uma catraca simulada pelo laço de verdade e cai no ponto pedido (Etapa A.9).
+if (args.Length > 0 && args[0] == "--bilhetes")
+{
+    return await CrashProbe.ColetaDaCobaia.Executar(args[1..]).ConfigureAwait(false);
+}
+
 var tagarela = Array.IndexOf(args, "--tagarela");
 if (tagarela >= 0 && tagarela + 1 < args.Length)
 {
