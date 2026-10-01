@@ -85,6 +85,13 @@ public sealed record AderecoDoModelo(
     Ponto3 Aproximacao,
     Ponto3 Travessia);
 
+/// <summary>A seta do sentido do giro, para o painel do mapa de giro.</summary>
+/// <param name="Malha">O arco com a cabeça.</param>
+/// <param name="Centro">O centro do arco, sobre o eixo dos braços.</param>
+/// <param name="Inicio">Onde o arco começa.</param>
+/// <param name="Ponta">A ponta da cabeça.</param>
+public sealed record SetaDoGiroNoModelo(Malha Malha, Ponto3 Centro, Ponto3 Inicio, Ponto3 Ponta);
+
 /// <summary>O desenho completo da catraca, pronto para a tela copiar.</summary>
 public sealed class ModeloDaFit4
 {
@@ -202,6 +209,51 @@ public sealed class ModeloDaFit4
 /// </remarks>
 public static class GeometriaFit4
 {
+    /// <summary>
+    /// A seta do mapa de giro (D9, docs/34 §9): um arco em volta do eixo dos braços, na frente do
+    /// cubo, no sentido em que o braço gira com a função escolhida.
+    /// </summary>
+    /// <remarks>
+    /// O sentido segue a mesma convenção da cena (<see cref="CenaDaCatraca.Sinal"/>): ângulo
+    /// negativo em volta do eixo é a entrada. Que a função escolhida gire mesmo para esse lado
+    /// nesta instalação é a conferência de comissionamento (NOVO-HIL-DIR-11); a seta mostra o
+    /// previsto pelo nome da função.
+    /// </remarks>
+    /// <param name="modelo">O desenho montado.</param>
+    /// <param name="sentido">O sentido do braço.</param>
+    public static SetaDoGiroNoModelo SetaDoGiro(ModeloDaFit4 modelo, SentidoDoGiro sentido)
+    {
+        ArgumentNullException.ThrowIfNull(modelo);
+
+        var eixo = modelo.EixoDoRotor.Normalizado();
+        var cima = new Ponto3(0, 1, 0);
+        var u = (cima - (eixo * Ponto3.Escalar(cima, eixo))).Normalizado();
+        var v = Ponto3.Vetorial(eixo, u);
+        var centro = modelo.CentroDoRotor + (eixo * 70);
+        const double raio = 120;
+        const double meia = 7;
+        const int fatias = 16;
+        var sinal = CenaDaCatraca.Sinal(sentido);
+        var inicio = -sinal * Math.PI / 3;
+        var fim = sinal * Math.PI / 3;
+        var ponta = fim + (sinal * 0.35);
+
+        Ponto3 P(double angulo, double r) => centro + (((u * Math.Cos(angulo)) + (v * Math.Sin(angulo))) * r);
+
+        var malha = new Malha();
+        for (var i = 0; i < fatias; i++)
+        {
+            var a0 = inicio + ((fim - inicio) * i / fatias);
+            var a1 = inicio + ((fim - inicio) * (i + 1) / fatias);
+            malha.Quad(P(a0, raio - meia), P(a0, raio + meia), P(a1, raio + meia), P(a1, raio - meia), eixo);
+        }
+
+        // A cabeça: um triângulo (quadrilátero com dois cantos iguais) apontando no sentido do giro.
+        malha.Quad(P(fim, raio - (meia * 2.6)), P(fim, raio + (meia * 2.6)), P(ponta, raio), P(ponta, raio), eixo);
+
+        return new SetaDoGiroNoModelo(malha, centro, P(inicio, raio), P(ponta, raio));
+    }
+
     /// <summary>Monta o desenho completo.</summary>
     public static ModeloDaFit4 Montar(EspecificacaoDaFit4 especificacao)
     {

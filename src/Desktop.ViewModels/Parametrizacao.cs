@@ -10,6 +10,9 @@ public enum AbaDaParametrizacao
     Liberacao,
     Display,
     Instalacao,
+
+    /// <summary>Mapa de giro (D9, docs/34 §9): por origem, a função que libera e como conta.</summary>
+    Giro,
 }
 
 /// <summary>Uma opção de um campo de lista.</summary>
@@ -514,6 +517,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
         : base(cliente, relogio)
     {
         EsperaPeloResultado = esperaPeloResultado ?? TimeSpan.FromSeconds(1.5);
+        Giro = new MapaDeGiroViewModel(cliente, relogio);
         Salvar = new ComandoAssincrono(SalvarAsync, () => PodeSalvar);
         Descartar = new ComandoAssincrono(() => CarregarAsync(CancellationToken.None), () => Mudancas.Count > 0);
         PedirAplicacao = new ComandoAssincrono(
@@ -537,6 +541,9 @@ public sealed class ParametrizacaoViewModel : TelaBase
 
     /// <summary>Quanto esperar o programa da catraca antes de buscar o desfecho.</summary>
     public TimeSpan EsperaPeloResultado { get; }
+
+    /// <summary>A aba Giro: o mesmo mapa de giro do painel do gêmeo, para esta catraca.</summary>
+    public MapaDeGiroViewModel Giro { get; }
 
     /// <summary>Grava a camada da catraca (não aplica).</summary>
     public ComandoAssincrono Salvar { get; }
@@ -586,6 +593,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
         {
             if (Definir(ref _operador, value ?? string.Empty))
             {
+                Giro.Operador = _operador;
                 Reavaliar();
             }
         }
@@ -830,6 +838,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
             Problemas = [];
             AplicarVersoes(c);
             await AcompanharInternoAsync(inner, cancelamento);
+            await Giro.CarregarAsync(inner, cancelamento);
         });
 
     private void AplicarVersoes(ConfiguracaoDaCatraca c)

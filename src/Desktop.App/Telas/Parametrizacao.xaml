@@ -110,7 +110,7 @@
           <ColumnDefinition Width="320" />
         </Grid.ColumnDefinitions>
 
-        <!-- As abas: Leitura, Liberação, Display e, só no modo técnico, Instalação. -->
+        <!-- As abas: Leitura, Liberação, Display, só no modo técnico Instalação, e Giro (mapa de giro). -->
         <TabControl SelectedIndex="{Binding AbaSelecionada}" AutomationProperties.Name="Grupos da parametrização">
           <TabItem Header="_Leitura">
             <ItemsControl ItemsSource="{Binding CamposDaLeitura}" ItemTemplate="{StaticResource Campo.Parametrizacao}" Focusable="False" />
@@ -123,6 +123,10 @@
           </TabItem>
           <TabItem Header="_Instalação" Visibility="{Binding ModoTecnico, Converter={StaticResource BoolParaVisibilidade}}">
             <ItemsControl ItemsSource="{Binding CamposDaInstalacao}" ItemTemplate="{StaticResource Campo.Parametrizacao}" Focusable="False" />
+          </TabItem>
+          <!-- Mapa de giro (D9): o mesmo painel do gêmeo, com salvar e aplicar próprios. -->
+          <TabItem Header="_Giro">
+            <ContentControl Margin="8,10,8,8" Content="{Binding Giro}" Focusable="False" />
           </TabItem>
         </TabControl>
 

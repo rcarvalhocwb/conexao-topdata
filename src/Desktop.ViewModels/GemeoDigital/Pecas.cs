@@ -165,12 +165,16 @@ public static class CatalogoDaFit4
                         "Pelo ingresso válido, ou pela liberação manual com motivo."),
                     new("Confirmar a passagem pelo sensor de giro", SituacaoDaFuncao.Disponivel,
                         "A passagem só é contada quando a catraca avisa o giro (origem 6). Liberado sem giro não conta."),
-                    new("Liberar nos dois sentidos / trocar o sentido", SituacaoDaFuncao.AguardandoConfirmacao,
-                        "Permite carona; depende da Topdata e da decisão sobre evacuação (B4)."),
+                    new("Escolher o sentido do giro e como ele conta", SituacaoDaFuncao.Disponivel,
+                        "Clique nos braços: para cada leitor e para a liberação manual, qual função libera o braço " +
+                        "(EI-041 a EI-044) e se o giro conta como entrada ou saída. É decisão do sistema (D9, docs/34 §9). " +
+                        "O lado em que o braço gira nesta instalação se confere girando uma vez."),
+                    new("Liberar nos dois sentidos", SituacaoDaFuncao.AguardandoConfirmacao,
+                        "Permite carona; só para evacuação, e depende da decisão do dono do produto (D5)."),
                     new("Queda dos braços em emergência", SituacaoDaFuncao.AguardandoConfirmacao,
                         "Não documentada para a TopFit 4 desta instalação. O gêmeo não simula."),
                 ],
-                gerenciar),
+                $"{gerenciar} e, para o sentido, o painel \"Giro desta catraca\" (clique nos braços)"),
             new FichaDaPeca(
                 PecaDaCatraca.Display,
                 "Display",
@@ -211,6 +215,8 @@ public static class CatalogoDaFit4
                 [
                     new("Ler o cartão na fenda", SituacaoDaFuncao.Disponivel,
                         "O leitor da urna decide como qualquer leitor. Ligado ou desligado em Configurações."),
+                    new("Sentido do giro pela urna", SituacaoDaFuncao.Disponivel,
+                        "Clique na urna: o painel do giro abre na linha do leitor 2, para escolher o lado e se conta como entrada."),
                     new("Recolher o cartão", SituacaoDaFuncao.AguardandoConfirmacao,
                         "A função do relé 2 não está documentada pela Topdata (docs/21, seção 8). A urna ainda não engole o cartão."),
                     new("Aviso de urna cheia", SituacaoDaFuncao.AguardandoConfirmacao,

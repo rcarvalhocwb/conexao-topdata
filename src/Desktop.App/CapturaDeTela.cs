@@ -228,14 +228,30 @@ internal static class CapturaDeTela
             // 3. As peças separadas, com a ficha dos braços.
             await EsperarAsync(moldura, TimeSpan.FromSeconds(3)).ConfigureAwait(true);
             gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+            await gemeo.FecharPainelDoGiro.ExecutarAsync().ConfigureAwait(true); // a captura 3 continua a de sempre
             gemeo.PecasSeparadas = true;
             await gemeo.MudarVista.ExecutarAsync("Inicial").ConfigureAwait(true);
             await EsperarAsync(moldura, TimeSpan.FromSeconds(2.5)).ConfigureAwait(true);
             gravados.Add(FotografarJanela(fonte, Path.Combine(pasta, nome + "-separadas.png")));
+
+            // 4. Mapa de giro (D9): clique na urna abre "Giro desta catraca" no leitor 2, com a
+            //    seta no desenho e a pré-visualização do sentido. Nada é salvo nem enviado.
+            gemeo.PecasSeparadas = false;
+            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+            await gemeo.CarregarGiroAsync().ConfigureAwait(true);
+            await gemeo.MudarVista.ExecutarAsync("Bracos").ConfigureAwait(true);
+            if (gemeo.Giro.LinhaEmFoco is { } urna)
+            {
+                await gemeo.Giro.PreVisualizar.ExecutarAsync(urna).ConfigureAwait(true);
+            }
+
+            await EsperarAsync(moldura, TimeSpan.FromSeconds(1.8)).ConfigureAwait(true);
+            gravados.Add(FotografarJanela(fonte, Path.Combine(pasta, nome + "-giro.png")));
         }
         finally
         {
             gemeo.PecasSeparadas = false;
+            await gemeo.FecharPainelDoGiro.ExecutarAsync().ConfigureAwait(true);
 
             // Sem a raiz, a tela recebe Unloaded e desliga o laço de animação antes de a janela sumir.
             fonte.RootVisual = null;
@@ -247,7 +263,8 @@ internal static class CapturaDeTela
     }
 
     /// <summary>
-    /// Duas fotos da Parametrização da catraca (Etapa A.6 do docs/35):
+    /// Três fotos da Parametrização da catraca (Etapa A.6 do docs/35; a terceira, a aba Giro do
+    /// mapa de giro, <c>09-parametrizacao-giro-{tema}</c>):
     /// <c>09-parametrizacao-{tema}</c>, como a tela abre (modo guiado, aba Leitura), e
     /// <c>09-parametrizacao-diff-{tema}</c>, com duas alterações não salvas na lista "o que
     /// muda (atual → novo)", no modo técnico e na aba Instalação, onde ficam os campos que
@@ -291,6 +308,11 @@ internal static class CapturaDeTela
             tela.ModoTecnico = true;
             tela.AbaSelecionada = (int)AbaDaParametrizacao.Instalacao;
             gravados.Add(await GravarAsync(Path.Combine(pasta, $"09-parametrizacao-diff-{tema}.png"), janela).ConfigureAwait(true));
+
+            // A aba Giro (mapa de giro, D9), no modo guiado, como o operador a abre.
+            tela.ModoTecnico = false;
+            tela.AbaSelecionada = (int)AbaDaParametrizacao.Giro;
+            gravados.Add(await GravarAsync(Path.Combine(pasta, $"09-parametrizacao-giro-{tema}.png"), janela).ConfigureAwait(true));
         }
         catch (Exception erro) when (erro is not OutOfMemoryException)
         {

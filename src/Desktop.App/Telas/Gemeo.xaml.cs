@@ -66,6 +66,10 @@ public partial class Gemeo : UserControl
     private (bool Cheia, bool Ligada)? _situacaoDaUrna;
     private (PecaDaCatraca? Selecionada, PecaDaCatraca? Apontada, PecaDaCatraca? Destaque) _realce;
     private bool _facialNaCena;
+
+    // A seta do mapa de giro (D9): fora das peças, não entra na escolha pelo mouse.
+    private GeometryModel3D? _setaDoGiro;
+    private SentidoDoGiro? _setaDesenhada;
     private bool _depositoNaCena;
     private Ponto3 _deslocamentoDoDeposito;
 
@@ -178,6 +182,8 @@ public partial class Gemeo : UserControl
         _depositoDaUrna.Children.Clear();
         _facialNaCena = false;
         _depositoNaCena = false;
+        _setaDoGiro = null;
+        _setaDesenhada = null;
 
         var grupos = new Dictionary<PecaDaCatraca, Model3DGroup>();
 
@@ -461,7 +467,43 @@ public partial class Gemeo : UserControl
         AtualizarSeparacao(vm.PecasSeparadas, dt);
         AtualizarFacial(vm.MostrarLeitorFacial);
         AtualizarRealce(vm.PecaSelecionada?.Peca, vm.PecaApontada?.Peca, vm.PecaEmDestaque);
+        AtualizarSetaDoGiro(vm);
         AtualizarCamera(dt);
+    }
+
+    /// <summary>
+    /// A seta do sentido do giro, com o painel "Giro desta catraca" aberto: o lado em que o braço
+    /// gira na regra em destaque. Refeita só quando o sentido muda.
+    /// </summary>
+    private void AtualizarSetaDoGiro(GemeoDigitalViewModel vm)
+    {
+        var sentido = vm.SetaDoGiro;
+        if (sentido == _setaDesenhada && (sentido is null) == (_setaDoGiro is null))
+        {
+            return;
+        }
+
+        _setaDesenhada = sentido;
+        if (_setaDoGiro is not null)
+        {
+            _catraca.Children.Remove(_setaDoGiro);
+            _setaDoGiro = null;
+        }
+
+        if (sentido is not { } s)
+        {
+            return;
+        }
+
+        var seta = GeometriaFit4.SetaDoGiro(vm.Modelo, s);
+        var material = Aceso(CorDoTema("Rayzer.Brand.Cyan"));
+        _setaDoGiro = new GeometryModel3D(Malha(seta.Malha), material) { BackMaterial = material };
+        if (_separacaoDaPeca.TryGetValue(PecaDaCatraca.Rotor, out var separacao))
+        {
+            _setaDoGiro.Transform = separacao;
+        }
+
+        _catraca.Children.Add(_setaDoGiro);
     }
 
     private void AtualizarDisplay(QuadroDaCena quadro)
