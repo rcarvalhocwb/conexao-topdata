@@ -156,6 +156,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         new("Acionar relés avulsos", "Aguardando confirmação da Topdata: o que cada relé faz na TopFit 4."),
         new("Recolher cartão na urna", "Aguardando confirmação da Topdata: a função do relé 2 não está documentada (docs/21 §8)."),
         new("Liberar nos dois sentidos / trocar o sentido", "Aguardando confirmação da Topdata e a decisão sobre evacuação (B4)."),
+        new("Coletar marcações da memória da catraca", "Aguardando bancada: cada marcação é gravada antes da próxima, mas quando a catraca a apaga ainda não foi confirmado (INT-REC-03, CHAOS-REC-01)."),
     ];
 
     public override Task AtualizarAsync(CancellationToken cancelamento = default) =>

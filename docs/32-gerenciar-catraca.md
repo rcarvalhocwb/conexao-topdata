@@ -85,6 +85,7 @@ Aparece na tela **desabilitado**, com o selo "Aguardando confirmação" e o moti
 | Relés avulsos | O que cada relé faz na TopFit 4 não está documentado | Topdata |
 | Recolher cartão na urna | A função do relé 2 não está documentada (docs/21 §8) | Topdata + bancada (HIL-URNA-01) |
 | Liberar nos dois sentidos / trocar o sentido | Permite carona; depende da decisão sobre evacuação | Topdata + B4 (docs/29) |
+| Coletar marcações da memória da catraca | Já no código (Etapa A.9: cada marcação gravada antes da próxima), atrás da chave técnica `catraca.coletar_bilhetes`, desligada; quando a catraca apaga a marcação é `A_CONFIRMAR` (T35) | Bancada, docs/21 §6E (INT-REC-03, CHAOS-REC-01) |
 
 ## 6. Limitações conhecidas
 
