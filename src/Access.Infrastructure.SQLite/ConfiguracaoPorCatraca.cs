@@ -26,6 +26,7 @@ public sealed class ConfiguracaoPorCatraca
     private readonly SqliteConnectionFactory _fabrica;
     private readonly Func<DeviceConfiguration> _padraoDeFabrica;
     private readonly ConfiguracoesDasCatracas _catracas;
+    private readonly MapasDeGiro _mapas;
 
     /// <param name="fabrica">Conexões com a base local.</param>
     /// <param name="padraoDeFabrica">
@@ -38,11 +39,14 @@ public sealed class ConfiguracaoPorCatraca
         _fabrica = fabrica;
         _padraoDeFabrica = padraoDeFabrica ?? (() => PadroesDeFabrica.TopFit4);
         _catracas = new ConfiguracoesDasCatracas(fabrica, _padraoDeFabrica);
+        _mapas = new MapasDeGiro(fabrica);
     }
 
     /// <summary>
     /// A configuração com que a catraca sobe. Nunca falha: camada ilegível ou recusada vira
-    /// aviso e a catraca sobe com o padrão dela (ver <see cref="ConfiguracaoComRecuo.NaSubida"/>).
+    /// aviso e a catraca sobe com o padrão dela (ver <c>ConfiguracaoComRecuo.NaSubida</c>). O mapa
+    /// de giro da catraca (migração 017) entra no perfil físico; ilegível, é aviso e aquela origem
+    /// segue o padrão.
     /// </summary>
     /// <param name="inner">Número da catraca.</param>
     /// <param name="evento">
@@ -54,20 +58,25 @@ public sealed class ConfiguracaoPorCatraca
         ArgumentNullException.ThrowIfNull(evento);
 
         SobreposicoesDaCatraca camada;
+        MapaDeGiro mapa;
         IReadOnlyList<string> problemas;
 
         try
         {
-            (camada, problemas) = _catracas.Ler(inner);
+            (camada, var daCamada) = _catracas.Ler(inner);
+            var gravado = _mapas.Ler(inner);
+            mapa = gravado.Mapa;
+            problemas = [.. daCamada, .. gravado.Problemas];
         }
         catch (SqliteException erro)
         {
             // Base ocupada na subida: a catraca não fica parada por causa da camada dela.
             camada = SobreposicoesDaCatraca.Nenhuma;
+            mapa = MapaDeGiro.Vazio;
             problemas = [$"Catraca {inner}: configuração própria não pôde ser lida ({erro.GetType().Name}); herda do evento."];
         }
 
-        return ConfiguracaoComRecuo.NaSubida(_padraoDeFabrica(), evento.ParaACatraca(), inner, camada, problemas);
+        return ConfiguracaoComRecuo.NaSubida(_padraoDeFabrica(), evento.ParaACatraca(), inner, camada, mapa, problemas);
     }
 
     /// <summary>
@@ -88,7 +97,9 @@ public sealed class ConfiguracaoPorCatraca
             }
 
             var (camada, problemas) = _catracas.Ler(inner);
-            return ConfiguracaoComRecuo.ParaAplicar(_padraoDeFabrica(), evento.ParaACatraca(), inner, camada, problemas);
+            var mapa = _mapas.Ler(inner);
+            return ConfiguracaoComRecuo.ParaAplicar(
+                _padraoDeFabrica(), evento.ParaACatraca(), inner, camada, mapa.Mapa, [.. problemas, .. mapa.Problemas]);
         }
         catch (SqliteException erro)
         {
