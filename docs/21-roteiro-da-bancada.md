@@ -334,6 +334,56 @@ para de atendê-la é `A_CONFIRMAR_COM_TOPDATA`.
 
 ---
 
+## 6F. Coleta de bilhetes (`HIL-BIL-01`, `INT-REC-03`, `CHAOS-REC-01`, `NOVO-INT-REC-07`, Etapa A.9)
+
+A catraca guarda as marcações que faz sozinha (off-line) numa memória **circular de 30.000**: a mais
+nova apaga a mais antiga em silêncio ([`34`](34-estudo-modulo-catraca.md) §3). `ColetarBilhete`
+(EI-039) devolve uma marcação e **a tira da memória** (FUN:40). O worker grava cada uma na base
+(`collected_ticket`, migração 015, só a máscara e a impressão do código) **antes** de pedir a
+próxima (R-68). A coleta é só **por pedido** (comando `ColetarBilhetes`), atrás da chave técnica
+`catraca.coletar_bilhetes`, **desligada**; nenhuma tela tem botão para ela.
+
+Precisa do **sistema instalado** (o serviço entrega ao worker a chave da impressão; sem ela o worker
+recusa a coleta). Ligue com o SQL do 6C, chave `catraca.coletar_bilhetes`, valor `1` — vale no
+próximo pedido, sem reiniciar. Sem botão, o pedido vai direto na base (o worker confere a chave ao
+receber):
+
+```sql
+INSERT INTO operator_command (id, inner_number, kind, requested_by, requested_at, expires_at)
+VALUES (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-7' ||
+        substr(lower(hex(randomblob(2))), 2) || '-8' || substr(lower(hex(randomblob(2))), 2) || '-' ||
+        lower(hex(randomblob(6))),
+        1, 'ColetarBilhetes', 'bancada',
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+60 seconds'));
+```
+
+Confira depois com `SELECT status, result FROM operator_command ORDER BY requested_at DESC LIMIT 1;`
+e `SELECT inner_number, raw_type, marked_at, code_mask, collection_seq FROM collected_ticket ORDER BY
+collected_at, collection_seq;`. **Durante a coleta, aquela catraca não atende leitura** — faça fora
+de qualquer passagem.
+
+Para haver marcações, a catraca precisa ter operado **sem o PC**: com a contingência desligada (D8),
+isso só acontece pela segunda parte do INT-SM-021 (6D) ou pelo que o WebServer permitir. Até lá, só
+a linha 1 é possível.
+
+| # | Ensaio | Faça | Deve acontecer | Anote |
+|---|---|---|---|---|
+| 1 | HIL-BIL-01 (T3) | Chave ligada, memória vazia: peça a coleta | Uma chamada; comando "Feito" com "0 bilhete(s) coletado(s)"; a catraca volta a "Atendendo" | O registro mostra `sem bilhetes` ou `erro ao coletar bilhete (…)`? Com qual retorno? (é o `RET_SEM_BILHETES`) |
+| 2 | INT-REC-03 | Faça 10 passagens off-line conhecidas (anote hora e cartão de teste de cada uma); volte ao on-line; peça a coleta | 10 linhas em `collected_ticket` (ou o múltiplo de T22), tipos 10/11/12…, hora certa **ao minuto** | Quantas marcações por passagem (T22)? Tipos? Alguma data inválida (`marked_at` vazio)? |
+| 3 | INT-REC-03 | Peça a coleta de novo | "0 bilhete(s) coletado(s)": a memória ficou vazia | Voltou algum? Com qual tipo? |
+| 4 | CHAOS-REC-01 | Faça 30 passagens off-line; peça a coleta e, quando o registro do worker mostrar o 10º `bilhete … gravado`, **mate o worker** (Gerenciador de Tarefas → `Edge.Worker.X86` → Finalizar) ; espere o serviço subir de novo e peça a coleta | Ao final, 30 marcações na base, **nenhuma repetida** (`SELECT code_hmac, marked_at, raw_type, COUNT(*) FROM collected_ticket GROUP BY 1, 2, 3 HAVING COUNT(*) > 1;` vazio) | Total? Apareceu algum `raw_type = 128`? Quantas? |
+| 5 | NOVO-INT-REC-07 (T35) | Repita a linha 4 três vezes, matando em momentos diferentes | Se aparecer `raw_type = 128` logo depois da queda, a catraca devolve o não confirmado (o que o código espera) | Total por rodada; houve rodada com 29 (bilhete perdido)? |
+
+**Liga de vez quando:** a linha 1 diz o que volta com a memória vazia (T3); as linhas 2 e 3 contam
+certo; nas linhas 4 e 5 **nenhuma** rodada perdeu ou duplicou marcação — e a Topdata respondeu T35
+(quando a memória apaga: ao devolver, ou só no próximo pedido; o 128 traz a data e o código do
+original?). Se a catraca apagar ao devolver, a queda exatamente entre a coleta e a gravação perde
+aquela marcação (uma, nunca mais: o laço não pede a próxima antes de gravar) — e a chave só liga
+com essa limitação aceita pelo dono do produto. A coleta **automática** na volta do off-line depende
+da D8 e fica para depois.
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
@@ -380,6 +430,7 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 6C: cada chave ensaiada tem a linha preenchida (ou "não ensaiada") e voltou desligada se o resultado foi ruim
 - [ ] Passo 6D: com a sequência oficial ligada, as linhas 2–6 iguais à referência (ou "não ensaiada"); a chave voltou desligada se o resultado foi ruim
 - [ ] Passo 6E: cada comando ensaiado tem a linha preenchida (ou "não ensaiado"); a linha 4 fica "não ensaiada" até a D5; toda chave voltou a `0`
+- [ ] Passo 6F: coleta de bilhetes ensaiada (ou "não ensaiada"); nenhum bilhete perdido nem duplicado depois da queda; a chave voltou a `0`
 - [ ] Passo 7: o resumo bate com o que foi feito
 
 **Mande a tabela do passo 3, as dos passos 6A, 6B, 6C e 6D e o resumo do passo 7.** São eles que fecham as perguntas

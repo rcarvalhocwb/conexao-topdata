@@ -347,6 +347,10 @@ enum TipoDeComando {
   // Só evacuação: permite carona. Motivo e confirmação digitada; recusado enquanto a
   // decisão D5 do dono do produto não for tomada (EI-045; HIL-DIR-07; docs/34 §9).
   TIPO_DE_COMANDO_LIBERAR_DOIS_SENTIDOS = 9;
+  // Coleta os bilhetes da memória da catraca, gravando cada um antes do próximo (EI-039,
+  // R-68; Etapa A.9). Só por catraca (inner 1 a 99). Recusado enquanto a chave técnica
+  // catraca.coletar_bilhetes estiver desligada (INT-REC-03 e CHAOS-REC-01).
+  TIPO_DE_COMANDO_COLETAR_BILHETES = 10;
 }
 
 enum SituacaoDoComando {

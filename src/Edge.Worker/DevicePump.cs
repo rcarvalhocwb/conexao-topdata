@@ -57,6 +57,19 @@ public sealed class DeviceSlot
     /// <summary>Quantos comandos esperam a vez.</summary>
     public int ComandosNaFila => Comandos.Count + (EmCurso is null ? 0 : 1);
 
+    /// <summary>
+    /// O bilhete que já saiu da catraca e ainda não está durável na base (R-68; Etapa A.9).
+    /// Enquanto houver um, o laço não chama <c>ColetarBilhete</c> de novo: o próximo passo desta
+    /// catraca é tentar gravá-lo.
+    /// </summary>
+    public BilheteColetado? BilheteAGravar { get; internal set; }
+
+    /// <summary>A coleta em andamento: identificação e contagens.</summary>
+    internal ColetaDeBilhetes? Coleta { get; set; }
+
+    /// <summary>Tentativas de gravar um bilhete coletado que a base recusou (base ocupada, por exemplo).</summary>
+    public long FalhasAoGravarBilhete { get; internal set; }
+
     /// <summary>Entrega um comando para ser executado quando a catraca estiver livre.</summary>
     /// <param name="comando">O pedido.</param>
     /// <param name="configuracaoNova">
@@ -154,7 +167,26 @@ public sealed class DeviceSlot
         RelogioInvalido || DivergenciaDoRelogio is { } divergencia && divergencia.Duration() > DevicePump.LimiteDeDivergenciaDoRelogio;
 }
 
-/// <summary>Um comando que leva mais de um passo: liberação manual, reconexão.</summary>
+/// <summary>Uma coleta de bilhetes: quem a pediu (o comando, quando houver) e o que já foi feito.</summary>
+internal sealed class ColetaDeBilhetes(Guid id)
+{
+    public Guid Id { get; } = id;
+
+    /// <summary>Devolvidos pela catraca (cada um já saiu da memória dela).</summary>
+    public int Coletados { get; set; }
+
+    /// <summary>Gravados agora na base.</summary>
+    public int Gravados { get; set; }
+
+    /// <summary>Que a base já tinha (mesmo bilhete de novo, ou 128 com o original gravado).</summary>
+    public int Repetidos { get; set; }
+
+    public string Resumo() => string.Create(
+        CultureInfo.InvariantCulture,
+        $"{Coletados} bilhete(s) coletado(s): {Gravados} gravado(s), {Repetidos} já estava(m) na base");
+}
+
+/// <summary>Um comando que leva mais de um passo: liberação manual, reconexão, coleta de bilhetes.</summary>
 internal sealed class ComandoEmCurso(ComandoDeCatraca comando, DateTimeOffset iniciadoEm)
 {
     public ComandoDeCatraca Comando { get; } = comando;
@@ -214,6 +246,7 @@ public sealed class DevicePump
     private readonly Action<ComandoDeCatraca, SituacaoDoComando, string>? _aoConcluirComando;
     private readonly Action<string>? _antesDaLiberacaoManual;
     private readonly bool _sequenciaOficial;
+    private readonly IGravadorDeBilhetes? _gravadorDeBilhetes;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -241,6 +274,12 @@ public sealed class DevicePump
     /// INT-SM-021 (Etapa A.7 do docs/35). Não liga a contingência: a mudança automática segue com
     /// o valor da configuração, 0 no padrão (D8).
     /// </param>
+    /// <param name="gravadorDeBilhetes">
+    /// Quem torna durável cada bilhete coletado (Etapa A.9 do docs/35). A gravação é um passo
+    /// próprio, sem chamada nativa, entre um <c>ColetarBilhete</c> e o próximo (R-68). Sem ele,
+    /// este laço <b>não coleta</b>: o comando falha e o estado de coleta sai sem chamar a catraca —
+    /// coletar sem gravar apagaria marcações da memória dela.
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -250,10 +289,12 @@ public sealed class DevicePump
         bool acertarRelogioAoDivergir = false,
         Action<ComandoDeCatraca, SituacaoDoComando, string>? aoConcluirComando = null,
         Action<string>? antesDaLiberacaoManual = null,
-        bool sequenciaOficial = false)
+        bool sequenciaOficial = false,
+        IGravadorDeBilhetes? gravadorDeBilhetes = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _sequenciaOficial = sequenciaOficial;
+        _gravadorDeBilhetes = gravadorDeBilhetes;
         _acertarRelogioAoDivergir = acertarRelogioAoDivergir;
         _aoConcluirComando = aoConcluirComando;
         _antesDaLiberacaoManual = antesDaLiberacaoManual;
@@ -311,6 +352,14 @@ public sealed class DevicePump
     private string PassoDaMaquina(DeviceSlot dispositivo, TimeSpan limiteDeEspera)
     {
         var agora = _relogio();
+
+        // Bilhete coletado e ainda não gravado: este passo é a gravação, e só ela (R-68). Vem
+        // antes do backoff e do disjuntor porque não fala com a catraca — e antes de tudo o
+        // mais porque a catraca já apagou o bilhete: aqui está a única cópia.
+        if (dispositivo.BilheteAGravar is { } pendente)
+        {
+            return GravarBilhete(dispositivo, pendente);
+        }
 
         if (dispositivo.EsperarAte is { } ate && agora < ate)
         {
@@ -563,17 +612,37 @@ public sealed class DevicePump
 
     private string ColetarBilhete(DeviceSlot d, DateTimeOffset agora)
     {
+        if (_gravadorDeBilhetes is null)
+        {
+            // Sem quem grave, nenhum bilhete sai da catraca: coletar e descartar perdia a
+            // marcação (defeito F5, docs/34 §2). Sai do estado sem chamar a DLL.
+            d.Coleta = null;
+            Disparar(d, DeviceTrigger.SemBilhetes, agora);
+            return "coleta não feita: este laço não tem onde gravar bilhetes (R-68)";
+        }
+
         var (resultado, bilhete) = _adapter.ColetarBilhete(d.Inner);
 
         switch (resultado.Status)
         {
             case AdapterStatus.Ok when bilhete is not null:
-                // Quem chama precisa commitar o bilhete ANTES do próximo passo: ele já
-                // foi removido da memória do equipamento (risco R-68).
+            {
+                // O bilhete já saiu da memória do equipamento (FUN:40). O próximo passo desta
+                // catraca é gravá-lo; só depois vem o próximo ColetarBilhete (R-68).
+                var coleta = d.Coleta ??= new ColetaDeBilhetes(Guid.CreateVersion7(agora));
+                coleta.Coletados++;
+                d.BilheteAGravar = new BilheteColetado(d.Inner, bilhete, coleta.Id, coleta.Coletados, agora);
+                d.Disjuntor.RegistrarSucesso();
                 Disparar(d, DeviceTrigger.BilheteColetado, agora);
-                return $"bilhete tipo {bilhete.Tipo}";
+                return string.Create(CultureInfo.InvariantCulture, $"bilhete tipo {bilhete.Tipo} coletado (nº {coleta.Coletados}); gravando antes do próximo");
+            }
 
             case AdapterStatus.SemBilhetes:
+                if (d.EmCurso is not { Comando.Tipo: TipoDeComando.ColetarBilhetes })
+                {
+                    d.Coleta = null;
+                }
+
                 Disparar(d, DeviceTrigger.SemBilhetes, agora);
                 return "sem bilhetes";
 
@@ -581,6 +650,50 @@ public sealed class DevicePump
                 Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
                 return $"erro ao coletar bilhete ({resultado})";
         }
+    }
+
+    // Passo sem chamada nativa: a base, e só ela. Falhou, o bilhete fica com o worker e o
+    // próximo passo desta catraca tenta de novo; a catraca não é chamada enquanto isso.
+    private string GravarBilhete(DeviceSlot d, BilheteColetado pendente)
+    {
+        if (_gravadorDeBilhetes is null)
+        {
+            // Inalcançável: só se coleta com gravador. Se acontecer, não some com o bilhete.
+            return "bilhete coletado sem onde gravar; a catraca não será chamada";
+        }
+
+        DesfechoDaGravacaoDoBilhete desfecho;
+        try
+        {
+            desfecho = _gravadorDeBilhetes.Gravar(pendente);
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            d.FalhasAoGravarBilhete++;
+            return EhMarco(d.FalhasAoGravarBilhete)
+                ? $"bilhete coletado ainda não gravado ({erro.GetType().Name}, falha nº {d.FalhasAoGravarBilhete}); a coleta espera a base"
+                : "bilhete coletado ainda não gravado; a coleta espera a base";
+        }
+
+        d.BilheteAGravar = null;
+        var coleta = d.Coleta;
+
+        if (desfecho is DesfechoDaGravacaoDoBilhete.Gravado)
+        {
+            if (coleta is not null)
+            {
+                coleta.Gravados++;
+            }
+
+            return string.Create(CultureInfo.InvariantCulture, $"bilhete nº {pendente.Ordem} gravado (tipo {pendente.Bilhete.Tipo})");
+        }
+
+        if (coleta is not null)
+        {
+            coleta.Repetidos++;
+        }
+
+        return string.Create(CultureInfo.InvariantCulture, $"bilhete nº {pendente.Ordem} já estava na base (tipo {pendente.Bilhete.Tipo}); não gravado de novo");
     }
 
     private string Decidir(DeviceSlot d, DateTimeOffset agora)
@@ -727,6 +840,20 @@ public sealed class DevicePump
                 Disparar(d, DeviceTrigger.ReconexaoSolicitada, agora);
                 return $"{rotulo}: reconectando";
 
+            case TipoDeComando.ColetarBilhetes:
+                if (_gravadorDeBilhetes is null)
+                {
+                    Concluir(comando, SituacaoDoComando.Falhou, "este worker não tem onde gravar bilhetes; nada foi coletado");
+                    return $"{rotulo}: sem onde gravar, não executado";
+                }
+
+                // A coleta tira a catraca de Polling até a memória esvaziar: durante ela, a
+                // catraca não atende leitura neste laço. Por isso é só por pedido (docs/34 §8).
+                d.EmCurso = new ComandoEmCurso(comando, agora);
+                d.Coleta = new ColetaDeBilhetes(comando.Id);
+                Disparar(d, DeviceTrigger.IniciarColetaDeBilhetes, agora);
+                return $"{rotulo}: coleta iniciada";
+
             default:
                 Concluir(comando, SituacaoDoComando.Falhou, "comando sem execução neste worker");
                 return $"{rotulo}: desconhecido";
@@ -742,6 +869,31 @@ public sealed class DevicePump
         }
 
         var estado = d.Maquina.Current;
+
+        if (emCurso.Comando.Tipo is TipoDeComando.ColetarBilhetes)
+        {
+            // Termina quando a catraca sai da coleta e o último bilhete já está na base.
+            if (estado is DeviceState.ColetarBilhetes || d.BilheteAGravar is not null)
+            {
+                return null;
+            }
+
+            d.EmCurso = null;
+            var resumo = d.Coleta?.Resumo() ?? "nenhum bilhete coletado";
+            d.Coleta = null;
+
+            if (estado is DeviceState.Polling)
+            {
+                Concluir(emCurso.Comando, SituacaoDoComando.Concluido, $"memória da catraca vazia; {resumo}");
+                return resumo;
+            }
+
+            // Erro de comunicação ou tempo esgotado no meio: o que já foi coletado está gravado;
+            // o que ficou na catraca sai no próximo pedido.
+            var interrompida = $"coleta interrompida (estado {estado}); {resumo}; o restante fica na catraca para o próximo pedido";
+            Concluir(emCurso.Comando, SituacaoDoComando.Falhou, interrompida);
+            return interrompida;
+        }
 
         if (ComandoDeCatraca.EhLiberacao(emCurso.Comando.Tipo))
         {

@@ -113,6 +113,9 @@ public static class Textos
         TipoDeComando.BipLongo => "Bip longo",
         TipoDeComando.LiberarSaida => "Liberar saída",
         TipoDeComando.LiberarDoisSentidos => "Liberar nos dois sentidos",
+
+        // Só no histórico: não há botão para pedir (Etapa A.9; chave técnica desligada, sem tela).
+        TipoDeComando.ColetarBilhetes => "Coletar marcações",
         _ => "Comando",
     };
 

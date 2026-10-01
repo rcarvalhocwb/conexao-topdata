@@ -152,9 +152,33 @@ public sealed record FirmwareInfo(byte Linha, short Variacao, byte VersaoAlta, b
 
 /// <summary>Bilhete recuperado da memória do equipamento.</summary>
 /// <remarks>
-/// Não tem segundos: o manual documenta a assinatura sem esse campo (EI-039).
+/// <para>
+/// Não tem segundos: o manual documenta a assinatura sem esse campo (EI-039). Também não tem
+/// número de sequência nem identificação de reinício do equipamento: é tipo, data e hora ao
+/// minuto e o código — e é só com isso que a coleta deduplica (Etapa A.9, docs/34 §11).
+/// </para>
+/// <para>
+/// <see cref="ToString"/> mascara o código: o bilhete passa por registros e mensagens de teste,
+/// e o texto gerado pelo <c>record</c> escreveria o código inteiro (docs/35, regras LGPD).
+/// </para>
 /// </remarks>
-public sealed record Bilhete(byte Tipo, DateTimeOffset Quando, string Cartao);
+public sealed record Bilhete(byte Tipo, DateTimeOffset Quando, string Cartao)
+{
+    /// <summary>
+    /// Tipo 128: "bilhete repetido recebido do Inner — já retornado em coleta anterior"
+    /// (<c>tipos-bilhete.csv</c>, manual 5.2.2, FONTE_PRIMARIA).
+    /// </summary>
+    public const byte TipoRepetido = 128;
+
+    /// <summary>A catraca diz que este bilhete já foi devolvido numa coleta anterior.</summary>
+    public bool Repetido => Tipo == TipoRepetido;
+
+    /// <summary>Sem o código inteiro.</summary>
+    public override string ToString() =>
+        string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"Bilhete {{ Tipo = {Tipo}, Quando = {Quando:O}, Cartao = {Access.Domain.Credentials.CredentialValue.Mascarar(Cartao)} }}");
+}
 
 /// <summary>
 /// Interface que o restante do sistema usa para falar com um equipamento Inner.

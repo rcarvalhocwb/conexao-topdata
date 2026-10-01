@@ -62,6 +62,15 @@ public enum TipoDeComando
     /// decisão D5 do dono do produto não for tomada (docs/34 §9).
     /// </summary>
     LiberarDoisSentidos,
+
+    /// <summary>
+    /// Coleta os bilhetes (marcações) guardados na memória da catraca (<c>ColetarBilhete</c>,
+    /// EI-039), gravando cada um na base <b>antes</b> de pedir o próximo (R-68; Etapa A.9 do
+    /// docs/35). Só por pedido do operador até a mudança automática (D8, docs/34 §9) ser ligada.
+    /// Chave técnica <c>catraca.coletar_bilhetes</c>, desligada até INT-REC-03 e CHAOS-REC-01
+    /// (docs/21 §6F): desligada, o serviço recusa e o worker não executa.
+    /// </summary>
+    ColetarBilhetes,
 }
 
 /// <summary>Em que pé está um comando. A tabela guarda o texto em minúsculas.</summary>

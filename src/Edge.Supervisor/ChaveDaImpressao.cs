@@ -34,18 +34,32 @@ public static class ChaveDaImpressao
 
     /// <summary>A impressão com a chave do cofre; cria e guarda a chave no primeiro uso.</summary>
     /// <exception cref="InvalidOperationException">O cofre tem uma chave ilegível ou curta demais.</exception>
-    public static ImpressaoDeCodigo Obter(ICofreDeSegredos cofre)
+    public static ImpressaoDeCodigo Obter(ICofreDeSegredos cofre) => new(Chave(cofre));
+
+    /// <summary>
+    /// A chave em Base64, para entregar ao worker pela entrada padrão (Etapa A.9).
+    /// </summary>
+    /// <remarks>
+    /// O worker grava os bilhetes coletados da catraca com a mesma impressão do cadastro
+    /// (<c>collected_ticket</c>, migração 015) e precisa da chave para isso; ele não lê o cofre.
+    /// O serviço a entrega ao processo filho pela entrada padrão — nunca na linha de comando,
+    /// que outros processos da máquina leem, nem em variável de ambiente, nem em arquivo.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">O cofre tem uma chave ilegível ou curta demais.</exception>
+    public static string ParaOWorker(ICofreDeSegredos cofre) => Convert.ToBase64String(Chave(cofre));
+
+    private static byte[] Chave(ICofreDeSegredos cofre)
     {
         ArgumentNullException.ThrowIfNull(cofre);
 
         if (cofre.Ler(NomeNoCofre) is { Length: > 0 } guardada)
         {
-            return new ImpressaoDeCodigo(Decodificar(guardada));
+            return Decodificar(guardada);
         }
 
         var nova = RandomNumberGenerator.GetBytes(ImpressaoDeCodigo.TamanhoMinimoDaChave);
         cofre.Gravar(NomeNoCofre, Convert.ToBase64String(nova));
-        return new ImpressaoDeCodigo(nova);
+        return nova;
     }
 
     private static byte[] Decodificar(string guardada)

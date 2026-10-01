@@ -98,15 +98,35 @@ Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco)
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
 new Migrator(fabrica).Aplicar();
 
+// A chave da impressão de código (Etapa B.1) vai para o worker pela entrada padrão: é com ela
+// que ele grava os bilhetes coletados sem o código em claro (Etapa A.9, migração 015). Só no
+// Windows, onde existe o cofre (DPAPI). Sem ela, o worker sobe e opera, e a coleta de
+// bilhetes é recusada por ele — nada sai da memória da catraca.
+string? chaveDaImpressao = null;
+if (OperatingSystem.IsWindows())
+{
+    try
+    {
+        chaveDaImpressao = ChaveDaImpressao.ParaOWorker(new CofreDpapi(InstalacaoLocal.PastaDosSegredos));
+    }
+    catch (Exception erro) when (erro is InvalidOperationException or IOException or UnauthorizedAccessException
+        or System.Security.Cryptography.CryptographicException)
+    {
+        Console.Error.WriteLine($"Chave da impressão de código indisponível ({erro.GetType().Name}): a coleta de bilhetes fica recusada.");
+    }
+}
+
 var workers = configuracao.Grupos
     .Select(g => new ProcessoDeWorker(
         g.Nome,
         g.Porta,
         g.Inners,
         ConfiguracaoDoSupervisor.ResolverExecutavel(g.Executavel),
-        argumentosExtras: configuracao.Simulacao
-            ? ["--banco", caminhoDoBanco, "--worker", g.Nome, "--simulador"]
-            : ["--banco", caminhoDoBanco, "--worker", g.Nome]))
+        argumentosExtras: [
+            "--banco", caminhoDoBanco, "--worker", g.Nome,
+            .. configuracao.Simulacao ? ["--simulador"] : Array.Empty<string>(),
+            .. chaveDaImpressao is null ? Array.Empty<string>() : ["--chave-da-impressao-na-entrada"]],
+        entradaPadrao: chaveDaImpressao is null ? null : () => chaveDaImpressao))
     .ToList();
 
 // Modo simulação: ingressos e cartões de teste carregados a cada partida (idempotente).

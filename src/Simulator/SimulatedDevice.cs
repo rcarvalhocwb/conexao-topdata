@@ -14,6 +14,11 @@ public sealed record ScriptedEvent(
     byte Complemento = 0,
     TimeSpan AtrasoAntes = default);
 
+/// <summary>A memória de bilhetes de um equipamento simulado.</summary>
+/// <param name="NaMemoria">Os que ainda não foram devolvidos, na ordem.</param>
+/// <param name="AConfirmar">O último devolvido, ainda sem confirmação (só com <see cref="SimulatedDevice.ConfirmaNaProximaColeta"/>).</param>
+public sealed record MemoriaDeBilhetes(IReadOnlyList<Bilhete> NaMemoria, Bilhete? AConfirmar);
+
 /// <summary>
 /// Um equipamento simulado, roteirizável.
 /// </summary>
@@ -28,7 +33,8 @@ public sealed class SimulatedDevice : IDisposable
     private readonly ManualResetEventSlim _destravar = new(initialState: false);
     private int _entrouNoLacoTravado;
     private readonly Queue<ScriptedEvent> _eventos = new();
-    private readonly Queue<Bilhete> _bilhetes = new();
+    private readonly LinkedList<Bilhete> _bilhetes = new();
+    private Bilhete? _aConfirmar;
     private long _sequencia;
 
     public SimulatedDevice(int inner)
@@ -148,10 +154,43 @@ public sealed class SimulatedDevice : IDisposable
         ArgumentNullException.ThrowIfNull(bilhetes);
         foreach (var b in bilhetes)
         {
-            _bilhetes.Enqueue(b);
+            _bilhetes.AddLast(b);
         }
 
         return this;
+    }
+
+    /// <summary>
+    /// Como a memória trata o bilhete devolvido. Falso (padrão): sai na hora em que é devolvido,
+    /// a leitura literal de FUN:40 ("remove o bilhete"). Verdadeiro: fica "a confirmar" até o
+    /// próximo <c>ColetarBilhete</c>; se a conexão cair antes, volta na próxima conexão como
+    /// tipo 128, "já retornado em coleta anterior" (manual 5.2.2).
+    /// </summary>
+    /// <remarks>
+    /// Qual das duas a catraca faz é <c>A_CONFIRMAR_COM_TOPDATA</c> (ensaio NOVO-INT-REC-07,
+    /// docs/21 §6F). O tipo 128 só faz sentido se existir alguma confirmação; por isso a Etapa A.9
+    /// grava antes de pedir o próximo e deduplica o 128 — vale nas duas. Também é A_CONFIRMAR
+    /// que o 128 traga a data e o código do original; aqui traz.
+    /// </remarks>
+    public bool ConfirmaNaProximaColeta { get; set; }
+
+    /// <summary>Quantos bilhetes ainda estão na memória (fora o que espera confirmação).</summary>
+    public int BilhetesNaMemoria => _bilhetes.Count;
+
+    /// <summary>A memória de bilhetes, para guardar fora do processo (teste de queda).</summary>
+    public MemoriaDeBilhetes ExportarBilhetes() => new([.. _bilhetes], _aConfirmar);
+
+    /// <summary>Restaura uma memória exportada, como se o equipamento nunca tivesse desligado.</summary>
+    public void RestaurarBilhetes(MemoriaDeBilhetes memoria)
+    {
+        ArgumentNullException.ThrowIfNull(memoria);
+        _bilhetes.Clear();
+        foreach (var b in memoria.NaMemoria)
+        {
+            _bilhetes.AddLast(b);
+        }
+
+        _aConfirmar = memoria.AConfirmar;
     }
 
     /// <summary>Simula um reinício: novo <c>bootId</c> e sequência recomeçando.</summary>
@@ -167,7 +206,36 @@ public sealed class SimulatedDevice : IDisposable
     internal ScriptedEvent? ProximoEvento() =>
         _eventos.Count > 0 ? _eventos.Dequeue() : Gerador?.Invoke();
 
-    internal Bilhete? ProximoBilhete() => _bilhetes.Count > 0 ? _bilhetes.Dequeue() : null;
+    internal Bilhete? ProximoBilhete()
+    {
+        // Pedir o próximo confirma o anterior.
+        _aConfirmar = null;
+
+        if (_bilhetes.First is not { } primeiro)
+        {
+            return null;
+        }
+
+        _bilhetes.RemoveFirst();
+        if (ConfirmaNaProximaColeta)
+        {
+            _aConfirmar = primeiro.Value;
+        }
+
+        return primeiro.Value;
+    }
+
+    /// <summary>
+    /// Conexão nova: o bilhete devolvido e não confirmado volta à frente da memória como tipo 128.
+    /// </summary>
+    internal void AoConectar()
+    {
+        if (_aConfirmar is { } pendente)
+        {
+            _bilhetes.AddFirst(pendente with { Tipo = Bilhete.TipoRepetido });
+            _aConfirmar = null;
+        }
+    }
 
     internal long ProximaSequencia() => Interlocked.Increment(ref _sequencia);
 

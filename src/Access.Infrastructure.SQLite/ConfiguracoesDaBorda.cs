@@ -68,6 +68,14 @@ namespace Access.Infrastructure.SQLite;
 /// ensaio INT-SM-021 (Etapa A.7). É do laço, não da catraca: vale para todas as catracas do worker e
 /// muda no próximo início dele, como <see cref="ReconectarEmErroDeRecepcao"/>.
 /// </param>
+/// <param name="ColetarBilhetes">
+/// Permite o comando "coletar bilhetes" (<c>ColetarBilhete</c>, EI-039; Etapa A.9). Desligada: o
+/// serviço recusa o pedido e o worker não o executa — nada sai da memória da catraca. Chave técnica
+/// <c>catraca.coletar_bilhetes</c>, desligada até os ensaios INT-REC-03 e CHAOS-REC-01 (docs/21 §6F):
+/// a coleta remove o bilhete do equipamento (FUN:40), e o que a catraca faz com o bilhete devolvido
+/// e não confirmado é <c>A_CONFIRMAR_COM_TOPDATA</c>. Lida a cada pedido, sem reiniciar. Não liga a
+/// coleta automática na volta do off-line (D8, docs/34 §9).
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -83,7 +91,8 @@ public sealed record ConfiguracaoDaOperacao(
     bool EnviarTipoDeLista = false,
     bool EnviarWiegandDoisLeitores = false,
     bool EnviarFormasDeEntrada = false,
-    bool SequenciaOficial = false)
+    bool SequenciaOficial = false,
+    bool ColetarBilhetes = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -96,7 +105,7 @@ public sealed record ConfiguracaoDaOperacao(
     /// Todo campo sai preenchido: o que o operador não mudou já chega aqui com o padrão deste
     /// registro, igual ao de fábrica. Ficam de fora, de propósito, o que não é parâmetro da
     /// catraca: o conector e a espera da nuvem (repositório), <see cref="AcertarRelogioAoDivergir"/>
-    /// e <see cref="SequenciaOficial"/> (laço) e <see cref="ReconectarEmErroDeRecepcao"/> (adapter).
+    /// e <see cref="SequenciaOficial"/> (laço), <see cref="ColetarBilhetes"/> (comando) e <see cref="ReconectarEmErroDeRecepcao"/> (adapter).
     /// </remarks>
     public SobreposicoesDoEvento ParaACatraca() => new()
     {
@@ -175,6 +184,9 @@ public sealed class ConfiguracoesDaBorda
 
     /// <summary>Etapa A.7 (docs/34 §4.3): sequência oficial de conexão; desligada até INT-SM-021.</summary>
     public const string ChaveSequenciaOficial = "catraca.sequencia_oficial";
+
+    /// <summary>Etapa A.9: comando de coleta de bilhetes; desligada até INT-REC-03 e CHAOS-REC-01.</summary>
+    public const string ChaveColetarBilhetes = "catraca.coletar_bilhetes";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -274,7 +286,8 @@ public sealed class ConfiguracoesDaBorda
             EnviarTipoDeLista: Logico(ChaveEnviarTipoDeLista, padrao.EnviarTipoDeLista),
             EnviarWiegandDoisLeitores: Logico(ChaveEnviarWiegandDoisLeitores, padrao.EnviarWiegandDoisLeitores),
             EnviarFormasDeEntrada: Logico(ChaveEnviarFormasDeEntrada, padrao.EnviarFormasDeEntrada),
-            SequenciaOficial: Logico(ChaveSequenciaOficial, padrao.SequenciaOficial));
+            SequenciaOficial: Logico(ChaveSequenciaOficial, padrao.SequenciaOficial),
+            ColetarBilhetes: Logico(ChaveColetarBilhetes, padrao.ColetarBilhetes));
 
         return (configuracao, ilegiveis);
     }
@@ -308,6 +321,7 @@ public sealed class ConfiguracoesDaBorda
             [ChaveEnviarWiegandDoisLeitores] = configuracao.EnviarWiegandDoisLeitores ? "1" : "0",
             [ChaveEnviarFormasDeEntrada] = configuracao.EnviarFormasDeEntrada ? "1" : "0",
             [ChaveSequenciaOficial] = configuracao.SequenciaOficial ? "1" : "0",
+            [ChaveColetarBilhetes] = configuracao.ColetarBilhetes ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();

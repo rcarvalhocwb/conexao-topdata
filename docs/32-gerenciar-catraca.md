@@ -85,6 +85,7 @@ Aparece na tela **desabilitado**, com o selo "Aguardando confirmação" e o moti
 | Relés avulsos | O que cada relé faz na TopFit 4 não está documentado | Topdata |
 | Recolher cartão na urna | A função do relé 2 não está documentada (docs/21 §8) | Topdata + bancada (HIL-URNA-01) |
 | Liberar nos dois sentidos / trocar o sentido | Permite carona; depende da decisão sobre evacuação. O serviço já executa os dois sentidos (Etapa A.8, motivo e confirmação digitada), mas recusa com "Aguardando decisão D5 do dono do produto", além da chave `comando.liberar_dois_sentidos` | D5 (docs/34 §9) + bancada HIL-DIR-07 |
+| Coletar marcações da memória da catraca | Já no código (Etapa A.9: cada marcação gravada antes da próxima), atrás da chave técnica `catraca.coletar_bilhetes`, desligada; quando a catraca apaga a marcação é `A_CONFIRMAR` (T35) | Bancada, docs/21 §6F (INT-REC-03, CHAOS-REC-01) |
 
 "Liberar saída" (Etapa A.8, chave `comando.liberar_saida`, ensaio HIL-DIR-04) também existe no
 serviço, recusado com a chave desligada, e ainda não aparece na tela: entra com a A.6.

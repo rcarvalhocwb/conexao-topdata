@@ -73,7 +73,18 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
         return Medir(0);
     }
 
-    public AdapterResult TestarConexao(int inner) => ComDispositivo(inner, d => d.Desconectado ? 1 : 0);
+    public AdapterResult TestarConexao(int inner) => ComDispositivo(inner, d =>
+    {
+        if (d.Desconectado)
+        {
+            return 1;
+        }
+
+        // Conexão nova: o bilhete devolvido e não confirmado volta como 128 (só no modo
+        // ConfirmaNaProximaColeta; A_CONFIRMAR, NOVO-INT-REC-07).
+        d.AoConectar();
+        return 0;
+    });
 
     public AdapterResult Ping(int inner) => ComDispositivo(inner, d => d.Desconectado ? 1 : 0);
 
@@ -343,8 +354,9 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
 
             var bilhete = dispositivo.ProximoBilhete();
 
-            // Devolver o bilhete já o REMOVE da memória — é assim na DLL, e é por isso
-            // que o commit local precisa vir antes da próxima coleta (risco R-68).
+            // Devolver o bilhete já o REMOVE da memória (FUN:40) — ou, no modo
+            // ConfirmaNaProximaColeta, só o próximo pedido confirma. Nos dois casos a gravação
+            // local vem antes da próxima coleta (risco R-68).
             return bilhete is null
                 ? (new AdapterResult(AdapterStatus.SemBilhetes, 0, TimeSpan.Zero), null)
                 : (new AdapterResult(AdapterStatus.Ok, 0, TimeSpan.Zero), bilhete);

@@ -528,6 +528,17 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
             return Task.FromResult(resposta);
         }
 
+        // Coleta de bilhetes (Etapa A.9): só com a chave técnica ligada. Recusado aqui, nada chega
+        // à fila nem à auditoria. Base ocupada ou ilegível conta como desligada: coletar apaga a
+        // memória da catraca e não acontece por engano.
+        if (tipo is Access.Application.Devices.TipoDeComando.ColetarBilhetes && !ColetaDeBilhetesLigada())
+        {
+            resposta.Problemas.Add(
+                "Coleta de bilhetes desligada nesta instalação: a chave técnica catraca.coletar_bilhetes " +
+                "fica desligada até os ensaios de bancada INT-REC-03 e CHAOS-REC-01 (docs/21 §6F).");
+            return Task.FromResult(resposta);
+        }
+
         var cadastradas = _supervisor.Workers.SelectMany(w => w.Inners).Distinct().Order().ToList();
         List<int> alvos;
 
@@ -657,6 +668,25 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         }
     }
 
+    private bool ColetaDeBilhetesLigada()
+    {
+        if (_configuracoes is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var (configuracao, ilegiveis) = _configuracoes.Ler();
+            return configuracao.ColetarBilhetes
+                && !ilegiveis.Contains(Access.Infrastructure.SQLite.ConfiguracoesDaBorda.ChaveColetarBilhetes);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            return false;
+        }
+    }
+
     private static Access.Application.Devices.TipoDeComando? Tipo(TipoDeComando tipo) => tipo switch
     {
         TipoDeComando.AcertarRelogio => Access.Application.Devices.TipoDeComando.AcertarRelogio,
@@ -668,6 +698,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         TipoDeComando.BipLongo => Access.Application.Devices.TipoDeComando.BipLongo,
         TipoDeComando.LiberarSaida => Access.Application.Devices.TipoDeComando.LiberarSaida,
         TipoDeComando.LiberarDoisSentidos => Access.Application.Devices.TipoDeComando.LiberarDoisSentidos,
+        TipoDeComando.ColetarBilhetes => Access.Application.Devices.TipoDeComando.ColetarBilhetes,
         _ => null,
     };
 
@@ -682,6 +713,7 @@ public sealed class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Application.Devices.TipoDeComando.BipLongo => TipoDeComando.BipLongo,
         Access.Application.Devices.TipoDeComando.LiberarSaida => TipoDeComando.LiberarSaida,
         Access.Application.Devices.TipoDeComando.LiberarDoisSentidos => TipoDeComando.LiberarDoisSentidos,
+        Access.Application.Devices.TipoDeComando.ColetarBilhetes => TipoDeComando.ColetarBilhetes,
         _ => TipoDeComando.NaoEspecificado,
     };
 

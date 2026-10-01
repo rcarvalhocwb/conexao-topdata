@@ -55,6 +55,7 @@ public sealed class SessaoDeOperacao
     private readonly Dictionary<string, string> _ultimaDecisao = new(StringComparer.Ordinal);
     private readonly IFilaDeComandos? _comandos;
     private readonly Func<int, (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? _recarregarConfiguracao;
+    private readonly Func<bool>? _coletaLigada;
     private readonly List<(Guid Id, SituacaoDoComando Situacao, string Resultado, DateTimeOffset Em)> _desfechosAGravar = [];
     private DateTimeOffset _comandosConsultadosEm = DateTimeOffset.MinValue;
     private IReadOnlyList<SituacaoDaCatraca> _publicada = [];
@@ -81,6 +82,15 @@ public sealed class SessaoDeOperacao
     /// <param name="sequenciaOficial">
     /// Sequência oficial de conexão (Etapa A.7; ver <see cref="DevicePump"/>). Desligada por padrão.
     /// </param>
+    /// <param name="gravadorDeBilhetes">
+    /// Onde cada bilhete coletado fica durável (Etapa A.9; ver <see cref="DevicePump"/>). Sem ele,
+    /// o comando de coleta falha e nada sai da catraca.
+    /// </param>
+    /// <param name="coletaLigada">
+    /// Lê a chave técnica <c>catraca.coletar_bilhetes</c> quando chega um pedido de coleta. Sem
+    /// ela, ou desligada, ou ilegível, o pedido termina <see cref="SituacaoDoComando.Falhou"/> sem
+    /// chegar à catraca — a mesma regra que o serviço aplica antes de gravar o pedido.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -93,7 +103,9 @@ public sealed class SessaoDeOperacao
         IFilaDeComandos? comandos = null,
         Func<(DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
         bool acertarRelogioAoDivergir = false,
-        bool sequenciaOficial = false)
+        bool sequenciaOficial = false,
+        IGravadorDeBilhetes? gravadorDeBilhetes = null,
+        Func<bool>? coletaLigada = null)
         : this(
             adapter,
             inners,
@@ -106,7 +118,9 @@ public sealed class SessaoDeOperacao
             comandos,
             recarregarConfiguracao is null ? null : _ => recarregarConfiguracao(),
             acertarRelogioAoDivergir,
-            sequenciaOficial)
+            sequenciaOficial,
+            gravadorDeBilhetes,
+            coletaLigada)
     {
     }
 
@@ -142,6 +156,15 @@ public sealed class SessaoDeOperacao
     /// <param name="sequenciaOficial">
     /// Sequência oficial de conexão (Etapa A.7; ver <see cref="DevicePump"/>). Desligada por padrão.
     /// </param>
+    /// <param name="gravadorDeBilhetes">
+    /// Onde cada bilhete coletado fica durável (Etapa A.9; ver <see cref="DevicePump"/>). Sem ele,
+    /// o comando de coleta falha e nada sai da catraca.
+    /// </param>
+    /// <param name="coletaLigada">
+    /// Lê a chave técnica <c>catraca.coletar_bilhetes</c> quando chega um pedido de coleta. Sem
+    /// ela, ou desligada, ou ilegível, o pedido termina <see cref="SituacaoDoComando.Falhou"/> sem
+    /// chegar à catraca — a mesma regra que o serviço aplica antes de gravar o pedido.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -154,7 +177,9 @@ public sealed class SessaoDeOperacao
         IFilaDeComandos? comandos = null,
         Func<int, (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? recarregarConfiguracao = null,
         bool acertarRelogioAoDivergir = false,
-        bool sequenciaOficial = false)
+        bool sequenciaOficial = false,
+        IGravadorDeBilhetes? gravadorDeBilhetes = null,
+        Func<bool>? coletaLigada = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
@@ -189,6 +214,7 @@ public sealed class SessaoDeOperacao
 
         _comandos = comandos;
         _recarregarConfiguracao = recarregarConfiguracao;
+        _coletaLigada = coletaLigada;
 
         var bomba = new DevicePump(
             adapter,
@@ -198,7 +224,8 @@ public sealed class SessaoDeOperacao
             acertarRelogioAoDivergir: acertarRelogioAoDivergir,
             aoConcluirComando: Concluir,
             antesDaLiberacaoManual: decisor.DescartarPendente,
-            sequenciaOficial: sequenciaOficial);
+            sequenciaOficial: sequenciaOficial,
+            gravadorDeBilhetes: gravadorDeBilhetes);
 
         _laco = new DeviceGroupLoop(
             adapter,
@@ -316,6 +343,11 @@ public sealed class SessaoDeOperacao
                     continue;
                 }
 
+                if (comando.Tipo is TipoDeComando.ColetarBilhetes && !ColetaLigada(comando, agora))
+                {
+                    continue;
+                }
+
                 catraca.Enfileirar(comando, configuracaoNova);
                 _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{comando.Inner}: comando {comando.Tipo} recebido"));
             }
@@ -348,6 +380,34 @@ public sealed class SessaoDeOperacao
         }
 
         return configuracao;
+    }
+
+    // A chave lida a cada pedido (Etapa A.9): ligar ou desligar não exige reiniciar o worker.
+    // Base ilegível conta como desligada — coletar apaga a memória da catraca, e não acontece
+    // por engano.
+    private bool ColetaLigada(ComandoDeCatraca comando, DateTimeOffset agora)
+    {
+        bool ligada;
+        try
+        {
+            ligada = _coletaLigada?.Invoke() ?? false;
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            _registrar($"inner-{comando.Inner}: chave da coleta de bilhetes ilegível ({erro.GetType().Name}); tratada como desligada");
+            ligada = false;
+        }
+
+        if (ligada)
+        {
+            return true;
+        }
+
+        _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{comando.Inner}: coleta de bilhetes recusada: chave técnica desligada"));
+        _desfechosAGravar.Add((comando.Id, SituacaoDoComando.Falhou,
+            "coleta de bilhetes desligada nesta instalação: a chave técnica catraca.coletar_bilhetes fica desligada até INT-REC-03 e CHAOS-REC-01 (docs/21 §6F); nada foi coletado", agora));
+        GravarDesfechos();
+        return false;
     }
 
     private void Concluir(ComandoDeCatraca comando, SituacaoDoComando situacao, string resultado)
