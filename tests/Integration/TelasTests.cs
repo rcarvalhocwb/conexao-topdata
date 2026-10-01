@@ -76,7 +76,9 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
             consultas: new ConsultasDaOperacao(_banco.Fabrica),
             configuracoes: new ConfiguracoesDaBorda(_banco.Fabrica),
             pastaDeDados: "dados",
-            comandos: new FilaDeComandosSqlite(_banco.Fabrica));
+            comandos: new FilaDeComandosSqlite(_banco.Fabrica),
+            configuracoesDasCatracas: new ConfiguracoesDasCatracas(_banco.Fabrica),
+            configuracaoPorCatraca: new ConfiguracaoPorCatraca(_banco.Fabrica));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"telas-{Guid.NewGuid():N}");
@@ -584,6 +586,292 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.StartsWith("Nada mudou", ResumoDaBandeja.ResultadoDoControle(parar: true, null), StringComparison.Ordinal);
         Assert.Contains("não está instalado", ResumoDaBandeja.ResultadoDoControle(parar: false, 2), StringComparison.Ordinal);
         Assert.StartsWith("Não foi possível encerrar", ResumoDaBandeja.ResultadoDoControle(parar: true, 1), StringComparison.Ordinal);
+    }
+
+    // ===== Parametrização da catraca (Etapa A.6 do docs/35) =====
+
+    private static CampoDaParametrizacao CampoDe(ParametrizacaoViewModel tela, Contracts.Edge.V1.CampoDaCatraca campo) =>
+        tela.Campos.Single(c => c.Campo == campo);
+
+    /// <summary>Salvar e aplicar exigem o nome digitado; aplicar exige salvar antes e confirmar.</summary>
+    [Fact]
+    public async Task Parametrizacao_so_salva_e_aplica_com_nome_digitado_e_confirmacao()
+    {
+        var tela = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+
+        Assert.Equal(1, tela.Catraca);
+        Assert.Equal(8, tela.Campos.Count);
+        Assert.Equal(string.Empty, tela.Mensagem);
+
+        var tempo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        tempo.Herda = false;
+        tempo.Valor = "7";
+        Assert.False(tela.Salvar.CanExecute(null));
+        tela.Operador = "A";
+        Assert.False(tela.Salvar.CanExecute(null));
+        tela.Operador = "Ana";
+        Assert.True(tela.Salvar.CanExecute(null));
+
+        // O que vai para a catraca é o salvo: com alteração pendente, não aplica.
+        Assert.False(tela.PedirAplicacao.CanExecute(null));
+        Assert.StartsWith("Salve as alterações", tela.MotivoParaNaoAplicar, StringComparison.Ordinal);
+
+        await tela.Salvar.ExecutarAsync();
+        Assert.Empty(tela.Problemas);
+        Assert.Empty(tela.Mudancas);
+        Assert.Equal("7", CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1).ValorSalvo);
+        Assert.StartsWith("Salvo para a catraca 1.", tela.Mensagem, StringComparison.Ordinal);
+
+        tela.Operador = " ";
+        Assert.False(tela.PedirAplicacao.CanExecute(null));
+        Assert.Equal("Informe o seu nome.", tela.MotivoParaNaoAplicar);
+
+        tela.Operador = "Ana";
+        Assert.True(tela.PedirAplicacao.CanExecute(null));
+        Assert.False(tela.ConfirmarAplicacao.CanExecute(null));
+        await tela.PedirAplicacao.ExecutarAsync();
+        Assert.True(tela.ConfirmandoAplicacao);
+        Assert.Contains("fica alguns segundos sem atender", tela.TextoDaConfirmacao, StringComparison.Ordinal);
+
+        await tela.ConfirmarAplicacao.ExecutarAsync();
+        Assert.False(tela.ConfirmandoAplicacao);
+        var pedido = Assert.Single(tela.Aplicacoes);
+        Assert.Equal(("Aplicar configuração", "Ana", 1), (pedido.Comando, pedido.Operador, pedido.Inner));
+        Assert.Equal(("Aplicando: aguardando a catraca", Sinal.Atencao), (tela.SituacaoNaCatraca, tela.SinalDaSituacao));
+        Assert.False(tela.PedirAplicacao.CanExecute(null));
+    }
+
+    /// <summary>
+    /// "Aplicada" só depois de o pedido terminar Concluido E de a versão que a catraca aceitou
+    /// bater com a do salvo; nunca antes, nem com as versões iguais e o pedido ainda na fila.
+    /// O worker é feito à mão aqui: a fila de comandos e a situação publicada na base.
+    /// </summary>
+    [Fact]
+    public async Task Parametrizacao_diz_aplicada_so_depois_de_concluido_com_a_versao_igual()
+    {
+        var fila = new FilaDeComandosSqlite(_banco.Fabrica);
+        var operacao = new Operacao(_banco.Fabrica);
+        void Publicar(string? versao) => operacao.GravarSituacao(
+        [
+            new SituacaoDoEquipamento(
+                "inner-1", 1, "setor-a", "Polling", true, "4.2.0", 0, null, null, DateTimeOffset.UtcNow,
+                ConfiguracaoAplicadaEm: versao is null ? null : DateTimeOffset.UtcNow, ConfiguracaoVersao: versao),
+        ]);
+
+        var tela = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero) { Operador = "Ana" };
+        await tela.AtualizarAsync();
+        Assert.Equal(Sinal.Atencao, tela.SinalDaSituacao);
+        Assert.StartsWith("Salva; a catraca ainda não confirmou", tela.SituacaoNaCatraca, StringComparison.Ordinal);
+
+        // Subida do worker: a catraca aceitou o salvo de agora.
+        var versaoAntiga = tela.VersaoSalva;
+        Publicar(versaoAntiga);
+        await tela.AcompanharAsync();
+        Assert.Equal(Sinal.Bom, tela.SinalDaSituacao);
+        Assert.StartsWith("Aplicada", tela.SituacaoNaCatraca, StringComparison.Ordinal);
+
+        // Salvar muda a versão do salvo: a catraca ainda está com a antiga.
+        var mensagem = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao);
+        mensagem.Herda = false;
+        mensagem.Valor = "Entrada sintetica 1";
+        await tela.Salvar.ExecutarAsync();
+        var versaoNova = tela.VersaoSalva;
+        Assert.NotEqual(versaoAntiga, versaoNova);
+        Assert.Equal("Salva, não aplicada", tela.SituacaoNaCatraca);
+
+        await tela.PedirAplicacao.ExecutarAsync();
+        await tela.ConfirmarAplicacao.ExecutarAsync();
+        var id = Guid.Parse(fila.Listar(1).Single().Comando.Id.ToString());
+
+        // O worker pega o pedido e a catraca já aceitou a versão nova; o pedido ainda não terminou.
+        Assert.True(fila.Receber(id, DateTimeOffset.UtcNow));
+        Publicar(versaoNova);
+        await tela.AcompanharAsync();
+        Assert.Equal(("Aplicando: aguardando a catraca", Sinal.Atencao), (tela.SituacaoNaCatraca, tela.SinalDaSituacao));
+
+        // Concluído, mas a versão publicada ainda é a antiga (o worker publica a cada 2 s).
+        Publicar(versaoAntiga);
+        fila.Concluir(id, Access.Application.Devices.SituacaoDoComando.Concluido, "configuração enviada; catraca atendendo", DateTimeOffset.UtcNow);
+        await tela.AcompanharAsync();
+        Assert.Equal(("Salva, não aplicada", Sinal.Atencao), (tela.SituacaoNaCatraca, tela.SinalDaSituacao));
+        Assert.Equal("Feito", tela.Aplicacoes[0].Situacao);
+
+        // Concluído e a catraca com a versão do salvo: aplicada.
+        Publicar(versaoNova);
+        await tela.AcompanharAsync();
+        Assert.Equal(Sinal.Bom, tela.SinalDaSituacao);
+        Assert.StartsWith("Aplicada", tela.SituacaoNaCatraca, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parametrizacao_situacao_falhou_ou_expirou_nunca_e_aplicada()
+    {
+        static ComandoRegistrado Pedido(Contracts.Edge.V1.SituacaoDoComando s) =>
+            new() { Tipo = Contracts.Edge.V1.TipoDeComando.AplicarConfiguracao, Situacao = s };
+
+        var v1 = new string('a', 64);
+        var v2 = new string('b', 64);
+
+        Assert.Equal(Sinal.Problema, ParametrizacaoViewModel.Situacao(v1, v2, Pedido(Contracts.Edge.V1.SituacaoDoComando.Falhou)).Sinal);
+        Assert.Equal(Sinal.Atencao, ParametrizacaoViewModel.Situacao(v1, v2, Pedido(Contracts.Edge.V1.SituacaoDoComando.Expirado)).Sinal);
+        Assert.Equal(Sinal.Atencao, ParametrizacaoViewModel.Situacao(v1, v1, Pedido(Contracts.Edge.V1.SituacaoDoComando.Falhou)).Sinal);
+        Assert.Equal(Sinal.Atencao, ParametrizacaoViewModel.Situacao(v1, v1, Pedido(Contracts.Edge.V1.SituacaoDoComando.Pendente)).Sinal);
+        Assert.Equal(Sinal.Problema, ParametrizacaoViewModel.Situacao(string.Empty, v1, null).Sinal);
+        Assert.Equal(Sinal.Bom, ParametrizacaoViewModel.Situacao(v1, v1, Pedido(Contracts.Edge.V1.SituacaoDoComando.Concluido)).Sinal);
+    }
+
+    /// <summary>"O que muda (atual → novo)" lista exatamente os campos mudados, e só eles.</summary>
+    [Fact]
+    public async Task Parametrizacao_o_que_muda_lista_exatamente_os_campos_alterados()
+    {
+        var tela = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        Assert.Empty(tela.Mudancas);
+
+        var tempo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        var mensagem = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao);
+        var urna = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.OperacaoDoLeitor2);
+        tempo.Herda = false;
+        tempo.Valor = "07";
+        mensagem.Herda = false;
+        mensagem.Valor = "Entrada sintetica 1";
+        urna.Herda = false;
+        urna.Herda = true;
+
+        Assert.Equal(
+            [
+                new LinhaDeMudanca(tempo.Rotulo, "padrão do evento (5 s)", "7 s"),
+                new LinhaDeMudanca(mensagem.Rotulo, "padrão do evento (“Aproxime o ingresso”)", "“Entrada sintetica 1”"),
+            ],
+            tela.Mudancas);
+        Assert.Equal("2 alterações não salvas.", tela.ResumoDasMudancas);
+
+        // Validação no campo, antes de salvar.
+        tempo.Valor = "51";
+        Assert.Equal("O tempo vai de 1 a 50 segundos.", tempo.Erro);
+        mensagem.Valor = new string('x', 35);
+        Assert.Equal("A mensagem tem 35 letras; o visor mostra 32.", mensagem.Erro);
+        tela.Operador = "Ana";
+        Assert.False(tela.Salvar.CanExecute(null));
+
+        // Voltar ao que está salvo tira a linha.
+        tempo.Herda = true;
+        mensagem.Herda = true;
+        Assert.Empty(tela.Mudancas);
+        Assert.Equal(string.Empty, tempo.Erro);
+    }
+
+    /// <summary>
+    /// O que aguarda confirmação aparece desabilitado, com o selo e o motivo: o campo atrás de
+    /// chave técnica desligada, as opções que leem na saída e as variantes da função de liberação.
+    /// </summary>
+    [Fact]
+    public async Task Parametrizacao_campo_aguardando_confirmacao_fica_desabilitado_com_selo_e_motivo()
+    {
+        var tela = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero) { ModoTecnico = true };
+        await tela.AtualizarAsync();
+
+        foreach (var campo in new[] { Contracts.Edge.V1.CampoDaCatraca.WiegandDoisLeitores, Contracts.Edge.V1.CampoDaCatraca.FormasDeEntradaOnLine })
+        {
+            var c = Assert.Single(tela.CamposDaInstalacao, x => x.Campo == campo);
+            Assert.False(c.Disponivel);
+            Assert.False(c.Editavel);
+            Assert.NotEmpty(c.Selos);
+            c.Herda = false;
+            Assert.True(c.Herda);
+        }
+
+        Assert.Contains(CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.WiegandDoisLeitores).Selos, s => s.Contains("HIL-CARD-05", StringComparison.Ordinal));
+        Assert.Contains(CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.FormasDeEntradaOnLine).Selos, s => s.Contains("INT-SM-032", StringComparison.Ordinal));
+
+        var funcao = Assert.Single(tela.CamposDaLiberacao, x => x.Campo == Contracts.Edge.V1.CampoDaCatraca.FuncaoDeLiberacaoDaEntrada);
+        Assert.True(funcao.Disponivel);
+        Assert.Equal(["Entrada"], funcao.Opcoes.Where(o => o.Disponivel).Select(o => o.Valor));
+        Assert.All(funcao.Opcoes.Where(o => !o.Disponivel), o => Assert.EndsWith("aguardando confirmação", o.Nome, StringComparison.Ordinal));
+        Assert.Contains(funcao.Selos, s => s.Contains("HIL-DIR-05/06", StringComparison.Ordinal));
+
+        // Escolher uma variante pela tela vira erro no campo, e não salva.
+        funcao.Herda = false;
+        funcao.Escolhida = funcao.Opcoes.Single(o => o.Valor == "EntradaInvertida");
+        Assert.StartsWith("Aguardando confirmação", funcao.Erro, StringComparison.Ordinal);
+        tela.Operador = "Ana";
+        Assert.False(tela.Salvar.CanExecute(null));
+
+        // 5 × 8 continua a confirmar: o selo aparece no tipo de leitor, que segue editável.
+        var tipo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor);
+        Assert.True(tipo.Disponivel);
+        Assert.Contains(tipo.Selos, s => s.Contains("NOVO-HIL-QR-02", StringComparison.Ordinal));
+        Assert.Equal(9, tipo.Opcoes.Count);
+    }
+
+    /// <summary>
+    /// No modo guiado, nenhum campo técnico e nenhum termo do SDK (GLOSSARIO; docs/34 §7, P13).
+    /// O tipo de leitor vira lista com nomes do operador.
+    /// </summary>
+    [Fact]
+    public async Task Parametrizacao_modo_guiado_nao_mostra_campo_tecnico_nem_termo_do_sdk()
+    {
+        var tela = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        Assert.False(tela.ModoTecnico);
+
+        var visiveis = tela.CamposDaLeitura.Concat(tela.CamposDaLiberacao).Concat(tela.CamposDoDisplay).Concat(tela.CamposDaInstalacao).ToList();
+        Assert.Equal(
+            [
+                Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor, Contracts.Edge.V1.CampoDaCatraca.OperacaoDoLeitor2,
+                Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1, Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao,
+            ],
+            visiveis.Select(c => c.Campo));
+        Assert.Empty(tela.CamposDaInstalacao);
+
+        var tipo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor);
+        Assert.Equal(["Leitor de código de barras", "Leitor de QR Code"], tipo.Opcoes.Select(o => o.Nome));
+        Assert.Equal("Leitor de QR Code", tipo.Escolhida!.Nome);
+        Assert.NotEmpty(tipo.Selos);
+
+        string[] termosDoSdk =
+        [
+            "Configurar", "Liberar", "Enviar", "EI-", "FUN:", "HIL-", "INT-", "NOVO-", "T25", "Wiegand", "Abatrack",
+            "SmartCard", "por letras", "serial", "Inner", "relé", "Habilita",
+        ];
+        var textos = visiveis.SelectMany(c => (IEnumerable<string>)[c.Rotulo, c.TextoHerdar, c.TextoDaOrigem, .. c.Selos, .. c.Opcoes.Select(o => o.Nome)]);
+        foreach (var texto in textos)
+        {
+            Assert.DoesNotContain(termosDoSdk, termo => texto.Contains(termo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // No técnico, os campos de instalação aparecem; ao voltar ao guiado, a aba some.
+        tela.ModoTecnico = true;
+        tela.AbaSelecionada = (int)AbaDaParametrizacao.Instalacao;
+        Assert.Equal(2, tela.CamposDaInstalacao.Count);
+        Assert.Contains("ConfigurarTipoLeitor", tipo.Rotulo, StringComparison.Ordinal);
+        tela.ModoTecnico = false;
+        Assert.Equal((int)AbaDaParametrizacao.Leitura, tela.AbaSelecionada);
+    }
+
+    [Fact]
+    public async Task Parametrizacao_abre_pela_gerenciar_catraca_naquela_catraca_e_fica_fora_do_menu()
+    {
+        var janela = new JanelaViewModel(Cliente());
+        await janela.Gerenciar.ExecutarAsync(2);
+        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana";
+
+        await janela.Parametrizar.ExecutarAsync(2);
+
+        var tela = Assert.IsType<ParametrizacaoViewModel>(janela.TelaAtual);
+        await tela.AtualizarAsync();
+        Assert.Equal((2, "Ana"), (tela.Catraca, tela.Operador));
+        Assert.Equal(8, tela.Campos.Count);
+        Assert.DoesNotContain(janela.Telas, t => t is ParametrizacaoViewModel);
+
+        // A atualização periódica não desfaz o que o operador está mudando.
+        var tempo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        tempo.Herda = false;
+        tempo.Valor = "9";
+        await janela.AtualizarAsync();
+        Assert.Equal("9", CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1).Valor);
+        Assert.Single(tela.Mudancas);
     }
 
     [Fact]
