@@ -171,6 +171,17 @@ public static class VersaoDaConfiguracao
         // Não vai no buffer, mas decide qual função libera o giro em cada passagem (F1).
         Linha("liberacao_da_entrada", c.PerfilFisico.FuncaoDeLiberacaoDaEntrada.ToString());
 
+        // Mapa de giro (D9, docs/34 §9): também decide a função de cada passagem e vai à catraca
+        // pelo "Aplicar agora". Só aparece quando há regra: com o mapa vazio a forma canônica é
+        // byte a byte a de antes, e nenhuma versão já publicada muda.
+        if (!c.PerfilFisico.MapaDeGiro.EstaVazio)
+        {
+            Linha("mapa_de_giro", string.Join(';', MapaDeGiro.Origens.Select(origem =>
+                c.PerfilFisico.MapaDeGiro.Regra(origem) is { } regra
+                    ? $"{origem}:{regra.Funcao?.ToString() ?? "perfil"},{regra.ContaComo},{(regra.Texto is { } t ? Texto(t) : NaoEnviado)}"
+                    : $"{origem}:{NaoEnviado}")));
+        }
+
         return texto.ToString();
     }
 

@@ -53,6 +53,7 @@ public sealed class SessaoDeOperacao
     private readonly TimeSpan _intervaloDePublicacao;
     private readonly Func<DateTimeOffset> _relogio;
     private readonly Dictionary<string, string> _ultimaDecisao = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DeviceSlot> _porDispositivo = new(StringComparer.Ordinal);
     private readonly IFilaDeComandos? _comandos;
     private readonly Func<int, (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas)>? _recarregarConfiguracao;
     private readonly Func<bool>? _coletaLigada;
@@ -91,6 +92,9 @@ public sealed class SessaoDeOperacao
     /// ela, ou desligada, ou ilegível, o pedido termina <see cref="SituacaoDoComando.Falhou"/> sem
     /// chegar à catraca — a mesma regra que o serviço aplica antes de gravar o pedido.
     /// </param>
+    /// <param name="exibirTextoDoGiro">
+    /// Chave técnica <c>catraca.exibir_texto_do_giro</c> (ver <see cref="DevicePump"/>). Desligada por padrão.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -105,7 +109,8 @@ public sealed class SessaoDeOperacao
         bool acertarRelogioAoDivergir = false,
         bool sequenciaOficial = false,
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
-        Func<bool>? coletaLigada = null)
+        Func<bool>? coletaLigada = null,
+        bool exibirTextoDoGiro = false)
         : this(
             adapter,
             inners,
@@ -120,7 +125,8 @@ public sealed class SessaoDeOperacao
             acertarRelogioAoDivergir,
             sequenciaOficial,
             gravadorDeBilhetes,
-            coletaLigada)
+            coletaLigada,
+            exibirTextoDoGiro)
     {
     }
 
@@ -165,6 +171,9 @@ public sealed class SessaoDeOperacao
     /// ela, ou desligada, ou ilegível, o pedido termina <see cref="SituacaoDoComando.Falhou"/> sem
     /// chegar à catraca — a mesma regra que o serviço aplica antes de gravar o pedido.
     /// </param>
+    /// <param name="exibirTextoDoGiro">
+    /// Chave técnica <c>catraca.exibir_texto_do_giro</c> (ver <see cref="DevicePump"/>). Desligada por padrão.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -179,7 +188,8 @@ public sealed class SessaoDeOperacao
         bool acertarRelogioAoDivergir = false,
         bool sequenciaOficial = false,
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
-        Func<bool>? coletaLigada = null)
+        Func<bool>? coletaLigada = null,
+        bool exibirTextoDoGiro = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
@@ -225,13 +235,19 @@ public sealed class SessaoDeOperacao
             aoConcluirComando: Concluir,
             antesDaLiberacaoManual: decisor.DescartarPendente,
             sequenciaOficial: sequenciaOficial,
-            gravadorDeBilhetes: gravadorDeBilhetes);
+            gravadorDeBilhetes: gravadorDeBilhetes,
+            exibirTextoDoGiro: exibirTextoDoGiro);
 
         _laco = new DeviceGroupLoop(
             adapter,
             configuracoes.Select(c => new DeviceSlot(c.Inner, c.Configuracao, _relogio)),
             new Watchdog(TimeSpan.FromSeconds(30), _relogio),
             bomba);
+
+        foreach (var slot in _laco.Dispositivos)
+        {
+            _porDispositivo[slot.Maquina.DeviceId] = slot;
+        }
     }
 
     // A configuração única do construtor de antes, validada com a mensagem de antes.
@@ -468,7 +484,15 @@ public sealed class SessaoDeOperacao
 
     private Decision Decidir(DeviceEvent evento)
     {
-        var decisao = _decisor.Decidir(evento);
+        // A regra do mapa de giro (D9) para a origem desta leitura, tirada da mesma
+        // configuração que o laço usa para escolher a função de liberação: o que a tentativa
+        // grava como "conta como" é o que a catraca vai fazer.
+        var giro = _porDispositivo.TryGetValue(evento.Key.DeviceId, out var slot)
+            && MapaDeGiro.DaLeitura(evento.Origin) is { } origem
+                ? slot.Configuracao.PerfilFisico.Resolver(origem)
+                : null;
+
+        var decisao = _decisor.Decidir(evento, giro);
         _ultimaDecisao[evento.Key.DeviceId] = decisao.ShouldRelease ? "liberado" : "negado";
 
         _registrar(string.Create(

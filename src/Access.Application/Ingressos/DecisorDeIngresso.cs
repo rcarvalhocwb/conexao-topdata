@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Access.Application.Devices;
 using Access.Domain.Access;
 using Access.Domain.Credentials;
 using Access.Domain.Devices;
@@ -38,8 +39,47 @@ public interface IValidadorDeIngressos
         KnownEventOrigin? leitor,
         int? origemBruta);
 
+    /// <summary>
+    /// Tenta consumir um uso, gravando também como o giro desta leitura será liberado e contado
+    /// (mapa de giro, D9 do docs/34 §9).
+    /// </summary>
+    /// <param name="qrNormalizado">Código já normalizado pelo perfil da leitura.</param>
+    /// <param name="gateId">Portão.</param>
+    /// <param name="deviceId">Equipamento.</param>
+    /// <param name="agora">Instante da leitura.</param>
+    /// <param name="leitor">Leitor 1 ou 2, quando a leitura veio de um deles.</param>
+    /// <param name="origemBruta">A origem exatamente como a catraca a entregou.</param>
+    /// <param name="giro">
+    /// A regra que vale para a origem desta leitura na catraca: a função que o laço vai chamar e
+    /// o rótulo. Nulo quando quem chama não sabe (bancada, ferramentas): grava como antes.
+    /// </param>
+    /// <remarks>
+    /// Implementação padrão: ignora o giro e grava como antes. Quem guarda o rótulo (a base
+    /// real) sobrepõe; dublês de teste continuam valendo sem mudança.
+    /// </remarks>
+    (ResultadoDoUso Resultado, Guid TentativaId) TentarUsar(
+        string qrNormalizado,
+        string gateId,
+        string deviceId,
+        DateTimeOffset agora,
+        KnownEventOrigin? leitor,
+        int? origemBruta,
+        GiroResolvido? giro) =>
+        TentarUsar(qrNormalizado, gateId, deviceId, agora, leitor, origemBruta);
+
     /// <summary>Anexa a prova de giro (origem 6) a uma tentativa consumida.</summary>
     void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em);
+
+    /// <summary>
+    /// Anexa a prova de giro (origem 6) e o complemento bruto que a catraca mandou com ela.
+    /// </summary>
+    /// <remarks>
+    /// O complemento da origem 6 talvez traga o sentido físico do giro (T14, NOVO-HIL-DIR-08):
+    /// guardado como veio, nada se perde (ADR-0018), e o rótulo contado continua o do mapa.
+    /// Implementação padrão: só a prova, como antes.
+    /// </remarks>
+    void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em, byte complementoDoGiro) =>
+        ConfirmarPassagemFisica(tentativaId, em);
 }
 
 /// <summary>
@@ -104,7 +144,18 @@ public sealed class DecisorDeIngresso
     public int AutorizacoesSemGiro { get; private set; }
 
     /// <summary>Decide sobre uma leitura. Nunca lança: falha vira negativa com motivo.</summary>
-    public Decision Decidir(DeviceEvent evento)
+    public Decision Decidir(DeviceEvent evento) => Decidir(evento, giro: null);
+
+    /// <summary>
+    /// Decide sobre uma leitura, gravando junto como o giro dela será liberado e contado.
+    /// Nunca lança: falha vira negativa com motivo.
+    /// </summary>
+    /// <param name="evento">A leitura.</param>
+    /// <param name="giro">
+    /// A regra do mapa de giro (D9) para a origem desta leitura na catraca, a mesma que o laço
+    /// usa para escolher a função de liberação. Nulo grava como antes.
+    /// </param>
+    public Decision Decidir(DeviceEvent evento, GiroResolvido? giro)
     {
         ArgumentNullException.ThrowIfNull(evento);
 
@@ -132,7 +183,8 @@ public sealed class DecisorDeIngresso
                 evento.Key.DeviceId,
                 _relogio.GetUtcNow(),
                 leitor,
-                evento.Origin.Raw);
+                evento.Origin.Raw,
+                giro);
         }
         catch (Exception erro) when (erro is not OutOfMemoryException)
         {
@@ -173,7 +225,7 @@ public sealed class DecisorDeIngresso
         {
             if (_pendentes.Remove(evento.Key.DeviceId, out var tentativa))
             {
-                _validador.ConfirmarPassagemFisica(tentativa, evento.ReceivedTime);
+                _validador.ConfirmarPassagemFisica(tentativa, evento.ReceivedTime, evento.Complement);
                 PassagensConfirmadas++;
             }
 
