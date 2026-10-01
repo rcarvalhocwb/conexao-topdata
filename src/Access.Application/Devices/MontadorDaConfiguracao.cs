@@ -135,21 +135,63 @@ public sealed record SobreposicoesDoEvento
 }
 
 /// <summary>
-/// O que uma catraca sobrepõe ao evento. <b>Vazio de propósito</b> até a Etapa A.3.
+/// O que uma catraca sobrepõe ao evento. Nulo = herda do evento (e o evento, da fábrica).
 /// </summary>
 /// <remarks>
 /// <para>
-/// A camada existe desde a Etapa A.1 para que o montador já tenha a forma final
-/// (fábrica → evento → catraca, docs/34 §4.1: "herda do evento o que não for definido
-/// nela") e o worker já passe por ela. Os campos chegam com a tabela por <c>inner_number</c>
-/// da Etapa A.3 (colunas anuláveis = herda do evento); inventá-los antes seria prometer uma
-/// parametrização por catraca que ainda não é gravada em lugar nenhum.
+/// Etapa A.3 do docs/35. Os campos são exatamente os que o docs/34 §4.1 ("Para a A.3") diz
+/// dependerem do equipamento físico: tipo de leitor, leitores 1 e 2 (o 2 é o da fenda da
+/// urna), tempo do relé 1, função de liberação (comissionamento), mensagem padrão, e dos
+/// campos da A.2 <see cref="WiegandDoisLeitores"/> e <see cref="FormasDeEntradaOnLine"/>
+/// (dependem dos leitores e do teclado daquela catraca). Vêm da tabela <c>device_config</c>
+/// (migração 012), uma linha por <c>inner_number</c>, colunas anuláveis.
+/// </para>
+/// <para>
+/// Ficam <b>fora de propósito</b>: as chaves técnicas (uma bancada liga para todas; continuam
+/// do evento, em <c>edge_setting</c>); <c>RegistrarAcessoNegado</c>,
+/// <c>DataHoraNoEventoOnLine</c> e <c>TipoDeLista</c> (do evento até o ensaio dizer que variam
+/// por equipamento); o cartão master (não entra em tabela nenhuma em claro, docs/34 §4.1 e
+/// §6). Por isso o Wiegand e as formas de entrada gravados aqui só chegam à DLL com a chave
+/// do evento ligada (<c>catraca.enviar_wiegand_dois_leitores</c>,
+/// <c>catraca.enviar_formas_de_entrada</c>, ambas desligadas até a bancada).
+/// </para>
+/// <para>
+/// O leitor 2 é o valor da função (0 a 4, EI-015), e não o "urna ligada" do evento: a
+/// catraca é um equipamento, e o comissionamento diz o que está ligado na fenda. "Sem urna" é
+/// 0; "com urna", 1 (somente entrada), como o evento já faz.
 /// </para>
 /// </remarks>
 public sealed record SobreposicoesDaCatraca
 {
     /// <summary>Nenhuma sobreposição: a catraca herda tudo do evento.</summary>
     public static SobreposicoesDaCatraca Nenhuma { get; } = new();
+
+    /// <summary><c>ConfigurarTipoLeitor</c>, 0 a 8 (EI-013, FUN:14). 5 ou 8 é A_CONFIRMAR: T25.</summary>
+    public byte? TipoDeLeitor { get; init; }
+
+    /// <summary><c>ConfigurarLeitor1</c>, 0 a 4 (EI-014, FUN:15).</summary>
+    public byte? OperacaoDoLeitor1 { get; init; }
+
+    /// <summary><c>ConfigurarLeitor2</c>, 0 a 4 (EI-015, FUN:16): o leitor da fenda da urna.</summary>
+    public byte? OperacaoDoLeitor2 { get; init; }
+
+    /// <summary>Tempo do relé 1 (<c>ConfigurarAcionamento1</c>, EI-016), 1 a 50 s, como o evento.</summary>
+    public byte? TempoDoAcionamento1 { get; init; }
+
+    /// <summary>
+    /// A função exata que libera quem entra nesta catraca (Etapa 0.1, F1). As variantes
+    /// invertidas são <c>A_CONFIRMAR_COM_TOPDATA</c> até HIL-DIR-05/06.
+    /// </summary>
+    public FuncaoDeLiberacao? FuncaoDeLiberacaoDaEntrada { get; init; }
+
+    /// <summary>Mensagem do display em repouso, 1 a 32 caracteres (FUN:57).</summary>
+    public string? MensagemPadrao { get; init; }
+
+    /// <summary>Os dois valores de EI-024. Só vai à DLL com a chave do evento ligada.</summary>
+    public WiegandDoisLeitores? WiegandDoisLeitores { get; init; }
+
+    /// <summary>Os cinco valores de EI-032. Só vão à DLL com a chave do evento ligada.</summary>
+    public FormasDeEntradaOnLine? FormasDeEntradaOnLine { get; init; }
 }
 
 /// <summary>
@@ -184,7 +226,7 @@ public static class MontadorDaConfiguracao
     /// <summary>Aplica as sobreposições do evento e da catraca ao padrão de fábrica.</summary>
     /// <param name="padraoDeFabrica">Configuração completa do modelo (ver <see cref="PadroesDeFabrica"/>).</param>
     /// <param name="evento">O que o evento muda; nulo em cada campo = herda o padrão.</param>
-    /// <param name="catraca">O que a catraca muda. Vazio até a Etapa A.3.</param>
+    /// <param name="catraca">O que a catraca muda; nulo em cada campo = herda o evento (Etapa A.3).</param>
     public static DeviceConfiguration Montar(
         DeviceConfiguration padraoDeFabrica,
         SobreposicoesDoEvento evento,
@@ -213,7 +255,20 @@ public static class MontadorDaConfiguracao
             EnviarFormasDeEntradaOnLine = evento.EnviarFormasDeEntradaOnLine ?? padraoDeFabrica.EnviarFormasDeEntradaOnLine,
         };
 
-        // A camada da catraca ainda não tem campos (Etapa A.3): herda tudo do evento.
-        return doEvento;
+        // Etapa A.3: a catraca vence o evento, campo a campo; nulo herda. Sem sobreposição
+        // nenhuma, o resultado é, valor a valor, o da camada do evento.
+        return doEvento with
+        {
+            TipoDeLeitor = catraca.TipoDeLeitor ?? doEvento.TipoDeLeitor,
+            OperacaoDoLeitor1 = catraca.OperacaoDoLeitor1 ?? doEvento.OperacaoDoLeitor1,
+            OperacaoDoLeitor2 = catraca.OperacaoDoLeitor2 ?? doEvento.OperacaoDoLeitor2,
+            TempoDoAcionamento1 = catraca.TempoDoAcionamento1 ?? doEvento.TempoDoAcionamento1,
+            PerfilFisico = catraca.FuncaoDeLiberacaoDaEntrada is { } funcao
+                ? doEvento.PerfilFisico with { FuncaoDeLiberacaoDaEntrada = funcao }
+                : doEvento.PerfilFisico,
+            MensagemPadrao = catraca.MensagemPadrao ?? doEvento.MensagemPadrao,
+            WiegandDoisLeitores = catraca.WiegandDoisLeitores ?? doEvento.WiegandDoisLeitores,
+            FormasDeEntradaOnLine = catraca.FormasDeEntradaOnLine ?? doEvento.FormasDeEntradaOnLine,
+        };
     }
 }

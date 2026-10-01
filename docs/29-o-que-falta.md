@@ -33,9 +33,11 @@ do dono (D1–D8) e as 34 perguntas para a Topdata (T1–T34) estão no docs/34 
 A situação de cada etapa fica no docs/34 §11: a Etapa 0 está concluída no código, e da Etapa A
 a A.1 (montador único da configuração da catraca, com o teste da ADR-0020 item 3) e a A.2 (modelo
 completo da configuração, com cinco parâmetros novos atrás de chaves técnicas desligadas — ensaios
-no docs/21 §6C) também; a parametrização por catraca começa na A.3. Da Etapa B, a D1 foi decidida
-(ADR-0025) e B.1–B.3 estão no código: migração 011 (tipos, trilha do cadastro, lotes de importação),
-tipo desativado negando na catraca e a prévia da importação (CSV e .xlsx, sem gravar).
+no docs/21 §6C) e a A.3 (configuração por catraca na base: migração 012, com histórico só-INSERT,
+e a camada da catraca no montador) também. O worker passa a aplicar por catraca na A.4; a tela
+vem na A.6. Da Etapa B, a D1 foi decidida (ADR-0025) e B.1–B.3 estão no código: migração 011
+(tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
+importação (CSV e .xlsx, sem gravar).
 
 ## 2. Depende de outras pessoas (bloqueia ou muda o rumo)
 
