@@ -60,6 +60,17 @@ resposta de T35 (docs/21 §6F); a coleta automática na volta do off-line depend
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
+**Inovação sobre a catraca (02/10):** o [docs/36](36-inovacao-sobre-a-catraca.md) achou um defeito
+dormente, o **F9** (docs/34 §2): o prazo de cada estado da máquina estava na tabela e nada o
+aplicava — se a catraca não mandasse a origem 5 depois de uma liberação, a pista parava de atender
+sem erro (no modo simulação, uma leitura liberada sem giro já fazia isso). A **Etapa I.1b** (C1) o
+corrigiu no código, sem chave: o laço desiste do giro depois do tempo do relé 1 + 3 s (no mínimo os
+8 s da tabela), só depois de uma espera sem evento, e volta a atender pelo rearme do leitor, como a
+origem 5; a tentativa termina sem giro e a liberação manual diz "giro não confirmado: prazo de N s".
+A coleta de bilhetes para em 10 min; os estados de configuração só caem pelo prazo quando o passo
+está impedido; a validação do acesso nunca (o destino da tabela seria liberar). Falta a bancada:
+NOVO-HIL-GIRO-04 (docs/21 §6J).
+
 ## 1A. Defeitos relatados pelo dono do produto (01/10) e o que foi feito
 
 ### "Desliguei o simulador e o sistema ainda reconhecia como atendendo"
@@ -163,6 +174,7 @@ Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado 
 10. Ensaios de caos com hardware: CHAOS-DEV-01 (isolamento entre grupos), CHAOS-REC-01 (bilhetes sem duplicar; roteiro no docs/21 §6F).
 11. **INT-SM-021 — sequência oficial de conexão (Etapa A.7):** com a chave `catraca.sequencia_oficial` ligada, a catraca entra em operação e libera igual a hoje? `EnviarConfiguracoesMudancaAutomaticaOnLineOffLine` devolve 0? O segundo `EnviarConfiguracoes` desfaz o que a mudança mandou (T13)? Roteiro no docs/21 §6D. A contingência de verdade (mudança 2, `PingOnLine` periódico, T24) só depois da D8.
 12. **Coleta de bilhetes (Etapa A.9): HIL-BIL-01, INT-REC-03, CHAOS-REC-01 e NOVO-INT-REC-07:** o que `ColetarBilhete` devolve com a memória vazia (T3); 10 marcações off-line coletadas e contadas; matar o worker no meio da coleta e conferir que nenhuma se perde nem duplica; e quando a memória apaga o bilhete — ao devolver ou só no próximo pedido (T35). Roteiro no docs/21 §6F; só então a chave `catraca.coletar_bilhetes` liga.
+13. **NOVO-HIL-GIRO-04 — prazo do giro (Etapa I.1b, F9):** liberar e segurar o braço com o relé 1 em 5, 20 e 50 s; a pista volta a atender pela origem 5 ou, sem ela, pelo prazo (relé + 3 s); nenhum giro dentro do tempo do relé é cortado. Diz também se a origem 5 chega de fato (HIL-EVT-01) e confirma a margem de 3 s. Roteiro no docs/21 §6J.
 
 ## 4. Desenvolvimento que dá para fazer já (sem hardware)
 

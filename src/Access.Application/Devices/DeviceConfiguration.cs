@@ -519,16 +519,20 @@ public sealed record DeviceConfiguration
                 "A_CONFIRMAR_COM_TOPDATA (T25, NOVO-HIL-QR-02).");
         }
 
-        // Regra 11 (docs/34 §4.2): a liberação dura o tempo do relé 1, e o laço desiste de
-        // esperar o giro em MonitoraGiroCatraca (8 s, DeviceStateMachine). Tempo igual ou maior
-        // que essa espera faz o laço voltar a ler com a catraca ainda liberada. A margem é
-        // medida na bancada (NOVO-LOAD-LOOP-01), não escolhida aqui.
+        // Regra 11 (docs/34 §4.2): a liberação dura o tempo do relé 1. Desde a Etapa I.1b (C1,
+        // docs/36) o laço aplica o prazo de MonitoraGiroCatraca e o estica para o tempo do relé
+        // mais a margem (DeviceStateMachine.PrazoEfetivo): não volta mais a ler com a catraca
+        // liberada. O alerta fica porque o relé longo ainda pesa: a pista fica liberada mais tempo
+        // e, se a origem 5 não vier, demora mais para voltar a atender. A margem é medida na
+        // bancada (NOVO-HIL-GIRO-04, NOVO-LOAD-LOOP-01).
         if (DeviceStateMachine.TimeoutFor(DeviceState.MonitoraGiroCatraca) is { } espera
-            && TimeSpan.FromSeconds(TempoDoAcionamento1) >= espera)
+            && TimeSpan.FromSeconds(TempoDoAcionamento1) >= espera
+            && DeviceStateMachine.PrazoEfetivo(DeviceState.MonitoraGiroCatraca, this) is { } efetivo)
         {
             alertas.Add(
-                $"TempoDoAcionamento1 de {TempoDoAcionamento1} s não é menor que a espera pelo giro " +
-                $"({espera.TotalSeconds:0} s): o laço pode voltar a ler com a catraca liberada.");
+                $"TempoDoAcionamento1 de {TempoDoAcionamento1} s não é menor que a espera padrão pelo giro " +
+                $"({espera.TotalSeconds:0} s): a catraca fica liberada mais tempo e, sem a origem 5, o laço " +
+                $"espera {efetivo.TotalSeconds:0} s antes de rearmar o leitor.");
         }
 
         return alertas;

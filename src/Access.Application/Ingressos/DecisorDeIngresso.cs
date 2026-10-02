@@ -245,6 +245,11 @@ public sealed class DecisorDeIngresso
     /// liberação manual: o giro que vier depois é do operador, e confirmar com ele a
     /// passagem do último ingresso lido seria atribuir a entrada a outra pessoa.
     /// </summary>
+    /// <remarks>
+    /// Também é chamado quando o laço desiste de esperar o giro pelo prazo, sem origem 5 nem 6
+    /// (C1, docs/36): o mesmo desfecho da origem 5 — uso sem passagem física. A regra do uso não
+    /// muda: o ingresso já foi consumido na leitura, como sempre.
+    /// </remarks>
     public void DescartarPendente(string deviceId)
     {
         ArgumentNullException.ThrowIfNull(deviceId);

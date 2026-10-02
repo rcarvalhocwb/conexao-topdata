@@ -33,6 +33,39 @@ public sealed class DeviceStateMachine
 {
     private static readonly FrozenSet<StateTransition> Table = BuildTable();
 
+    /// <summary>
+    /// Folga somada ao tempo do relé 1 no prazo de <see cref="DeviceState.MonitoraGiroCatraca"/>
+    /// (<see cref="PrazoEfetivo"/>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Três segundos é a folga que a própria tabela já embute: 8 s de espera pelo giro para o
+    /// relé 1 padrão de 5 s (docs/34 §4.2, regra 11). Com ela, o prazo efetivo do padrão é o da
+    /// tabela, sem mudança; com o relé mais longo, o prazo cresce junto e nunca corta a janela
+    /// em que o braço está liberado.
+    /// </para>
+    /// <para>
+    /// A folga cobre o que acontece depois que o relé fecha: o braço que já começou a girar
+    /// termina o giro, a catraca emite a origem 5 ou 6, e o laço leva uma volta para lê-la. Ela
+    /// não é a única proteção: o laço só desiste depois de uma espera que voltou <b>sem evento</b>
+    /// (<c>DevicePump</c>), então um giro que já está na fila da DLL nunca é cortado, por mais
+    /// lenta que tenha sido a volta. O valor real da folga é medido na bancada
+    /// (NOVO-HIL-GIRO-04, NOVO-LOAD-LOOP-01); trocá-lo é mudar esta constante.
+    /// </para>
+    /// </remarks>
+    public static readonly TimeSpan MargemDoGiro = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Prazo de cada estado, medido desde a <b>entrada</b> nele (<see cref="EstadoAtualDesde"/>).
+    /// </summary>
+    /// <remarks>
+    /// Quem aplica é o laço do worker (<c>DevicePump</c>, Etapa I.1b do docs/36, capacidade C1):
+    /// ao estourar, dispara <see cref="DeviceTrigger.TempoEsgotado"/>, e o destino é o desta
+    /// tabela de transições. Até a I.1b nada disparava esse gatilho (achado F9,
+    /// docs/36-anexos/01-engenheiro-topdata.md §1), e o prazo era só documentação. O prazo de
+    /// <see cref="DeviceState.ValidarAcesso"/> é orçamento da decisão, não prazo de passo: o laço
+    /// não o aplica, porque o destino da tabela é liberar (ver <c>DevicePump</c>).
+    /// </remarks>
     private static readonly FrozenDictionary<DeviceState, TimeSpan> Timeouts = new Dictionary<DeviceState, TimeSpan>
     {
         [DeviceState.Discovering] = TimeSpan.FromSeconds(30),
@@ -91,6 +124,44 @@ public sealed class DeviceStateMachine
     public static TimeSpan? TimeoutFor(DeviceState state) =>
         Timeouts.TryGetValue(state, out var t) ? t : null;
 
+    /// <summary>
+    /// Desde quando a máquina está no estado atual: o instante da última transição que
+    /// <b>mudou</b> de estado. Nulo até a primeira.
+    /// </summary>
+    /// <remarks>
+    /// Transição para o mesmo estado (<see cref="DeviceTrigger.SemEventos"/> esperando o giro,
+    /// <see cref="DeviceTrigger.BilheteColetado"/> na coleta) não conta: o prazo é medido desde a
+    /// entrada (C1, docs/36). Não sai do histórico porque ele é limitado e as voltas sem evento o
+    /// renovam inteiro em segundos.
+    /// </remarks>
+    public DateTimeOffset? EstadoAtualDesde { get; private set; }
+
+    /// <summary>
+    /// Prazo de um estado para uma configuração de catraca: o da tabela, exceto em
+    /// <see cref="DeviceState.MonitoraGiroCatraca"/>, que é o maior entre o da tabela e o tempo
+    /// do relé 1 mais <see cref="MargemDoGiro"/>.
+    /// </summary>
+    /// <remarks>
+    /// O relé 1 fica liberado por <see cref="DeviceConfiguration.TempoDoAcionamento1"/> segundos
+    /// (0 a 50; FUN:17). Um prazo fixo de 8 s cortaria a espera de um relé de 20 s no meio: a
+    /// pessoa giraria com o leitor já rearmado e a passagem dela viraria giro sem liberação. Com
+    /// o tempo do relé no prazo, a desistência só vem depois que a catraca já deveria ter mandado
+    /// a origem 5. A origem 5 continua sendo o caminho normal; o prazo é a rede de segurança.
+    /// </remarks>
+    public static TimeSpan? PrazoEfetivo(DeviceState estado, DeviceConfiguration configuracao)
+    {
+        ArgumentNullException.ThrowIfNull(configuracao);
+
+        var daTabela = TimeoutFor(estado);
+        if (estado is not DeviceState.MonitoraGiroCatraca || daTabela is not { } tabela)
+        {
+            return daTabela;
+        }
+
+        var doRele = TimeSpan.FromSeconds(configuracao.TempoDoAcionamento1) + MargemDoGiro;
+        return doRele > tabela ? doRele : tabela;
+    }
+
     /// <summary>Todas as transições declaradas.</summary>
     public static IReadOnlyCollection<StateTransition> Transitions => Table;
 
@@ -126,6 +197,11 @@ public sealed class DeviceStateMachine
         }
 
         TotalDeTransicoes++;
+        if (destino.Value != Current || EstadoAtualDesde is null)
+        {
+            EstadoAtualDesde = at;
+        }
+
         Current = destino.Value;
         return true;
     }
