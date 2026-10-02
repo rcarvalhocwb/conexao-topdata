@@ -233,6 +233,8 @@ var analisador = new AnalisadorDaOperacao(new CicloSobreABase(
     sessaoDoServico));
 construtor.Services.AddSingleton(_ => new EdgeControlService(
     supervisor,
+    // A versão que o CI grava ao publicar (0.1.N, a do Setup); no Diagnóstico.
+    versao: typeof(EdgeControlService).Assembly.GetName().Version?.ToString(3),
     operacao: operacao,
     nuvem: nuvem,
     consultas: new ConsultasDaOperacao(fabrica),

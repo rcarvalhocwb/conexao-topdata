@@ -136,10 +136,13 @@ jobs:
       - name: Publicar os componentes
         shell: pwsh
         run: |
-          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -o publicado/Servico
-          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -o publicado/Painel
-          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -o publicado/Worker
-          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -o publicado/Configurador
+          # A versão do Setup (0.1.N) vai nos executáveis: o rodapé do painel e o Diagnóstico
+          # mostravam 1.0.0 e "0.1.0-fase1", que não batiam com o Setup instalado.
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Servico
+          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Painel
+          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -p:Version=$versao -o publicado/Worker
+          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Configurador
 
       # Abre as janelas de verdade, publicadas como vão para o Setup, e percorre cada tela
       # e cada passo. Compilar não prova que a tela abre: o painel subia sem janela (App.xaml
