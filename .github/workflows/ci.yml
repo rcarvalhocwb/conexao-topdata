@@ -1,0 +1,716 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      soak_minutos:
+        description: "Duração do ensaio de soak, em minutos (o padrão da CI é curto)"
+        required: false
+        default: "60"
+
+permissions:
+  contents: read
+
+# Um push novo cancela a execução anterior do mesmo ramo. Sem isso, um job pendurado
+# ocupa o executor até o teto de 6 h do GitHub — foi exatamente o que aconteceu quando a
+# conexão por named pipe esperava para sempre.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+
+jobs:
+  # O domínio, as regras de acesso e a máquina de estados não dependem de Windows.
+  # Rodar em Linux não é conveniência: é o que mantém a separação honesta.
+  # Ver docs/ADR/ADR-0001-isolar-easyinner-em-processo-x86.md
+  linux:
+    name: Build e testes (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testar
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publicar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-linux
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+
+  # Windows é onde o produto roda de verdade. Os projetos que só compilam lá
+  # (worker x86, WPF) entram nesta matriz conforme forem criados.
+  windows:
+    name: Build e testes (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testar
+        run: dotnet test --no-build --configuration Release
+
+      # Só o PowerShell do Windows sabe dizer se estes scripts sequer analisam.
+      # Sem esta etapa, um erro de sintaxe no instalador só apareceria na bancada.
+      # NAO tente capturar as telas aqui. Foi tentado duas vezes, 24 min e 3 min, e o
+      # processo travou sem imprimir uma linha sequer nas duas. O runner do Windows nao tem
+      # sessao grafica, e o WPF nao inicializa. O modo --capturar do Desktop.App continua
+      # valendo, numa maquina Windows de verdade: ver installer/README.md.
+
+      - name: Analisar os scripts do instalador
+        shell: pwsh
+        run: |
+          $erros = @()
+          Get-ChildItem installer -Filter *.ps1 | ForEach-Object {
+              $tokens = $null
+              $problemas = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  $_.FullName, [ref]$tokens, [ref]$problemas) | Out-Null
+              if ($problemas.Count -gt 0) {
+                  $erros += $problemas | ForEach-Object { "$($_.Extent.File):$($_.Extent.StartLineNumber) $($_.Message)" }
+              } else {
+                  Write-Host "ok $($_.Name)"
+              }
+          }
+          if ($erros.Count -gt 0) {
+              $erros | ForEach-Object { Write-Host "::error::$_" }
+              exit 1
+          }
+
+  # O instalador MSI de verdade. Construir MSI e trabalho sem tela, ao contrario de
+  # renderizar WPF, entao o runner do Windows da conta. O WiX recusa rodar em Linux:
+  # testado, ele reprova ate o caso minimo com WIX0389.
+  instalador:
+    name: Instalador MSI (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    # Escrita só aqui, e só para publicar o Setup.exe na pré-release de teste.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Instalar o WiX
+        run: |
+          dotnet tool install --global wix --version 6.0.2
+          wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
+          wix extension add --global WixToolset.Util.wixext/6.0.2
+          wix extension add --global WixToolset.Firewall.wixext/6.0.2
+
+      # Self-contained: cada componente leva o seu .NET. O Setup.exe instala e funciona
+      # sem pedir runtime nenhum ao operador; o custo é o tamanho (uns 240 MB).
+      - name: Publicar os componentes
+        shell: pwsh
+        run: |
+          # A versão do Setup (0.1.N) vai nos executáveis: o rodapé do painel e o Diagnóstico
+          # mostravam 1.0.0 e "0.1.0-fase1", que não batiam com o Setup instalado.
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Servico
+          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Painel
+          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -p:Version=$versao -o publicado/Worker
+          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Configurador
+
+      # Abre as janelas de verdade, publicadas como vão para o Setup, e percorre cada tela
+      # e cada passo. Compilar não prova que a tela abre: o painel subia sem janela (App.xaml
+      # sem x:Class) e o assistente fechava no Avançar, e os dois compilavam.
+      - name: Autoteste das telas
+        shell: pwsh
+        run: |
+          # O serviço de verdade, publicado, em modo simulação, com o programa das catracas
+          # de 32 bits: o autoteste do painel conversa com ele e passa um QR no simulador.
+          New-Item -ItemType Directory -Force dados | Out-Null
+          $config = @{
+            banco = "$PWD\dados\acesso.db"
+            simulacao = $true
+            grupos = @(@{ nome = 'catracas'; porta = 3570; inners = @(1, 2); executavel = "$PWD\publicado\Worker\Edge.Worker.X86.exe" })
+            nomesDasCatracas = @{ '1' = 'Entrada 1'; '2' = 'Entrada 2' }
+          } | ConvertTo-Json -Depth 5
+          Set-Content -Path dados\workers.json -Value $config -Encoding utf8
+          $env:EDGE_CONFIG = "$PWD\dados\workers.json"
+          $servico = Start-Process -FilePath publicado\Servico\Edge.Supervisor.exe -PassThru `
+            -RedirectStandardOutput dados\servico.log -RedirectStandardError dados\servico-erro.log
+          Start-Sleep -Seconds 10
+          if ($servico.HasExited) {
+            Get-Content dados\servico.log, dados\servico-erro.log -ErrorAction SilentlyContinue | Select-Object -Last 60
+            throw "O serviço parou ao subir (código $($servico.ExitCode))."
+          }
+
+          function Autotestar($exe, $saida, $extra) {
+            $argumentos = @('--autoteste', $saida) + $extra
+            $p = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru
+            $terminou = $p.WaitForExit(240000)
+            $resultado = if (Test-Path $saida) { Get-Content $saida -Raw } else { '(sem arquivo de saída)' }
+            if (-not $terminou) {
+              $p.Kill()
+              Write-Host $resultado
+              throw "$exe travou no autoteste (4 minutos)."
+            }
+            if ($p.ExitCode -ne 0) {
+              Write-Host "::error::$exe falhou no autoteste (código $($p.ExitCode))"
+              Write-Host $resultado
+              throw "autoteste falhou"
+            }
+            Write-Host "$exe :"
+            Write-Host $resultado
+          }
+
+          try {
+            Autotestar (Resolve-Path publicado/Painel/Desktop.App.exe) "$PWD\autoteste-painel.txt" @('--com-simulacao')
+            Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt" @()
+
+            # Capturas de todas as telas, com o serviço em simulação, para revisão visual.
+            foreach ($tema in 'claro', 'escuro') {
+              # Saídas redirecionadas: num estouro de pilha o .NET só diz onde foi na saída
+              # de erro, e sem redirecionar ela se perde (o painel é um WinExe).
+              $captura = Start-Process -FilePath (Resolve-Path publicado/Painel/Desktop.App.exe) `
+                -ArgumentList @('--capturar', "$PWD\capturas", '--tema', $tema) -PassThru `
+                -RedirectStandardOutput "$PWD\captura-$tema-saida.log" -RedirectStandardError "$PWD\captura-$tema-falha.log"
+              if (-not $captura.WaitForExit(180000)) {
+                $captura.Kill()
+                Write-Host "::warning::A captura das telas (tema $tema) não terminou em 3 minutos."
+              }
+              elseif ($captura.ExitCode -ne 0) {
+                Write-Host "::warning::A captura das telas (tema $tema) saiu com código $($captura.ExitCode)."
+                Get-Content "$PWD\captura-$tema-falha.log" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "  $_" }
+              }
+            }
+            Get-ChildItem capturas -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "captura: $($_.Name)" }
+            # Tela que falhou na captura deixa o erro num .txt ao lado das imagens.
+            Get-ChildItem capturas -Filter '*erro*.txt' -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "::warning::A captura da tela $($_.BaseName) falhou (detalhe abaixo)."
+              Get-Content $_.FullName | Select-Object -First 40 | ForEach-Object { Write-Host "  $_" }
+            }
+            # Tamanho e DPI de cada imagem (docs/34 §7.1, P4: o gêmeo saía com 1044×768).
+            Get-Content capturas\relatorio.txt -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+            # Toda captura do painel tem de ser 1366×768 lógicos: 1366×768 a 100 %, 2049×1152 a
+            # 150 % etc. A captura marca a que não for; aqui se confere também pelo arquivo.
+            Add-Type -AssemblyName System.Drawing
+            $fora = @()
+            if (Test-Path capturas\tamanho-fora-de-1366x768.txt) { $fora += Get-Content capturas\tamanho-fora-de-1366x768.txt }
+            Get-ChildItem capturas -Filter '*.png' -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne '00-setup.png' } | ForEach-Object {
+              # PNG truncado (captura morta pelo tempo no meio da gravação) é aviso, como antes,
+              # e não reprova o job por um motivo que não é o tamanho.
+              try { $imagem = [System.Drawing.Image]::FromFile($_.FullName) }
+              catch { Write-Host "::warning::Captura ilegível (provavelmente incompleta): $($_.Exception.Message)"; return }
+              $ok = $false
+              # ±1 px: a janela arredonda o tamanho em escalas como 125 % e 175 %.
+              foreach ($escala in 1, 1.25, 1.5, 1.75, 2) {
+                if ([Math]::Abs($imagem.Width - 1366 * $escala) -le 1 -and [Math]::Abs($imagem.Height - 768 * $escala) -le 1) { $ok = $true }
+              }
+              if (-not $ok) { $fora += "$($_.Name): $($imagem.Width)x$($imagem.Height) px" }
+              $imagem.Dispose()
+            }
+            if ($fora.Count -gt 0) {
+              $fora | ForEach-Object { Write-Host "::error::Captura fora de 1366x768 lógicos: $_" }
+              throw 'Há captura fora de 1366x768 lógicos (a tela mínima suportada, docs/10).'
+            }
+          }
+          finally {
+            Stop-Process -Id $servico.Id -Force -ErrorAction SilentlyContinue
+            Get-Process Edge.Worker.X86 -ErrorAction SilentlyContinue | Stop-Process -Force
+            Write-Host '--- serviço ---'
+            Get-Content dados\servico.log -ErrorAction SilentlyContinue | Select-Object -Last 40
+            Get-Content dados\servico-erro.log -ErrorAction SilentlyContinue | Select-Object -Last 40
+          }
+
+      - name: Publicar capturas das telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-das-telas
+          path: capturas/
+          if-no-files-found: warn
+
+      # O worker precisa sair em 32 bits ou nao carrega a EasyInner.dll. Conferir aqui,
+      # no cabecalho PE, e mais barato que descobrir na bancada.
+      - name: Conferir que o worker e de 32 bits
+        shell: pwsh
+        run: |
+          $fluxo = [System.IO.File]::OpenRead("publicado/Worker/Edge.Worker.X86.exe")
+          try {
+              $leitor = New-Object System.IO.BinaryReader($fluxo)
+              $fluxo.Position = 0x3C
+              $inicio = $leitor.ReadInt32()
+              $fluxo.Position = $inicio + 4
+              $maquina = $leitor.ReadUInt16()
+          } finally { $fluxo.Dispose() }
+
+          if ($maquina -ne 0x014C) {
+              throw "O worker saiu com maquina PE 0x{0:X4}, e nao 0x014C (I386)." -f $maquina
+          }
+          Write-Host "Worker em 32 bits: ok"
+
+      # Caminhos ABSOLUTOS. Em <Files>, caminho relativo é resolvido a partir da pasta do
+      # .wxs, e não da pasta em que o comando roda: com "publicado/Worker" o WiX procurava
+      # em installer/wix/publicado/Worker, não achava nada, e o MSI saía com 70 KB e só o
+      # executável do serviço — sem erro. https://docs.firegiant.com/wix/schema/wxs/files/
+      - name: Construir o MSI
+        shell: pwsh
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          # -arch x64: sem ele o MSI sai de 32 bits e "ProgramFiles64Folder" vira
+          # C:\Program Files (x86) — o botão final do Setup, que aponta para
+          # C:\Program Files, abria um caminho que não existia.
+          wix build installer/wix/ConexaoTopdata.wxs -arch x64 -ext WixToolset.Util.wixext -ext WixToolset.Firewall.wixext `
+            -d Versao=$versao `
+            -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
+            -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
+            -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
+            -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
+            -d PastaModelos=$((Resolve-Path installer/modelos).Path) `
+            -o RayzerXAcess-$versao.msi
+
+      # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
+      # a tabela File tem que ter o que o operador precisa, e não pode ter a EasyInner.dll,
+      # que é da Topdata e vem do SDK instalado na máquina.
+      - name: Conferir o conteúdo do MSI
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+          $instalador = New-Object -ComObject WindowsInstaller.Installer
+          $banco = $instalador.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $instalador, @($msi, 0))
+          $consulta = $banco.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $banco, @('SELECT `FileName` FROM `File`'))
+          $consulta.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $consulta, $null) | Out-Null
+          $arquivos = @()
+          while ($null -ne ($linha = $consulta.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $consulta, $null))) {
+              $nome = $linha.GetType().InvokeMember('StringData', 'GetProperty', $null, $linha, 1)
+              # FileName guarda "curto|longo"; o longo é o que interessa.
+              $arquivos += ($nome -split '\|')[-1]
+          }
+          Write-Host "$($arquivos.Count) arquivos no MSI ($([math]::Round((Get-Item $msi).Length / 1MB, 1)) MB)"
+
+          $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
+                          'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
+                          'Edge.Configurador.exe', 'modelo-cadastro-de-cartoes.xlsx'
+          $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
+          if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
+
+          if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI.' }
+          Write-Host 'Conteúdo do MSI: ok'
+
+      # O teste que faltava: instalar de verdade, abrir o painel instalado e desinstalar
+      # com ele aberto. Prova que o botão final do Setup aponta para um arquivo que existe,
+      # que o painel instalado abre, e que o instalador fecha o painel sozinho em vez de
+      # pedir reinício (código 3010) ou falhar.
+      - name: Instalar, abrir o painel e desinstalar com ele aberto
+        shell: pwsh
+        timeout-minutes: 15
+        run: |
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+          $pasta = 'C:\Program Files\Rayzer\XAcess'
+          Get-Process Desktop.App, Edge.Configurador, Edge.Supervisor, Edge.Worker.X86 -ErrorAction SilentlyContinue | Stop-Process -Force
+
+          $p = Start-Process msiexec -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart', 'PULAR_NETFX35=1', '/l*v', "`"$PWD\instalar.log`"") -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content instalar.log -Tail 80; throw "A instalação falhou (código $($p.ExitCode))." }
+
+          foreach ($f in 'Painel\Desktop.App.exe', 'Configurador\Edge.Configurador.exe', 'Servico\Edge.Supervisor.exe',
+                         'Worker\Edge.Worker.X86.exe', 'Modelos\modelo-cadastro-de-cartoes.xlsx') {
+            if (-not (Test-Path (Join-Path $pasta $f))) {
+              Write-Host 'Onde os arquivos foram parar:'
+              Get-ChildItem 'C:\Program Files', 'C:\Program Files (x86)' -Filter Desktop.App.exe -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host "  $($_.FullName)" }
+              throw "Falta depois de instalar: $f"
+            }
+          }
+
+          # Firewall: a regra de entrada do programa das catracas, só da sub-rede local.
+          $regra = Get-NetFirewallRule -Direction Inbound -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -like 'Rayzer XAcess*catracas*' }
+          if (-not $regra) { throw 'A regra de firewall das catracas não foi criada.' }
+          $programa = ($regra | Get-NetFirewallApplicationFilter).Program
+          $remoto = ($regra | Get-NetFirewallAddressFilter).RemoteAddress
+          $protocolo = ($regra | Get-NetFirewallPortFilter).Protocol
+          Write-Host "Firewall: $($regra.DisplayName) · $programa · $protocolo · remoto $remoto · $($regra.Action)"
+          if ($programa -notlike '*\Worker\Edge.Worker.X86.exe') { throw "A regra aponta para outro programa: $programa" }
+          if ($remoto -ne 'LocalSubnet') { throw "A regra deveria aceitar só a sub-rede local, e aceita: $remoto" }
+          if ($protocolo -ne 'TCP') { throw "A regra deveria ser TCP, e é: $protocolo" }
+          if ($regra.Action -ne 'Allow' -or $regra.Enabled -ne 'True') { throw 'A regra existe, mas não está liberando.' }
+
+          # Recuperação do serviço: o Windows o sobe de novo se ele cair.
+          $falhas = sc.exe qfailure ConexaoTopdataEdge | Out-String
+          Write-Host $falhas
+          if (([regex]::Matches($falhas, 'RESTART')).Count -lt 3) { throw 'O serviço não está configurado para reiniciar sozinho.' }
+          if ((Get-Service ConexaoTopdataEdge).StartType -ne 'Automatic') { throw 'O serviço não inicia com o Windows.' }
+
+          # Painel na bandeja ao entrar no Windows.
+          $executar = Get-ItemPropertyValue 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -Name RayzerXAcess
+          if ($executar -notlike '*Desktop.App.exe*--bandeja') { throw "Início na bandeja errado: $executar" }
+
+          # Na bandeja: o processo fica vivo, sem janela.
+          $painel = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -ArgumentList '--bandeja' -PassThru
+          Start-Sleep -Seconds 10
+          if ($painel.HasExited) { throw "O painel na bandeja não ficou aberto (saiu com código $($painel.ExitCode))." }
+          $painel.Refresh()
+          if ($painel.MainWindowHandle -ne 0) { throw 'Com --bandeja, o painel não devia mostrar janela.' }
+
+          # Instância única: abrir de novo só traz a janela da que já está na bandeja.
+          $segundo = Start-Process (Join-Path $pasta 'Painel\Desktop.App.exe') -PassThru
+          if (-not $segundo.WaitForExit(15000)) { throw 'O segundo painel não saiu: a instância única não funcionou.' }
+          Start-Sleep -Seconds 3
+          $painel.Refresh()
+          if ($painel.MainWindowHandle -eq 0) { throw 'Abrir de novo não mostrou a janela do painel que estava na bandeja.' }
+          Write-Host 'Bandeja e instância única: ok'
+
+          $p = Start-Process msiexec -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart', '/l*v', "`"$PWD\desinstalar.log`"") -Wait -PassThru
+          if ($p.ExitCode -ne 0) {
+            Get-Content desinstalar.log -Tail 80
+            throw "A desinstalação com o painel aberto falhou (código $($p.ExitCode); 3010 = pediu reinício)."
+          }
+          if (-not $painel.WaitForExit(5000)) { throw 'O painel continuou aberto: o instalador não o fechou.' }
+          if (Test-Path (Join-Path $pasta 'Painel\Desktop.App.exe')) { throw 'O painel ficou no disco depois de desinstalar.' }
+          if (Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like 'Rayzer XAcess*catracas*' }) {
+            throw 'A regra de firewall ficou depois de desinstalar.'
+          }
+          if (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -Name RayzerXAcess -ErrorAction SilentlyContinue) {
+            throw 'O início na bandeja ficou depois de desinstalar.'
+          }
+          Write-Host 'Instalar, abrir o painel e desinstalar com ele aberto: ok'
+
+      - name: Registros do teste do instalador
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: registros-do-instalador
+          path: |
+            instalar.log
+            desinstalar.log
+          if-no-files-found: ignore
+
+      - name: Construir o Setup.exe
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
+            -d Versao=$versao -d Msi=$msi -o RayzerXAcess-Setup.exe
+          Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item RayzerXAcess-Setup.exe).Length / 1MB))
+
+      # O Setup precisa ABRIR: se a janela não aparecer, o Setup publicado está quebrado para
+      # quem baixa (foi o que aconteceu com Theme="none", e este passo só avisava). Reprova o
+      # job e imprime o registro do Burn com o motivo. De quebra, fotografa a primeira tela
+      # (tema com a arte da marca) para as capturas.
+      - name: Abrir e fotografar a tela do Setup
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          New-Item -ItemType Directory -Force capturas | Out-Null
+          # A janela é achada pelo título, e não pelo processo: o Setup (Burn) se relança num
+          # processo filho, e o MainWindowHandle dele nem sempre aponta a janela. PrintWindow
+          # desenha a própria janela, mesmo com o terminal do runner por cima.
+          Add-Type -TypeDefinition @'
+          using System;
+          using System.Runtime.InteropServices;
+          using System.Text;
+          public static class FotoDoSetup {
+              public struct RECT { public int Left, Top, Right, Bottom; }
+              delegate bool Visitar(IntPtr h, IntPtr p);
+              [DllImport("user32.dll")] static extern bool EnumWindows(Visitar v, IntPtr p);
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder t, int n);
+              [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+              [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+              [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);
+              delegate bool VisitarFilho(IntPtr h, IntPtr p);
+              [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr pai, VisitarFilho v, IntPtr p);
+              // Um controle visível dentro da janela, pelo texto (o botão "&Instalar", por exemplo).
+              public static bool TemControle(IntPtr janela, string trecho) {
+                  bool achou = false;
+                  EnumChildWindows(janela, (h, p) => {
+                      var t = new StringBuilder(256);
+                      GetWindowText(h, t, t.Capacity);
+                      if (IsWindowVisible(h) && t.ToString().Replace("&", "").Contains(trecho)) { achou = true; return false; }
+                      return true;
+                  }, IntPtr.Zero);
+                  return achou;
+              }
+              public static IntPtr Achar(string trecho) {
+                  IntPtr achada = IntPtr.Zero;
+                  EnumWindows((h, p) => {
+                      var t = new StringBuilder(256);
+                      GetWindowText(h, t, t.Capacity);
+                      if (IsWindowVisible(h) && t.ToString().Contains(trecho)) { achada = h; return false; }
+                      return true;
+                  }, IntPtr.Zero);
+                  return achada;
+              }
+          }
+          '@
+          # -log: se o tema não carregar, o motivo fica aqui (e é impresso no fim).
+          Start-Process (Resolve-Path RayzerXAcess-Setup.exe) -ArgumentList @('-log', "`"$PWD\setup-burn.log`"") | Out-Null
+          $janela = [IntPtr]::Zero
+          for ($i = 0; $i -lt 40 -and $janela -eq [IntPtr]::Zero; $i++) {
+            Start-Sleep -Seconds 1
+            $janela = [FotoDoSetup]::Achar('Rayzer XAcess')
+          }
+          if ($janela -eq [IntPtr]::Zero) {
+            Write-Host "::error::A janela do Setup não apareceu em 40 s."
+            Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host "  janela: $($_.ProcessName) — $($_.MainWindowTitle)" }
+            Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  processo do Setup: $($_.Id), janela '$($_.MainWindowTitle)'" }
+            Write-Host '--- registro do Setup (Burn) ---'
+            Get-ChildItem "$PWD\setup-burn*.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_ -Tail 60 }
+            Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
+            throw 'O Setup não abriu a janela: quem baixar não consegue instalar. Veja o registro do Burn acima.'
+          } else {
+            # A janela aparece antes de o Setup terminar de examinar o computador; a página
+            # com o botão Instalar vem depois. Sem ele, quem baixar não consegue instalar.
+            $botao = $false
+            for ($i = 0; $i -lt 30 -and -not $botao; $i++) {
+              Start-Sleep -Seconds 1
+              $botao = [FotoDoSetup]::TemControle($janela, 'Instalar')
+            }
+            Write-Host '--- registro do Setup (Burn), fim ---'
+            Get-ChildItem "$PWD\setup-burn*.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_ -Tail 25 }
+            if (-not $botao) {
+              Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
+              throw 'O Setup abriu, mas o botão Instalar não apareceu em 30 s.'
+            }
+            Start-Sleep -Seconds 1   # a página termina de desenhar
+            $r = New-Object FotoDoSetup+RECT
+            [FotoDoSetup]::GetWindowRect($janela, [ref]$r) | Out-Null
+            $foto = New-Object System.Drawing.Bitmap ($r.Right - $r.Left), ($r.Bottom - $r.Top)
+            $g = [System.Drawing.Graphics]::FromImage($foto)
+            $dc = $g.GetHdc()
+            [FotoDoSetup]::PrintWindow($janela, $dc, 2) | Out-Null
+            $g.ReleaseHdc($dc)
+            $foto.Save("$PWD\capturas\00-setup.png", [System.Drawing.Imaging.ImageFormat]::Png)
+            # A arte de fundo tem de aparecer: na metade esquerda (a arte, sem textos), quase
+            # tudo branco quer dizer fundo apagado pelo Windows, como na 0.1.79.
+            $brancos = 0; $amostras = 0
+            for ($x = 40; $x -lt [Math]::Min(400, $foto.Width); $x += 8) {
+              for ($y = 80; $y -lt [Math]::Min(420, $foto.Height); $y += 8) {
+                $c = $foto.GetPixel($x, $y); $amostras++
+                if ($c.R -gt 235 -and $c.G -gt 235 -and $c.B -gt 235) { $brancos++ }
+              }
+            }
+            $g.Dispose(); $foto.Dispose()
+            Write-Host "Fundo do Setup: $brancos de $amostras pontos brancos na área da arte"
+            if ($amostras -eq 0 -or $brancos -gt ($amostras * 0.5)) {
+              Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
+              throw 'O Setup abriu, mas a arte de fundo não apareceu (área da arte branca).'
+            }
+            Write-Host "Foto do Setup: capturas\00-setup.png ($($r.Right - $r.Left) x $($r.Bottom - $r.Top))"
+          }
+          Get-Process RayzerXAcess-Setup -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      # Se a foto reprovar o Setup, ela vai como artefato para ver o que apareceu.
+      - name: Publicar a foto do Setup reprovado
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foto-do-setup
+          path: capturas/00-setup.png
+          if-no-files-found: ignore
+
+      - name: Publicar o Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-exe
+          path: RayzerXAcess-Setup.exe
+          if-no-files-found: error
+
+      # Uma pré-release por versão ("teste-0.1.N"), que não é apagada quando sai a seguinte:
+      # antes, cada push apagava e recriava a mesma, e cortava no meio o download de quem
+      # estava baixando. Ficam as 5 últimas.
+      #
+      # Além do .exe, vai um .zip com ele: navegadores seguram .exe grande sem assinatura
+      # digital ("não é baixado com frequência") e às vezes não terminam o download; .zip
+      # passa. O MSI vai zipado também, como alternativa ao Setup.
+      - name: Publicar a pré-release de teste
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          $tag = "teste-$versao"
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+
+          Compress-Archive -Path RayzerXAcess-Setup.exe -DestinationPath "RayzerXAcess-Setup-$versao.zip" -Force
+          Compress-Archive -Path $msi -DestinationPath "RayzerXAcess-MSI-$versao.zip" -Force
+          $arquivos = @("RayzerXAcess-Setup-$versao.zip", 'RayzerXAcess-Setup.exe', "RayzerXAcess-MSI-$versao.zip")
+          if (Test-Path capturas\*.png) {
+            Compress-Archive -Path capturas\*.png -DestinationPath capturas-das-telas.zip -Force
+            $arquivos += 'capturas-das-telas.zip'
+          }
+
+          $notas = @"
+          Instalador de teste $versao, gerado automaticamente do commit $env:COMMIT. Não é versão de produção.
+
+          **Baixe o RayzerXAcess-Setup-$versao.zip**, extraia e execute RayzerXAcess-Setup.exe como administrador.
+          O .exe solto também está aqui, mas o navegador pode segurar o download (arquivo grande sem assinatura digital).
+
+          - RayzerXAcess-MSI-$versao.zip: o mesmo sistema, instalado pelo MSI direto (sem a tela de boas-vindas).
+          - capturas-das-telas.zip: as telas do painel nos temas claro e escuro.
+
+          O Windows pode mostrar "O Windows protegeu o computador": clique em "Mais informações" e "Executar assim mesmo". Isso acontece porque o instalador ainda não tem certificado de assinatura.
+          "@
+          gh release create $tag @arquivos --prerelease --target $env:COMMIT --title "Instalador de teste $versao" --notes $notas
+
+          # A antiga, que era apagada e recriada a cada push, sai de vez.
+          gh release delete instalador-de-teste --yes --cleanup-tag 2>$null
+
+          # Guarda só as 5 últimas de teste.
+          $antigas = gh release list --limit 100 --json tagName,createdAt | ConvertFrom-Json |
+            Where-Object { $_.tagName -like 'teste-*' } | Sort-Object createdAt -Descending | Select-Object -Skip 5
+          foreach ($r in $antigas) { gh release delete $r.tagName --yes --cleanup-tag }
+          Write-Host "Publicado: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
+
+      # Para a bancada (docs/21) não é preciso instalar nada: o worker vai num zip,
+      # autocontido, sem exigir o .NET instalado no PC. A EasyInner.dll continua vindo do
+      # SDK da Topdata instalado na máquina.
+      - name: Montar o pacote da bancada
+        shell: pwsh
+        run: |
+          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained true -o bancada/Edge.Worker.X86
+          Copy-Item docs/21-roteiro-da-bancada.md bancada/
+          Copy-Item installer/verificar-ambiente.ps1 bancada/
+          if (-not (Test-Path bancada/Edge.Worker.X86/bancada.exemplo.json)) { throw 'Falta o bancada.exemplo.json.' }
+          if (Test-Path bancada/Edge.Worker.X86/EasyInner.dll) { throw 'A EasyInner.dll não pode ir no pacote.' }
+
+      - name: Publicar o pacote da bancada
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacote-da-bancada
+          path: bancada/
+          if-no-files-found: error
+
+      - name: Publicar o instalador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-msi
+          path: "*.msi"
+          if-no-files-found: error
+
+  # O soak roda curto em todo commit, o suficiente para processar centenas de milhares
+  # de eventos e revelar vazamento de poucos bytes por evento. O ensaio longo, de uma
+  # hora, é disparado à mão em "Run workflow" com soak_minutos.
+  soak:
+    name: Ensaio de soak
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Executar soak
+        env:
+          SOAK_MINUTOS: ${{ inputs.soak_minutos }}
+        run: dotnet test tests/LoadAndSoak --configuration Release
+
+      # A medição sai mesmo quando o ensaio passa. É a tendência entre execuções que
+      # revela vazamento lento; "passou" não distingue 2 MB de 31 MB.
+      - name: Publicar a medição
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medicao-do-soak
+          path: "**/TestResults/soak-relatorio.txt"
+          if-no-files-found: warn
+
+  # Rayzer UI: o Rayzer Design System em React + TypeScript + Tailwind (web/rayzer-ui),
+  # com os mesmos tokens e letreiros do desktop — os testes conferem a paridade.
+  rayzer-ui:
+    name: Rayzer UI (web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web/rayzer-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/rayzer-ui/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # A marca sai de tools/gerar-marca.py (letreiros em vetor da Sora). Se alguém editou
+      # à mão o XAML, o TypeScript ou um SVG, o gerador desfaz e o diff acusa.
+      - name: Conferir que a marca gerada está em dia
+        working-directory: .
+        run: |
+          set -euo pipefail
+          pip install --quiet fonttools==4.66.0 uharfbuzz==0.56.2
+          python tools/gerar-marca.py
+          git diff --exit-code -- src/Rayzer.Design/Tokens.xaml src/Rayzer.Design/Themes/Generic.xaml web/rayzer-ui/src/components/brand/letreiros.ts marca/svg
+
+      - name: Instalar
+        run: npm ci
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      - name: Construir a demo
+        run: npm run demo:build
+
+      - name: Publicar a demo
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayzer-ui-demo
+          path: web/rayzer-ui/demo/dist
+
+  # SEC-LOG-01: nenhum dado sensível pode chegar ao log.
+  # Nesta fase, a checagem é estática; ela cresce junto com a observabilidade.
+  seguranca:
+    name: Varredura de dado sensível
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Proibir interpolação direta de credencial em log
+        run: |
+          set -euo pipefail
+          # Procura chamadas de log que interpolem .Raw ou .Normalized de uma credencial.
+          if grep -rnE '(Log|log)[A-Za-z]*\(.*\.(Raw|Normalized)' src/ tests/ 2>/dev/null; then
+            echo "::error::Credencial em texto claro dentro de chamada de log."
+            exit 1
+          fi
+          echo "Nenhuma interpolação de credencial em log encontrada."

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    O domínio não referencia NADA: nem SQLite, nem interop, nem log, nem ASP.NET.
+    Essa ausência é verificada por teste de arquitetura (ARCH-01) e é o que permite
+    rodar 90% dos testes em CI Linux, sem Windows e sem hardware.
+    Ver docs/ADR/ADR-0001-isolar-easyinner-em-processo-x86.md
+  -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Unit.Tests" />
+  </ItemGroup>
+
+</Project>

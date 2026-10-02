@@ -1,0 +1,129 @@
+{
+  "versao": 1,
+  "equipamento": {
+    "fabricante": "Topdata",
+    "modelo": "TopFit 4",
+    "variante": "QR Code na tampa, leitor da frente e urna com leitor (leitor 2)"
+  },
+  "fonteDasMedidas": "A_CONFIRMAR: medidas aproximadas de material comercial da Topdata (variante Facial: 300 x 1342 x 250 mm sem braços). Não constam de fonte primária lida nesta sessão. O modelo 3D é ilustrativo nas proporções; medir uma TopFit 4 na bancada e corrigir aqui.",
+  "medidasMm": {
+    "larguraDoCorpo": 300,
+    "profundidadeDoCorpo": 250,
+    "alturaDaTampa": 1000,
+    "alturaDaCabeca": 240,
+    "alturaComLeitorFacial": 1342,
+    "alturaDoEixo": 880,
+    "comprimentoDoBraco": 450,
+    "diametroDoBraco": 38
+  },
+  "pecas": {
+    "leitorQr": true,
+    "leitorDeProximidade": true,
+    "teclado": true,
+    "urna": true,
+    "leitorFacial": false
+  },
+  "display": {
+    "linhas": 2,
+    "colunas": 16
+  },
+  "rotor": {
+    "bracos": 3,
+    "inclinacaoDoEixoGraus": 45,
+    "duracaoDoGiroMs": 900
+  },
+  "aparencia": {
+    "comentario": "Cores do objeto físico, não do tema: a catraca é a mesma no tema claro e no escuro. O que depende do tema (realce, verde e vermelho aceso, urna cheia) vem das chaves Rayzer.",
+    "acabamentos": {
+      "Pintura": {
+        "cor": "#3A3E46",
+        "brilho": "#303030",
+        "potencia": 20
+      },
+      "TampaPlastica": {
+        "cor": "#2C2F36",
+        "brilho": "#404040",
+        "potencia": 30
+      },
+      "AcoInox": {
+        "cor": "#C4C9D0",
+        "brilho": "#F0F0F0",
+        "potencia": 60
+      },
+      "Tecla": {
+        "cor": "#1E2024",
+        "brilho": "#202020",
+        "potencia": 10
+      },
+      "Moldura": {
+        "cor": "#969BA2",
+        "brilho": "#505050",
+        "potencia": 30
+      },
+      "VidroEscuro": {
+        "cor": "#0C1018",
+        "brilho": "#C0C0C0",
+        "potencia": 80
+      },
+      "TelaDoDisplay": {
+        "cor": "#081424",
+        "brilho": "#606060",
+        "potencia": 60
+      },
+      "LuzDeLiberado": {
+        "cor": "#143A26",
+        "brilho": "#202020",
+        "potencia": 20
+      },
+      "LuzDeBloqueado": {
+        "cor": "#3A1616",
+        "brilho": "#202020",
+        "potencia": 20
+      },
+      "Fenda": {
+        "cor": "#121214",
+        "brilho": "#101010",
+        "potencia": 10
+      },
+      "InteriorDaUrna": {
+        "cor": "#5A503C",
+        "brilho": "#101010",
+        "potencia": 10
+      },
+      "Cartao": {
+        "cor": "#F4F7FB",
+        "brilho": "#404040",
+        "potencia": 20
+      },
+      "Celular": {
+        "cor": "#181A1F",
+        "brilho": "#808080",
+        "potencia": 60
+      },
+      "TelaDoCelular": {
+        "cor": "#FFFFFF",
+        "brilho": "#000000",
+        "potencia": 1
+      },
+      "Pessoa": {
+        "cor": "#335A9BFF",
+        "brilho": "#000000",
+        "potencia": 1
+      }
+    },
+    "cena": {
+      "luzAmbiente": "#5A606A",
+      "luzPrincipal": "#E8EAEE",
+      "luzDeRecorte": "#505A6E",
+      "luzDeBaixo": "#30343C",
+      "piso": "#1C222E",
+      "sombra": "#90000000",
+      "displayAceso": "#104EA8",
+      "displayApagado": "#060C16",
+      "textoAceso": "#E6F2FF",
+      "textoApagado": "#101824",
+      "qrClaro": "#FFFFFF",
+      "qrEscuro": "#000000"
+    }
+  }
+}

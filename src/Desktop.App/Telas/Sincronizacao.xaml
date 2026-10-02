@@ -1,0 +1,51 @@
+<UserControl x:Class="Desktop.App.Telas.Sincronizacao"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Sincronização">
+  <DockPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Sincronização"
+                         Descricao="Sem internet, as catracas continuam funcionando. O que não foi enviado espera aqui e sobe sozinho quando a conexão voltar." />
+
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,16">
+      <StackPanel>
+        <rz:RayzerStatus Margin="0,0,0,12" FontSize="15" Pilula="True" Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}"
+                         Texto="Situação da nuvem" />
+        <ItemsControl ItemsSource="{Binding Situacao}" AutomationProperties.Name="Situação da sincronização">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,4,16,8">
+                <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="{Binding Rotulo}" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" Text="{Binding Valor}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Origens dos códigos" />
+    <Grid>
+      <DataGrid ItemsSource="{Binding Provedores}" AutomationProperties.Name="Origens dos códigos">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="ORIGEM" Binding="{Binding Nome}" Width="*" />
+          <DataGridTextColumn Header="CÓDIGOS" Binding="{Binding Codigos}" Width="104" />
+          <DataGridTextColumn Header="REUTILIZÁVEL" Binding="{Binding Reutilizavel, Converter={StaticResource SimOuTraco}}" Width="136" />
+          <DataGridTextColumn Header="REUSO (S)" Binding="{Binding IntervaloDeReusoSegundos}" Width="108" />
+          <DataGridTextColumn Header="SÓ NA URNA" Binding="{Binding SomenteNaUrna, Converter={StaticResource SimOuTraco}}" Width="116" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Cloud}" Titulo="Nenhuma origem cadastrada"
+                           Texto="As origens aparecem quando a nuvem envia os primeiros cartões ou ingressos."
+                           Visibility="{Binding Provedores, Converter={StaticResource ZeroParaVisivel}}" />
+    </Grid>
+  </DockPanel>
+</UserControl>

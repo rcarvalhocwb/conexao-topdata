@@ -1,0 +1,105 @@
+<UserControl x:Class="Desktop.App.Telas.PainelAoVivo"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Painel ao vivo">
+  <!--
+    Centro de comando. Ordem de leitura: a situação da operação (barra superior), os
+    números, as catracas (quem caiu primeiro) e os acessos chegando.
+  -->
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <rz:RayzerPageHeader Grid.Row="0" Titulo="Painel ao vivo" Descricao="{Binding Resumo}" />
+
+    <!-- Os números da operação, desde o início desta base local. -->
+    <UniformGrid Grid.Row="1" Rows="1" Margin="0,0,-12,12">
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Acessos autorizados" Valor="{Binding Liberados}" Tom="Sucesso"
+                           Icone="{DynamicResource Rayzer.Icon.Check}" Detalhe="✓ total desta base"
+                           AutomationProperties.Name="Acessos autorizados" />
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Passagens confirmadas" Valor="{Binding Giros}" Tom="Marca"
+                           Icone="{DynamicResource Rayzer.Icon.People}" Detalhe="giro da catraca confirmado"
+                           AutomationProperties.Name="Passagens confirmadas" />
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Acessos negados" Valor="{Binding Negados}" Tom="Perigo"
+                           Icone="{DynamicResource Rayzer.Icon.Denied}" Detalhe="× total desta base"
+                           AutomationProperties.Name="Acessos negados" />
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Fluxo · últimos 5 min" Valor="{Binding LiberadosUltimos5Minutos}" Tom="Info"
+                           Icone="{DynamicResource Rayzer.Icon.History}" Detalhe="entradas autorizadas"
+                           AutomationProperties.Name="Entradas nos últimos 5 minutos" />
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Aguardando envio à nuvem" Valor="{Binding PendentesDeEnvio}"
+                           Tom="{Binding PendentesDeEnvio, Converter={StaticResource PendenciaParaTom}}"
+                           Icone="{DynamicResource Rayzer.Icon.Cloud}" Detalhe="sobe sozinho quando há internet"
+                           AutomationProperties.Name="Aguardando envio à nuvem" />
+    </UniformGrid>
+
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="5*" MinWidth="300" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="7*" />
+      </Grid.ColumnDefinitions>
+
+      <DockPanel Grid.Column="0">
+        <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Catracas" />
+        <Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,-12,0">
+            <ItemsControl ItemsSource="{Binding Catracas}" ItemTemplate="{StaticResource Cartao.Catraca}"
+                          AutomationProperties.Name="Catracas" />
+          </ScrollViewer>
+          <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="Nenhuma catraca configurada"
+                               Texto="As catracas aparecem aqui depois do Assistente de configuração (passo 2)."
+                               Visibility="{Binding Catracas, Converter={StaticResource ZeroParaVisivel}}" />
+        </Grid>
+      </DockPanel>
+
+      <rz:RayzerDataPanel Grid.Column="2" Titulo="Acessos em tempo real" Subtitulo="Cada leitura aparece aqui na hora, autorizada ou negada; nas negadas, &quot;Por quê?&quot; explica">
+        <DockPanel>
+        <!-- "Por quê?" (Etapa I.2 do docs/36): 360 px que empurram a lista, nunca a cobrem (docs/36-anexos/03 §2.1, item 7). -->
+        <Border DockPanel.Dock="Right" Width="360" Margin="12,0,0,0" Style="{StaticResource Rayzer.Card}"
+                Visibility="{Binding PorQue.Aberto, Converter={StaticResource BoolParaVisibilidade}}" AutomationProperties.Name="Por quê?">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Content="Fechar" Command="{Binding PorQue.Fechar}"
+                        AutomationProperties.Name="Fechar a explicação" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" VerticalAlignment="Center" Text="Por quê?" />
+              </DockPanel>
+              <rz:RayzerStatus Margin="0,8,0,12" HorizontalAlignment="Left" Tom="{Binding PorQue.Sinal, Converter={StaticResource SinalParaTom}}"
+                               Texto="{Binding PorQue.Cabecalho}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que aconteceu" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueAconteceu}" />
+              <StackPanel Visibility="{Binding PorQue.OQueDizer, Converter={StaticResource VazioSome}}">
+                <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que dizer à pessoa" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueDizer}" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que fazer" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueFazer}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                         Text="Explicação para o operador. O display da catraca continua com a mensagem de sempre." />
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+
+        <Grid>
+          <DataGrid ItemsSource="{Binding UltimosAcessos}" BorderThickness="0,1,0,0" AutomationProperties.Name="Últimos acessos">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
+              <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.AcessoComPorQue}" />
+              <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.List}" Titulo="Aguardando o primeiro acesso"
+                               Texto="Cada leitura nas catracas aparece aqui na hora, autorizada ou negada."
+                               Observacao="Sem catraca física? Com a instalação em modo simulação, passe um código de teste na tela Simulador."
+                               Visibility="{Binding UltimosAcessos.Count, Converter={StaticResource ZeroParaVisivel}}" />
+        </Grid>
+        </DockPanel>
+      </rz:RayzerDataPanel>
+    </Grid>
+  </Grid>
+</UserControl>

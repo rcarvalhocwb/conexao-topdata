@@ -1,0 +1,150 @@
+<UserControl x:Class="Desktop.App.Telas.MapaDeGiro"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Giro desta catraca">
+  <!--
+    "Giro desta catraca": o mapa de giro (decisão D9 do dono do produto, docs/34 §9). Usado no
+    painel do gêmeo (clique nos braços ou na urna) e na aba Giro da Parametrização. Para cada
+    origem: o padrão, ou a função que libera o braço (seta no gêmeo), como o giro conta e o texto
+    curto. Depois de aplicar, a conferência: girou para o lado da seta? Tudo em uma coluna, para
+    caber nos 360 px do painel do gêmeo em 1366 × 768.
+  -->
+  <StackPanel>
+    <!-- O selo da catraca: o mapa vale, mas o lado do braço nesta instalação ainda não foi visto. -->
+    <rz:RayzerStatusPill HorizontalAlignment="Left" Margin="0,0,0,8" Tom="Atencao" Texto="{Binding SeloDaCatraca}"
+                         Visibility="{Binding SeloDaCatraca, Converter={StaticResource VazioSome}}"
+                         AutomationProperties.Name="Conferência do sentido nesta catraca" />
+
+    <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}" Margin="0,0,0,8"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <ItemsControl ItemsSource="{Binding AvisosDoSalvo}" AutomationProperties.Name="Avisos do mapa salvo">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <rz:RayzerAlert Margin="0,0,0,8" Tom="Atencao" Titulo="{Binding}" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap"
+               Text="Entrada e saída, na catraca, são só o nome do lado em que o braço gira. Aqui você escolhe, para cada leitor, qual lado liberar e se a passagem conta como entrada ou saída." />
+
+    <!-- No gêmeo, o nome, o "o que muda", salvar e aplicar são os da catraca inteira (ControlesProprios falso). -->
+    <StackPanel Visibility="{Binding ControlesProprios, Converter={StaticResource BoolParaVisibilidade}}">
+      <TextBlock Margin="0,10,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado)" />
+      <TextBox Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador do giro" />
+    </StackPanel>
+
+    <!-- Uma origem por bloco. A urna clicada no gêmeo chega com o leitor 2 em destaque. -->
+    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding LinhasVisiveis}" Focusable="False" AutomationProperties.Name="Origens do giro">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Border x:Name="Bloco" Margin="0,0,0,8" Padding="10,8" BorderThickness="1" BorderBrush="{DynamicResource Rayzer.Border.Subtle}"
+                  CornerRadius="{DynamicResource Rayzer.Radius.Md}">
+            <StackPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Section}" TextWrapping="Wrap" Text="{Binding Nome}" />
+              <CheckBox Margin="0,4,0,4" IsChecked="{Binding Herda}" Content="Padrão (a função da catraca, conta como entrada)"
+                        AutomationProperties.Name="Usar o padrão" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Lado que o braço libera" />
+              <ComboBox ItemsSource="{Binding OpcoesDeFuncao}" SelectedItem="{Binding FuncaoEscolhida}" DisplayMemberPath="Nome"
+                        IsEnabled="{Binding Editavel}" AutomationProperties.Name="Função que libera o giro" />
+              <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Conta como" />
+              <ComboBox ItemsSource="{Binding OpcoesDeContagem}" SelectedItem="{Binding ContaComoEscolhida}" DisplayMemberPath="Nome"
+                        IsEnabled="{Binding Editavel}" AutomationProperties.Name="Como o giro conta" />
+              <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Texto no display (vazio = padrão)" />
+              <TextBox MaxLength="40" Text="{Binding Texto, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Editavel}"
+                       AutomationProperties.Name="Texto do giro" AutomationProperties.HelpText="{Binding Erro}" />
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Rayzer.Danger}" FontWeight="SemiBold"
+                         Text="{Binding Erro}" Visibility="{Binding Erro, Converter={StaticResource VazioSome}}" />
+              <ItemsControl ItemsSource="{Binding AvisosDoTexto}" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Margin="0,2" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding}" Foreground="{DynamicResource Rayzer.Warning}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Margin="0,8,0,0" Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="{Binding ResumoDoRotulo, Mode=OneWay}" /><Run Text=" · “" /><Run Text="{Binding TextoEfetivo, Mode=OneWay}" /><Run Text="”" />
+              </TextBlock>
+              <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding TextoDaSeta}" />
+              <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding Aviso}"
+                         Foreground="{DynamicResource Rayzer.Warning}" Visibility="{Binding Aviso, Converter={StaticResource VazioSome}}" />
+
+              <!-- Conferência de comissionamento (NOVO-HIL-DIR-11): girou para o lado da seta? -->
+              <rz:RayzerStatusPill Margin="0,8,0,0" HorizontalAlignment="Left" Tom="{Binding SinalDaConferencia, Converter={StaticResource SinalParaTom}}"
+                                   Texto="{Binding SeloDaConferencia}" AutomationProperties.Name="Conferência do sentido" />
+              <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding DetalheDaConferencia}" />
+              <WrapPanel Margin="0,6,0,0">
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Ver no gêmeo"
+                        ToolTip="Anima o sentido no desenho. Nada vai para a catraca."
+                        Command="{Binding DataContext.PreVisualizar, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"
+                        Visibility="{Binding DataContext.PreVisualizacaoDisponivel, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolParaVisibilidade}}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Girou para o lado da seta"
+                        ToolTip="Depois de aplicar: passe um cartão de teste por esta origem (ou use a liberação manual) e olhe o braço."
+                        Command="{Binding DataContext.ConferirComoEsperado, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Girou ao contrário"
+                        Command="{Binding DataContext.ConferirAoContrario, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+              </WrapPanel>
+            </StackPanel>
+          </Border>
+          <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding EmFoco}" Value="True">
+              <Setter TargetName="Bloco" Property="BorderBrush" Value="{DynamicResource Rayzer.Brand.Primary}" />
+              <Setter TargetName="Bloco" Property="BorderThickness" Value="2" />
+            </DataTrigger>
+          </DataTemplate.Triggers>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- Antes de salvar: exatamente o que muda. Só na aba Giro da Parametrização. -->
+    <StackPanel Visibility="{Binding ControlesProprios, Converter={StaticResource BoolParaVisibilidade}}">
+    <rz:RayzerSectionHeader Titulo="O que muda (atual → novo)" />
+    <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding ResumoDasMudancas}" />
+    <ItemsControl ItemsSource="{Binding Mudancas}" AutomationProperties.Name="O que muda no giro">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="0,8,0,0">
+            <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Campo}" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap">
+              <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{Binding Atual, Mode=OneWay}" /><Run Text=" → " /><Run FontWeight="SemiBold" Text="{Binding Novo, Mode=OneWay}" />
+            </TextBlock>
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <ItemsControl ItemsSource="{Binding Problemas}" AutomationProperties.Name="Problemas do giro">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <rz:RayzerAlert Margin="0,8,0,0" Tom="Perigo" Titulo="{Binding}" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <WrapPanel Margin="0,10,0,0">
+      <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,8,6" Content="Salvar o giro" Command="{Binding Salvar}" />
+      <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,0,6" Content="Desfazer" Command="{Binding Descartar}" />
+    </WrapPanel>
+
+    <!-- Aplicar: o mesmo "Aplicar configuração" da Parametrização, com confirmação. -->
+    <TextBlock Margin="0,8,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Na catraca" />
+    <rz:RayzerStatusPill HorizontalAlignment="Left" Tom="{Binding SinalDaSituacao, Converter={StaticResource SinalParaTom}}"
+                         Texto="{Binding SituacaoNaCatraca}" AutomationProperties.Name="Situação do giro na catraca" />
+    <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding MotivoParaNaoAplicar}"
+               Visibility="{Binding MotivoParaNaoAplicar, Converter={StaticResource VazioSome}}" />
+    <Button Style="{StaticResource Rayzer.Button.Ghost}" HorizontalAlignment="Left" Margin="0,8,0,0"
+            Content="Aplicar nesta catraca…" Command="{Binding PedirAplicacao}" />
+    <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}" BorderThickness="1"
+            BorderBrush="{DynamicResource Rayzer.Warning}" Background="{DynamicResource Rayzer.Surface}"
+            Visibility="{Binding ConfirmandoAplicacao, Converter={StaticResource BoolParaVisibilidade}}">
+      <StackPanel>
+        <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding TextoDaConfirmacao}" />
+        <WrapPanel Margin="0,10,0,0">
+          <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,8,0" Content="Aplicar agora" Command="{Binding ConfirmarAplicacao}" />
+          <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Cancelar" Command="{Binding CancelarAplicacao}" />
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

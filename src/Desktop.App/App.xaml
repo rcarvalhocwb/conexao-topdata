@@ -1,0 +1,209 @@
+<Application x:Class="Desktop.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Desktop.App"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             xmlns:vm="clr-namespace:Desktop.ViewModels;assembly=Desktop.ViewModels"
+             xmlns:telas="clr-namespace:Desktop.App.Telas">
+  <!--
+    x:Class é o que liga este arquivo ao App.xaml.cs. Sem ele o compilador gera uma segunda
+    classe de aplicativo, com o próprio Main, que carrega estes recursos mas nunca chama o
+    OnStartup — e o painel subia invisível, sem janela.
+
+    Rayzer XAcess: toda cor, fonte, espaço e forma vem do Rayzer Design System
+    (src/Rayzer.Design, docs/27). O tema declarado aqui é o claro; TemaRayzer.Instalar troca
+    pelo escuro ou pelo alto contraste conforme a preferência e o Windows.
+  -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Tokens.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Temas/Claro.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Rayzer.Design;component/Controles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <local:SinalParaTom x:Key="SinalParaTom" />
+      <local:SinalParaGlifoDeDispositivo x:Key="SinalParaGlifoDeDispositivo" />
+      <local:SaudeParaTom x:Key="SaudeParaTom" />
+      <local:PendenciaParaTom x:Key="PendenciaParaTom" />
+      <local:ZeroParaVisivel x:Key="ZeroParaVisivel" />
+      <local:TelaParaIcone x:Key="TelaParaIcone" />
+      <local:InstanteParaTexto x:Key="InstanteParaTexto" />
+      <local:SimOuTraco x:Key="SimOuTraco" />
+      <local:VazioSome x:Key="VazioSome" />
+      <BooleanToVisibilityConverter x:Key="BoolParaVisibilidade" />
+
+      <!-- Cabeçalho de página: título + frase de contexto. -->
+      <Style x:Key="Pagina.Titulo" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Title}">
+        <Setter Property="Margin" Value="0,0,0,4" />
+      </Style>
+      <Style x:Key="Pagina.Descricao" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Secondary}">
+        <Setter Property="Margin" Value="0,0,0,16" />
+        <Setter Property="MaxWidth" Value="880" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+      </Style>
+
+      <!-- InfoNotice: observação informativa no rodapé de uma área. -->
+      <Style x:Key="InfoNotice" TargetType="rz:RayzerAlert">
+        <Setter Property="Tom" Value="Info" />
+        <Setter Property="Margin" Value="0,12,0,0" />
+      </Style>
+
+      <!-- Mensagem da tela (resultado de ação, falha de comunicação). -->
+      <Style x:Key="Pagina.Mensagem" TargetType="rz:RayzerAlert">
+        <Setter Property="Tom" Value="Neutro" />
+        <Setter Property="Margin" Value="0,0,0,12" />
+      </Style>
+
+      <!-- Hora e código: dígitos de largura fixa na tabela. -->
+      <Style x:Key="Celula.Mono" TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Mono}">
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+
+      <!-- Resultado de acesso: ✓ autorizado / × negado, com cor e texto. -->
+      <DataTemplate x:Key="Celula.Acesso" DataType="{x:Type vm:LinhaDeAcesso}">
+        <rz:RayzerStatus Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding Mensagem}" />
+      </DataTemplate>
+
+      <!--
+        O mesmo resultado, com "Por quê?" em cada negação (Etapa I.2 do docs/36, IN-06): na lista
+        de Acessos e no Painel ao vivo. O botão abre o painel lateral da tela (PorQue, na ViewModel
+        dela); funciona com a camada inteligente desligada.
+      -->
+      <DataTemplate x:Key="Celula.AcessoComPorQue" DataType="{x:Type vm:LinhaDeAcesso}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Margin="8,0,0,0" Padding="10,2"
+                  VerticalAlignment="Center" Content="Por quê?"
+                  Visibility="{Binding PodeExplicar, Converter={StaticResource BoolParaVisibilidade}}"
+                  Command="{Binding DataContext.PorQue.Abrir, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  CommandParameter="{Binding}"
+                  ToolTip="O que aconteceu, o que dizer à pessoa e o que fazer"
+                  AutomationProperties.Name="Por que esta leitura foi negada" />
+          <rz:RayzerStatus VerticalAlignment="Center" Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding Mensagem}" />
+        </DockPanel>
+      </DataTemplate>
+
+      <!--
+        TurnstileCard: miniatura · CATRACA 01 · Entrada 1 · situação · último evento ·
+        meta-itens (firmware, grupo, porta, reconexões) · ações. O mesmo desenho no painel ao
+        vivo e na tela de catracas. As ações são as que existem: gerenciar a catraca, ver os
+        acessos dela e abrir o diagnóstico.
+      -->
+      <DataTemplate x:Key="Cartao.Catraca" DataType="{x:Type vm:LinhaDeCatraca}">
+        <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,12,12" Padding="14,12,14,8">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <rz:RayzerTurnstileGlyph VerticalAlignment="Top" Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}" />
+
+            <StackPanel Grid.Column="1" Margin="14,0,0,0">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Style="{StaticResource Rayzer.Type.Overline}" Text="{Binding Rotulo}" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,2,0,0" Text="{Binding Nome}" TextTrimming="CharacterEllipsis" />
+                  <!-- Selo por catraca: a situação veio de uma catraca simulada (migração 016). -->
+                  <rz:RayzerStatusPill Margin="0,4,0,0" HorizontalAlignment="Left" Tom="Atencao" Texto="Simulação"
+                                       AutomationProperties.Name="Catraca simulada"
+                                       ToolTip="Catraca simulada: nenhuma catraca física é acionada."
+                                       Visibility="{Binding Simulacao, Converter={StaticResource BoolParaVisibilidade}}" />
+                </StackPanel>
+                <rz:RayzerStatusPill Grid.Column="1" VerticalAlignment="Top"
+                                     Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}"
+                                     Glifo="{Binding Sinal, Converter={StaticResource SinalParaGlifoDeDispositivo}}"
+                                     Texto="{Binding Situacao}" />
+              </Grid>
+              <TextBlock Margin="0,6,0,6" Style="{StaticResource Rayzer.Type.Body}">
+                <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="Último evento: " /><Run FontWeight="SemiBold" Text="{Binding UltimaDecisao, Mode=OneWay}" /><Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text=" · " /><Run Text="{Binding UltimoEvento, Mode=OneWay}" />
+              </TextBlock>
+              <WrapPanel>
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Settings}" Rotulo="Firmware" Valor="{Binding Firmware}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Folder}" Rotulo="Grupo" Valor="{Binding Grupo}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Ethernet}" Rotulo="Porta" Valor="{Binding Porta}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Sync}" Rotulo="Reconexões" Valor="{Binding Reconexoes}" />
+                <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Clock}" Rotulo="Relógio" Valor="{Binding Relogio}" />
+              </WrapPanel>
+              <!-- Relógio divergente não tira a catraca de operação: é um aviso, não uma falha. -->
+              <TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
+                         Foreground="{DynamicResource Rayzer.Warning}"
+                         Text="Relógio da catraca fora do horário: os acessos saem com hora errada. Acerte em Gerenciar.">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Body}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding RelogioDivergente}" Value="True">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </StackPanel>
+
+            <!-- TurnstileActionBar. -->
+            <Border Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,0" Padding="0,6,0,0" BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource Rayzer.Border.Subtle}">
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
+                        AutomationProperties.Name="Gerenciar esta catraca"
+                        Command="{Binding DataContext.Gerenciar, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding Inner}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.Settings}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Gerenciar" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
+                        AutomationProperties.Name="Ver acessos desta catraca"
+                        Command="{Binding DataContext.VerAcessos, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding Inner}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.List}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Ver acessos" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
+                        AutomationProperties.Name="Abrir diagnóstico"
+                        Command="{Binding DataContext.AbrirDiagnostico, RelativeSource={RelativeSource AncestorType=Window}}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.Diagnostic}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Diagnóstico" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Border>
+      </DataTemplate>
+
+      <!-- Cada ViewModel de tela é desenhada pela sua UserControl. -->
+      <DataTemplate DataType="{x:Type vm:PainelAoVivoViewModel}"><telas:PainelAoVivo /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:CatracasViewModel}"><telas:Catracas /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:AcessosViewModel}"><telas:Acessos /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:ConsultaViewModel}"><telas:Consulta /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:SincronizacaoViewModel}"><telas:Sincronizacao /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:ContasViewModel}"><telas:Contas /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:GerenciarCatracaViewModel}"><telas:GerenciarCatraca /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:GemeoDigitalViewModel}"><telas:Gemeo /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:ConfiguracoesViewModel}"><telas:Configuracoes /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:DiagnosticoViewModel}"><telas:Diagnostico /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:SimuladorViewModel}"><telas:Simulador /></DataTemplate>
+      <!-- Fora do menu: aberta pela "Gerenciar catraca" (Etapa A.6). -->
+      <DataTemplate DataType="{x:Type vm:ParametrizacaoViewModel}"><telas:Parametrizacao /></DataTemplate>
+      <!-- Painel, não tela: o mapa de giro dentro do gêmeo e da aba Giro da Parametrização (D9). -->
+      <DataTemplate DataType="{x:Type vm:MapaDeGiroViewModel}"><telas:MapaDeGiro /></DataTemplate>
+      <!-- Painel, não tela: a configuração da catraca inteira, ao lado do desenho do gêmeo (docs/33 §9). -->
+      <DataTemplate DataType="{x:Type vm:CentralDaCatracaViewModel}"><telas:CentralDaCatraca /></DataTemplate>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

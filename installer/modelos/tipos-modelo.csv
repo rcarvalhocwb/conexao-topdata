@@ -1,0 +1,5 @@
+﻿tipo;nome_exibido;ordem;ativo
+INTEIRA;Inteira;1;SIM
+MEIA;Meia-entrada;2;SIM
+SOCIAL;Social;3;SIM
+SOLIDARIO;Solidário;4;SIM

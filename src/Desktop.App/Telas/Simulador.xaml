@@ -1,0 +1,74 @@
+<UserControl x:Class="Desktop.App.Telas.Simulador"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Simulador de catraca">
+  <DockPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Simulador de catraca"
+                         Descricao="Passa um código numa catraca simulada, como se o leitor tivesse lido. Só funciona com a instalação em modo simulação (Assistente de configuração, passo 2). O resultado também aparece no Painel ao vivo." />
+
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
+      <WrapPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
+          <TextBox Width="96" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Catraca" />
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Código lido" />
+          <TextBox Width="260" FontFamily="{DynamicResource Rayzer.Font.Mono}" Text="{Binding Codigo, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.Name="Código lido">
+            <TextBox.InputBindings>
+              <KeyBinding Key="Enter" Command="{Binding Passar}" />
+            </TextBox.InputBindings>
+          </TextBox>
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}" VerticalAlignment="Bottom">
+          <CheckBox MinHeight="20" IsChecked="{Binding NaUrna}" Content="Na fenda da urna" />
+          <CheckBox MinHeight="20" IsChecked="{Binding Girar}" Content="A pessoa gira se liberar" />
+        </StackPanel>
+        <Button Style="{StaticResource Rayzer.Button.Primary}" VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}"
+                Content="_Passar" IsDefault="True" Command="{Binding Passar}" />
+      </WrapPanel>
+    </Border>
+
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <rz:RayzerAlert DockPanel.Dock="Bottom" Style="{StaticResource InfoNotice}" Titulo="Como a simulação funciona"
+                    Texto="No modo simulação, os acessos são processados normalmente: a decisão, o registro e a prestação de contas são os de verdade. Só a catraca é simulada — nenhum equipamento é acionado." />
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <DockPanel Grid.Column="0">
+        <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Últimas tentativas nesta catraca" />
+        <Grid>
+          <DataGrid ItemsSource="{Binding Resultados}" AutomationProperties.Name="Resultados">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
+              <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="76" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Play}" Titulo="Nenhuma passagem simulada"
+                               Texto="Escolha um código de teste ao lado e clique em Passar."
+                               Visibility="{Binding Resultados, Converter={StaticResource ZeroParaVisivel}}" />
+        </Grid>
+      </DockPanel>
+
+      <DockPanel Grid.Column="2">
+        <rz:RayzerSectionHeader DockPanel.Dock="Top" Titulo="Códigos de teste" />
+        <DataGrid ItemsSource="{Binding CodigosDeTeste}" AutomationProperties.Name="Códigos de teste">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Rotulo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
+            <DataGridTextColumn Header="O QUE É" Binding="{Binding Valor}" Width="*" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

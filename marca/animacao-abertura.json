@@ -1,0 +1,20 @@
+{
+  "$comentario": "Abertura do Rayzer XAcess (brand board, seção 08). Fonte única dos tempos: o WPF (RayzerAbertura em Generic.xaml) e a web (RayzerSplash) seguem estes números; os testes conferem.",
+  "nome": "Abertura Rayzer XAcess",
+  "duracaoTotalMs": 2900,
+  "movimentoReduzido": "não exibir (Windows: animações desligadas; web: prefers-reduced-motion)",
+  "bloqueiaInteracao": false,
+  "curva": { "nome": "ease-out cúbica", "cssCubicBezier": "cubic-bezier(0.33, 1, 0.68, 1)", "wpf": "CubicEase EaseOut" },
+  "fases": [
+    { "id": "fluxos", "titulo": "Fluxos se aproximam", "inicioMs": 0, "fimMs": 600,
+      "descricao": "Quatro linhas de energia (Azul Principal → Ciano) desenhadas das bordas até o centro; somem entre 1100 e 1450 ms." },
+    { "id": "intersecao", "titulo": "Interseção e Rayzer Access Pulse", "inicioMs": 600, "fimMs": 1400,
+      "descricao": "Pulso radial ciano no ponto de encontro: escala 0,3 → 1,6, opacidade 0 → 0,95 (850 ms) → 0." },
+    { "id": "simbolo", "titulo": "Símbolo se completa", "inicioMs": 1400, "fimMs": 1800,
+      "descricao": "O X vítreo com brilho: escala 0,82 → 1, opacidade 0 → 1 (1650 ms); sai entre 1800 e 2000 ms." },
+    { "id": "marca", "titulo": "Marca e produto", "inicioMs": 1800, "fimMs": 2200,
+      "descricao": "RAYZER X e Xacess aparecem (1850–2200 ms); a linha de energia cresce de 0 a 100% (1900–2600 ms)." },
+    { "id": "saida", "titulo": "Saída", "inicioMs": 2600, "fimMs": 2900,
+      "descricao": "A abertura inteira some (opacidade 1 → 0) e deixa de existir." }
+  ]
+}
