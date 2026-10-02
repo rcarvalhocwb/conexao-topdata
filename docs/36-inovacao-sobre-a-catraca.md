@@ -103,6 +103,13 @@ base continua negando.
 | I.10 | Pós-evento e replay | I.5, I.6, R1–R8 |
 | I.11 | Calibração e "liga por padrão" | I.1–I.10 |
 
+**Situação (docs/34 §11):** **I.0 concluída no código** — `Access.Inteligencia`, `AnalisadorDaOperacao`
+(desligado por padrão, chave `inteligencia.ligada`), `acesso.db` só para leitura, `telemetria.db` com o
+migrador `T001` e a saúde do Analisador no Diagnóstico; provas `NOVO-ARQ-IA-01/02/03`,
+`NOVO-CHAOS-IA-01` e `NOVO-CTR-IA-01`. **I.2 concluída no código** — "Por quê?" em cada negação
+(Acessos e Painel ao vivo) e "Principais motivos de negação" na Prestação de contas, pela função pura
+`PorQueNegou` e a RPC `ExplicarNegativa`; funciona com a camada desligada; prova `NOVO-SIM-NEG-01`.
+
 **Caminho crítico para a demonstração à Topdata:** I.1b → I.0 → I.2 → I.3 → I.4 → I.6, com os ganchos
 do simulador (03 §4.3: chegadas de Poisson, atraso do giro, sinais por catraca, rampa de relógio,
 cenário só em simulação, semente fixa no CI) em paralelo.

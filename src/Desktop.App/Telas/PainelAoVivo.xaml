@@ -56,13 +56,40 @@
         </Grid>
       </DockPanel>
 
-      <rz:RayzerDataPanel Grid.Column="2" Titulo="Acessos em tempo real" Subtitulo="Cada leitura aparece aqui na hora, autorizada ou negada">
+      <rz:RayzerDataPanel Grid.Column="2" Titulo="Acessos em tempo real" Subtitulo="Cada leitura aparece aqui na hora, autorizada ou negada; nas negadas, &quot;Por quê?&quot; explica">
+        <DockPanel>
+        <!-- "Por quê?" (Etapa I.2 do docs/36): 360 px que empurram a lista, nunca a cobrem (docs/36-anexos/03 §2.1, item 7). -->
+        <Border DockPanel.Dock="Right" Width="360" Margin="12,0,0,0" Style="{StaticResource Rayzer.Card}"
+                Visibility="{Binding PorQue.Aberto, Converter={StaticResource BoolParaVisibilidade}}" AutomationProperties.Name="Por quê?">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Content="Fechar" Command="{Binding PorQue.Fechar}"
+                        AutomationProperties.Name="Fechar a explicação" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" VerticalAlignment="Center" Text="Por quê?" />
+              </DockPanel>
+              <rz:RayzerStatus Margin="0,8,0,12" HorizontalAlignment="Left" Tom="{Binding PorQue.Sinal, Converter={StaticResource SinalParaTom}}"
+                               Texto="{Binding PorQue.Cabecalho}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que aconteceu" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueAconteceu}" />
+              <StackPanel Visibility="{Binding PorQue.OQueDizer, Converter={StaticResource VazioSome}}">
+                <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que dizer à pessoa" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueDizer}" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que fazer" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueFazer}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                         Text="Explicação para o operador. O display da catraca continua com a mensagem de sempre." />
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+
         <Grid>
           <DataGrid ItemsSource="{Binding UltimosAcessos}" BorderThickness="0,1,0,0" AutomationProperties.Name="Últimos acessos">
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
-              <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.Acesso}" />
+              <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.AcessoComPorQue}" />
               <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
             </DataGrid.Columns>
           </DataGrid>
@@ -71,6 +98,7 @@
                                Observacao="Sem catraca física? Com a instalação em modo simulação, passe um código de teste na tela Simulador."
                                Visibility="{Binding UltimosAcessos.Count, Converter={StaticResource ZeroParaVisivel}}" />
         </Grid>
+        </DockPanel>
       </rz:RayzerDataPanel>
     </Grid>
   </Grid>

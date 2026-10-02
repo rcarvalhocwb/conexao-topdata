@@ -66,6 +66,24 @@
       </DataTemplate>
 
       <!--
+        O mesmo resultado, com "Por quê?" em cada negação (Etapa I.2 do docs/36, IN-06): na lista
+        de Acessos e no Painel ao vivo. O botão abre o painel lateral da tela (PorQue, na ViewModel
+        dela); funciona com a camada inteligente desligada.
+      -->
+      <DataTemplate x:Key="Celula.AcessoComPorQue" DataType="{x:Type vm:LinhaDeAcesso}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Margin="8,0,0,0" Padding="10,2"
+                  VerticalAlignment="Center" Content="Por quê?"
+                  Visibility="{Binding PodeExplicar, Converter={StaticResource BoolParaVisibilidade}}"
+                  Command="{Binding DataContext.PorQue.Abrir, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  CommandParameter="{Binding}"
+                  ToolTip="O que aconteceu, o que dizer à pessoa e o que fazer"
+                  AutomationProperties.Name="Por que esta leitura foi negada" />
+          <rz:RayzerStatus VerticalAlignment="Center" Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding Mensagem}" />
+        </DockPanel>
+      </DataTemplate>
+
+      <!--
         TurnstileCard: miniatura · CATRACA 01 · Entrada 1 · situação · último evento ·
         meta-itens (firmware, grupo, porta, reconexões) · ações. O mesmo desenho no painel ao
         vivo e na tela de catracas. As ações são as que existem: gerenciar a catraca, ver os

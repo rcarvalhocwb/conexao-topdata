@@ -130,6 +130,47 @@ public static class Textos
         _ => ("—", Sinal.Neutro),
     };
 
+    /// <summary>
+    /// A saúde do Analisador da camada inteligente (Etapa I.0 do docs/36), em português de
+    /// suporte: o resumo, a cor e as linhas da conta. Desligada é o normal desta versão — tom
+    /// neutro, nunca alerta.
+    /// </summary>
+    public static (string Resumo, Sinal Sinal, IReadOnlyList<ParDeTexto> Linhas) SaudeDoAnalisador(SaudeDoAnalisador? saude, DateTimeOffset agora)
+    {
+        if (saude is null || (!saude.Ligado && !saude.Rodando && saude.Falhas == 0))
+        {
+            return ("Desligada nesta instalação", Sinal.Neutro,
+            [
+                new ParDeTexto("Situação", "Desligada (chave técnica inteligencia.ligada). Liga quem faz o ensaio, com reinício do serviço."),
+                new ParDeTexto("Por que negou", "Funciona com a camada desligada: a explicação vem do que a catraca já gravou."),
+            ]);
+        }
+
+        var cultura = CultureInfo.InvariantCulture;
+        var ultimo = saude.UltimoCiclo is null ? "nenhum ainda" : Ha(saude.UltimoCiclo.ToDateTimeOffset(), agora);
+        var erro = string.IsNullOrEmpty(saude.UltimoErro)
+            ? "nenhum"
+            : saude.UltimoErroEm is null ? saude.UltimoErro : $"{saude.UltimoErro} · {Ha(saude.UltimoErroEm.ToDateTimeOffset(), agora)}";
+
+        var (resumo, sinal) = (saude.Ligado, saude.Rodando, saude.Falhas, saude.Ciclos) switch
+        {
+            (false, _, > 0, _) => ("Não subiu — veja o último erro", Sinal.Atencao),
+            (true, false, _, _) => ("Parada", Sinal.Atencao),
+            (true, true, > 0, 0) => ("Ligada, com erro em todos os ciclos", Sinal.Problema),
+            (true, true, > 0, _) => ("Funcionando, com erros", Sinal.Atencao),
+            _ => ("Funcionando", Sinal.Bom),
+        };
+
+        return (resumo, sinal,
+        [
+            new ParDeTexto("Último ciclo", ultimo),
+            new ParDeTexto("Duração do último ciclo", string.Create(cultura, $"{saude.DuracaoDoUltimoCicloMs} ms (orçamento: {saude.OrcamentoMs} ms)")),
+            new ParDeTexto("Ciclos", string.Create(cultura, $"{saude.Ciclos} feitos · {saude.Estouros} acima do orçamento · {saude.Pulados} pulados · {saude.Falhas} com erro")),
+            new ParDeTexto("Último erro", erro),
+            new ParDeTexto("Tentativas lidas", string.Create(cultura, $"{saude.TentativasLidas} desde a partida do serviço")),
+        ]);
+    }
+
     /// <summary>Hora no relógio do evento (Brasília), no formato do painel.</summary>
     public static string Hora(DateTimeOffset quando) =>
         FusoDoEvento.NoEvento(quando).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
@@ -166,6 +207,10 @@ public sealed record LinhaDeCatraca(
 }
 
 /// <summary>Um acesso, pronto para a tela. O código já vem mascarado do serviço.</summary>
+/// <remarks>
+/// <c>EventoId</c> é o identificador da tentativa, para pedir o "Por quê?" (Etapa I.2 do docs/36);
+/// vazio em linha montada sem o serviço.
+/// </remarks>
 public sealed record LinhaDeAcesso(
     string Hora,
     int Inner,
@@ -174,8 +219,12 @@ public sealed record LinhaDeAcesso(
     bool Girou,
     string Categoria,
     string Codigo,
-    Sinal Sinal)
+    Sinal Sinal,
+    string EventoId = "")
 {
+    /// <summary>A linha mostra "Por quê?": toda negação que o serviço pode explicar.</summary>
+    public bool PodeExplicar => !Liberado && EventoId.Length > 0;
+
     public static LinhaDeAcesso De(EventoDeAcesso e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -189,6 +238,7 @@ public sealed record LinhaDeAcesso(
             e.PassagemConfirmada,
             e.Categoria,
             e.CredencialMascarada,
-            liberado ? Sinal.Bom : Sinal.Problema);
+            liberado ? Sinal.Bom : Sinal.Problema,
+            e.EventoId);
     }
 }

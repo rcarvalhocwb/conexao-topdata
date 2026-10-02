@@ -23,6 +23,30 @@
       </UniformGrid>
     </Border>
 
+    <!-- Etapa I.0 (docs/36): a saúde do Analisador da camada inteligente. Desligada é o normal. -->
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" AutomationProperties.Name="Camada inteligente">
+      <StackPanel>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" Text="Camada inteligente (Analisador)" />
+          <rz:RayzerStatus Grid.Column="1" VerticalAlignment="Center"
+                           Tom="{Binding AnalisadorSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding AnalisadorResumo}" />
+        </Grid>
+        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Analisador}" AutomationProperties.Name="Saúde do Analisador">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,2,0,0" TextWrapping="Wrap">
+                <Run Text="{Binding Rotulo, Mode=OneWay}" /><Run Text=": " /><Run FontWeight="SemiBold" Text="{Binding Valor, Mode=OneWay}" />
+              </TextBlock>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <ItemsControl ItemsSource="{Binding Diagnostico.Workers}" AutomationProperties.Name="Programas das catracas">
         <ItemsControl.ItemTemplate>

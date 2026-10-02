@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Migrations/*.sql" />
+    <!-- telemetria.db, arquivo próprio da camada inteligente (Etapa I.0 do docs/36). -->
+    <EmbeddedResource Include="MigracoesDaTelemetria/*.sql" />
   </ItemGroup>
 
   <ItemGroup>

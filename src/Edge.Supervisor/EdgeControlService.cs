@@ -43,6 +43,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? _configuracaoPorCatraca;
     private readonly string? _sessao;
     private readonly Access.Infrastructure.SQLite.MapasDeGiro? _mapasDeGiro;
+    private readonly AnalisadorDaOperacao? _analisador;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -81,6 +82,10 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// Mapa de giro de cada catraca (migração 017, D9); sem ele, o "Giro desta catraca" responde
     /// que não há base.
     /// </param>
+    /// <param name="analisador">
+    /// O Analisador da camada inteligente (Etapa I.0 do docs/36), só para o Diagnóstico mostrar a
+    /// saúde dele. Nulo: o Diagnóstico diz que ele não existe neste serviço.
+    /// </param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -98,7 +103,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? configuracoesDasCatracas = null,
         Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null,
         string? sessao = null,
-        Access.Infrastructure.SQLite.MapasDeGiro? mapasDeGiro = null)
+        Access.Infrastructure.SQLite.MapasDeGiro? mapasDeGiro = null,
+        AnalisadorDaOperacao? analisador = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -118,6 +124,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _configuracaoPorCatraca = configuracaoPorCatraca;
         _sessao = string.IsNullOrWhiteSpace(sessao) ? null : sessao;
         _mapasDeGiro = mapasDeGiro;
+        _analisador = analisador;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -445,12 +452,17 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             Liberados = l.Liberados,
             Negados = l.Negados,
         }));
+        // Etapa I.2 (docs/36): os principais motivos de negação, com o que fazer diante de cada um e
+        // a parte dos negados do período. Texto determinístico: vale com a camada inteligente desligada.
+        var semContexto = new Access.Inteligencia.ContextoDaNegativa(agora, 0);
         resposta.Negativas.AddRange(contas.Negativas.Select(n => new LinhaDeNegativa
         {
             Motivo = n.Motivo,
             Mensagem = AcompanhamentoDaOperacao.MensagemPara(new Access.Infrastructure.SQLite.TentativaParaOPainel(
                 0, Guid.Empty, string.Empty, string.Empty, agora, false, n.Motivo, null, null, string.Empty, false)),
             Quantidade = n.Quantidade,
+            OQueFazer = Access.Inteligencia.PorQueNegou.ExplicarNegativa(n.Motivo, semContexto).OQueFazer,
+            PercentualDosNegados = contas.Negados > 0 ? (int)Math.Round(100.0 * n.Quantidade / contas.Negados, MidpointRounding.AwayFromZero) : 0,
         }));
 
         return Task.FromResult(resposta);
@@ -490,6 +502,48 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         return Task.FromResult(resposta);
     }
 
+    /// <summary>
+    /// "Por que negou" (Etapa I.2 do docs/36, IN-06): a explicação de uma tentativa, montada sob
+    /// pedido pela função pura <see cref="Access.Inteligencia.PorQueNegou"/> com o contexto da base.
+    /// Não depende da chave da camada inteligente nem do Analisador. Só leitura.
+    /// </summary>
+    public override Task<ExplicacaoDaNegativa> ExplicarNegativa(ExplicarNegativaRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var resposta = new ExplicacaoDaNegativa();
+
+        if (_consultas is null || !Guid.TryParse(request.EventoId, out var id)
+            || _consultas.ContextoDaTentativa(id) is not { } tentativa)
+        {
+            return Task.FromResult(resposta);
+        }
+
+        var agora = _relogio();
+        var contexto = new Access.Inteligencia.ContextoDaNegativa(
+            tentativa.Em,
+            InnerDe(tentativa.DeviceId),
+            tentativa.UltimoUso is { } uso ? new Access.Inteligencia.UsoAnterior(uso.Em, InnerDe(uso.DeviceId), uso.Girou) : null,
+            tentativa.IntervaloDeReusoSegundos > 0 ? TimeSpan.FromSeconds(tentativa.IntervaloDeReusoSegundos) : null,
+            _nuvem is { Configurada: true, UltimoSucesso: { } sucesso } ? agora - sucesso : null);
+
+        var explicacao = (tentativa.Liberou, tentativa.Girou) switch
+        {
+            (false, _) => Access.Inteligencia.PorQueNegou.ExplicarNegativa(tentativa.Motivo, contexto),
+            (true, false) => Access.Inteligencia.PorQueNegou.ExplicarLiberadoSemGiro(contexto),
+            (true, true) => Access.Inteligencia.PorQueNegou.ExplicarLiberadoComGiro(contexto),
+        };
+
+        resposta.Encontrada = true;
+        resposta.Negada = !tentativa.Liberou;
+        resposta.Inner = contexto.Catraca;
+        resposta.Em = Timestamp.FromDateTimeOffset(tentativa.Em);
+        resposta.OndeFoiLido = Access.Inteligencia.PorQueNegou.OndeFoiLido(tentativa.Origem);
+        resposta.OQueAconteceu = explicacao.OQueAconteceu;
+        resposta.OQueDizer = explicacao.OQueDizer;
+        resposta.OQueFazer = explicacao.OQueFazer;
+        return Task.FromResult(resposta);
+    }
+
     public override Task<Diagnostico> ObterDiagnostico(ObterDiagnosticoRequest request, ServerCallContext context)
     {
         var resposta = new Diagnostico { Versao = _versao, PastaDeDados = _pastaDeDados };
@@ -513,7 +567,43 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             resposta.Workers.Add(item);
         }
 
+        resposta.Analisador = SaudeDoAnalisadorPara(_analisador?.Situacao);
         return Task.FromResult(resposta);
+    }
+
+    /// <summary>A saúde do Analisador como vai ao painel (Etapa I.0). Sem Analisador: desligado, parado.</summary>
+    public static SaudeDoAnalisador SaudeDoAnalisadorPara(Access.Inteligencia.SituacaoDoAnalisador? situacao)
+    {
+        if (situacao is null)
+        {
+            return new SaudeDoAnalisador();
+        }
+
+        var saude = new SaudeDoAnalisador
+        {
+            Ligado = situacao.Ligada,
+            Rodando = situacao.Rodando,
+            DuracaoDoUltimoCicloMs = (long)situacao.DuracaoDoUltimoCiclo.TotalMilliseconds,
+            Ciclos = situacao.Ciclos,
+            Estouros = situacao.Estouros,
+            Pulados = situacao.Pulados,
+            Falhas = situacao.Falhas,
+            UltimoErro = situacao.UltimoErro,
+            OrcamentoMs = (long)situacao.Orcamento.TotalMilliseconds,
+            TentativasLidas = situacao.TentativasLidas,
+        };
+
+        if (situacao.UltimoCicloEm is { } ciclo)
+        {
+            saude.UltimoCiclo = Timestamp.FromDateTimeOffset(ciclo);
+        }
+
+        if (situacao.UltimoErroEm is { } erro)
+        {
+            saude.UltimoErroEm = Timestamp.FromDateTimeOffset(erro);
+        }
+
+        return saude;
     }
 
     public override Task<SimularLeituraResponse> SimularLeitura(SimularLeituraRequest request, ServerCallContext context)

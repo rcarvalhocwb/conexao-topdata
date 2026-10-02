@@ -24,13 +24,7 @@ public sealed class Migrator
     }
 
     /// <summary>Migrações disponíveis, na ordem de aplicação.</summary>
-    public static IReadOnlyList<string> Disponiveis() =>
-        typeof(Migrator).Assembly
-            .GetManifestResourceNames()
-            .Where(n => n.StartsWith(PrefixoDoRecurso, StringComparison.Ordinal))
-            .Select(n => n[PrefixoDoRecurso.Length..])
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
+    public static IReadOnlyList<string> Disponiveis() => Recursos(PrefixoDoRecurso);
 
     /// <summary>
     /// Aplica o que faltar. Seguro para chamar em toda inicialização: migração já
@@ -40,7 +34,25 @@ public sealed class Migrator
     public IReadOnlyList<string> Aplicar()
     {
         using var conexao = _fabrica.Abrir();
+        return Aplicar(conexao, PrefixoDoRecurso);
+    }
 
+    /// <summary>Os recursos embutidos com o prefixo, sem ele, em ordem.</summary>
+    internal static IReadOnlyList<string> Recursos(string prefixo) =>
+        typeof(Migrator).Assembly
+            .GetManifestResourceNames()
+            .Where(n => n.StartsWith(prefixo, StringComparison.Ordinal))
+            .Select(n => n[prefixo.Length..])
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// Aplica, na conexão, as migrações embutidas com o prefixo que ainda não estão em
+    /// <c>schema_version</c>. É o mesmo mecanismo para <c>acesso.db</c> e para
+    /// <c>telemetria.db</c> (Etapa I.0), cada arquivo com a sua pasta e a sua tabela de versão.
+    /// </summary>
+    internal static IReadOnlyList<string> Aplicar(SqliteConnection conexao, string prefixo)
+    {
         SqliteConnectionFactory.Executar(
             conexao,
             """
@@ -63,14 +75,14 @@ public sealed class Migrator
 
         var aplicadas = new List<string>();
 
-        foreach (var nome in Disponiveis())
+        foreach (var nome in Recursos(prefixo))
         {
             if (jaAplicadas.Contains(nome))
             {
                 continue;
             }
 
-            var sql = LerRecurso(nome);
+            var sql = LerRecurso(prefixo + nome);
 
             // Cada migração é uma transação: ou aplica inteira, ou não aplica.
             using var transacao = conexao.BeginTransaction();
@@ -100,9 +112,8 @@ public sealed class Migrator
         return aplicadas;
     }
 
-    private static string LerRecurso(string nome)
+    private static string LerRecurso(string caminho)
     {
-        var caminho = PrefixoDoRecurso + nome;
         using var fluxo = typeof(Migrator).Assembly.GetManifestResourceStream(caminho)
             ?? throw new InvalidOperationException($"Migração não encontrada no assembly: {caminho}");
         using var leitor = new StreamReader(fluxo);

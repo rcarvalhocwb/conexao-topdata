@@ -16,6 +16,9 @@
     <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />
     <ProjectReference Include="../Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
     <ProjectReference Include="../Sync.Connectors.Rest/Sync.Connectors.Rest.csproj" />
+    <!-- Camada inteligente (Etapa I do docs/36): funções puras que o Analisador chama. Só o
+         serviço a referencia; o worker, nunca (NOVO-ARQ-IA-01). -->
+    <ProjectReference Include="../Access.Inteligencia/Access.Inteligencia.csproj" />
   </ItemGroup>
 
   <ItemGroup>

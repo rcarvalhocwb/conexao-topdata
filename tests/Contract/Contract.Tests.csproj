@@ -18,6 +18,7 @@
     <ProjectReference Include="../../src/Access.Domain/Access.Domain.csproj" />
     <ProjectReference Include="../../src/Access.Application/Access.Application.csproj" />
     <ProjectReference Include="../../src/Access.Importacao/Access.Importacao.csproj" />
+    <ProjectReference Include="../../src/Access.Inteligencia/Access.Inteligencia.csproj" />
   </ItemGroup>
 
   <ItemGroup>
