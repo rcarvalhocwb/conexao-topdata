@@ -223,6 +223,33 @@ public static class MontadorDaConfiguracao
     /// <summary><c>ConfigurarLeitor1/2</c>: 1 = somente entrada (FUN:15/16).</summary>
     public const byte LeitorSomenteEntrada = 1;
 
+    /// <summary>
+    /// Aplica as sobreposições do evento e da catraca ao padrão de fábrica, e o mapa de giro da
+    /// catraca ao perfil físico (D9, docs/34 §9).
+    /// </summary>
+    /// <remarks>
+    /// O mapa não é campo do buffer: entra no <see cref="GatePhysicalProfile"/>, que decide qual
+    /// função de liberação o laço chama a cada giro. <see cref="MapaDeGiro.Vazio"/> dá, valor a
+    /// valor, o resultado da sobrecarga de três camadas.
+    /// </remarks>
+    /// <param name="padraoDeFabrica">Configuração completa do modelo (ver <see cref="PadroesDeFabrica"/>).</param>
+    /// <param name="evento">O que o evento muda; nulo em cada campo = herda o padrão.</param>
+    /// <param name="catraca">O que a catraca muda; nulo em cada campo = herda o evento (Etapa A.3).</param>
+    /// <param name="mapaDeGiro">O mapa de giro da catraca (migração 017); vazio = como sempre.</param>
+    public static DeviceConfiguration Montar(
+        DeviceConfiguration padraoDeFabrica,
+        SobreposicoesDoEvento evento,
+        SobreposicoesDaCatraca catraca,
+        MapaDeGiro mapaDeGiro)
+    {
+        ArgumentNullException.ThrowIfNull(mapaDeGiro);
+
+        var montada = Montar(padraoDeFabrica, evento, catraca);
+        return mapaDeGiro.EstaVazio
+            ? montada
+            : montada with { PerfilFisico = montada.PerfilFisico with { MapaDeGiro = mapaDeGiro } };
+    }
+
     /// <summary>Aplica as sobreposições do evento e da catraca ao padrão de fábrica.</summary>
     /// <param name="padraoDeFabrica">Configuração completa do modelo (ver <see cref="PadroesDeFabrica"/>).</param>
     /// <param name="evento">O que o evento muda; nulo em cada campo = herda o padrão.</param>

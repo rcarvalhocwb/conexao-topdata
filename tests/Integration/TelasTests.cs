@@ -78,7 +78,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
             pastaDeDados: "dados",
             comandos: new FilaDeComandosSqlite(_banco.Fabrica),
             configuracoesDasCatracas: new ConfiguracoesDasCatracas(_banco.Fabrica),
-            configuracaoPorCatraca: new ConfiguracaoPorCatraca(_banco.Fabrica));
+            configuracaoPorCatraca: new ConfiguracaoPorCatraca(_banco.Fabrica),
+            mapasDeGiro: new MapasDeGiro(_banco.Fabrica));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"telas-{Guid.NewGuid():N}");
@@ -494,6 +495,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         var csv = contas.ParaCsv();
         Assert.Contains("Liberados;2", csv, StringComparison.Ordinal);
+        Assert.Contains("Entradas (giros pelo mapa de giro);0", csv, StringComparison.Ordinal);
+        Assert.Contains("Catraca;Liberados;Com giro;Negados;Entradas;Saídas", csv, StringComparison.Ordinal);
         Assert.Contains("meia;1;0", csv, StringComparison.Ordinal);
         Assert.DoesNotContain("\n=HYPERLINK", csv, StringComparison.Ordinal);
         Assert.Contains("'=HYPERLINK", csv, StringComparison.Ordinal);
@@ -872,18 +875,18 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Contains(CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.WiegandDoisLeitores).Selos, s => s.Contains("HIL-CARD-05", StringComparison.Ordinal));
         Assert.Contains(CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.FormasDeEntradaOnLine).Selos, s => s.Contains("INT-SM-032", StringComparison.Ordinal));
 
+        // Decisão D9 (docs/34 §9): as quatro funções podem ser escolhidas; o sentido nesta
+        // instalação é conferido no mapa de giro (aba Giro), e o aviso diz isso.
         var funcao = Assert.Single(tela.CamposDaLiberacao, x => x.Campo == Contracts.Edge.V1.CampoDaCatraca.FuncaoDeLiberacaoDaEntrada);
         Assert.True(funcao.Disponivel);
-        Assert.Equal(["Entrada"], funcao.Opcoes.Where(o => o.Disponivel).Select(o => o.Valor));
-        Assert.All(funcao.Opcoes.Where(o => !o.Disponivel), o => Assert.EndsWith("aguardando confirmação", o.Nome, StringComparison.Ordinal));
-        Assert.Contains(funcao.Selos, s => s.Contains("HIL-DIR-05/06", StringComparison.Ordinal));
+        Assert.Equal(4, funcao.Opcoes.Count(o => o.Disponivel));
+        Assert.Contains(funcao.Selos, s => s.Contains("NOVO-HIL-DIR-11", StringComparison.Ordinal));
 
-        // Escolher uma variante pela tela vira erro no campo, e não salva.
         funcao.Herda = false;
         funcao.Escolhida = funcao.Opcoes.Single(o => o.Valor == "EntradaInvertida");
-        Assert.StartsWith("Aguardando confirmação", funcao.Erro, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, funcao.Erro);
         tela.Operador = "Ana";
-        Assert.False(tela.Salvar.CanExecute(null));
+        Assert.True(tela.Salvar.CanExecute(null));
 
         // 5 × 8 continua a confirmar: o selo aparece no tipo de leitor, que segue editável.
         var tipo = CampoDe(tela, Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor);
@@ -976,5 +979,117 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.StartsWith("Sem resposta do serviço local", janela.Painel.Mensagem, StringComparison.Ordinal);
         Assert.Equal(SaudeDoPainel.Acao, janela.Painel.Estado.Saude);
+    }
+
+    // ------------------------------------------------------------------ mapa de giro (D9)
+
+    /// <summary>
+    /// Clicar nos braços abre "Giro desta catraca" com a seta do sentido; clicar na urna leva à
+    /// linha do leitor 2. Mudar a função muda a seta; salvar exige o nome; o selo "sentido ainda
+    /// não conferido" aparece até alguém girar e registrar.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_clicar_nos_bracos_abre_o_giro_e_a_urna_leva_ao_leitor_2()
+    {
+        var tela = new GemeoDigitalViewModel(Cliente(), relogioDaCena: () => TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        Assert.False(tela.PainelDoGiroAberto);
+        Assert.Null(tela.SetaDoGiro);
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        await tela.CarregarGiroAsync();
+        Assert.True(tela.PainelDoGiroAberto);
+        Assert.Equal(4, tela.Giro.Linhas.Count);
+        Assert.All(tela.Giro.Linhas, l => Assert.True(l.Herda));
+        Assert.Equal(Desktop.ViewModels.GemeoDigital.SentidoDoGiro.Entrada, tela.SetaDoGiro);
+        Assert.Equal(string.Empty, tela.Giro.SeloDaCatraca);
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+        var urna = Assert.IsType<LinhaDoMapaDeGiro>(tela.Giro.LinhaEmFoco);
+        Assert.Equal(Contracts.Edge.V1.OrigemDoGiro.Leitor2, urna.Origem);
+        Assert.True(urna.EmFoco);
+
+        // "Urna gira para a esquerda (EI-042) e conta como entrada."
+        urna.Herda = false;
+        urna.FuncaoEscolhida = urna.OpcoesDeFuncao.Single(o => o.Valor == (int)FuncaoDoGiro.Saida);
+        Assert.Equal(Desktop.ViewModels.GemeoDigital.SentidoDoGiro.Saida, tela.SetaDoGiro);
+        Assert.Equal("Conta como entrada", urna.ResumoDoRotulo);
+        Assert.Equal("Entrada liberada", urna.TextoEfetivo);
+        Assert.Single(tela.Giro.Mudancas);
+        Assert.False(tela.Giro.Salvar.CanExecute(null));
+
+        tela.Giro.Operador = "Ana Sintética";
+        await tela.Giro.Salvar.ExecutarAsync();
+        Assert.Empty(tela.Giro.Problemas);
+        Assert.Empty(tela.Giro.Mudancas);
+        Assert.Equal("Sentido ainda não conferido nesta instalação", tela.Giro.SeloDaCatraca);
+        var salva = tela.Giro.Linhas.Single(l => l.Origem == Contracts.Edge.V1.OrigemDoGiro.Leitor2);
+        Assert.False(salva.Herda);
+        Assert.Equal(SituacaoDaConferencia.NaoConferida, salva.Conferencia);
+        Assert.Equal("Ana Sintética", tela.Giro.AlteradoPor);
+        Assert.StartsWith("Salva", tela.Giro.SituacaoNaCatraca, StringComparison.Ordinal);
+
+        // Aplicar em dois passos, com o comando da catraca.
+        await tela.Giro.PedirAplicacao.ExecutarAsync();
+        Assert.True(tela.Giro.ConfirmandoAplicacao);
+        await tela.Giro.ConfirmarAplicacao.ExecutarAsync();
+        var comandos = await Cliente().ListarComandosAsync(new ListarComandosRequest { Inner = 1, Limite = 10 });
+        Assert.Contains(comandos.Comandos, c => c.Tipo is TipoDeComando.AplicarConfiguracao && c.Operador == "Ana Sintética");
+
+        // Conferência: girou para o lado da seta.
+        await tela.Giro.ConferirComoEsperado.ExecutarAsync(salva);
+        Assert.Empty(tela.Giro.Problemas);
+        Assert.Equal(string.Empty, tela.Giro.SeloDaCatraca);
+        Assert.Equal(SituacaoDaConferencia.ComoEsperado, tela.Giro.Linhas.Single(l => l.Origem == Contracts.Edge.V1.OrigemDoGiro.Leitor2).Conferencia);
+
+        await tela.FecharPainelDoGiro.ExecutarAsync();
+        Assert.Null(tela.SetaDoGiro);
+    }
+
+    /// <summary>A pré-visualização só anima o desenho: nada é gravado, nada vai à catraca.</summary>
+    [Fact]
+    public async Task Gemeo_pre_visualizacao_do_giro_anima_so_o_desenho()
+    {
+        var tela = new GemeoDigitalViewModel(Cliente(), relogioDaCena: () => TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+        await tela.CarregarGiroAsync();
+        Assert.True(tela.Giro.PreVisualizacaoDisponivel);
+
+        var urna = tela.Giro.LinhaEmFoco!;
+        await tela.Giro.PreVisualizar.ExecutarAsync(urna);
+
+        Assert.NotNull(tela.RoteiroEmAndamento);
+        Assert.StartsWith("Pré-visualização do giro", tela.RoteiroEmAndamento!.Nome, StringComparison.Ordinal);
+        Assert.Contains(tela.RoteiroEmAndamento.Passos, p => p.Narracao.Contains("nada foi enviado", StringComparison.Ordinal));
+        Assert.Empty((await Cliente().ListarComandosAsync(new ListarComandosRequest { Inner = 1, Limite = 10 })).Comandos);
+        Assert.Equal(0, new MapasDeGiro(_banco.Fabrica).RevisoesNoHistorico(1));
+
+        tela.ModoAoVivo = true;
+        await tela.Giro.PreVisualizar.ExecutarAsync(urna);
+        Assert.Contains("demonstração", tela.Mensagem, StringComparison.Ordinal);
+    }
+
+    /// <summary>A aba Giro da Parametrização é o mesmo mapa, da mesma catraca, sem gêmeo para animar.</summary>
+    [Fact]
+    public async Task Parametrizacao_aba_giro_carrega_o_mapa_da_catraca()
+    {
+        var tela = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        tela.Operador = "Ana";
+
+        Assert.Equal(tela.Catraca, tela.Giro.Catraca);
+        Assert.Equal(4, tela.Giro.Linhas.Count);
+        Assert.Equal("Ana", tela.Giro.Operador);
+        Assert.False(tela.Giro.PreVisualizacaoDisponivel);
+        Assert.Equal((int)AbaDaParametrizacao.Giro, 4);
+
+        var teclado = tela.Giro.Linhas.Single(l => l.Origem == Contracts.Edge.V1.OrigemDoGiro.Teclado);
+        Assert.Contains("teclado", teclado.Aviso, StringComparison.Ordinal);
+
+        teclado.Herda = false;
+        teclado.Texto = new string('x', 33);
+        Assert.NotEmpty(teclado.Erro);
+        Assert.False(tela.Giro.Salvar.CanExecute(null));
     }
 }

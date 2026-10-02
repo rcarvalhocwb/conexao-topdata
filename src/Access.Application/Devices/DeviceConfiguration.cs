@@ -50,6 +50,42 @@ public sealed record GatePhysicalProfile(FuncaoDeLiberacao FuncaoDeLiberacaoDaEn
     public static GatePhysicalProfile Padrao { get; } = new();
 
     /// <summary>
+    /// Para cada origem que libera, qual função chamar e como contar o giro (D9, docs/34 §9).
+    /// Vazio = como sempre: toda origem chama <see cref="FuncaoDeLiberacaoDaEntrada"/> e conta
+    /// como entrada.
+    /// </summary>
+    public MapaDeGiro MapaDeGiro { get; init; } = MapaDeGiro.Vazio;
+
+    /// <summary>A função de uma origem, com o rótulo e o texto: a regra do mapa ou o padrão de hoje.</summary>
+    /// <param name="origem">De onde veio o pedido de liberar.</param>
+    public GiroResolvido Resolver(OrigemDoGiro origem)
+    {
+        var regra = MapaDeGiro.Regra(origem);
+        var contaComo = regra?.ContaComo ?? SentidoContado.Entrada;
+        return new GiroResolvido(
+            origem,
+            regra?.Funcao ?? FuncaoDeLiberacaoDaEntrada,
+            contaComo,
+            regra?.Texto ?? MapaDeGiro.TextoPadrao(contaComo),
+            DoMapa: regra is not null);
+    }
+
+    /// <summary>O pedido ao adapter que libera o giro desta origem.</summary>
+    /// <remarks>Com o mapa vazio, é <see cref="LiberacaoDaEntrada"/> para toda origem.</remarks>
+    public GateDirection LiberacaoPara(OrigemDoGiro origem) => Resolver(origem).Direcao;
+
+    /// <summary>Tradução um para um da função para o pedido ao adapter.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Valor fora do enum; <see cref="DeviceConfiguration.Validar"/> recusa antes.</exception>
+    public static GateDirection Direcao(FuncaoDeLiberacao funcao) => funcao switch
+    {
+        FuncaoDeLiberacao.Entrada => GateDirection.Entrada,
+        FuncaoDeLiberacao.EntradaInvertida => GateDirection.EntradaInvertida,
+        FuncaoDeLiberacao.Saida => GateDirection.Saida,
+        FuncaoDeLiberacao.SaidaInvertida => GateDirection.SaidaInvertida,
+        _ => throw new ArgumentOutOfRangeException(nameof(funcao), funcao, "Função de liberação desconhecida."),
+    };
+
+    /// <summary>
     /// O pedido ao adapter que libera quem entra: tradução um para um, sem combinar nada.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">Valor fora do enum; <see cref="DeviceConfiguration.Validar"/> recusa antes.</exception>
@@ -434,6 +470,10 @@ public sealed record DeviceConfiguration
                 $"A função de liberação da entrada deve ser Entrada, EntradaInvertida, Saida ou SaidaInvertida; " +
                 $"recebido {(int)PerfilFisico.FuncaoDeLiberacaoDaEntrada}.");
         }
+
+        // Mapa de giro (D9): a regra de cada origem decide a função chamada no meio da
+        // passagem; valor fora do enum é recusado aqui, antes de qualquer chamada nativa.
+        problemas.AddRange(PerfilFisico.MapaDeGiro.Validar());
 
         // Sem leitor 2 não há como receber o cartão na fenda da urna.
         if (FuncaoDoAcionamento2 != 0 && OperacaoDoLeitor2 == 0)

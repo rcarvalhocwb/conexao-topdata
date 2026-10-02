@@ -80,6 +80,8 @@
               <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
               <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="104" />
               <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="96" />
+              <DataGridTextColumn Header="ENTRADAS" Binding="{Binding Entradas}" Width="96" />
+              <DataGridTextColumn Header="SAÍDAS" Binding="{Binding Saidas}" Width="80" />
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>

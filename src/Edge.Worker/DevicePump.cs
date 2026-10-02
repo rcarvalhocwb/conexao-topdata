@@ -48,6 +48,12 @@ public sealed class DeviceSlot
     /// </summary>
     public string? ConfiguracaoVersao { get; internal set; }
 
+    /// <summary>
+    /// O texto do giro já foi para o display nesta liberação (chave técnica
+    /// <c>catraca.exibir_texto_do_giro</c>): o próximo passo é a liberação.
+    /// </summary>
+    internal bool TextoDoGiroExibido { get; set; }
+
     /// <summary>Comandos do operador esperando a catraca ficar livre (Polling).</summary>
     internal Queue<ComandoDeCatraca> Comandos { get; } = new();
 
@@ -247,6 +253,7 @@ public sealed class DevicePump
     private readonly Action<string>? _antesDaLiberacaoManual;
     private readonly bool _sequenciaOficial;
     private readonly IGravadorDeBilhetes? _gravadorDeBilhetes;
+    private readonly bool _exibirTextoDoGiro;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -280,6 +287,14 @@ public sealed class DevicePump
     /// este laço <b>não coleta</b>: o comando falha e o estado de coleta sai sem chamar a catraca —
     /// coletar sem gravar apagaria marcações da memória dela.
     /// </param>
+    /// <param name="exibirTextoDoGiro">
+    /// Mostra no display o texto do giro do mapa ("Entrada liberada", "Saida liberada" ou o
+    /// personalizado; D9, docs/34 §9) antes de liberar, num passo próprio com uma chamada só
+    /// (<see cref="ITopdataInnerAdapter.ExibirMensagemTemporaria"/>). Desligado por padrão: cada
+    /// chamada a mais no caminho da passagem reduz a vazão (docs/34 §8), e se a mensagem no meio
+    /// da liberação atrapalha o giro é <c>A_CONFIRMAR_COM_TOPDATA</c> (NOVO-HIL-DIR-12, docs/21).
+    /// Chave técnica <c>catraca.exibir_texto_do_giro</c>.
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -290,10 +305,12 @@ public sealed class DevicePump
         Action<ComandoDeCatraca, SituacaoDoComando, string>? aoConcluirComando = null,
         Action<string>? antesDaLiberacaoManual = null,
         bool sequenciaOficial = false,
-        IGravadorDeBilhetes? gravadorDeBilhetes = null)
+        IGravadorDeBilhetes? gravadorDeBilhetes = null,
+        bool exibirTextoDoGiro = false)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _sequenciaOficial = sequenciaOficial;
+        _exibirTextoDoGiro = exibirTextoDoGiro;
         _gravadorDeBilhetes = gravadorDeBilhetes;
         _acertarRelogioAoDivergir = acertarRelogioAoDivergir;
         _aoConcluirComando = aoConcluirComando;
@@ -715,6 +732,10 @@ public sealed class DevicePump
         var decisao = _decidir(evento);
         d.UltimaDecisao = decisao;
 
+        // Uma liberação nova começa sem texto exibido, mesmo que a anterior tenha sido
+        // interrompida entre o texto e a liberação.
+        d.TextoDoGiroExibido = false;
+
         Disparar(d, decisao.ShouldRelease ? DeviceTrigger.AcessoPermitido : DeviceTrigger.AcessoNegado, agora);
         return $"decisão {decisao.Outcome} ({decisao.Reason})";
     }
@@ -725,13 +746,39 @@ public sealed class DevicePump
         // nunca de constante em código nem de combinação de sinalizadores (docs/04, seção
         // 3; defeito F1 do docs/34 §2). Ingresso e liberação manual passam por aqui, e
         // também as liberações de saída e nos dois sentidos pedidas pelo operador (Etapa A.8).
-        var direcao = d.EmCurso?.Comando.Tipo switch
+        // O mapa de giro (D9) escolhe a função pela origem: leitor 1, urna, teclado ou manual.
+        // Vazio, é a função do perfil para todas, como sempre.
+        var perfil = d.Configuracao.PerfilFisico;
+        var giro = d.EmCurso?.Comando.Tipo switch
         {
-            TipoDeComando.LiberarSaida => d.Configuracao.PerfilFisico.LiberacaoDaSaida,
-            TipoDeComando.LiberarDoisSentidos => GateDirection.DoisSentidos,
-            _ => d.Configuracao.PerfilFisico.LiberacaoDaEntrada,
+            TipoDeComando.LiberarSaida or TipoDeComando.LiberarDoisSentidos => null,
+            TipoDeComando.LiberacaoManual => perfil.Resolver(OrigemDoGiro.LiberacaoManual),
+            _ => d.UltimoEvento is { } leitura && MapaDeGiro.DaLeitura(leitura.Origin) is { } origem
+                ? perfil.Resolver(origem)
+                : null,
         };
 
+        var direcao = d.EmCurso?.Comando.Tipo switch
+        {
+            TipoDeComando.LiberarSaida => perfil.LiberacaoDaSaida,
+            TipoDeComando.LiberarDoisSentidos => GateDirection.DoisSentidos,
+            _ => giro?.Direcao ?? perfil.LiberacaoDaEntrada,
+        };
+
+        // Com a chave técnica, o texto do giro vai ao display num passo próprio, antes de
+        // liberar: uma chamada por passo, e o estado continua LiberarCatraca até a liberação.
+        // Falha aqui não derruba nada: a liberação vem no passo seguinte de qualquer jeito.
+        if (_exibirTextoDoGiro && giro is not null && !d.TextoDoGiroExibido)
+        {
+            d.TextoDoGiroExibido = true;
+            var exibido = _adapter.ExibirMensagemTemporaria(
+                d.Inner, giro.Texto, TimeSpan.FromSeconds(Math.Max((byte)1, d.Configuracao.TempoDoAcionamento1)));
+            return exibido.IsOk
+                ? $"texto do giro no display ({giro.ContaComo})"
+                : $"texto do giro não exibido ({exibido}); a liberação segue";
+        }
+
+        d.TextoDoGiroExibido = false;
         var resultado = _adapter.LiberarGiro(d.Inner, direcao);
 
         if (resultado.IsOk)
@@ -742,7 +789,9 @@ public sealed class DevicePump
             }
 
             Disparar(d, DeviceTrigger.ComandoDeLiberacaoOk, agora);
-            return $"giro liberado ({direcao})";
+            return giro is { DoMapa: true }
+                ? $"giro liberado ({direcao}; {MapaDeGiro.Nome(giro.Origem)} conta como {giro.ContaComo})"
+                : $"giro liberado ({direcao})";
         }
 
         Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
@@ -801,6 +850,7 @@ public sealed class DevicePump
                 // sentidos seguem o mesmo caminho da liberação manual — liberar, monitorar o
                 // giro, reabilitar o leitor —; só a função nativa muda, em Liberar.
                 _antesDaLiberacaoManual?.Invoke(d.Maquina.DeviceId);
+                d.TextoDoGiroExibido = false;
                 d.EmCurso = new ComandoEmCurso(comando, agora);
                 Disparar(d, DeviceTrigger.LiberacaoManualSolicitada, agora);
                 return comando.Tipo switch

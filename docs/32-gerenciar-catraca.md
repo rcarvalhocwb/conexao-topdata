@@ -85,11 +85,43 @@ Aparece na tela **desabilitado**, com o selo "Aguardando confirmação" e o moti
 | Bip curto e longo | Documentado no manual (4.6.2), não ensaiado. O serviço já executa (Etapa A.8), mas recusa enquanto as chaves `comando.bip_curto` e `comando.bip_longo` estiverem desligadas | Bancada, INT-UX-03 (docs/21 §6E) |
 | Relés avulsos | O que cada relé faz na TopFit 4 não está documentado | Topdata |
 | Recolher cartão na urna | A função do relé 2 não está documentada (docs/21 §8) | Topdata + bancada (HIL-URNA-01) |
-| Liberar nos dois sentidos / trocar o sentido | Permite carona; depende da decisão sobre evacuação. O serviço já executa os dois sentidos (Etapa A.8, motivo e confirmação digitada), mas recusa com "Aguardando decisão D5 do dono do produto", além da chave `comando.liberar_dois_sentidos` | D5 (docs/34 §9) + bancada HIL-DIR-07 |
+| Liberar nos dois sentidos | Permite carona; depende da decisão sobre evacuação. O serviço já executa os dois sentidos (Etapa A.8, motivo e confirmação digitada), mas recusa com "Aguardando decisão D5 do dono do produto", além da chave `comando.liberar_dois_sentidos` | D5 (docs/34 §9) + bancada HIL-DIR-07 |
 | Coletar marcações da memória da catraca | Já no código (Etapa A.9: cada marcação gravada antes da próxima), atrás da chave técnica `catraca.coletar_bilhetes`, desligada; quando a catraca apaga a marcação é `A_CONFIRMAR` (T35) | Bancada, docs/21 §6F (INT-REC-03, CHAOS-REC-01) |
 
 "Liberar saída" (Etapa A.8, chave `comando.liberar_saida`, ensaio HIL-DIR-04) também existe no
 serviço, recusado com a chave desligada, e ainda não aparece na tela: entra com a A.6.
+
+### 5A. Mapa de giro: o sentido é do sistema (decisão D9)
+
+"Trocar o sentido" **deixou de esperar a Topdata** (decisão D9 do dono do produto, docs/34 §9):
+"entrada" e "saída" na DLL são o nome do lado em que o braço gira, do ponto de vista da catraca,
+e o que conta como entrada ou saída no evento é decisão nossa. Por catraca, o **mapa de giro**
+diz, para cada origem que libera — leitor 1 (frente e QR), leitor 2 (urna), teclado, liberação
+manual do painel —:
+
+- **qual função liberar** (EI-041 `LiberarCatracaEntrada`, EI-042 `LiberarCatracaSaida`,
+  EI-043/044 invertidas; os dois sentidos, EI-045, continuam só para evacuação, D5);
+- **como o giro conta**: entrada ou saída — no painel ("Entrada liberada" / "Saída liberada"),
+  nos acessos, nos totais e na prestação de contas (CSV e tabela por catraca);
+- o **texto curto** (padrão "Entrada liberada" / "Saida liberada", ou personalizado, até 32).
+
+Onde mexer: no **gêmeo digital**, clicando nos braços (ou na urna, que já abre o leitor 2) →
+painel **Giro desta catraca**; ou na **Parametrização → aba Giro**. Salvar grava (tabela
+`turn_map_rule`, migração 017, histórico só-INSERT); a catraca só usa depois de **Aplicar nesta
+catraca** (o mapa entra na versão do salvo). Mapa vazio = o de sempre.
+
+O que continua do mundo físico — para que lado o braço gira com cada função **nesta**
+instalação — é a **conferência de comissionamento** (docs/21 §6I): depois de aplicar, passe um
+cartão de teste pela origem, olhe o braço e registre "girou para o lado da seta" ou "ao
+contrário" (nome e hora, `turn_check`, só-INSERT). Até lá o mapa vale, e a catraca mostra o selo
+**"Sentido ainda não conferido nesta instalação"**. Pela mesma decisão, a função de liberação da
+Parametrização (A.6) deixou de aguardar HIL-DIR-05/06.
+
+O giro é **classificado pela função de liberação usada** e pela regra do mapa da liberação que
+o precedeu — nunca por um sentido lido do evento, que não é documentado (o `Complemento` da
+origem 6 é guardado bruto em `turn_complement` para o dia em que a T14 for respondida). Giro sem
+liberação antes, e o giro das liberações do operador (manual, saída, dois sentidos), não viram
+entrada nem saída de ingresso: sem a função usada, o sentido é desconhecido.
 
 ## 6. Limitações conhecidas
 

@@ -116,11 +116,12 @@ public sealed class ParametrizacaoDaCatracaTests : IDisposable
         Assert.Equal(SituacaoDoCampo.ChaveTecnicaDesligada, formas.Situacao);
         Assert.Contains("INT-SM-032", formas.Motivo, StringComparison.Ordinal);
 
-        // A função de liberação vai, mas as variantes aguardam a bancada.
+        // A função de liberação vai, e desde a decisão D9 (docs/34 §9) as quatro podem ser
+        // escolhidas: o sentido nesta instalação é a conferência do mapa de giro, com aviso.
         var funcao = Campo(c, CampoDaCatraca.FuncaoDeLiberacaoDaEntrada);
         Assert.Equal(SituacaoDoCampo.Enviado, funcao.Situacao);
-        Assert.Equal(["EntradaInvertida", "Saida", "SaidaInvertida"], funcao.ValoresAguardando);
-        Assert.Contains("HIL-DIR-05/06", funcao.MotivoDosValoresAguardando, StringComparison.Ordinal);
+        Assert.Empty(funcao.ValoresAguardando);
+        Assert.Contains("NOVO-HIL-DIR-11", funcao.Aviso, StringComparison.Ordinal);
         Assert.Equal(["2", "3", "4"], Campo(c, CampoDaCatraca.OperacaoDoLeitor2).ValoresAguardando);
 
         // 5 × 8 continua A_CONFIRMAR: aviso, sem impedir.
@@ -192,14 +193,11 @@ public sealed class ParametrizacaoDaCatracaTests : IDisposable
     {
         var wiegand = Gravar(1, "Operadora", (CampoDaCatraca.WiegandDoisLeitores, "1,0"));
         var formas = Gravar(1, "Operadora", (CampoDaCatraca.FormasDeEntradaOnLine, "0,0,3,0,0"));
-        var invertida = Gravar(1, "Operadora", (CampoDaCatraca.FuncaoDeLiberacaoDaEntrada, "EntradaInvertida"));
         var saida = Gravar(1, "Operadora", (CampoDaCatraca.OperacaoDoLeitor1, "2"));
 
         Assert.False(wiegand.Gravada);
         Assert.Contains(wiegand.Problemas, p => p.Contains("HIL-CARD-05", StringComparison.Ordinal));
         Assert.False(formas.Gravada);
-        Assert.False(invertida.Gravada);
-        Assert.Contains(invertida.Problemas, p => p.Contains("HIL-DIR-05/06", StringComparison.Ordinal));
         Assert.False(saida.Gravada);
         Assert.Contains(saida.Problemas, p => p.Contains("B4", StringComparison.Ordinal));
         Assert.Empty(new ConfiguracoesDasCatracas(_banco.Fabrica).Historico(1));
@@ -209,6 +207,20 @@ public sealed class ParametrizacaoDaCatracaTests : IDisposable
             (CampoDaCatraca.FuncaoDeLiberacaoDaEntrada, "Entrada"),
             (CampoDaCatraca.OperacaoDoLeitor1, "1"),
             (CampoDaCatraca.OperacaoDoLeitor2, "0")).Gravada);
+    }
+
+    /// <summary>
+    /// Decisão D9 (docs/34 §9): a nomenclatura de sentido é do sistema, e a função de liberação
+    /// deixou de aguardar a bancada. A invertida grava pela tela; o sentido físico nesta
+    /// instalação é a conferência do mapa de giro (NOVO-HIL-DIR-11).
+    /// </summary>
+    [Fact]
+    public void Funcao_de_liberacao_invertida_grava_desde_a_decisao_d9()
+    {
+        var invertida = Gravar(1, "Operadora", (CampoDaCatraca.FuncaoDeLiberacaoDaEntrada, "EntradaInvertida"));
+
+        Assert.True(invertida.Gravada, string.Join(" | ", invertida.Problemas));
+        Assert.Equal("EntradaInvertida", Campo(Obter(), CampoDaCatraca.FuncaoDeLiberacaoDaEntrada).ValorEfetivo);
     }
 
     [Fact]

@@ -76,6 +76,14 @@ namespace Access.Infrastructure.SQLite;
 /// e não confirmado é <c>A_CONFIRMAR_COM_TOPDATA</c>. Lida a cada pedido, sem reiniciar. Não liga a
 /// coleta automática na volta do off-line (D8, docs/34 §9).
 /// </param>
+/// <param name="ExibirTextoDoGiro">
+/// Mostra no display, antes de liberar, o texto do giro do mapa de giro ("Entrada liberada",
+/// "Saida liberada" ou o personalizado; D9, docs/34 §9). Desligada: nada a mais vai à catraca no
+/// caminho da passagem. Chave técnica <c>catraca.exibir_texto_do_giro</c>, desligada até o ensaio
+/// NOVO-HIL-DIR-12 (docs/21 §6I): cada chamada a mais na passagem reduz a vazão (docs/34 §8), e se
+/// a mensagem no meio da liberação atrapalha o giro é <c>A_CONFIRMAR_COM_TOPDATA</c>. É do laço:
+/// muda no próximo início do worker.
+/// </param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -92,7 +100,8 @@ public sealed record ConfiguracaoDaOperacao(
     bool EnviarWiegandDoisLeitores = false,
     bool EnviarFormasDeEntrada = false,
     bool SequenciaOficial = false,
-    bool ColetarBilhetes = false)
+    bool ColetarBilhetes = false,
+    bool ExibirTextoDoGiro = false)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -187,6 +196,9 @@ public sealed class ConfiguracoesDaBorda
 
     /// <summary>Etapa A.9: comando de coleta de bilhetes; desligada até INT-REC-03 e CHAOS-REC-01.</summary>
     public const string ChaveColetarBilhetes = "catraca.coletar_bilhetes";
+
+    /// <summary>Chave técnica do texto do giro no display (mapa de giro, D9). Desligada.</summary>
+    public const string ChaveExibirTextoDoGiro = "catraca.exibir_texto_do_giro";
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -287,7 +299,8 @@ public sealed class ConfiguracoesDaBorda
             EnviarWiegandDoisLeitores: Logico(ChaveEnviarWiegandDoisLeitores, padrao.EnviarWiegandDoisLeitores),
             EnviarFormasDeEntrada: Logico(ChaveEnviarFormasDeEntrada, padrao.EnviarFormasDeEntrada),
             SequenciaOficial: Logico(ChaveSequenciaOficial, padrao.SequenciaOficial),
-            ColetarBilhetes: Logico(ChaveColetarBilhetes, padrao.ColetarBilhetes));
+            ColetarBilhetes: Logico(ChaveColetarBilhetes, padrao.ColetarBilhetes),
+            ExibirTextoDoGiro: Logico(ChaveExibirTextoDoGiro, padrao.ExibirTextoDoGiro));
 
         return (configuracao, ilegiveis);
     }
@@ -322,6 +335,7 @@ public sealed class ConfiguracoesDaBorda
             [ChaveEnviarFormasDeEntrada] = configuracao.EnviarFormasDeEntrada ? "1" : "0",
             [ChaveSequenciaOficial] = configuracao.SequenciaOficial ? "1" : "0",
             [ChaveColetarBilhetes] = configuracao.ColetarBilhetes ? "1" : "0",
+            [ChaveExibirTextoDoGiro] = configuracao.ExibirTextoDoGiro ? "1" : "0",
         };
 
         using var conexao = _fabrica.Abrir();

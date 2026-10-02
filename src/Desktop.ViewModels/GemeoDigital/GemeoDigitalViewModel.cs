@@ -70,6 +70,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
     private bool _urnaLigada = true;
     private string _ultimoEventoAoVivo = "Nenhum evento desde que a tela abriu.";
     private (EstadoDaCena Estado, LeitorDaCena Leitor, bool Urna, int Giros, int Liberacoes, int Negacoes, int SemGiro) _ultimoResumo;
+    private bool _painelDoGiroAberto;
 
     public GemeoDigitalViewModel(
         EdgeControl.EdgeControlClient cliente,
@@ -136,6 +137,23 @@ public sealed class GemeoDigitalViewModel : TelaBase
         RodarNaCatracaSimulada = new ComandoComParametro(p =>
             p is RoteiroDeDemonstracao roteiro ? RodarNaCatracaSimuladaAsync(roteiro) : Task.CompletedTask);
 
+        // Mapa de giro (D9, docs/34 §9): o painel "Giro desta catraca" abre ao clicar nos braços
+        // ou na urna. A pré-visualização só anima o desenho.
+        Giro = new MapaDeGiroViewModel(cliente, relogio);
+        Giro.PreVisualizacaoPedida += PreVisualizarGiro;
+        Giro.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(MapaDeGiroViewModel.LinhaEmFoco) or nameof(MapaDeGiroViewModel.Linhas))
+            {
+                Avisar(nameof(SetaDoGiro));
+            }
+        };
+        FecharPainelDoGiro = new ComandoAssincrono(() =>
+        {
+            PainelDoGiroAberto = false;
+            return Task.CompletedTask;
+        });
+
         AtualizarPecas();
         TextoDaPrevia = _mensagemPadrao;
         AtualizarResumo(_cena.Quadro(_relogioDaCena()), forcar: true);
@@ -181,6 +199,11 @@ public sealed class GemeoDigitalViewModel : TelaBase
                 if (ModoAoVivo)
                 {
                     ComecarAoVivo();
+                }
+
+                if (PainelDoGiroAberto && value > 0)
+                {
+                    _ = CarregarGiroAsync();
                 }
 
                 AtualizarSelo();
@@ -251,6 +274,10 @@ public sealed class GemeoDigitalViewModel : TelaBase
     public IReadOnlyList<FichaDaPeca> Pecas { get => _pecas; private set => Definir(ref _pecas, value); }
 
     /// <summary>A peça escolhida (lista ou clique no desenho).</summary>
+    /// <remarks>
+    /// Os braços abrem o painel "Giro desta catraca"; a urna também, já na linha do leitor 2
+    /// (urna). Pela lista de peças, o mesmo: o teclado chega onde o mouse chega.
+    /// </remarks>
     public FichaDaPeca? PecaSelecionada
     {
         get => _pecaSelecionada;
@@ -259,8 +286,86 @@ public sealed class GemeoDigitalViewModel : TelaBase
             if (Definir(ref _pecaSelecionada, value) && value is not null)
             {
                 VersaoDoFoco++;
+
+                if (value.Peca is PecaDaCatraca.Rotor)
+                {
+                    AbrirGiro(foco: null);
+                }
+                else if (value.Peca is PecaDaCatraca.Urna)
+                {
+                    AbrirGiro(Contracts.Edge.V1.OrigemDoGiro.Leitor2);
+                }
             }
         }
+    }
+
+    /// <summary>"Giro desta catraca": o mapa de giro da catraca escolhida.</summary>
+    public MapaDeGiroViewModel Giro { get; }
+
+    /// <summary>O painel do giro está aberto (clique nos braços ou na urna).</summary>
+    public bool PainelDoGiroAberto
+    {
+        get => _painelDoGiroAberto;
+        private set
+        {
+            if (Definir(ref _painelDoGiroAberto, value))
+            {
+                Avisar(nameof(SetaDoGiro));
+            }
+        }
+    }
+
+    public ComandoAssincrono FecharPainelDoGiro { get; }
+
+    /// <summary>
+    /// O sentido do braço que a seta do desenho mostra: o da linha em foco do mapa, com o painel
+    /// aberto. Nulo = sem seta.
+    /// </summary>
+    public SentidoDoGiro? SetaDoGiro => PainelDoGiroAberto ? Giro.LinhaEmFoco?.Seta : null;
+
+    /// <summary>Abre o painel do giro na catraca escolhida, com a origem em foco.</summary>
+    public void AbrirGiro(Contracts.Edge.V1.OrigemDoGiro? foco)
+    {
+        PainelDoGiroAberto = true;
+        Giro.Focar(foco);
+
+        if (Catraca > 0 && Giro.Catraca != Catraca)
+        {
+            _ = CarregarGiroAsync();
+        }
+    }
+
+    /// <summary>Carrega o mapa da catraca escolhida e põe de novo a origem em foco.</summary>
+    public async Task CarregarGiroAsync()
+    {
+        await Giro.CarregarAsync(Catraca).ConfigureAwait(true);
+        Avisar(nameof(SetaDoGiro));
+    }
+
+    // Pré-visualização do sentido de uma regra: só no desenho, só na demonstração.
+    private void PreVisualizarGiro(LinhaDoMapaDeGiro linha)
+    {
+        if (ModoAoVivo)
+        {
+            Mensagem = "A pré-visualização do giro roda na demonstração. Ao vivo, o desenho só segue a catraca.";
+            return;
+        }
+
+        var sentido = linha.Seta is SentidoDoGiro.Entrada ? "de entrada" : "de saída";
+        var conta = linha.ContaComoEfetiva is Contracts.Edge.V1.ContagemDoGiro.Saida ? "saída" : "entrada";
+        Rodar(new RoteiroDeDemonstracao(
+            $"Pré-visualização do giro: {linha.Nome}",
+            "Só no desenho: nada foi enviado à catraca.",
+            [
+                new(TimeSpan.Zero, SinalDaCena.Liberado(),
+                    $"PRÉ-VISUALIZAÇÃO · nada foi enviado. {linha.Nome}: {LinhaDoMapaDeGiro.NomeDaFuncao(linha.FuncaoEfetiva)}.",
+                    PecaDaCatraca.Rotor),
+                new(TimeSpan.FromSeconds(1.2), SinalDaCena.Giro(linha.Seta),
+                    $"O braço gira no sentido {sentido} da catraca (a seta), e o giro conta como {conta}.", PecaDaCatraca.Rotor),
+                new(TimeSpan.FromSeconds(2.6), null,
+                    "Na catraca, confira girando uma vez: o lado em que o braço gira é o que a seta mostra?", PecaDaCatraca.Rotor),
+            ]));
+        _cena.MostrarMensagem(linha.TextoEfetivo, _relogioDaCena(), TimeSpan.FromSeconds(3));
     }
 
     /// <summary>Muda a cada escolha: é o aviso para a câmera ir até a peça.</summary>
@@ -409,7 +514,20 @@ public sealed class GemeoDigitalViewModel : TelaBase
         PecaApontada = peca is { } p ? CatalogoDaFit4.De(p) : null;
 
     /// <summary>Escolhe a peça (clique no desenho).</summary>
-    public void Escolher(PecaDaCatraca peca) => PecaSelecionada = CatalogoDaFit4.De(peca);
+    public void Escolher(PecaDaCatraca peca)
+    {
+        PecaSelecionada = CatalogoDaFit4.De(peca);
+
+        // Clicar de novo na mesma peça reabre o painel do giro, se ele tiver sido fechado.
+        if (peca is PecaDaCatraca.Rotor)
+        {
+            AbrirGiro(foco: null);
+        }
+        else if (peca is PecaDaCatraca.Urna)
+        {
+            AbrirGiro(Contracts.Edge.V1.OrigemDoGiro.Leitor2);
+        }
+    }
 
     /// <summary>Um evento vindo do serviço. Na thread da tela.</summary>
     public void AplicarEventoAoVivo(EventoDeAcesso evento)
@@ -525,6 +643,12 @@ public sealed class GemeoDigitalViewModel : TelaBase
             if (Catracas.Count == 0)
             {
                 Mensagem = "Nenhuma catraca cadastrada: a demonstração funciona; o modo ao vivo precisa de uma catraca.";
+            }
+
+            if (PainelDoGiroAberto && Catraca > 0 && Giro.Mudancas.Count == 0)
+            {
+                await Giro.CarregarAsync(Catraca, cancelamento);
+                Avisar(nameof(SetaDoGiro));
             }
         });
 

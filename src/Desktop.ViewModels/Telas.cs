@@ -676,6 +676,10 @@ public sealed class ContasViewModel : TelaBase
         csv.AppendLine(string.Create(cultura, $"Liberados;{c.Liberados}"));
         csv.AppendLine(string.Create(cultura, $"Com giro confirmado;{c.Giros}"));
         csv.AppendLine(string.Create(cultura, $"Negados;{c.Negados}"));
+
+        // Mapa de giro (D9): o giro conta pelo rótulo; sem regra no mapa, como entrada.
+        csv.AppendLine(string.Create(cultura, $"Entradas (giros pelo mapa de giro);{c.Entradas}"));
+        csv.AppendLine(string.Create(cultura, $"Saídas (giros pelo mapa de giro);{c.Saidas}"));
         csv.AppendLine();
         csv.AppendLine("Categoria;Liberados;Com giro");
         foreach (var l in c.PorCategoria)
@@ -684,10 +688,10 @@ public sealed class ContasViewModel : TelaBase
         }
 
         csv.AppendLine();
-        csv.AppendLine("Catraca;Liberados;Com giro;Negados");
+        csv.AppendLine("Catraca;Liberados;Com giro;Negados;Entradas;Saídas");
         foreach (var l in c.PorCatraca)
         {
-            csv.AppendLine(string.Create(cultura, $"{l.Inner};{l.Liberados};{l.Giros};{l.Negados}"));
+            csv.AppendLine(string.Create(cultura, $"{l.Inner};{l.Liberados};{l.Giros};{l.Negados};{l.Entradas};{l.Saidas}"));
         }
 
         csv.AppendLine();

@@ -79,6 +79,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             CorrelationId = t.Id.ToString(),
             Categoria = t.Categoria ?? string.Empty,
             Portao = t.Portao,
+            ContaComo = t.ContaComo ?? string.Empty,
         };
 
         if (t.Origem is { } bruta)
@@ -99,7 +100,15 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
 
         if (t.Liberou)
         {
-            return t.Categoria is { Length: > 0 } c ? $"Liberado · {c}" : "Liberado";
+            // Mapa de giro (D9): com regra para a origem, o painel diz como o giro é contado.
+            // Sem regra, "Liberado", como sempre.
+            var rotulo = t.ContaComo switch
+            {
+                "entrada" => "Entrada liberada",
+                "saida" => "Saída liberada",
+                _ => "Liberado",
+            };
+            return t.Categoria is { Length: > 0 } c ? $"{rotulo} · {c}" : rotulo;
         }
 
         return t.Motivo switch

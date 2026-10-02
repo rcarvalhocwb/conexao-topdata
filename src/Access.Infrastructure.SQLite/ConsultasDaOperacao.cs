@@ -21,7 +21,11 @@ public sealed record FiltroDeTentativas(
     int Limite = 200);
 
 /// <summary>Contagem de uma linha da prestação de contas.</summary>
-public sealed record LinhaDeContagem(string Chave, long Liberados, long Giros, long Negados);
+/// <remarks>
+/// <c>Entradas</c> e <c>Saidas</c> são os giros confirmados pelo rótulo do mapa de giro (D9,
+/// migração 017): sem rótulo, a passagem conta como entrada, como sempre.
+/// </remarks>
+public sealed record LinhaDeContagem(string Chave, long Liberados, long Giros, long Negados, long Entradas = 0, long Saidas = 0);
 
 /// <summary>Contagem por hora.</summary>
 public sealed record LinhaHoraria(DateTimeOffset Hora, long Liberados, long Negados);
@@ -34,7 +38,9 @@ public sealed record ContasDaOperacao(
     IReadOnlyList<(string Motivo, long Quantidade)> Negativas,
     long Liberados,
     long Giros,
-    long Negados);
+    long Negados,
+    long Entradas = 0,
+    long Saidas = 0);
 
 /// <summary>O que se sabe de um código consultado pelo operador. Nada vem inteiro.</summary>
 public sealed record SituacaoDoCodigo(
@@ -119,7 +125,7 @@ public sealed class ConsultasDaOperacao
         comando.CommandText =
             $"""
             SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at, reader_origin
+                   qr_normalized, passage_confirmed_at, reader_origin, counted_as
             FROM ticket_use_attempt
             {onde}
             ORDER BY rowid DESC
@@ -143,7 +149,9 @@ public sealed class ConsultasDaOperacao
             conexao,
             """
             SELECT COALESCE(category, ''),
-                   SUM(outcome = 'consumido'), SUM(passage_confirmed_at IS NOT NULL), SUM(outcome = 'negado')
+                   SUM(outcome = 'consumido'), SUM(passage_confirmed_at IS NOT NULL), SUM(outcome = 'negado'),
+                   SUM(passage_confirmed_at IS NOT NULL AND COALESCE(counted_as, 'entrada') = 'entrada'),
+                   SUM(passage_confirmed_at IS NOT NULL AND COALESCE(counted_as, 'entrada') = 'saida')
             FROM ticket_use_attempt
             WHERE at >= $desde AND at <= $ate AND outcome = 'consumido'
             GROUP BY 1 ORDER BY 2 DESC;
@@ -154,7 +162,9 @@ public sealed class ConsultasDaOperacao
             conexao,
             """
             SELECT device_id,
-                   SUM(outcome = 'consumido'), SUM(passage_confirmed_at IS NOT NULL), SUM(outcome = 'negado')
+                   SUM(outcome = 'consumido'), SUM(passage_confirmed_at IS NOT NULL), SUM(outcome = 'negado'),
+                   SUM(passage_confirmed_at IS NOT NULL AND COALESCE(counted_as, 'entrada') = 'entrada'),
+                   SUM(passage_confirmed_at IS NOT NULL AND COALESCE(counted_as, 'entrada') = 'saida')
             FROM ticket_use_attempt
             WHERE at >= $desde AND at <= $ate
             GROUP BY 1 ORDER BY 1;
@@ -207,7 +217,9 @@ public sealed class ConsultasDaOperacao
             negativas,
             porCatraca.Sum(l => l.Liberados),
             porCatraca.Sum(l => l.Giros),
-            porCatraca.Sum(l => l.Negados));
+            porCatraca.Sum(l => l.Negados),
+            porCatraca.Sum(l => l.Entradas),
+            porCatraca.Sum(l => l.Saidas));
     }
 
     /// <summary>
@@ -278,7 +290,7 @@ public sealed class ConsultasDaOperacao
         historico.CommandText =
             """
             SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at, reader_origin
+                   qr_normalized, passage_confirmed_at, reader_origin, counted_as
             FROM ticket_use_attempt
             WHERE qr_normalized = $qr
             ORDER BY rowid DESC
@@ -354,7 +366,8 @@ public sealed class ConsultasDaOperacao
         using var leitor = comando.ExecuteReader();
         while (leitor.Read())
         {
-            linhas.Add(new LinhaDeContagem(leitor.GetString(0), leitor.GetInt64(1), leitor.GetInt64(2), leitor.GetInt64(3)));
+            linhas.Add(new LinhaDeContagem(
+                leitor.GetString(0), leitor.GetInt64(1), leitor.GetInt64(2), leitor.GetInt64(3), leitor.GetInt64(4), leitor.GetInt64(5)));
         }
 
         return linhas;
@@ -387,7 +400,8 @@ public sealed class ConsultasDaOperacao
                 leitor.IsDBNull(8) ? null : leitor.GetString(8),
                 CredentialValue.Mascarar(leitor.GetString(9)),
                 !leitor.IsDBNull(10),
-                leitor.IsDBNull(11) ? null : leitor.GetInt32(11)));
+                leitor.IsDBNull(11) ? null : leitor.GetInt32(11),
+                leitor.IsDBNull(12) ? null : leitor.GetString(12)));
         }
 
         return lista;

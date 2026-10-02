@@ -237,7 +237,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     chavesDosComandos: new ChavesDosComandos(fabrica),
     configuracoesDasCatracas: new ConfiguracoesDasCatracas(fabrica),
     configuracaoPorCatraca: new ConfiguracaoPorCatraca(fabrica),
-    sessao: sessaoDoServico));
+    sessao: sessaoDoServico,
+    mapasDeGiro: new MapasDeGiro(fabrica)));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();

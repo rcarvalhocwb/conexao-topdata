@@ -196,4 +196,26 @@ public sealed class GeometriaFit4Tests
         Assert.DoesNotContain(modelo.Partes, p => p.Peca == PecaDaCatraca.Urna);
         Assert.DoesNotContain(modelo.Aderecos, a => a.Tipo == TipoDeAdereco.CartaoNaUrna);
     }
+
+    /// <summary>
+    /// A seta do mapa de giro (D9) aponta no mesmo sentido em que a cena gira o rotor: entrada
+    /// para um lado, saída para o outro, em volta do eixo dos braços.
+    /// </summary>
+    [Theory]
+    [InlineData(SentidoDoGiro.Entrada)]
+    [InlineData(SentidoDoGiro.Saida)]
+    public void Seta_do_giro_aponta_no_sentido_da_cena(SentidoDoGiro sentido)
+    {
+        var seta = GeometriaFit4.SetaDoGiro(Modelo, sentido);
+
+        Assert.True(seta.Malha.Triangulos > 0);
+        Assert.All(seta.Malha.Indices, i => Assert.InRange(i, 0, seta.Malha.Posicoes.Count - 1));
+
+        // O centro do arco fica sobre o eixo dos braços.
+        var fora = Ponto3.Vetorial(seta.Centro - Modelo.CentroDoRotor, Modelo.EixoDoRotor).Comprimento;
+        Assert.True(fora < 1e-6, $"centro fora do eixo: {fora}");
+
+        var giro = Ponto3.Escalar(Ponto3.Vetorial(seta.Inicio - seta.Centro, seta.Ponta - seta.Centro), Modelo.EixoDoRotor);
+        Assert.Equal(CenaDaCatraca.Sinal(sentido), Math.Sign(giro));
+    }
 }

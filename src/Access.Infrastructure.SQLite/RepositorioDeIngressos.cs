@@ -1,4 +1,5 @@
 using System.Globalization;
+using Access.Application.Devices;
 using Access.Application.Ingressos;
 using Access.Domain.Devices;
 using Access.Domain.Ticketing;
@@ -176,6 +177,21 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         TentarUsar(qrNormalizado, gateId, deviceId, agora, decisionId: null, leitor, origemBruta);
 
     /// <inheritdoc />
+    (ResultadoDoUso Resultado, Guid TentativaId) IValidadorDeIngressos.TentarUsar(
+        string qrNormalizado,
+        string gateId,
+        string deviceId,
+        DateTimeOffset agora,
+        KnownEventOrigin? leitor,
+        int? origemBruta,
+        GiroResolvido? giro) =>
+        TentarUsar(qrNormalizado, gateId, deviceId, agora, decisionId: null, leitor, origemBruta, giro);
+
+    /// <inheritdoc />
+    void IValidadorDeIngressos.ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em, byte complementoDoGiro) =>
+        ConfirmarPassagemFisica(tentativaId, em, (int?)complementoDoGiro);
+
+    /// <inheritdoc />
     /// <remarks>É o mesmo que <see cref="Ingerir"/>: a ingestão não pede nada além disso.</remarks>
     public ResultadoDaIngestao Aplicar(IReadOnlyCollection<IngressoRecebido> lote, DateTimeOffset agora) =>
         Ingerir(lote, agora);
@@ -334,6 +350,11 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
     /// tentativa (migração 010). Só informa: a decisão usa <paramref name="leitor"/>. Nulo
     /// grava nulo, como as tentativas anteriores à migração.
     /// </param>
+    /// <param name="giro">
+    /// A regra do mapa de giro para a origem desta leitura (D9, migração 017). Liberada, a
+    /// tentativa grava a função que o laço vai chamar (<c>release_function</c>) e, quando a
+    /// regra é do mapa, o rótulo (<c>counted_as</c>). Nulo grava como antes.
+    /// </param>
     /// <returns>O resultado, já com o motivo exato da negativa.</returns>
     public (ResultadoDoUso Resultado, Guid TentativaId) TentarUsar(
         string qrNormalizado,
@@ -342,7 +363,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         DateTimeOffset agora,
         Guid? decisionId = null,
         KnownEventOrigin? leitor = null,
-        int? origemBruta = null)
+        int? origemBruta = null,
+        GiroResolvido? giro = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(qrNormalizado);
         ArgumentException.ThrowIfNullOrWhiteSpace(gateId);
@@ -368,7 +390,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
                 MotivoDoUso.Consumido, e.Id, e.Provedor, e.Setor, e.UsosMaximos - e.UsosFeitos, e.Categoria);
 
             RegistrarTentativa(conexao, transacao, tentativaId, e.Id, e.Provedor, qrNormalizado, gateId, deviceId,
-                "consumido", MotivoDoUso.Consumido, decisionId, agora, e.Categoria, origemBruta);
+                "consumido", MotivoDoUso.Consumido, decisionId, agora, e.Categoria, origemBruta, giro);
 
             Espelhar(conexao, transacao, tentativaId, qrNormalizado, deviceId, gateId, agora,
                 liberado: true, MotivoDoUso.Consumido, e.Provedor, e.Categoria);
@@ -403,7 +425,21 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
     /// <i>uso sem passagem física</i> na prestação de contas — que é exatamente o que
     /// ele é. Ver docs/ADR/ADR-0007-autorizacao-versus-passagem.md
     /// </remarks>
-    public void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em)
+    public void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em) =>
+        ConfirmarPassagemFisica(tentativaId, em, complementoDoGiro: null);
+
+    /// <summary>
+    /// Anexa a prova de giro a uma tentativa consumida, com o complemento bruto da origem 6.
+    /// </summary>
+    /// <remarks>
+    /// O complemento vai para <c>turn_complement</c> (migração 017) como veio: talvez traga o
+    /// sentido físico do giro (T14). O rótulo contado é o que a tentativa já gravou pelo mapa
+    /// de giro; o bruto fica ao lado, para nada se perder (ADR-0018).
+    /// </remarks>
+    /// <param name="tentativaId">A tentativa.</param>
+    /// <param name="em">Quando a catraca avisou o giro.</param>
+    /// <param name="complementoDoGiro">O complemento da origem 6; nulo quando não se sabe.</param>
+    public void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em, int? complementoDoGiro)
     {
         using var conexao = _fabrica.Abrir();
         using var transacao = conexao.BeginTransaction();
@@ -413,9 +449,11 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         comando.CommandText =
             """
             UPDATE ticket_use_attempt
-            SET passage_confirmed_at = $em
+            SET passage_confirmed_at = $em,
+                turn_complement      = $complemento
             WHERE id = $id AND outcome = 'consumido' AND passage_confirmed_at IS NULL;
             """;
+        comando.Parameters.AddWithValue("$complemento", (object?)complementoDoGiro ?? DBNull.Value);
         comando.Parameters.AddWithValue("$em", Iso(em));
         comando.Parameters.AddWithValue("$id", tentativaId.ToString());
         var confirmou = comando.ExecuteNonQuery() == 1;
@@ -1222,7 +1260,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         Guid? decisionId,
         DateTimeOffset agora,
         string? categoria,
-        int? origemBruta)
+        int? origemBruta,
+        GiroResolvido? giro = null)
     {
         using var comando = conexao.CreateCommand();
         comando.Transaction = transacao;
@@ -1230,11 +1269,18 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             """
             INSERT INTO ticket_use_attempt
                 (id, ticket_id, provider_id, qr_normalized, gate_id, device_id,
-                 outcome, reason, decision_id, at, category, reader_origin)
+                 outcome, reason, decision_id, at, category, reader_origin,
+                 counted_as, release_function)
             VALUES
                 ($id, $ingresso, $provedor, $qr, $gate, $dispositivo,
-                 $desfecho, $motivo, $decisao, $em, $categoria, $origem);
+                 $desfecho, $motivo, $decisao, $em, $categoria, $origem,
+                 $contaComo, $funcao);
             """;
+
+        // Mapa de giro (D9, migração 017): a função que vai liberar e, se a regra é do mapa, o
+        // rótulo. Sem regra no mapa o rótulo fica nulo: conta como entrada, como sempre.
+        comando.Parameters.AddWithValue("$contaComo", giro is { DoMapa: true } ? RotuloDoGiro(giro.ContaComo) : DBNull.Value);
+        comando.Parameters.AddWithValue("$funcao", (object?)giro?.Funcao.ToString() ?? DBNull.Value);
         comando.Parameters.AddWithValue("$id", tentativaId.ToString());
         comando.Parameters.AddWithValue("$ingresso", (object?)ingressoId?.ToString() ?? DBNull.Value);
         comando.Parameters.AddWithValue("$provedor", (object?)provedorId ?? DBNull.Value);
@@ -1249,6 +1295,10 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         comando.Parameters.AddWithValue("$origem", (object?)origemBruta ?? DBNull.Value);
         comando.ExecuteNonQuery();
     }
+
+    /// <summary>Como o rótulo do giro fica na base (<c>counted_as</c>, migração 017).</summary>
+    public static string RotuloDoGiro(SentidoContado contaComo) =>
+        contaComo is SentidoContado.Saida ? "saida" : "entrada";
 
     private static bool EmIntervaloDeReuso(EstadoDoIngresso estado, DateTimeOffset agora) =>
         estado.IntervaloDeReusoSegundos > 0

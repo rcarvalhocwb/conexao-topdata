@@ -42,6 +42,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? _configuracoesDasCatracas;
     private readonly Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? _configuracaoPorCatraca;
     private readonly string? _sessao;
+    private readonly Access.Infrastructure.SQLite.MapasDeGiro? _mapasDeGiro;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -76,6 +77,10 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// alternar o modo simulação — é tratada como "sem notícia", nunca como "Atendendo"
     /// (migração 016; docs/29, defeito de 01/10). Nulo: acredita em toda situação (testes).
     /// </param>
+    /// <param name="mapasDeGiro">
+    /// Mapa de giro de cada catraca (migração 017, D9); sem ele, o "Giro desta catraca" responde
+    /// que não há base.
+    /// </param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -92,7 +97,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.ChavesDosComandos? chavesDosComandos = null,
         Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? configuracoesDasCatracas = null,
         Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null,
-        string? sessao = null)
+        string? sessao = null,
+        Access.Infrastructure.SQLite.MapasDeGiro? mapasDeGiro = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -111,6 +117,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _configuracoesDasCatracas = configuracoesDasCatracas;
         _configuracaoPorCatraca = configuracaoPorCatraca;
         _sessao = string.IsNullOrWhiteSpace(sessao) ? null : sessao;
+        _mapasDeGiro = mapasDeGiro;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -155,6 +162,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             resposta.Liberados = resumo.Liberados;
             resposta.Negados = resumo.Negados;
             resposta.Giros = resumo.Giros;
+            resposta.Entradas = resumo.Entradas;
+            resposta.Saidas = resumo.Saidas;
             resposta.LiberadosUltimos5Minutos = resumo.LiberadosNosUltimos5Minutos;
             resposta.CartasMortas = resumo.CartasMortas;
             resposta.OutboxPendente = resumo.PendentesDeEnvio;
@@ -413,6 +422,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         resposta.Liberados = contas.Liberados;
         resposta.Giros = contas.Giros;
         resposta.Negados = contas.Negados;
+        resposta.Entradas = contas.Entradas;
+        resposta.Saidas = contas.Saidas;
         resposta.PorCategoria.AddRange(contas.PorCategoria.Select(l => new LinhaPorCategoria
         {
             Categoria = string.IsNullOrEmpty(l.Chave) ? "(sem categoria)" : l.Chave,
@@ -424,6 +435,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             Inner = InnerDe(l.Chave),
             Liberados = l.Liberados,
             Giros = l.Giros,
+            Entradas = l.Entradas,
+            Saidas = l.Saidas,
             Negados = l.Negados,
         }));
         resposta.PorHora.AddRange(contas.PorHora.Select(l => new LinhaPorHora

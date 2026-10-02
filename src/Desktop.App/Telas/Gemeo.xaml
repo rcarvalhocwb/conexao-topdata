@@ -121,6 +121,21 @@
             </StackPanel>
           </Border>
 
+          <!-- Giro desta catraca (mapa de giro, D9): abre ao clicar nos braços ou na urna. -->
+          <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12"
+                  Visibility="{Binding PainelDoGiroAberto, Converter={StaticResource BoolParaVisibilidade}}">
+            <StackPanel>
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Content="Fechar" Command="{Binding FecharPainelDoGiro}"
+                        AutomationProperties.Name="Fechar o painel do giro" />
+                <rz:RayzerSectionHeader Titulo="Giro desta catraca" />
+              </DockPanel>
+              <TextBlock Margin="0,0,0,8" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                         Text="A seta no desenho mostra o lado em que o braço gira na regra em destaque. Salvar grava; a catraca só usa depois de aplicar." />
+              <ContentControl Content="{Binding Giro}" Focusable="False" />
+            </StackPanel>
+          </Border>
+
           <!-- A peça escolhida. -->
           <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
             <StackPanel>

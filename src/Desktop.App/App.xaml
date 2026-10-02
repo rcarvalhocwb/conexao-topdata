@@ -182,6 +182,8 @@
       <DataTemplate DataType="{x:Type vm:SimuladorViewModel}"><telas:Simulador /></DataTemplate>
       <!-- Fora do menu: aberta pela "Gerenciar catraca" (Etapa A.6). -->
       <DataTemplate DataType="{x:Type vm:ParametrizacaoViewModel}"><telas:Parametrizacao /></DataTemplate>
+      <!-- Painel, não tela: o mapa de giro dentro do gêmeo e da aba Giro da Parametrização (D9). -->
+      <DataTemplate DataType="{x:Type vm:MapaDeGiroViewModel}"><telas:MapaDeGiro /></DataTemplate>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

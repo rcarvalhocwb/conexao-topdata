@@ -45,6 +45,8 @@ public sealed record SituacaoDoEquipamento(
 /// <c>Origem</c> é a origem bruta da leitura, como a catraca a entregou (migração 010).
 /// É nula nas tentativas gravadas antes da migração ou por quem não conhece a origem:
 /// essas seguem para o painel sem origem, e não com uma origem inventada.
+/// <c>ContaComo</c> é o rótulo do mapa de giro (<c>"entrada"</c> ou <c>"saida"</c>, migração
+/// 017); nulo quando a catraca não tem regra para aquela origem — conta como entrada, como sempre.
 /// </remarks>
 public sealed record TentativaParaOPainel(
     long Sequencia,
@@ -58,7 +60,8 @@ public sealed record TentativaParaOPainel(
     string? Provedor,
     string CodigoMascarado,
     bool Girou,
-    int? Origem = null);
+    int? Origem = null,
+    string? ContaComo = null);
 
 /// <summary>Contagens do evento até agora, para o topo do painel.</summary>
 public sealed record ResumoDaOperacao(
@@ -68,7 +71,9 @@ public sealed record ResumoDaOperacao(
     long LiberadosNosUltimos5Minutos,
     long PendentesDeEnvio,
     DateTimeOffset? PendenteMaisAntigo,
-    long CartasMortas);
+    long CartasMortas,
+    long Entradas = 0,
+    long Saidas = 0);
 
 /// <summary>
 /// O que o serviço e o painel leem da operação, e o que os workers escrevem dela.
@@ -209,7 +214,7 @@ public sealed class Operacao
         comando.CommandText =
             """
             SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at, reader_origin
+                   qr_normalized, passage_confirmed_at, reader_origin, counted_as
             FROM ticket_use_attempt
             WHERE rowid > $depois
             ORDER BY rowid
@@ -235,7 +240,8 @@ public sealed class Operacao
                 leitor.IsDBNull(8) ? null : leitor.GetString(8),
                 CredentialValue.Mascarar(leitor.GetString(9)),
                 !leitor.IsDBNull(10),
-                leitor.IsDBNull(11) ? null : leitor.GetInt32(11)));
+                leitor.IsDBNull(11) ? null : leitor.GetInt32(11),
+                leitor.IsDBNull(12) ? null : leitor.GetString(12)));
         }
 
         return lista;
@@ -270,6 +276,11 @@ public sealed class Operacao
         var liberados = Escalar("SELECT COUNT(*) FROM ticket_use_attempt WHERE outcome = 'consumido';");
         var negados = Escalar("SELECT COUNT(*) FROM ticket_use_attempt WHERE outcome = 'negado';");
         var giros = Escalar("SELECT COUNT(*) FROM ticket_use_attempt WHERE passage_confirmed_at IS NOT NULL;");
+
+        // Mapa de giro (D9): a passagem conta pelo rótulo gravado na tentativa; sem rótulo
+        // (sem regra no mapa, ou antes da 017) conta como entrada, como sempre.
+        var saidas = Escalar(
+            "SELECT COUNT(*) FROM ticket_use_attempt WHERE passage_confirmed_at IS NOT NULL AND counted_as = 'saida';");
         var recentes = Escalar(
             "SELECT COUNT(*) FROM ticket_use_attempt WHERE outcome = 'consumido' AND at >= $desde;",
             ("$desde", Iso(agora.AddMinutes(-5))));
@@ -286,7 +297,7 @@ public sealed class Operacao
             }
         }
 
-        return new ResumoDaOperacao(liberados, negados, giros, recentes, pendentes, maisAntigo, mortas);
+        return new ResumoDaOperacao(liberados, negados, giros, recentes, pendentes, maisAntigo, mortas, giros - saidas, saidas);
     }
 
     private static string Iso(DateTimeOffset valor) =>

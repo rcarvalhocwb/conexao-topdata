@@ -49,15 +49,35 @@ public static class ConfiguracaoComRecuo
         SobreposicoesDoEvento evento,
         int inner,
         SobreposicoesDaCatraca catraca,
+        IReadOnlyList<string> problemasDaLeitura) =>
+        NaSubida(padraoDeFabrica, evento, inner, catraca, MapaDeGiro.Vazio, problemasDaLeitura);
+
+    /// <summary>
+    /// A configuração com que a catraca sobe, com o mapa de giro dela (D9, migração 017). O mapa
+    /// é parte da camada da catraca: recusada a configuração própria, o padrão dela sobe sem ele.
+    /// </summary>
+    /// <param name="padraoDeFabrica">Primeira camada (ver <see cref="PadroesDeFabrica"/>).</param>
+    /// <param name="evento">A camada do evento, já validada por quem leu.</param>
+    /// <param name="inner">Número da catraca, para os avisos.</param>
+    /// <param name="catraca">A camada desta catraca; <see cref="SobreposicoesDaCatraca.Nenhuma"/> sem linha.</param>
+    /// <param name="mapaDeGiro">O mapa de giro desta catraca; vazio = como sempre.</param>
+    /// <param name="problemasDaLeitura">Campos ilegíveis da camada e do mapa (cada um já herda).</param>
+    public static (DeviceConfiguration Configuracao, IReadOnlyList<string> Avisos) NaSubida(
+        DeviceConfiguration padraoDeFabrica,
+        SobreposicoesDoEvento evento,
+        int inner,
+        SobreposicoesDaCatraca catraca,
+        MapaDeGiro mapaDeGiro,
         IReadOnlyList<string> problemasDaLeitura)
     {
         ArgumentNullException.ThrowIfNull(padraoDeFabrica);
         ArgumentNullException.ThrowIfNull(evento);
         ArgumentNullException.ThrowIfNull(catraca);
+        ArgumentNullException.ThrowIfNull(mapaDeGiro);
         ArgumentNullException.ThrowIfNull(problemasDaLeitura);
 
         var avisos = new List<string>(problemasDaLeitura);
-        var propria = MontadorDaConfiguracao.Montar(padraoDeFabrica, evento, catraca);
+        var propria = MontadorDaConfiguracao.Montar(padraoDeFabrica, evento, catraca, mapaDeGiro);
         var recusas = propria.Validar();
 
         if (recusas.Count == 0)
@@ -87,14 +107,34 @@ public static class ConfiguracaoComRecuo
         SobreposicoesDoEvento evento,
         int inner,
         SobreposicoesDaCatraca catraca,
+        IReadOnlyList<string> problemasDaLeitura) =>
+        ParaAplicar(padraoDeFabrica, evento, inner, catraca, MapaDeGiro.Vazio, problemasDaLeitura);
+
+    /// <summary>
+    /// A configuração que o "Aplicar agora" envia à catraca, com o mapa de giro dela, ou por
+    /// que não envia.
+    /// </summary>
+    /// <param name="padraoDeFabrica">Primeira camada (ver <see cref="PadroesDeFabrica"/>).</param>
+    /// <param name="evento">A camada do evento, relida e já validada por quem leu.</param>
+    /// <param name="inner">Número da catraca, para os problemas.</param>
+    /// <param name="catraca">A camada desta catraca, relida.</param>
+    /// <param name="mapaDeGiro">O mapa de giro desta catraca, relido.</param>
+    /// <param name="problemasDaLeitura">Campos ilegíveis da camada e do mapa.</param>
+    public static (DeviceConfiguration? Configuracao, IReadOnlyList<string> Problemas) ParaAplicar(
+        DeviceConfiguration padraoDeFabrica,
+        SobreposicoesDoEvento evento,
+        int inner,
+        SobreposicoesDaCatraca catraca,
+        MapaDeGiro mapaDeGiro,
         IReadOnlyList<string> problemasDaLeitura)
     {
         ArgumentNullException.ThrowIfNull(padraoDeFabrica);
         ArgumentNullException.ThrowIfNull(evento);
         ArgumentNullException.ThrowIfNull(catraca);
+        ArgumentNullException.ThrowIfNull(mapaDeGiro);
         ArgumentNullException.ThrowIfNull(problemasDaLeitura);
 
-        var propria = MontadorDaConfiguracao.Montar(padraoDeFabrica, evento, catraca);
+        var propria = MontadorDaConfiguracao.Montar(padraoDeFabrica, evento, catraca, mapaDeGiro);
         List<string> problemas =
         [
             .. problemasDaLeitura,

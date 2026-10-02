@@ -262,6 +262,13 @@ internal static class Program
             Registrar("sequência oficial de conexão ligada (chave técnica, ensaio INT-SM-021)");
         }
 
+        // Texto do giro no display (mapa de giro, D9): só com a chave técnica, desligada até
+        // NOVO-HIL-DIR-12. Do laço, como a sequência oficial: muda no próximo início.
+        if (configuracao.ExibirTextoDoGiro)
+        {
+            Registrar("texto do giro no display ligado (chave técnica, ensaio NOVO-HIL-DIR-12)");
+        }
+
         var espelho = configuracao.EspelhoLigado
             ? new EspelhoDeTentativas(configuracao.ConectorDoEspelho, TimeSpan.FromSeconds(configuracao.EsperaPeloGiroSegundos))
             : null;
@@ -299,7 +306,8 @@ internal static class Program
             Registrar(string.Create(
                 CultureInfo.InvariantCulture,
                 $"inner-{inner}: leitor {daCatraca.TipoDeLeitor} · leitor 2 {daCatraca.OperacaoDoLeitor2} · " +
-                $"relé 1 {daCatraca.TempoDoAcionamento1} s · liberação {daCatraca.PerfilFisico.FuncaoDeLiberacaoDaEntrada}"));
+                $"relé 1 {daCatraca.TempoDoAcionamento1} s · liberação {daCatraca.PerfilFisico.FuncaoDeLiberacaoDaEntrada}" +
+                $"{(daCatraca.PerfilFisico.MapaDeGiro.EstaVazio ? string.Empty : " · mapa de giro próprio")}"));
 
             configuracaoDasCatracas[inner] = daCatraca;
         }
@@ -362,6 +370,7 @@ internal static class Program
             recarregarConfiguracao: Recarregar,
             acertarRelogioAoDivergir: configuracao.AcertarRelogioAoDivergir,
             sequenciaOficial: configuracao.SequenciaOficial,
+            exibirTextoDoGiro: configuracao.ExibirTextoDoGiro,
             gravadorDeBilhetes: gravadorDeBilhetes,
             coletaLigada: () => configuracoesDaBorda.Ler() is var (lida, ilegiveis)
                 && lida.ColetarBilhetes
