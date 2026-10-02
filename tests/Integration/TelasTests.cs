@@ -258,6 +258,38 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.All(painel.UltimosAcessos, l => Assert.DoesNotContain(Qr, l.Codigo, StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Sem o fluxo ao vivo (ainda conectando, ou na captura das telas), a atualização da tela já
+    /// enche a lista vazia pelo que está gravado.
+    /// </summary>
+    [Fact]
+    public async Task Painel_ao_vivo_enche_a_lista_vazia_na_atualizacao()
+    {
+        _repositorio.TentarUsar(Qr, "p1", "inner-1", DateTimeOffset.UtcNow);
+
+        var painel = new PainelAoVivoViewModel(Cliente());
+        await painel.AtualizarAsync();
+
+        var linha = Assert.Single(painel.UltimosAcessos);
+        Assert.True(linha.Liberado);
+        Assert.DoesNotContain(Qr, linha.Codigo, StringComparison.Ordinal);
+
+        // Uma segunda atualização não repete a linha.
+        await painel.AtualizarAsync();
+        Assert.Single(painel.UltimosAcessos);
+    }
+
+    [Fact]
+    public void A_lista_ao_vivo_completa_sem_apagar_o_que_chegou_ao_vivo()
+    {
+        var painel = new PainelAoVivoViewModel(Cliente());
+        var antiga = new LinhaDeAcesso("10:00:00", 1, "Liberado", true, false, "", "", Sinal.Bom, EventoId: "e-1");
+        painel.Acrescentar(antiga with { EventoId = "e-3" });
+        painel.Completar([antiga with { EventoId = "e-2" }, antiga, antiga with { EventoId = "e-3" }]);
+
+        Assert.Equal(["e-3", "e-2", "e-1"], painel.UltimosAcessos.Select(l => l.EventoId));
+    }
+
     [Fact]
     public void A_lista_ao_vivo_nao_repete_o_acesso_que_ja_mostrou()
     {

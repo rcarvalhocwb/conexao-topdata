@@ -211,6 +211,15 @@ public sealed class PainelAoVivoViewModel : TelaBase
                 : estado.UltimaSincronizacao is null
                     ? ("Sem sincronização", Sinal.Neutro)
                     : ("Offline — catracas seguem", Sinal.Atencao);
+
+            // Lista vazia com acesso já contado: completa pelo que está gravado, sem esperar o
+            // fluxo ao vivo conectar (ou sem ele, como na captura das telas).
+            if (UltimosAcessos.Count == 0 && estado.Liberados + estado.Negados > 0)
+            {
+                var recentes = await Cliente.ListarAcessosAsync(
+                    new ListarAcessosRequest { Limite = AcessosNaTela }, cancellationToken: cancelamento);
+                Completar([.. recentes.Acessos.Select(LinhaDeAcesso.De)]);
+            }
         }).ConfigureAwait(true);
 
         if (!ok)
@@ -289,6 +298,28 @@ public sealed class PainelAoVivoViewModel : TelaBase
         foreach (var linha in historico.Take(AcessosNaTela))
         {
             UltimosAcessos.Add(linha);
+        }
+    }
+
+    /// <summary>
+    /// Acrescenta no fim os acessos gravados que a lista ainda não tem, do mais recente ao mais
+    /// antigo. Não apaga nada: um acesso ao vivo que chegou no meio continua no topo.
+    /// </summary>
+    public void Completar(IReadOnlyList<LinhaDeAcesso> historico)
+    {
+        ArgumentNullException.ThrowIfNull(historico);
+
+        foreach (var linha in historico)
+        {
+            if (UltimosAcessos.Count >= AcessosNaTela)
+            {
+                break;
+            }
+
+            if (linha.EventoId.Length == 0 || UltimosAcessos.All(l => !string.Equals(l.EventoId, linha.EventoId, StringComparison.Ordinal)))
+            {
+                UltimosAcessos.Add(linha);
+            }
         }
     }
 
