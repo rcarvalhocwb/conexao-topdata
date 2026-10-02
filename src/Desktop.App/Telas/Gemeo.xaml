@@ -160,7 +160,8 @@
                          Text="{x:Static vm:CentralDaCatracaViewModel.AvisoDaConfiguracao}" />
 
               <rz:RayzerStatusPill Margin="0,8,0,0" HorizontalAlignment="Left" Tom="{Binding Central.SinalDaSituacao, Converter={StaticResource SinalParaTom}}"
-                                   Texto="{Binding Central.SituacaoNaCatraca}" AutomationProperties.Name="Situação da configuração na catraca" />
+                                   Texto="{Binding Central.SituacaoCurta}" ToolTip="{Binding Central.SituacaoNaCatraca}"
+                                   AutomationProperties.Name="{Binding Central.SituacaoNaCatraca}" />
               <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding Central.DetalheDaSituacao}" />
 
               <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Central.Mensagem}" Margin="0,8,0,0"

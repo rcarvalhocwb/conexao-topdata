@@ -265,6 +265,20 @@ public sealed class CentralDaCatracaViewModel : TelaBase
     /// <summary>"Aplicada", "Salva, não aplicada", "Aplicando…" (Etapa A.5/A.6).</summary>
     public string SituacaoNaCatraca => Parametrizacao.SituacaoNaCatraca;
 
+    /// <summary>
+    /// A situação em poucas palavras ("Aplicada", "Salva, não aplicada", "Aplicando…"), para o
+    /// selo caber na coluna estreita do gêmeo; a frase inteira vai na dica e no detalhe.
+    /// </summary>
+    public string SituacaoCurta
+    {
+        get
+        {
+            var texto = SituacaoNaCatraca ?? string.Empty;
+            var corte = texto.IndexOfAny([':', ';']);
+            return corte > 0 ? texto[..corte] : texto;
+        }
+    }
+
     public Sinal SinalDaSituacao => Parametrizacao.SinalDaSituacao;
 
     public string DetalheDaSituacao => Parametrizacao.DetalheDaSituacao;
@@ -521,6 +535,7 @@ public sealed class CentralDaCatracaViewModel : TelaBase
                 or nameof(ParametrizacaoViewModel.DetalheDaSituacao) or nameof(ParametrizacaoViewModel.Aplicacoes)
                 or nameof(ParametrizacaoViewModel.ConfirmandoAplicacao) or nameof(ParametrizacaoViewModel.AvisosDoSalvo):
                 Avisar(propriedade);
+                Avisar(nameof(SituacaoCurta));
                 AvisarNaCatraca();
                 Reavaliar();
                 break;

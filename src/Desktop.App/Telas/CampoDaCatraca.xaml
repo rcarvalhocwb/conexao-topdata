@@ -16,8 +16,11 @@
                      Text="{Binding TextoDaOrigem}" />
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" TextWrapping="Wrap" Text="{Binding Rotulo}" />
         </DockPanel>
-        <CheckBox Margin="0,4,0,4" IsChecked="{Binding Herda}" IsEnabled="{Binding Disponivel}" Content="{Binding TextoHerdar}"
-                  AutomationProperties.Name="Usar o padrão do evento" />
+        <CheckBox Margin="0,4,0,4" IsChecked="{Binding Herda}" IsEnabled="{Binding Disponivel}"
+                  AutomationProperties.Name="Usar o padrão do evento">
+          <!-- Quebra a linha: na coluna estreita do gêmeo o texto do padrão não cabe numa só. -->
+          <TextBlock TextWrapping="Wrap" Text="{Binding TextoHerdar}" />
+        </CheckBox>
         <ComboBox ItemsSource="{Binding Opcoes}" SelectedItem="{Binding Escolhida}" DisplayMemberPath="Nome"
                   IsEnabled="{Binding Editavel}" Visibility="{Binding EhLista, Converter={StaticResource BoolParaVisibilidade}}"
                   AutomationProperties.Name="{Binding Rotulo}" AutomationProperties.HelpText="{Binding Erro}">

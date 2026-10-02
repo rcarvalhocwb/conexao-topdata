@@ -1110,6 +1110,22 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         return tela;
     }
 
+    /// <summary>
+    /// O selo da configuração no gêmeo mostra só a situação em poucas palavras (a coluna é
+    /// estreita); a frase inteira continua na dica do selo.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_selo_da_configuracao_usa_a_situacao_curta()
+    {
+        var tela = await GemeoCarregadoAsync();
+        var inteira = tela.Central.SituacaoNaCatraca;
+        var curta = tela.Central.SituacaoCurta;
+        Assert.StartsWith("Salva; a catraca ainda não confirmou", inteira, StringComparison.Ordinal);
+        Assert.Equal("Salva", curta);
+        Assert.DoesNotContain(':', curta);
+        Assert.StartsWith(curta, inteira, StringComparison.Ordinal);
+    }
+
     private static Contracts.Edge.V1.CampoDaCatraca[] CamposDoPainel(GemeoDigitalViewModel tela) =>
         [.. tela.Central.CamposDaPeca.Select(c => c.Campo)];
 
