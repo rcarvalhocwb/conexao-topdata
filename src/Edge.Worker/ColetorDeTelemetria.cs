@@ -35,7 +35,7 @@ public enum TipoDeSinal
 /// <para>
 /// Thread-safe: incrementos de contadores e enfileiramento são operações atômicas.
 /// Invariante I1: nenhuma chamada de disk I/O no passo da decisão, só enfileiramento.
-/// Descarregamento: em <see cref="SessaoDeOperacao.UmaVolta"/>, depois de <c>PublicarSeFor()</c>,
+/// Descarregamento: em <c>SessaoDeOperacao.UmaVolta</c>, depois de <c>PublicarSeFor()</c>,
 /// com o mesmo try/catch de situação.
 /// </para>
 /// <para>
