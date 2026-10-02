@@ -236,6 +236,15 @@ public sealed class PainelAoVivoViewModel : TelaBase
             {
                 using var fluxo = Cliente.AcompanharEventos(new AcompanharEventosRequest(), cancellationToken: cancelamento);
 
+                // O fluxo só traz o que acontece daqui para frente. Sem isto, o que passou antes de
+                // a tela abrir (ou enquanto o serviço reiniciava) entrava nos contadores e não na
+                // lista. O fluxo já está aberto: o que chegar enquanto a lista carrega fica na fila
+                // dele e o Acrescentar descarta o que a lista já trouxe.
+                var recentes = await Cliente.ListarAcessosAsync(
+                    new ListarAcessosRequest { Limite = AcessosNaTela }, cancellationToken: cancelamento);
+                var historico = recentes.Acessos.Select(LinhaDeAcesso.De).ToList();
+                despachar(() => Repor(historico));
+
                 while (await fluxo.ResponseStream.MoveNext(cancelamento).ConfigureAwait(false))
                 {
                     var linha = LinhaDeAcesso.De(fluxo.ResponseStream.Current);
@@ -268,9 +277,31 @@ public sealed class PainelAoVivoViewModel : TelaBase
         }
     }
 
-    /// <summary>Põe um acesso no topo da lista, mantendo o tamanho.</summary>
+    /// <summary>
+    /// Troca a lista pelos acessos gravados, do mais recente ao mais antigo. Chamado a cada
+    /// conexão com o serviço, antes dos acessos ao vivo.
+    /// </summary>
+    public void Repor(IReadOnlyList<LinhaDeAcesso> historico)
+    {
+        ArgumentNullException.ThrowIfNull(historico);
+        UltimosAcessos.Clear();
+
+        foreach (var linha in historico.Take(AcessosNaTela))
+        {
+            UltimosAcessos.Add(linha);
+        }
+    }
+
+    /// <summary>Põe um acesso no topo da lista, mantendo o tamanho. Ignora o que já está nela.</summary>
     public void Acrescentar(LinhaDeAcesso linha)
     {
+        ArgumentNullException.ThrowIfNull(linha);
+
+        if (linha.EventoId.Length > 0 && UltimosAcessos.Any(l => string.Equals(l.EventoId, linha.EventoId, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
         UltimosAcessos.Insert(0, linha);
 
         while (UltimosAcessos.Count > AcessosNaTela)

@@ -144,7 +144,10 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
             acao =>
             {
                 acao();
-                chegou.TrySetResult();
+                if (painel.UltimosAcessos.Count > 0)
+                {
+                    chegou.TrySetResult();
+                }
             },
             cancelamento.Token);
 
@@ -217,6 +220,54 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         var desconhecida = recebidos[2];
         Assert.Equal((11, string.Empty, true), (desconhecida.OrigemBruta, desconhecida.OrigemConhecida, desconhecida.OrigemDesconhecida));
         Assert.DoesNotContain("9999000102", desconhecida.CredencialMascarada, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// O que passou antes de o painel abrir aparece na lista, e não só nos contadores: com
+    /// 1 liberado no contador, a lista não pode dizer "Aguardando o primeiro acesso".
+    /// </summary>
+    [Fact]
+    public async Task Painel_ao_vivo_mostra_os_acessos_de_antes_de_abrir()
+    {
+        _repositorio.TentarUsar(Qr, "p1", "inner-1", DateTimeOffset.UtcNow);
+        _repositorio.TentarUsar("5555555555", "p1", "inner-1", DateTimeOffset.UtcNow);
+
+        var painel = new PainelAoVivoViewModel(Cliente());
+        await painel.AtualizarAsync();
+        using var cancelamento = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var carregou = new TaskCompletionSource();
+        var acompanhando = painel.AcompanharAsync(
+            acao =>
+            {
+                acao();
+                if (painel.UltimosAcessos.Count > 0)
+                {
+                    carregou.TrySetResult();
+                }
+            },
+            cancelamento.Token);
+
+        await carregou.Task.WaitAsync(cancelamento.Token);
+        cancelamento.Cancel();
+        await acompanhando;
+
+        Assert.Equal((1, 1), (painel.Liberados, painel.Negados));
+        Assert.Equal(2, painel.UltimosAcessos.Count);
+        Assert.False(painel.UltimosAcessos[0].Liberado);
+        Assert.True(painel.UltimosAcessos[1].Liberado);
+        Assert.All(painel.UltimosAcessos, l => Assert.DoesNotContain(Qr, l.Codigo, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_lista_ao_vivo_nao_repete_o_acesso_que_ja_mostrou()
+    {
+        var painel = new PainelAoVivoViewModel(Cliente());
+        var linha = new LinhaDeAcesso("10:00:00", 1, "Liberado", true, false, "", "", Sinal.Bom, EventoId: "e-1");
+        painel.Repor([linha]);
+        painel.Acrescentar(linha);
+        painel.Acrescentar(linha with { EventoId = "e-2" });
+
+        Assert.Equal(["e-2", "e-1"], painel.UltimosAcessos.Select(l => l.EventoId));
     }
 
     [Fact]
