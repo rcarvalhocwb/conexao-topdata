@@ -59,6 +59,13 @@ resposta de T35 (docs/21 §6F); a coleta automática na volta do off-line depend
 (tipos, trilha do cadastro, lotes de importação), tipo desativado negando na catraca e a prévia da
 importação (CSV e .xlsx, sem gravar).
 
+**Camada inteligente ([docs/36](36-inovacao-sobre-a-catraca.md)):** a I.0 (fundação) está no código —
+projeto puro `Access.Inteligencia`, que o worker não alcança; o Analisador no serviço, numa thread de
+prioridade baixa e com orçamento por ciclo, lendo `acesso.db` só para leitura e gravando só em
+`telemetria.db` (arquivo próprio, migração `T001`); a saúde dele no Diagnóstico. Fica **desligado**
+(chave técnica `inteligencia.ligada`) até `NOVO-LOAD-IA-01`, `NOVO-CHAOS-IA-01` em campo e
+`NOVO-SOAK-IA-24H` (I.11).
+
 ## 1A. Defeitos relatados pelo dono do produto (01/10) e o que foi feito
 
 ### "Desliguei o simulador e o sistema ainda reconhecia como atendendo"

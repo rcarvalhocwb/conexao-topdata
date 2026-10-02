@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Camada inteligente (Etapa I do docs/36; desenho em docs/36-anexos/02-camada-inteligente.md).
+    Funções puras: recebem dados já lidos e o relógio, devolvem resultado e texto. Não grava,
+    não conhece SQLite, rede, tela nem catraca — quem lê e grava é o Analisador, no serviço.
+    Por isso testa no Linux, sem Windows e sem hardware (padrão de Access.Importacao).
+
+    Só a biblioteca padrão e NENHUM pacote NuGet. Nesta etapa (I.0) não referencia nenhum
+    projeto.
+
+    O worker NÃO referencia este projeto, nem direta nem indiretamente: nada daqui roda no passo
+    da decisão (invariante I1, docs/36-anexos/02 §3.1). Regra verificada por ArquiteturaTests
+    (NOVO-ARQ-IA-01).
+  -->
+
+</Project>

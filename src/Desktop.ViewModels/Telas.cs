@@ -881,6 +881,9 @@ public sealed class ConfiguracoesViewModel : TelaBase
 public sealed class DiagnosticoViewModel : TelaBase
 {
     private Diagnostico? _diagnostico;
+    private string _analisadorResumo = string.Empty;
+    private Sinal _analisadorSinal = Sinal.Neutro;
+    private IReadOnlyList<ParDeTexto> _analisador = [];
 
     public DiagnosticoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
@@ -891,10 +894,22 @@ public sealed class DiagnosticoViewModel : TelaBase
 
     public Diagnostico? Diagnostico { get => _diagnostico; private set => Definir(ref _diagnostico, value); }
 
+    /// <summary>
+    /// A camada inteligente numa frase: "Desligada nesta instalação", "Funcionando", "Com erro"
+    /// (Etapa I.0 do docs/36; docs/36-anexos/02 §3.7, linha "Diagnóstico").
+    /// </summary>
+    public string AnalisadorResumo { get => _analisadorResumo; private set => Definir(ref _analisadorResumo, value); }
+
+    public Sinal AnalisadorSinal { get => _analisadorSinal; private set => Definir(ref _analisadorSinal, value); }
+
+    /// <summary>A conta do Analisador: último ciclo, duração, orçamento, estouros, último erro.</summary>
+    public IReadOnlyList<ParDeTexto> Analisador { get => _analisador; private set => Definir(ref _analisador, value); }
+
     public override Task AtualizarAsync(CancellationToken cancelamento = default) =>
         Tentar(async () =>
         {
             Diagnostico = await Cliente.ObterDiagnosticoAsync(new ObterDiagnosticoRequest(), cancellationToken: cancelamento);
+            (AnalisadorResumo, AnalisadorSinal, Analisador) = Textos.SaudeDoAnalisador(Diagnostico.Analisador, Relogio());
             Mensagem = string.Empty;
         });
 }

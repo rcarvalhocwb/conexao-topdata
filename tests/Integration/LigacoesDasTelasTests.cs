@@ -43,7 +43,7 @@ public sealed partial class LigacoesDasTelasTests
             typeof(ParametrizacaoViewModel), typeof(LinhaDeCatraca), typeof(CampoDaParametrizacao), typeof(OpcaoDoCampo),
             typeof(LinhaDeMudanca), typeof(LinhaDeComando),
         ],
-        ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker)],
+        ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker), typeof(ParDeTexto)],
         ["Telas/Simulador.xaml"] = [typeof(SimuladorViewModel), typeof(LinhaDeAcesso), typeof(ParDeTexto)],
         ["JanelaPrincipal.xaml"] = [typeof(JanelaViewModel), typeof(PainelAoVivoViewModel), typeof(EstadoDoPainel), typeof(ITela)],
     };

@@ -324,6 +324,27 @@ message Diagnostico {
   string versao = 1;
   string pasta_de_dados = 2;
   repeated DiagnosticoDeWorker workers = 3;
+
+  // Etapa I.0 (docs/36): a saúde do Analisador da camada inteligente, que roda no serviço,
+  // desligado por padrão (chave inteligencia.ligada, sem tela).
+  SaudeDoAnalisador analisador = 4;
+}
+
+// O Analisador só lê a base da operação e grava a telemetria dele; nada aqui comanda catraca.
+// O erro vai só pelo tipo, nunca com mensagem livre (docs/36-anexos/02 §3.1, I6).
+message SaudeDoAnalisador {
+  bool ligado = 1;                                  // a chave estava ligada na partida
+  bool rodando = 2;                                 // o laço existe neste serviço
+  google.protobuf.Timestamp ultimo_ciclo = 3;       // ausente: nenhum ciclo ainda
+  int64 duracao_do_ultimo_ciclo_ms = 4;
+  int64 ciclos = 5;                                 // ciclos que terminaram bem
+  int64 estouros = 6;                               // acima do orçamento (o seguinte é pulado)
+  int64 pulados = 7;
+  int64 falhas = 8;
+  string ultimo_erro = 9;                           // tipo do erro; vazio se nenhum
+  google.protobuf.Timestamp ultimo_erro_em = 10;
+  int64 orcamento_ms = 11;
+  int64 tentativas_lidas = 12;
 }
 
 message DiagnosticoDeWorker {

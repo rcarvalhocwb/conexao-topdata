@@ -42,6 +42,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? _configuracoesDasCatracas;
     private readonly Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? _configuracaoPorCatraca;
     private readonly string? _sessao;
+    private readonly AnalisadorDaOperacao? _analisador;
 
     /// <param name="supervisor">Os workers.</param>
     /// <param name="versao">Versão exibida no painel.</param>
@@ -76,6 +77,10 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// alternar o modo simulação — é tratada como "sem notícia", nunca como "Atendendo"
     /// (migração 016; docs/29, defeito de 01/10). Nulo: acredita em toda situação (testes).
     /// </param>
+    /// <param name="analisador">
+    /// O Analisador da camada inteligente (Etapa I.0 do docs/36), só para o Diagnóstico mostrar a
+    /// saúde dele. Nulo: o Diagnóstico diz que ele não existe neste serviço.
+    /// </param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -92,7 +97,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.ChavesDosComandos? chavesDosComandos = null,
         Access.Infrastructure.SQLite.ConfiguracoesDasCatracas? configuracoesDasCatracas = null,
         Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null,
-        string? sessao = null)
+        string? sessao = null,
+        AnalisadorDaOperacao? analisador = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -111,6 +117,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _configuracoesDasCatracas = configuracoesDasCatracas;
         _configuracaoPorCatraca = configuracaoPorCatraca;
         _sessao = string.IsNullOrWhiteSpace(sessao) ? null : sessao;
+        _analisador = analisador;
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
@@ -500,7 +507,43 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             resposta.Workers.Add(item);
         }
 
+        resposta.Analisador = SaudeDoAnalisadorPara(_analisador?.Situacao);
         return Task.FromResult(resposta);
+    }
+
+    /// <summary>A saúde do Analisador como vai ao painel (Etapa I.0). Sem Analisador: desligado, parado.</summary>
+    public static SaudeDoAnalisador SaudeDoAnalisadorPara(Access.Inteligencia.SituacaoDoAnalisador? situacao)
+    {
+        if (situacao is null)
+        {
+            return new SaudeDoAnalisador();
+        }
+
+        var saude = new SaudeDoAnalisador
+        {
+            Ligado = situacao.Ligada,
+            Rodando = situacao.Rodando,
+            DuracaoDoUltimoCicloMs = (long)situacao.DuracaoDoUltimoCiclo.TotalMilliseconds,
+            Ciclos = situacao.Ciclos,
+            Estouros = situacao.Estouros,
+            Pulados = situacao.Pulados,
+            Falhas = situacao.Falhas,
+            UltimoErro = situacao.UltimoErro,
+            OrcamentoMs = (long)situacao.Orcamento.TotalMilliseconds,
+            TentativasLidas = situacao.TentativasLidas,
+        };
+
+        if (situacao.UltimoCicloEm is { } ciclo)
+        {
+            saude.UltimoCiclo = Timestamp.FromDateTimeOffset(ciclo);
+        }
+
+        if (situacao.UltimoErroEm is { } erro)
+        {
+            saude.UltimoErroEm = Timestamp.FromDateTimeOffset(erro);
+        }
+
+        return saude;
     }
 
     public override Task<SimularLeituraResponse> SimularLeitura(SimularLeituraRequest request, ServerCallContext context)

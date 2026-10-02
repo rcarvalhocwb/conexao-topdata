@@ -223,6 +223,14 @@ construtor.Services.AddSingleton(operacao);
 construtor.Services.AddSingleton(nuvem);
 var configuracoesDaBorda = new ConfiguracoesDaBorda(fabrica);
 construtor.Services.AddSingleton(configuracoesDaBorda);
+
+// Camada inteligente (Etapa I.0 do docs/36): o Analisador lê acesso.db só para leitura e grava só
+// em telemetria.db, ao lado. Desligado por padrão (chave inteligencia.ligada, lida na partida);
+// uma exceção ou um ciclo travado dele não derruba o serviço nem toca no worker.
+var analisador = new AnalisadorDaOperacao(new CicloSobreABase(
+    new LeituraSomenteDaOperacao(caminhoDoBanco),
+    new FabricaDaTelemetria(FabricaDaTelemetria.CaminhoAoLadoDe(caminhoDoBanco)),
+    sessaoDoServico));
 construtor.Services.AddSingleton(_ => new EdgeControlService(
     supervisor,
     operacao: operacao,
@@ -237,11 +245,13 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     chavesDosComandos: new ChavesDosComandos(fabrica),
     configuracoesDasCatracas: new ConfiguracoesDasCatracas(fabrica),
     configuracaoPorCatraca: new ConfiguracaoPorCatraca(fabrica),
-    sessao: sessaoDoServico));
+    sessao: sessaoDoServico,
+    analisador: analisador));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
+construtor.Services.AddHostedService(_ => analisador);
 
 if (sincronizacao is not null)
 {
