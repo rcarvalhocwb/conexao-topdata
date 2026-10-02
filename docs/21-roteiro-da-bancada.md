@@ -422,6 +422,32 @@ aparece como "Atendendo" sem catraca na rede.
 
 ---
 
+## 6I. Prazo do giro (`NOVO-HIL-GIRO-04`, Etapa I.1b)
+
+Defeito F9 ([docs/34](34-estudo-modulo-catraca.md) §2, achado do [docs/36](36-inovacao-sobre-a-catraca.md)):
+depois de liberar, o laço esperava a origem 5 (fim do tempo do relé) para rearmar o leitor; se ela
+não viesse, a catraca parava de atender sem erro. Agora o laço desiste sozinho depois do **tempo do
+relé 1 + 3 s** (no mínimo 8 s) e rearma o leitor. **Tirar a origem 5 não é possível na bancada**:
+o que se ensaia é "liberar e segurar o braço" e conferir que a pista volta a atender — e por qual
+caminho. Use o modo bancada (passo 2) ou o sistema instalado com o registro do worker aberto.
+
+| # | Faça | Deve acontecer | Anote |
+|---|---|---|---|
+| 1 | Tempo do relé 1 = **5 s**. Mostre um QR válido e **segure o braço** (não gire) | Em ~5 s, a linha `evento FimTempoAcionamento (5)` (caminho normal) **ou**, se ela não vier, aos 8 s `giro não confirmado: prazo de 8 s, sem origem 5 nem 6 — rearmando o leitor`; depois `leitor reabilitado` | Qual das duas linhas? Segundos entre `giro liberado` e ela |
+| 2 | Logo depois, mostre outro QR válido | `LIBERADO` e `giro liberado`: a pista voltou a atender | Atendeu? |
+| 3 | Repita 1 e 2 com o tempo do relé 1 = **20 s** | Nenhuma desistência antes de 23 s; a origem 5 perto dos 20 s, ou a desistência aos 23 s | Segundos; atendeu depois? |
+| 4 | Repita 1 e 2 com o tempo do relé 1 = **50 s** | Nenhuma desistência antes de 53 s | Segundos; atendeu depois? |
+| 5 | Tempo do relé 1 = 5 s. Libere e **gire perto do fim** do tempo (aos 4–5 s) | `GiroConfirmado (6)`, nunca `giro não confirmado`: o giro que chega dentro do prazo não é cortado | O giro foi contado? |
+| 6 | Liberação manual pelo painel, sem girar | Desfecho "liberada; ninguém girou" (com a origem 5) ou "liberada; giro não confirmado: prazo de 8 s" (sem ela) | Qual desfecho |
+
+Ensaio aprovado: em todas as linhas a catraca volta a atender a leitura seguinte, sem reiniciar
+nada, e nenhum giro feito dentro do tempo do relé é cortado. Se a linha 1 mostrar a desistência
+(sem origem 5), anote: é a resposta de HIL-EVT-01 para a origem 5 e muda o docs/34 §2 (F9 deixa
+de ser dormente). A margem de 3 s (`DeviceStateMachine.MargemDoGiro`) se confirma aqui e em
+NOVO-LOAD-LOOP-01; se o giro da linha 5 chegar depois do fim do relé + 3 s, a margem precisa crescer.
+
+---
+
 ## 7. Encerrar e conferir
 
 **Ctrl+C.** O sistema mostra a prestação de contas do ensaio:
@@ -470,6 +496,7 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 6E: cada comando ensaiado tem a linha preenchida (ou "não ensaiado"); a linha 4 fica "não ensaiada" até a D5; toda chave voltou a `0`
 - [ ] Passo 6F: coleta de bilhetes ensaiada (ou "não ensaiada"); nenhum bilhete perdido nem duplicado depois da queda; a chave voltou a `0`
 - [ ] Passo 6G: parametrização pelo painel ensaiada (INT-PAR-01): salva × aplicada bate com o display; nada que aguarda confirmação pôde ser escolhido
+- [ ] Passo 6I: prazo do giro (NOVO-HIL-GIRO-04): com o braço seguro, a pista volta a atender em todas as linhas; nenhum giro dentro do tempo do relé foi cortado
 - [ ] Passo 7: o resumo bate com o que foi feito
 
 **Mande a tabela do passo 3, as dos passos 6A, 6B, 6C e 6D e o resumo do passo 7.** São eles que fecham as perguntas
