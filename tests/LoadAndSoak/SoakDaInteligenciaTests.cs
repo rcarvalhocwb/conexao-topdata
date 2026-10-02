@@ -115,7 +115,7 @@ public sealed class SoakDaInteligenciaTests
 
         var alertasGerados = 0;
         var catracasForaDaNormal = new HashSet<int>();
-        var falsosPo sitivos = 0;
+        var falsosPositivos = 0;
 
         while (cronometro.Elapsed < duracao)
         {
@@ -146,12 +146,12 @@ public sealed class SoakDaInteligenciaTests
         EscreverRelatorio(
             duracao, cronometro.Elapsed, laco.Voltas, relogioManual.Agora,
             memoriaInicial, memoriaFinal, amostraMaxima, totalDeAmostras,
-            alertasGerados, falsosPo sitivos, catracasForaDaNormal);
+            alertasGerados, falsosPositivos, catracasForaDaNormal);
 
         // Verificações críticas: 0 alertas, 0 catracas fora de Normal
         Assert.Equal(0, alertasGerados);
         Assert.Empty(catracasForaDaNormal);
-        Assert.Equal(0, falsosPo sitivos);
+        Assert.Equal(0, falsosPositivos);
 
         // Sem vazamento de memória: crescimento < 32 MB
         const long TetoDeCrescimento = 32L * 1024 * 1024;
