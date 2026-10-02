@@ -20,15 +20,15 @@ public sealed partial class LigacoesDasTelasTests
     // listas dela.
     private static readonly Dictionary<string, System.Type[]> TiposPorArquivo = new()
     {
-        ["Telas/PainelAoVivo.xaml"] = [typeof(PainelAoVivoViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeAcesso)],
+        ["Telas/PainelAoVivo.xaml"] = [typeof(PainelAoVivoViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeAcesso), typeof(PainelPorQue)],
         ["Telas/Catracas.xaml"] = [typeof(CatracasViewModel), typeof(LinhaDeCatraca)],
-        ["Telas/Acessos.xaml"] = [typeof(AcessosViewModel), typeof(LinhaDeAcesso)],
+        ["Telas/Acessos.xaml"] = [typeof(AcessosViewModel), typeof(LinhaDeAcesso), typeof(PainelPorQue)],
         ["Telas/Consulta.xaml"] = [typeof(ConsultaViewModel), typeof(ParDeTexto), typeof(LinhaDeAcesso)],
         ["Telas/Sincronizacao.xaml"] = [typeof(SincronizacaoViewModel), typeof(ParDeTexto), typeof(ProvedorCadastrado)],
         ["Telas/Contas.xaml"] =
         [
             typeof(ContasViewModel), typeof(PrestacaoDeContas), typeof(LinhaPorCategoria), typeof(LinhaPorCatraca),
-            typeof(LinhaPorHora), typeof(LinhaDeNegativa), typeof(ParDeTexto),
+            typeof(LinhaPorHora), typeof(LinhaDeNegativa), typeof(ParDeTexto), typeof(Contracts.Edge.V1.LinhaDeNegativa),
         ],
         ["Telas/GerenciarCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeComando), typeof(ParDeTexto)],
         ["Telas/Gemeo.xaml"] =

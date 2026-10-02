@@ -676,6 +676,9 @@ public sealed class ContasViewModel : TelaBase
             {
                 Avisar(nameof(PodeExportar));
                 Avisar(nameof(Periodo));
+                Avisar(nameof(Entradas));
+                Avisar(nameof(Saidas));
+                Avisar(nameof(PercentualDosNegados));
             }
         }
     }
@@ -688,6 +691,17 @@ public sealed class ContasViewModel : TelaBase
     /// digitado nos campos, que pode ter mudado depois de gerar.
     /// </summary>
     public string Periodo => Contas is { } c ? TextoDoPeriodo(c) : string.Empty;
+
+    /// <summary>Total de entradas do período (para teste de binding).</summary>
+    public long Entradas => Contas?.Entradas ?? 0;
+
+    /// <summary>Total de saídas do período (para teste de binding).</summary>
+    public long Saidas => Contas?.Saidas ?? 0;
+
+    /// <summary>Percentual de negações (agregado, para teste de binding).</summary>
+    public long PercentualDosNegados => Contas is { Liberados: > 0, Negados: > 0 }
+        ? Contas.Negados * 100 / (Contas.Liberados + Contas.Negados)
+        : 0;
 
     /// <summary>
     /// O que a prestação de contas ainda não tem (docs/25; fase 6 do docs/29): aparece
