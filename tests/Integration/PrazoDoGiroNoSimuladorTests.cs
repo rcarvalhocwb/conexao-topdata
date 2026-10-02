@@ -162,6 +162,45 @@ public sealed class PrazoDoGiroNoSimuladorTests : IDisposable
     }
 
     /// <summary>
+    /// Liberação presa sem poder chamar a catraca (disjuntor aberto): o prazo de LiberarCatraca
+    /// (5 s) segue a tabela — reconectar —, a liberação não sai atrasada e a tentativa termina sem
+    /// giro.
+    /// </summary>
+    [Fact]
+    public void Liberacao_impedida_pelo_disjuntor_reconecta_no_prazo_sem_liberar_atrasado()
+    {
+        var (bomba, catraca) = EmOperacao(decidir: _ => new Decision(
+            DecisionOutcome.Allowed, ReasonCodes.Autorizado, DegradationTier.T1SemInternet, TimeSpan.FromMilliseconds(2), []));
+
+        Catraca1.Roteirizar(new ScriptedEvent(EventOrigin.From(KnownEventOrigin.Leitor1), "1000000001"));
+        Passos(bomba, catraca, 2);
+        Assert.Equal(DeviceState.LiberarCatraca, catraca.Maquina.Current);
+        var entrouEm = _agora;
+
+        for (var i = 0; i < 5; i++)
+        {
+            catraca.Disjuntor.RegistrarFalha();
+        }
+
+        _agora = entrouEm + TimeSpan.FromSeconds(4);
+        Assert.Equal("disjuntor aberto", bomba.Passo(catraca, TimeSpan.Zero));
+        Assert.Empty(_desistencias);
+
+        _agora = entrouEm + TimeSpan.FromSeconds(5);
+        Assert.Equal(
+            "prazo de 5 s em LiberarCatraca esgotado — Reconectar (disjuntor aberto)",
+            bomba.Passo(catraca, TimeSpan.Zero));
+        Assert.Equal(["inner-1"], _desistencias);
+        Assert.Equal(0, Liberacoes(Catraca1));
+
+        // Fechado o disjuntor, a catraca volta pela reconexão sem liberar o giro velho.
+        _agora = entrouEm + TimeSpan.FromSeconds(40);
+        Passos(bomba, catraca, 12);
+        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+        Assert.Equal(0, Liberacoes(Catraca1));
+    }
+
+    /// <summary>
     /// A coleta passa do prazo do estado (10 min): para antes de pedir o próximo bilhete, o que
     /// já saiu está gravado, o resto fica na catraca, e a catraca volta a operar pela reconexão.
     /// </summary>

@@ -1135,6 +1135,12 @@ public sealed class DevicePump
 
         if (estado is not DeviceState.MonitoraGiroCatraca)
         {
+            if (estado is DeviceState.LiberarCatraca)
+            {
+                // A liberação nem saiu: nenhum giro pode ser da pessoa autorizada.
+                _aoDesistirDoGiro?.Invoke(d.Maquina.DeviceId);
+            }
+
             return $"prazo de {Segundos(prazo)} s em {estado} esgotado — {d.Maquina.Current}";
         }
 
