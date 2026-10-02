@@ -207,6 +207,10 @@ public sealed record LinhaDeCatraca(
 }
 
 /// <summary>Um acesso, pronto para a tela. O código já vem mascarado do serviço.</summary>
+/// <remarks>
+/// <c>EventoId</c> é o identificador da tentativa, para pedir o "Por quê?" (Etapa I.2 do docs/36);
+/// vazio em linha montada sem o serviço.
+/// </remarks>
 public sealed record LinhaDeAcesso(
     string Hora,
     int Inner,
@@ -215,8 +219,12 @@ public sealed record LinhaDeAcesso(
     bool Girou,
     string Categoria,
     string Codigo,
-    Sinal Sinal)
+    Sinal Sinal,
+    string EventoId = "")
 {
+    /// <summary>A linha mostra "Por quê?": toda negação que o serviço pode explicar.</summary>
+    public bool PodeExplicar => !Liberado && EventoId.Length > 0;
+
     public static LinhaDeAcesso De(EventoDeAcesso e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -230,6 +238,7 @@ public sealed record LinhaDeAcesso(
             e.PassagemConfirmada,
             e.Categoria,
             e.CredencialMascarada,
-            liberado ? Sinal.Bom : Sinal.Problema);
+            liberado ? Sinal.Bom : Sinal.Problema,
+            e.EventoId);
     }
 }

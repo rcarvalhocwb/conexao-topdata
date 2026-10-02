@@ -439,12 +439,17 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             Liberados = l.Liberados,
             Negados = l.Negados,
         }));
+        // Etapa I.2 (docs/36): os principais motivos de negação, com o que fazer diante de cada um e
+        // a parte dos negados do período. Texto determinístico: vale com a camada inteligente desligada.
+        var semContexto = new Access.Inteligencia.ContextoDaNegativa(agora, 0);
         resposta.Negativas.AddRange(contas.Negativas.Select(n => new LinhaDeNegativa
         {
             Motivo = n.Motivo,
             Mensagem = AcompanhamentoDaOperacao.MensagemPara(new Access.Infrastructure.SQLite.TentativaParaOPainel(
                 0, Guid.Empty, string.Empty, string.Empty, agora, false, n.Motivo, null, null, string.Empty, false)),
             Quantidade = n.Quantidade,
+            OQueFazer = Access.Inteligencia.PorQueNegou.ExplicarNegativa(n.Motivo, semContexto).OQueFazer,
+            PercentualDosNegados = contas.Negados > 0 ? (int)Math.Round(100.0 * n.Quantidade / contas.Negados, MidpointRounding.AwayFromZero) : 0,
         }));
 
         return Task.FromResult(resposta);
@@ -481,6 +486,48 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         }
 
         resposta.Historico.AddRange(situacao.Historico.Select(AcompanhamentoDaOperacao.Converter));
+        return Task.FromResult(resposta);
+    }
+
+    /// <summary>
+    /// "Por que negou" (Etapa I.2 do docs/36, IN-06): a explicação de uma tentativa, montada sob
+    /// pedido pela função pura <see cref="Access.Inteligencia.PorQueNegou"/> com o contexto da base.
+    /// Não depende da chave da camada inteligente nem do Analisador. Só leitura.
+    /// </summary>
+    public override Task<ExplicacaoDaNegativa> ExplicarNegativa(ExplicarNegativaRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var resposta = new ExplicacaoDaNegativa();
+
+        if (_consultas is null || !Guid.TryParse(request.EventoId, out var id)
+            || _consultas.ContextoDaTentativa(id) is not { } tentativa)
+        {
+            return Task.FromResult(resposta);
+        }
+
+        var agora = _relogio();
+        var contexto = new Access.Inteligencia.ContextoDaNegativa(
+            tentativa.Em,
+            InnerDe(tentativa.DeviceId),
+            tentativa.UltimoUso is { } uso ? new Access.Inteligencia.UsoAnterior(uso.Em, InnerDe(uso.DeviceId), uso.Girou) : null,
+            tentativa.IntervaloDeReusoSegundos > 0 ? TimeSpan.FromSeconds(tentativa.IntervaloDeReusoSegundos) : null,
+            _nuvem is { Configurada: true, UltimoSucesso: { } sucesso } ? agora - sucesso : null);
+
+        var explicacao = (tentativa.Liberou, tentativa.Girou) switch
+        {
+            (false, _) => Access.Inteligencia.PorQueNegou.ExplicarNegativa(tentativa.Motivo, contexto),
+            (true, false) => Access.Inteligencia.PorQueNegou.ExplicarLiberadoSemGiro(contexto),
+            (true, true) => Access.Inteligencia.PorQueNegou.ExplicarLiberadoComGiro(contexto),
+        };
+
+        resposta.Encontrada = true;
+        resposta.Negada = !tentativa.Liberou;
+        resposta.Inner = contexto.Catraca;
+        resposta.Em = Timestamp.FromDateTimeOffset(tentativa.Em);
+        resposta.OndeFoiLido = Access.Inteligencia.PorQueNegou.OndeFoiLido(tentativa.Origem);
+        resposta.OQueAconteceu = explicacao.OQueAconteceu;
+        resposta.OQueDizer = explicacao.OQueDizer;
+        resposta.OQueFazer = explicacao.OQueFazer;
         return Task.FromResult(resposta);
     }
 

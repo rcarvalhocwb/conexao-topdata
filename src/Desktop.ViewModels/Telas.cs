@@ -125,7 +125,11 @@ public sealed class PainelAoVivoViewModel : TelaBase
     public PainelAoVivoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
     {
+        PorQue = new PainelPorQue(cliente);
     }
+
+    /// <summary>"Por quê?" de cada negação da lista ao vivo (Etapa I.2 do docs/36).</summary>
+    public PainelPorQue PorQue { get; }
 
     public override string Titulo => "Painel ao vivo";
 
@@ -343,7 +347,11 @@ public sealed class AcessosViewModel : TelaBase
         : base(cliente, relogio)
     {
         Buscar = new ComandoAssincrono(() => AtualizarAsync());
+        PorQue = new PainelPorQue(cliente);
     }
+
+    /// <summary>"Por quê?" de cada negação da lista (Etapa I.2 do docs/36).</summary>
+    public PainelPorQue PorQue { get; }
 
     public override string Titulo => "Acessos";
 

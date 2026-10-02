@@ -48,6 +48,11 @@ service EdgeControl {
   // Erro volta em "problemas", nunca como exceção.
   rpc ObterConfiguracaoDaCatraca(ObterConfiguracaoDaCatracaRequest) returns (ConfiguracaoDaCatraca);
   rpc GravarConfiguracaoDaCatraca(GravarConfiguracaoDaCatracaRequest) returns (GravarConfiguracaoDaCatracaResponse);
+
+  // "Por que negou" (Etapa I.2 do docs/36, IN-06): a explicação de uma tentativa negada, para o
+  // operador. Só leitura; funciona com a camada inteligente desligada (texto determinístico sobre
+  // o que a decisão já gravou). Não devolve código, máscara nem identificador de ingresso.
+  rpc ExplicarNegativa(ExplicarNegativaRequest) returns (ExplicacaoDaNegativa);
 }
 
 message ObterEstadoRequest {}
@@ -299,6 +304,11 @@ message LinhaDeNegativa {
   string motivo = 1;
   string mensagem = 2;
   int64 quantidade = 3;
+
+  // Etapa I.2 (docs/36): "principais motivos de negação" — o que fazer diante deste motivo e a
+  // parte dos negados do período que ele representa (0 a 100, arredondado).
+  string o_que_fazer = 4;
+  int32 percentual_dos_negados = 5;
 }
 
 // O operador digita o código para consultar; a resposta nunca o devolve inteiro.
@@ -547,4 +557,20 @@ message GravarConfiguracaoDaCatracaResponse {
   repeated string problemas = 2;
   // A versão do salvo depois da gravação, para comparar com a aplicada.
   string versao_salva = 3;
+}
+
+// Etapa I.2 (docs/36, IN-06): "Por quê?" de uma tentativa da lista de acessos.
+message ExplicarNegativaRequest {
+  string evento_id = 1;                       // o evento_id do EventoDeAcesso
+}
+
+message ExplicacaoDaNegativa {
+  bool encontrada = 1;                        // falso: a tentativa não existe nesta base
+  bool negada = 2;                            // falso: liberada sem giro confirmado
+  int32 inner = 3;
+  google.protobuf.Timestamp em = 4;
+  string onde_foi_lido = 5;                   // "leitor da frente", "fenda da urna", "leitor de QR"; vazio se não gravado
+  string o_que_aconteceu = 6;
+  string o_que_dizer = 7;                     // a frase para dizer a quem está na catraca
+  string o_que_fazer = 8;                     // o que o operador confere ou faz
 }

@@ -93,11 +93,20 @@
               <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="96" />
             </DataGrid.Columns>
           </DataGrid>
-          <rz:RayzerSectionHeader Titulo="Motivos de negativa" />
-          <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Motivos de negativa" Margin="0,0,0,16">
+          <!-- Etapa I.2 (docs/36): os principais motivos de negação do período, com o que fazer em cada um. -->
+          <rz:RayzerSectionHeader Titulo="Principais motivos de negação" />
+          <DataGrid ItemsSource="{Binding Negativas}" AutomationProperties.Name="Principais motivos de negação" Margin="0,0,0,16">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="MOTIVO" Binding="{Binding Mensagem}" Width="*" />
+              <DataGridTextColumn Header="MOTIVO" Binding="{Binding Mensagem}" Width="2*" />
               <DataGridTextColumn Header="QUANTIDADE" Binding="{Binding Quantidade}" Width="124" />
+              <DataGridTextColumn Header="% DOS NEGADOS" Binding="{Binding PercentualDosNegados, StringFormat={}{0}%}" Width="148" />
+              <DataGridTextColumn Header="O QUE FAZER" Binding="{Binding OQueFazer}" Width="3*">
+                <DataGridTextColumn.ElementStyle>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                  </Style>
+                </DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>

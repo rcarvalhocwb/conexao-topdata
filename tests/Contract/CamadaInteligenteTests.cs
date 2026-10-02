@@ -174,6 +174,9 @@ public sealed partial class CamadaInteligenteTests
     [
         ["src", "Access.Infrastructure.SQLite", "LeituraSomenteDaOperacao.cs"],
         ["src", "Edge.Supervisor", "AnalisadorDaOperacao.cs"],
+
+        // "Por que negou" (I.2): o contexto de uma tentativa, sob pedido do operador.
+        ["src", "Access.Infrastructure.SQLite", "ContextoDasNegativas.cs"],
     ];
 
     private static IEnumerable<string[]> ArquivosQueEscrevemATelemetria()
@@ -225,7 +228,25 @@ public sealed partial class CamadaInteligenteTests
     }
 
     /// <summary>As mensagens que a camada inteligente acrescentou ao contrato.</summary>
-    public static TheoryData<string> MensagensDaCamada() => ["SaudeDoAnalisador"];
+    public static TheoryData<string> MensagensDaCamada() => ["SaudeDoAnalisador", "ExplicarNegativaRequest", "ExplicacaoDaNegativa"];
+
+    /// <summary>
+    /// "Por que negou" (I.2): uma RPC nova, só de leitura, e campos novos na linha de negativa da
+    /// prestação de contas, com números novos (os de antes não mudam).
+    /// </summary>
+    [Fact]
+    public void NOVO_CTR_IA_01_por_que_negou_entra_com_numeros_novos()
+    {
+        var proto = Arquivo("src", "Contracts", "Protos", "edge_control.proto");
+        Assert.Contains("rpc ExplicarNegativa(ExplicarNegativaRequest) returns (ExplicacaoDaNegativa);", proto, StringComparison.Ordinal);
+
+        var linha = CorpoDaMensagem("LinhaDeNegativa");
+        Assert.Contains("string motivo = 1;", linha, StringComparison.Ordinal);
+        Assert.Contains("string mensagem = 2;", linha, StringComparison.Ordinal);
+        Assert.Contains("int64 quantidade = 3;", linha, StringComparison.Ordinal);
+        Assert.Contains("string o_que_fazer = 4;", linha, StringComparison.Ordinal);
+        Assert.Contains("int32 percentual_dos_negados = 5;", linha, StringComparison.Ordinal);
+    }
 
     /// <summary>O Diagnóstico leva a saúde do Analisador num número de campo novo.</summary>
     [Fact]

@@ -75,6 +75,12 @@ public sealed class ConsultasDaOperacao
         _fabrica = fabrica;
     }
 
+    /// <summary>
+    /// A tentativa e o contexto dela, para o "Por que negou" (Etapa I.2 do docs/36); nulo se não
+    /// existe. Ver <see cref="ContextoDasNegativas"/>.
+    /// </summary>
+    public TentativaParaExplicar? ContextoDaTentativa(Guid tentativa) => new ContextoDasNegativas(_fabrica).Ler(tentativa);
+
     /// <summary>Tentativas do mais recente para o mais antigo, e se há mais além do limite.</summary>
     public (IReadOnlyList<TentativaParaOPainel> Tentativas, bool HaMais) ListarTentativas(FiltroDeTentativas filtro)
     {

@@ -65,6 +65,11 @@ prioridade baixa e com orçamento por ciclo, lendo `acesso.db` só para leitura 
 `telemetria.db` (arquivo próprio, migração `T001`); a saúde dele no Diagnóstico. Fica **desligado**
 (chave técnica `inteligencia.ligada`) até `NOVO-LOAD-IA-01`, `NOVO-CHAOS-IA-01` em campo e
 `NOVO-SOAK-IA-24H` (I.11).
+A I.2 ("Por que negou") também: cada negação, em Acessos e no Painel ao vivo, tem "Por quê?" com o
+que aconteceu, o que dizer à pessoa e o que fazer, e a Prestação de contas mostra os principais
+motivos de negação do período com o que fazer — sem depender da camada ligada. Falta, para a
+explicação "a catraca recusou o pedido de liberação" (reclamação R3), gravar o retorno da
+liberação (G-08, I.1, com bancada).
 
 ## 1A. Defeitos relatados pelo dono do produto (01/10) e o que foi feito
 
