@@ -9,12 +9,21 @@
 
 | Pedido | Função da DLL | Onde aparece | Observação |
 |---|---|---|---|
-| Acertar o relógio agora | `EnviarRelogio` (EI-008, manual 4.6.1) | Gerenciar catraca | Horário de Brasília, ano com dois dígitos |
-| Mensagem no display | `EnviarMensagemTemporariaOnLine` (EI-057, manual 4.6.3) | Gerenciar catraca | Até 32 caracteres, 1 a 60 s |
+| Acertar o relógio agora | `EnviarRelogio` (EI-008, manual 4.6.1) | Gerenciar catraca; gêmeo → coluna (placa) | Horário de Brasília, ano com dois dígitos |
+| Mensagem no display | `EnviarMensagemTemporariaOnLine` (EI-057, manual 4.6.3) | Gerenciar catraca; gêmeo → display | Até 32 caracteres, 1 a 60 s |
 | Liberação manual | `LiberarCatracaEntrada`/`…Invertida` (EI-041/043) | Gerenciar catraca | Só no sentido de entrada, com motivo obrigatório |
-| Refazer a conexão | a sequência de conexão inteira | Gerenciar catraca | Reenvia a configuração completa (ADR-0020) |
+| Refazer a conexão | a sequência de conexão inteira | Gerenciar catraca; gêmeo → coluna (placa) | Reenvia a configuração completa (ADR-0020) |
 | Aplicar a configuração agora | a mesma sequência, com a configuração relida | Configurações | Todas as catracas; cada uma fica alguns segundos sem atender |
-| Aplicar nesta catraca | a mesma sequência, só para a catraca | Gerenciar catraca → Parametrização desta catraca (Etapa A.6) | Pede confirmação; "aplicada" só quando o pedido termina e a versão que a catraca aceitou é a do salvo |
+| Aplicar nesta catraca | a mesma sequência, só para a catraca | **Gêmeo digital** (porta principal: "Configurar no gêmeo"); Parametrização (em lista, Etapa A.6) | Pede confirmação; "aplicada" só quando o pedido termina e a versão que a catraca aceitou é a do salvo |
+
+**O gêmeo é a porta principal da configuração da catraca** (docs/33 §9). Na Gerenciar
+catraca, "Configurar no gêmeo" abre o gêmeo naquela catraca: clicar numa peça mostra os
+parâmetros dela; um só "o que muda", um Salvar e um "Aplicar nesta catraca…" valem para a
+catraca inteira. A Parametrização continua, como "Parametrização (em lista)", com o atalho
+"Abrir no gêmeo". Os pedidos do display (mensagem temporária) e da placa (acertar o relógio,
+refazer a conexão) aparecem também no painel da peça, com o mesmo nome registrado e o mesmo
+pedido ao serviço; não são configuração (vão na hora, sem salvar nem aplicar). Liberação manual
+e os itens "Ainda não disponível" continuam só aqui.
 
 Automático, sem pedido do operador (fase 4a):
 - **Relógio acertado a cada conexão.** O fluxo oficial acerta na passagem para on-line.
@@ -105,8 +114,9 @@ manual do painel —:
   nos acessos, nos totais e na prestação de contas (CSV e tabela por catraca);
 - o **texto curto** (padrão "Entrada liberada" / "Saida liberada", ou personalizado, até 32).
 
-Onde mexer: no **gêmeo digital**, clicando nos braços (ou na urna, que já abre o leitor 2) →
-painel **Giro desta catraca**; ou na **Parametrização → aba Giro**. Salvar grava (tabela
+Onde mexer: no **gêmeo digital**, clicando nos braços (o mapa inteiro) ou na urna (a linha do
+leitor 2) — salvar e aplicar são os da catraca inteira, junto com os outros parâmetros (docs/33
+§9); ou na **Parametrização → aba Giro**, com salvar e aplicar próprios. Salvar grava (tabela
 `turn_map_rule`, migração 017, histórico só-INSERT); a catraca só usa depois de **Aplicar nesta
 catraca** (o mapa entra na versão do salvo). Mapa vazio = o de sempre.
 
@@ -153,7 +163,8 @@ entrada nem saída de ingresso: sem a função usada, o sentido é desconhecido.
   - auditoria imutável;
   - dois workers disputando o mesmo pedido.
 - **Telas** (`TelasTests`): a liberação só habilita com nome e motivo; "Gerenciar" no
-  cartão abre a catraca certa; "Aplicar agora" exige o nome.
+  cartão abre a catraca certa; "Aplicar agora" exige o nome; "Configurar no gêmeo" abre o
+  gêmeo na mesma catraca, com o nome já digitado, e "Ver em lista" volta à Parametrização.
 - **Adapter** (`AdapterTests`): horário de Brasília e ano de dois dígitos no acerto, ida e
   volta, recusa fora de 2000–2099.
 
