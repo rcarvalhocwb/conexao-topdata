@@ -991,6 +991,29 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal((int)AbaDaParametrizacao.Leitura, tela.AbaSelecionada);
     }
 
+    /// <summary>
+    /// Abrir a tela dispara um carregamento e quem abriu pede outro: os dois são o mesmo, senão o
+    /// que terminasse por último apagava o que o operador digitou no meio (CI, 02/10/2026). Trocar
+    /// de catraca no meio termina com a catraca nova carregada.
+    /// </summary>
+    [Fact]
+    public async Task Parametrizacao_carrega_uma_vez_por_vez_e_termina_na_catraca_escolhida()
+    {
+        var tela = new ParametrizacaoViewModel(Cliente()) { Operador = "Ana" };
+        var primeiro = tela.AtualizarAsync();
+        var segundo = tela.AtualizarAsync();
+        Assert.Same(primeiro, segundo);
+        await primeiro;
+        Assert.Equal(1, tela.Catraca);
+
+        var troca = tela.AtualizarAsync();
+        tela.Catraca = 2;
+        await troca;
+        await tela.AtualizarAsync();
+        Assert.Equal(2, tela.Catraca);
+        Assert.Equal(8, tela.Campos.Count);
+    }
+
     [Fact]
     public async Task Parametrizacao_abre_pela_gerenciar_catraca_naquela_catraca_e_fica_fora_do_menu()
     {

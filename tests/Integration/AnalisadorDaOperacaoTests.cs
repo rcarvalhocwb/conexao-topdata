@@ -283,6 +283,11 @@ public sealed partial class AnalisadorDaOperacaoTests : IDisposable
         Ligar();
         var repositorio = Repositorio();
 
+        // Uma decisão antes, sem o Analisador: a primeira do processo paga a compilação do caminho
+        // e a primeira abertura do arquivo (medido: ~10x uma decisão normal). Sem isto o teste
+        // media esse custo, e não o efeito da telemetria presa, e falhava no Windows do CI.
+        Assert.True(repositorio.TentarUsar("1000000002", "p1", "inner-1", Agora).Resultado.Liberou);
+
         // Cria o arquivo e o prende, como outro processo faria.
         var fabrica = new FabricaDaTelemetria(CaminhoDaTelemetria);
         new MigradorDaTelemetria(fabrica).Aplicar();

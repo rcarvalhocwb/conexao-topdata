@@ -494,6 +494,8 @@ public sealed class ParametrizacaoViewModel : TelaBase
 {
     private IReadOnlyList<LinhaDeCatraca> _catracas = [];
     private int _catraca;
+    private int _carregadaPara = -1;
+    private Task<bool>? _carregamento;
     private string _operador = string.Empty;
     private bool _modoTecnico;
     private int _aba;
@@ -823,7 +825,35 @@ public sealed class ParametrizacaoViewModel : TelaBase
         CancelarAplicacao.ReavaliarDisponibilidade();
     }
 
-    private Task<bool> CarregarAsync(CancellationToken cancelamento) =>
+    /// <summary>
+    /// Um carregamento por vez. Abrir a tela já dispara um (a navegação); se outro pedido chegar no
+    /// meio, ele espera o mesmo em vez de correr junto: o que terminasse por último trocava os
+    /// campos por cima do que o operador já tinha digitado. Se a catraca mudou no meio, repete.
+    /// </summary>
+    private Task<bool> CarregarAsync(CancellationToken cancelamento)
+    {
+        if (_carregamento is { IsCompleted: false } emCurso)
+        {
+            return emCurso;
+        }
+
+        _carregamento = CarregarAteAcertarAsync(cancelamento);
+        return _carregamento;
+    }
+
+    private async Task<bool> CarregarAteAcertarAsync(CancellationToken cancelamento)
+    {
+        bool ok;
+        do
+        {
+            ok = await CarregarUmaVezAsync(cancelamento).ConfigureAwait(true);
+        }
+        while (ok && _catraca != _carregadaPara);
+
+        return ok;
+    }
+
+    private Task<bool> CarregarUmaVezAsync(CancellationToken cancelamento) =>
         Tentar(async () =>
         {
             var lista = await Cliente.ListarEquipamentosAsync(new ListarEquipamentosRequest(), cancellationToken: cancelamento);
@@ -838,6 +868,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
 
             if (_catraca == 0)
             {
+                _carregadaPara = 0;
                 Mensagem = "Nenhuma catraca cadastrada na instalação.";
                 Campos = [];
                 return;
@@ -854,6 +885,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
                 .Select(d => (d, c.Campos.FirstOrDefault(x => x.Campo == d.Campo)))
                 .Where(par => par.Item2 is not null)
                 .Select(par => new CampoDaParametrizacao(par.d, par.Item2!, () => ModoTecnico, CalcularMudancas))];
+            _carregadaPara = inner;
             Problemas = [];
             AplicarVersoes(c);
             await AcompanharInternoAsync(inner, cancelamento);
