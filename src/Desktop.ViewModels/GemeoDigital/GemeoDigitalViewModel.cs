@@ -321,6 +321,8 @@ public sealed class GemeoDigitalViewModel : TelaBase
     /// O sentido do braço que a seta do desenho mostra: o da linha em foco do mapa, com o painel
     /// aberto. Nulo = sem seta.
     /// </summary>
+    private Task? _carregamentoDoGiro;
+
     public SentidoDoGiro? SetaDoGiro => PainelDoGiroAberto ? Giro.LinhaEmFoco?.Seta : null;
 
     /// <summary>Abre o painel do giro na catraca escolhida, com a origem em foco.</summary>
@@ -336,9 +338,33 @@ public sealed class GemeoDigitalViewModel : TelaBase
     }
 
     /// <summary>Carrega o mapa da catraca escolhida e põe de novo a origem em foco.</summary>
-    public async Task CarregarGiroAsync()
+    /// <remarks>
+    /// Um carregamento por vez: abrir o painel, trocar de catraca e atualizar podem pedir ao
+    /// mesmo tempo, e um carregamento que terminasse depois de o operador começar a mexer
+    /// apagaria o que ele mudou. Quem pede durante um carregamento recebe o mesmo; se a catraca
+    /// mudou nesse meio-tempo, o carregamento repete para a catraca nova antes de terminar.
+    /// </remarks>
+    public Task CarregarGiroAsync()
     {
-        await Giro.CarregarAsync(Catraca).ConfigureAwait(true);
+        if (_carregamentoDoGiro is { IsCompleted: false } emCurso)
+        {
+            return emCurso;
+        }
+
+        _carregamentoDoGiro = CarregarGiroUmaVezAsync();
+        return _carregamentoDoGiro;
+    }
+
+    private async Task CarregarGiroUmaVezAsync()
+    {
+        int alvo;
+        do
+        {
+            alvo = Catraca;
+            await Giro.CarregarAsync(alvo).ConfigureAwait(true);
+        }
+        while (Catraca > 0 && Catraca != alvo);
+
         Avisar(nameof(SetaDoGiro));
     }
 

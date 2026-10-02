@@ -209,6 +209,9 @@ public sealed class AnalisadorDaOperacao : BackgroundService
         }
     }
 
+    /// <summary>Quanto a parada espera o ciclo em curso terminar antes de seguir sem ele.</summary>
+    internal static readonly TimeSpan PrazoParaParar = TimeSpan.FromMilliseconds(500);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var fim = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -242,6 +245,14 @@ public sealed class AnalisadorDaOperacao : BackgroundService
         // Um ciclo travado não segura a parada do serviço: a espera acaba com o pedido de parada,
         // e a thread de fundo morre com o processo.
         await Task.WhenAny(fim.Task, Task.Delay(Timeout.Infinite, stoppingToken)).ConfigureAwait(false);
+
+        // Parada pedida: o laço sai na volta seguinte. Dá a ele um prazo curto para fechar a
+        // telemetria e publicar que parou — sem isso a parada voltava antes de a thread terminar
+        // e o Diagnóstico ainda dizia "rodando". Travado além do prazo, segue a regra acima.
+        if (!fim.Task.IsCompleted)
+        {
+            await Task.WhenAny(fim.Task, Task.Delay(PrazoParaParar, CancellationToken.None)).ConfigureAwait(false);
+        }
     }
 
     private void Laco(CancellationToken parar)
