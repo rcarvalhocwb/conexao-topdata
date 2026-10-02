@@ -555,13 +555,14 @@ public sealed class SessaoDeOperacao
         // Telemetria: origem (G-01 ou G-02)
         if (_porDispositivo.TryGetValue(evento.Key.DeviceId, out var slot))
         {
-            if (evento.Origin >= 0 && evento.Origin <= 255)
+            var origemRaw = evento.Origin.Raw;
+            if (origemRaw >= 0 && origemRaw <= 255)
             {
                 _coletor.Enfileirar(new SinalDaOperacao(
                     Guid.NewGuid().ToString(),
                     slot.Inner,
                     TipoDeSinal.Origem,
-                    OrigemBruta: evento.Origin,
+                    OrigemBruta: origemRaw,
                     RecebidoEm: _relogio()));
             }
             else
