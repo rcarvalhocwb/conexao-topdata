@@ -160,6 +160,73 @@ public sealed class GemeoDigitalTests
         Assert.Equal(Enum.GetValues<PecaDaCatraca>().Length, CatalogoDaFit4.Pecas.Count);
     }
 
+    // --- Configuração por peça (docs/33 §9) ---
+
+    /// <summary>
+    /// O gêmeo é a porta principal da configuração: todo campo que a catraca pode sobrepor ao
+    /// evento aparece no painel de alguma peça, e toda origem do mapa de giro também.
+    /// </summary>
+    [Fact]
+    public void Todo_campo_da_catraca_e_toda_origem_do_giro_tem_uma_peca()
+    {
+        foreach (var campo in Enum.GetValues<CampoDaCatraca>().Where(c => c is not CampoDaCatraca.NaoEspecificado))
+        {
+            Assert.NotEmpty(ConfiguracaoPorPeca.PecasDoCampo(campo));
+        }
+
+        foreach (var origem in Enum.GetValues<OrigemDoGiro>().Where(o => o is not OrigemDoGiro.NaoEspecificado))
+        {
+            Assert.Contains(PecaDaCatraca.Rotor, ConfiguracaoPorPeca.PecasDaOrigem(origem));
+        }
+
+        Assert.Equal([PecaDaCatraca.Rotor, PecaDaCatraca.Urna], ConfiguracaoPorPeca.PecasDaOrigem(OrigemDoGiro.Leitor2).Order());
+        Assert.Equal([CampoDaCatraca.OperacaoDoLeitor2], ConfiguracaoPorPeca.De(PecaDaCatraca.Urna).Campos);
+        Assert.Equal(OrigemDoGiro.Leitor2, ConfiguracaoPorPeca.De(PecaDaCatraca.Urna).OrigemDoGiro);
+        Assert.True(ConfiguracaoPorPeca.De(PecaDaCatraca.Coluna).MostraRele2);
+        Assert.Contains(ComandoDaPeca.MensagemTemporaria, ConfiguracaoPorPeca.De(PecaDaCatraca.Display).Comandos);
+    }
+
+    /// <summary>Peça sem parâmetro tem painel vazio: só a ficha, e "nada a configurar".</summary>
+    [Fact]
+    public void Peca_sem_parametro_nao_tem_nada_a_configurar()
+    {
+        foreach (var peca in new[] { PecaDaCatraca.Base, PecaDaCatraca.Tampa, PecaDaCatraca.Teclado, PecaDaCatraca.SinalLiberado, PecaDaCatraca.SinalBloqueado, PecaDaCatraca.LeitorFacial })
+        {
+            Assert.True(ConfiguracaoPorPeca.De(peca).NadaAConfigurar, peca.ToString());
+        }
+
+        foreach (var peca in new[] { PecaDaCatraca.Rotor, PecaDaCatraca.Display, PecaDaCatraca.LeitorQr, PecaDaCatraca.Urna, PecaDaCatraca.Coluna })
+        {
+            Assert.False(ConfiguracaoPorPeca.De(peca).NadaAConfigurar, peca.ToString());
+        }
+    }
+
+    /// <summary>
+    /// As duas marcações de uma peça ficam perto dela, uma ao lado da outra, sem se cobrir, e têm
+    /// formas diferentes (bola e cubo), para não depender só da cor.
+    /// </summary>
+    [Fact]
+    public void Marcacoes_da_peca_ficam_perto_dela_lado_a_lado_e_com_formas_diferentes()
+    {
+        var modelo = GeometriaFit4.Montar(EspecificacaoDaFit4.Padrao);
+
+        foreach (var peca in new[] { PecaDaCatraca.Rotor, PecaDaCatraca.Display, PecaDaCatraca.LeitorQr, PecaDaCatraca.Urna, PecaDaCatraca.Coluna })
+        {
+            var naoSalva = GeometriaFit4.MarcaDaPeca(modelo, peca, TipoDeMarca.AlteracaoNaoSalva);
+            var diferente = GeometriaFit4.MarcaDaPeca(modelo, peca, TipoDeMarca.DiferenteDoEvento);
+
+            Assert.True(naoSalva.Triangulos > 12, $"{peca}: a bola tem mais faces que o cubo");
+            Assert.Equal(12, diferente.Triangulos);
+
+            var (a0, a1) = naoSalva.Limites();
+            var (b0, b1) = diferente.Limites();
+            Assert.True(a1.X <= b0.X || b1.X <= a0.X, $"{peca}: as marcações se cobrem");
+
+            var distancia = (naoSalva.Centro - modelo.CentroDe(peca)).Comprimento;
+            Assert.True(distancia < Math.Max(500, modelo.TamanhoDe(peca)), $"{peca}: a marcação ficou longe da peça ({distancia:F0} mm)");
+        }
+    }
+
     // --- Cenários ---
 
     [Fact]

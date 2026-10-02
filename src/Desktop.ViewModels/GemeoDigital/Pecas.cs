@@ -151,6 +151,7 @@ public static class CatalogoDaFit4
     {
         const string gerenciar = "Gerenciar catraca";
         const string configuracoes = "Configurações";
+        const string aqui = "Aqui no gêmeo, no painel desta peça (salvar e aplicar valem para a catraca inteira)";
         const string nenhuma = "Não há ajuste pelo painel.";
 
         var lista = new[]
@@ -174,20 +175,20 @@ public static class CatalogoDaFit4
                     new("Queda dos braços em emergência", SituacaoDaFuncao.AguardandoConfirmacao,
                         "Não documentada para a TopFit 4 desta instalação. O gêmeo não simula."),
                 ],
-                $"{gerenciar} e, para o sentido, o painel \"Giro desta catraca\" (clique nos braços)"),
+                $"{aqui}: tempo de liberação e giro. A liberação manual fica em {gerenciar}"),
             new FichaDaPeca(
                 PecaDaCatraca.Display,
                 "Display",
                 "Duas linhas de 16 caracteres, com luz de fundo. Mostra a mensagem padrão quando a catraca está livre.",
                 [
                     new("Mensagem padrão", SituacaoDaFuncao.Disponivel,
-                        "Até 32 caracteres. Vale para todas as catracas; entra na próxima conexão."),
+                        "Até 32 caracteres. O evento define uma para todas; esta catraca pode ter a sua. Vale depois de aplicar."),
                     new("Mensagem temporária", SituacaoDaFuncao.Disponivel,
-                        "Até 32 caracteres, de 1 a 60 segundos, numa catraca."),
+                        "Até 32 caracteres, de 1 a 60 segundos, numa catraca. É um pedido imediato: vai na hora, sem salvar."),
                     new("Letras com acento", SituacaoDaFuncao.AguardandoConfirmacao,
                         "O display pode não mostrar acentos. Confirmar na bancada."),
                 ],
-                $"{configuracoes} (mensagem padrão) e {gerenciar} (mensagem temporária)"),
+                $"{aqui}. Para o evento inteiro, {configuracoes}"),
             new FichaDaPeca(
                 PecaDaCatraca.LeitorQr,
                 "Leitor de QR Code",
@@ -198,7 +199,7 @@ public static class CatalogoDaFit4
                     new("QR de 4 a 16 caracteres", SituacaoDaFuncao.Disponivel,
                         "Limite da placa da catraca, não do leitor. Ingresso fora disso é recusado na importação."),
                 ],
-                configuracoes),
+                $"{aqui}: o tipo de leitor"),
             new FichaDaPeca(
                 PecaDaCatraca.LeitorDeProximidade,
                 "Leitor de cartão da frente",
@@ -207,22 +208,22 @@ public static class CatalogoDaFit4
                     new("Ler cartão na frente", SituacaoDaFuncao.Disponivel,
                         "Cartão da bilheteria com a regra \"só na urna\" é recusado aqui, de propósito."),
                 ],
-                configuracoes),
+                $"{aqui}: o tipo de leitor"),
             new FichaDaPeca(
                 PecaDaCatraca.Urna,
                 "Urna",
                 "Fenda com leitor próprio (leitor 2). O cartão da bilheteria é lido na fenda.",
                 [
                     new("Ler o cartão na fenda", SituacaoDaFuncao.Disponivel,
-                        "O leitor da urna decide como qualquer leitor. Ligado ou desligado em Configurações."),
+                        "O leitor da urna decide como qualquer leitor. Ligado ou desligado nesta catraca, no painel da urna."),
                     new("Sentido do giro pela urna", SituacaoDaFuncao.Disponivel,
-                        "Clique na urna: o painel do giro abre na linha do leitor 2, para escolher o lado e se conta como entrada."),
+                        "No painel da urna, a linha do leitor 2 do giro: o lado em que o braço gira e se conta como entrada."),
                     new("Recolher o cartão", SituacaoDaFuncao.AguardandoConfirmacao,
                         "A função do relé 2 não está documentada pela Topdata (docs/21, seção 8). A urna ainda não engole o cartão."),
                     new("Aviso de urna cheia", SituacaoDaFuncao.AguardandoConfirmacao,
                         "A origem 20 é recebida e guardada, mas o aviso na tela ainda não foi ensaiado na bancada."),
                 ],
-                configuracoes),
+                $"{aqui}: leitor da urna e giro pela urna"),
             new FichaDaPeca(
                 PecaDaCatraca.Teclado,
                 "Teclado",
@@ -266,9 +267,9 @@ public static class CatalogoDaFit4
             new FichaDaPeca(
                 PecaDaCatraca.Coluna,
                 "Coluna",
-                "Pedestal metálico. Por dentro passam a placa de controle e os cabos.",
+                "Pedestal metálico. Por dentro passam a placa de controle e os cabos: por isso o painel da coluna é o da placa.",
                 [],
-                nenhuma),
+                $"{aqui}: firmware, relógio e, no modo técnico, a instalação"),
             new FichaDaPeca(
                 PecaDaCatraca.Base,
                 "Base",
