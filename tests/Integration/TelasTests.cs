@@ -408,6 +408,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         var csv = contas.ParaCsv();
         Assert.Contains("Liberados;2", csv, StringComparison.Ordinal);
+        Assert.Contains("Entradas (giros pelo mapa de giro);0", csv, StringComparison.Ordinal);
+        Assert.Contains("Catraca;Liberados;Com giro;Negados;Entradas;Saídas", csv, StringComparison.Ordinal);
         Assert.Contains("meia;1;0", csv, StringComparison.Ordinal);
         Assert.DoesNotContain("\n=HYPERLINK", csv, StringComparison.Ordinal);
         Assert.Contains("'=HYPERLINK", csv, StringComparison.Ordinal);

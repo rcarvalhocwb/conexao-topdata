@@ -267,6 +267,24 @@ public sealed class MapaDeGiroTests : IDisposable
         Assert.Equal((1L, 1L, 0L), (resumo.Giros, resumo.Entradas, resumo.Saidas));
     }
 
+    /// <summary>
+    /// Giro sem liberação antes (e o giro da liberação manual, de saída ou nos dois sentidos, que
+    /// descarta a tentativa pendente) não vira entrada nem saída: sem a função usada, o sentido é
+    /// desconhecido e nada é chutado. O evento bruto continua no registro (ADR-0018).
+    /// </summary>
+    [Fact]
+    public void Giro_sem_liberacao_nao_e_contado_como_entrada_nem_saida()
+    {
+        Assert.Empty(new MapasDeGiro(_banco.Fabrica).Gravar(1, UrnaPelaSaidaContandoEntrada, Agora, "Ana"));
+        using var o = new Operando(_banco);
+
+        o.Simulador.Dispositivo(1).Roteirizar(new ScriptedEvent(EventOrigin.From(KnownEventOrigin.GiroConfirmado), Complemento: 1));
+        o.Voltas();
+
+        var resumo = o.Operacao.Resumir(DateTimeOffset.UtcNow);
+        Assert.Equal((0L, 0L, 0L), (resumo.Giros, resumo.Entradas, resumo.Saidas));
+    }
+
     /// <summary>Falha de base nega: o mapa não abre caminho para liberar sem gravar a tentativa.</summary>
     [Fact]
     public void Base_que_recusa_a_tentativa_nega_mesmo_com_o_mapa()
