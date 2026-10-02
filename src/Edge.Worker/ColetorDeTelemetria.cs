@@ -84,7 +84,7 @@ public abstract class ColetorDeTelemetria
     /// Descarrega todos os eventos enfileirados para <c>telemetria.db</c> (operação O(n) fora do passo).
     /// Retorna quantos eventos foram descarregados e quantos foram descartados.
     /// </summary>
-    public abstract (int Descarregados, int Descartados) Descarregar(string sessionId, string worker);
+    public abstract (int Descarregados, int Descartados) Descarregar(string? sessionId, string worker);
 
     /// <summary>Um coletor nulo para quando não há arquivo de telemetria.</summary>
     public static readonly ColetorDeTelemetria Nulo = new ColetorNulo();
@@ -103,7 +103,7 @@ public abstract class ColetorDeTelemetria
         public override void RegistrarDesvioDoRelogio(int inner, long segundos) { }
         public override void ContarReconexao(int inner) { }
         public override void RegistrarSegundoEmOperacao(int inner) { }
-        public override (int, int) Descarregar(string sessionId, string worker) => (0, 0);
+        public override (int, int) Descarregar(string? sessionId, string worker) => (0, 0);
     }
 }
 
