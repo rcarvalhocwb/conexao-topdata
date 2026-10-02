@@ -162,7 +162,8 @@ public sealed class ModeloDaFit4
         return texto.ToString();
     }
 
-    private (Ponto3 Minimo, Ponto3 Maximo) LimitesDe(PecaDaCatraca peca)
+    /// <summary>A caixa que envolve uma peça (zero quando a peça não está no desenho).</summary>
+    public (Ponto3 Minimo, Ponto3 Maximo) LimitesDe(PecaDaCatraca peca)
     {
         var partes = Partes.Where(p => p.Peca == peca).ToList();
         return partes.Count == 0 ? (Ponto3.Zero, Ponto3.Zero) : Unir(partes);
@@ -252,6 +253,37 @@ public static class GeometriaFit4
         malha.Quad(P(fim, raio - (meia * 2.6)), P(fim, raio + (meia * 2.6)), P(ponta, raio), P(ponta, raio), eixo);
 
         return new SetaDoGiroNoModelo(malha, centro, P(inicio, raio), P(ponta, raio));
+    }
+
+    /// <summary>
+    /// A marcação de uma peça na configuração da catraca (docs/33 §9): uma bola para "alteração
+    /// não salva" e um cubo para "diferente do padrão do evento", na frente e acima da peça, lado
+    /// a lado. Formas diferentes, e não só cores, para quem não distingue as cores.
+    /// </summary>
+    /// <remarks>
+    /// Os braços giram: a marcação fica sobre o cubo dos braços, que não sai do lugar. A coluna é
+    /// alta e some debaixo da cabeça: a marcação fica na metade dela, na frente.
+    /// </remarks>
+    /// <param name="modelo">O desenho montado.</param>
+    /// <param name="peca">A peça marcada.</param>
+    /// <param name="tipo">Qual marcação.</param>
+    public static Malha MarcaDaPeca(ModeloDaFit4 modelo, PecaDaCatraca peca, TipoDeMarca tipo)
+    {
+        ArgumentNullException.ThrowIfNull(modelo);
+
+        var (min, max) = modelo.LimitesDe(peca);
+        var meioX = (min.X + max.X) / 2;
+        var ancora = peca switch
+        {
+            PecaDaCatraca.Rotor => modelo.CentroDoRotor + new Ponto3(0, 170, 0),
+            PecaDaCatraca.Coluna => new Ponto3(meioX, (min.Y + max.Y) / 2, max.Z + 40),
+            _ => new Ponto3(meioX, max.Y + 35, max.Z + 25),
+        };
+
+        const double lado = 30;
+        return tipo is TipoDeMarca.AlteracaoNaoSalva
+            ? new Malha().Esfera(ancora + new Ponto3(-lado, 0, 0), 22, 16, 10)
+            : new Malha().Caixa(ancora + new Ponto3(lado - 18, -18, -18), ancora + new Ponto3(lado + 18, 18, 18));
     }
 
     /// <summary>Monta o desenho completo.</summary>

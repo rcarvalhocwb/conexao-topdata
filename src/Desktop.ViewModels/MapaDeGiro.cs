@@ -281,6 +281,8 @@ public sealed class MapaDeGiroViewModel : TelaBase
     private bool _confirmandoAplicacao;
     private Contracts.Edge.V1.OrigemDoGiro? _foco;
     private string _alteradoPor = string.Empty;
+    private bool _controlesProprios = true;
+    private bool _somenteEmFoco;
 
     public MapaDeGiroViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
@@ -359,7 +361,40 @@ public sealed class MapaDeGiroViewModel : TelaBase
         }
     }
 
-    public IReadOnlyList<LinhaDoMapaDeGiro> Linhas { get => _linhas; private set => Definir(ref _linhas, value); }
+    public IReadOnlyList<LinhaDoMapaDeGiro> Linhas
+    {
+        get => _linhas;
+        private set
+        {
+            if (Definir(ref _linhas, value))
+            {
+                Avisar(nameof(LinhasVisiveis));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Salvar, aplicar e "o que muda" são deste painel. Falso no gêmeo, onde a configuração da
+    /// catraca inteira (campos e giro) tem um só "o que muda" e um só Salvar e Aplicar (docs/33 §9).
+    /// </summary>
+    public bool ControlesProprios { get => _controlesProprios; set => Definir(ref _controlesProprios, value); }
+
+    /// <summary>Mostra só a linha em foco (a urna, no gêmeo, mostra só o leitor 2).</summary>
+    public bool SomenteEmFoco
+    {
+        get => _somenteEmFoco;
+        set
+        {
+            if (Definir(ref _somenteEmFoco, value))
+            {
+                Avisar(nameof(LinhasVisiveis));
+            }
+        }
+    }
+
+    /// <summary>As linhas que a tela desenha: todas, ou só a da origem em foco.</summary>
+    public IReadOnlyList<LinhaDoMapaDeGiro> LinhasVisiveis =>
+        SomenteEmFoco && _foco is { } foco ? [.. Linhas.Where(l => l.Origem == foco)] : Linhas;
 
     /// <summary>A linha em foco (a urna leva ao leitor 2); a primeira quando nada foi escolhido.</summary>
     public LinhaDoMapaDeGiro? LinhaEmFoco => Linhas.FirstOrDefault(l => l.EmFoco) ?? (Linhas.Count > 0 ? Linhas[0] : null);
@@ -460,6 +495,12 @@ public sealed class MapaDeGiroViewModel : TelaBase
             Avisar(nameof(SeloDaCatraca));
         });
 
+    /// <summary>
+    /// Some com o aviso do último salvar: no gêmeo quem fala do salvar é o painel da catraca
+    /// inteira, e o aviso repetido aqui confundiria.
+    /// </summary>
+    internal void LimparMensagem() => Mensagem = string.Empty;
+
     /// <summary>Põe a linha da origem em foco (o clique na urna leva ao leitor 2).</summary>
     public void Focar(Contracts.Edge.V1.OrigemDoGiro? origem)
     {
@@ -475,6 +516,7 @@ public sealed class MapaDeGiroViewModel : TelaBase
         }
 
         Avisar(nameof(LinhaEmFoco));
+        Avisar(nameof(LinhasVisiveis));
     }
 
     private void CalcularMudancas()

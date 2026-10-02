@@ -8,23 +8,25 @@ namespace Desktop.ViewModels;
 
 /// <summary>
 /// Gêmeo digital da TopFit 4: a catraca em 3D, com as peças explicadas, cenários de
-/// demonstração e o espelho ao vivo de uma catraca real.
+/// demonstração, o espelho ao vivo de uma catraca real e, ao lado do desenho, a configuração
+/// da catraca inteira (docs/33 §9).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Dois modos, e a tela nunca deixa confundir um com o outro:
+/// Duas coisas diferentes, e a tela nunca deixa confundir uma com a outra:
 /// </para>
 /// <list type="bullet">
-/// <item><b>Demonstração:</b> tudo acontece só no desenho. Nada vai ao serviço, nada vai à
-/// catraca.</item>
-/// <item><b>Ao vivo:</b> o desenho segue os eventos que o serviço manda da catraca escolhida.
-/// O gêmeo não comanda nada: pedir coisas à catraca continua sendo em "Gerenciar catraca",
-/// com nome e motivo registrados.</item>
+/// <item><b>O desenho</b> tem dois modos. <b>Demonstração:</b> os cenários acontecem só no
+/// desenho; nada vai ao serviço, nada vai à catraca. <b>Ao vivo:</b> o desenho segue os eventos
+/// da catraca escolhida e mostra a configuração que ela confirmou (Etapa A.5).</item>
+/// <item><b>A configuração</b> (<see cref="Central"/>) é real nos dois modos: clicar numa peça
+/// abre os parâmetros dela; "Salvar" grava e "Aplicar nesta catraca…", com confirmação, envia
+/// pelo mesmo pedido da Parametrização. Os pedidos imediatos (mensagem temporária, relógio,
+/// reconexão) são os da "Gerenciar catraca", com o nome registrado.</item>
 /// </list>
 /// <para>
-/// A única exceção é "Rodar na catraca simulada", que só existe com o serviço em modo
-/// simulação e usa o mesmo pedido da tela Simulador — recusado pelo serviço fora dela
-/// (docs/23).
+/// "Rodar na catraca simulada" só existe com o serviço em modo simulação e usa o mesmo pedido
+/// da tela Simulador — recusado pelo serviço fora dela (docs/23).
 /// </para>
 /// </remarks>
 public sealed class GemeoDigitalViewModel : TelaBase
@@ -70,13 +72,14 @@ public sealed class GemeoDigitalViewModel : TelaBase
     private bool _urnaLigada = true;
     private string _ultimoEventoAoVivo = "Nenhum evento desde que a tela abriu.";
     private (EstadoDaCena Estado, LeitorDaCena Leitor, bool Urna, int Giros, int Liberacoes, int Negacoes, int SemGiro) _ultimoResumo;
-    private bool _painelDoGiroAberto;
+    private ConfiguracaoDoEvento? _configuracaoDoEvento;
 
     public GemeoDigitalViewModel(
         EdgeControl.EdgeControlClient cliente,
         Func<DateTimeOffset>? relogio = null,
         Func<TimeSpan>? relogioDaCena = null,
-        EspecificacaoDaFit4? especificacao = null)
+        EspecificacaoDaFit4? especificacao = null,
+        TimeSpan? esperaPeloResultado = null)
         : base(cliente, relogio)
     {
         var cronometro = Stopwatch.StartNew();
@@ -137,9 +140,9 @@ public sealed class GemeoDigitalViewModel : TelaBase
         RodarNaCatracaSimulada = new ComandoComParametro(p =>
             p is RoteiroDeDemonstracao roteiro ? RodarNaCatracaSimuladaAsync(roteiro) : Task.CompletedTask);
 
-        // Mapa de giro (D9, docs/34 §9): o painel "Giro desta catraca" abre ao clicar nos braços
-        // ou na urna. A pré-visualização só anima o desenho.
-        Giro = new MapaDeGiroViewModel(cliente, relogio);
+        // A configuração da catraca inteira (docs/33 §9): clicar numa peça abre os parâmetros dela.
+        // Os braços e a urna levam ao mapa de giro (D9), cuja pré-visualização só anima o desenho.
+        Central = new CentralDaCatracaViewModel(cliente, relogio, esperaPeloResultado);
         Giro.PreVisualizacaoPedida += PreVisualizarGiro;
         Giro.PropertyChanged += (_, e) =>
         {
@@ -148,11 +151,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
                 Avisar(nameof(SetaDoGiro));
             }
         };
-        FecharPainelDoGiro = new ComandoAssincrono(() =>
-        {
-            PainelDoGiroAberto = false;
-            return Task.CompletedTask;
-        });
+        Central.PropertyChanged += (_, e) => AoMudarNaCentral(e.PropertyName);
 
         AtualizarPecas();
         TextoDaPrevia = _mensagemPadrao;
@@ -201,9 +200,11 @@ public sealed class GemeoDigitalViewModel : TelaBase
                     ComecarAoVivo();
                 }
 
-                if (PainelDoGiroAberto && value > 0)
+                // A configuração é desta catraca: trocar carrega a nova (o que não foi salvo na
+                // outra se perde, como na Parametrização). Quem atualiza a tela espera a carga.
+                if (value > 0 && Central.Catraca != value)
                 {
-                    _ = CarregarGiroAsync();
+                    _ = Central.CarregarAsync(value);
                 }
 
                 AtualizarSelo();
@@ -238,6 +239,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
             }
 
             Avisar(nameof(ModoDemonstracao));
+            Avisar(nameof(TituloDaConfiguracao));
 
             if (value)
             {
@@ -250,6 +252,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
                 _cena.Reiniciar(_relogioDaCena());
             }
 
+            Redesenhar();
             AtualizarSelo();
             TestarGiro.ReavaliarDisponibilidade();
             MostrarPrevia.ReavaliarDisponibilidade();
@@ -264,9 +267,13 @@ public sealed class GemeoDigitalViewModel : TelaBase
     }
 
     /// <summary>A faixa que diz, sempre, de onde vem o que se vê.</summary>
+    /// <remarks>
+    /// Fala do desenho e dos cenários. A configuração ao lado é real nos dois modos e diz isso
+    /// no próprio painel (<see cref="CentralDaCatracaViewModel.AvisoDaConfiguracao"/>).
+    /// </remarks>
     public string SeloDoModo => ModoAoVivo
-        ? string.Create(CultureInfo.InvariantCulture, $"AO VIVO · CATRACA {Catraca:D2}{(ServicoEmSimulacao ? " (SIMULADA)" : string.Empty)} · só observa, não comanda")
-        : "DEMONSTRAÇÃO · só no desenho, nada vai para a catraca";
+        ? string.Create(CultureInfo.InvariantCulture, $"AO VIVO · CATRACA {Catraca:D2}{(ServicoEmSimulacao ? " (SIMULADA)" : string.Empty)} · o desenho segue a catraca")
+        : "DEMONSTRAÇÃO · cenários só no desenho, nada vai para a catraca";
 
     public Sinal SeloDoModoSinal => ModoAoVivo ? Sinal.Bom : Sinal.Neutro;
 
@@ -275,8 +282,9 @@ public sealed class GemeoDigitalViewModel : TelaBase
 
     /// <summary>A peça escolhida (lista ou clique no desenho).</summary>
     /// <remarks>
-    /// Os braços abrem o painel "Giro desta catraca"; a urna também, já na linha do leitor 2
-    /// (urna). Pela lista de peças, o mesmo: o teclado chega onde o mouse chega.
+    /// Abre, ao lado do desenho, a configuração daquela peça (<see cref="Central"/>): os braços
+    /// levam ao mapa de giro inteiro, a urna à linha do leitor 2. Pela lista de peças, o mesmo:
+    /// o teclado chega onde o mouse chega.
     /// </remarks>
     public FichaDaPeca? PecaSelecionada
     {
@@ -286,36 +294,32 @@ public sealed class GemeoDigitalViewModel : TelaBase
             if (Definir(ref _pecaSelecionada, value) && value is not null)
             {
                 VersaoDoFoco++;
-
-                if (value.Peca is PecaDaCatraca.Rotor)
-                {
-                    AbrirGiro(foco: null);
-                }
-                else if (value.Peca is PecaDaCatraca.Urna)
-                {
-                    AbrirGiro(Contracts.Edge.V1.OrigemDoGiro.Leitor2);
-                }
+                Central.Abrir(value.Peca);
             }
         }
     }
 
-    /// <summary>"Giro desta catraca": o mapa de giro da catraca escolhida.</summary>
-    public MapaDeGiroViewModel Giro { get; }
+    /// <summary>A configuração da catraca escolhida: painel da peça, "o que muda", salvar e aplicar.</summary>
+    public CentralDaCatracaViewModel Central { get; }
 
-    /// <summary>O painel do giro está aberto (clique nos braços ou na urna).</summary>
-    public bool PainelDoGiroAberto
-    {
-        get => _painelDoGiroAberto;
-        private set
-        {
-            if (Definir(ref _painelDoGiroAberto, value))
-            {
-                Avisar(nameof(SetaDoGiro));
-            }
-        }
-    }
+    /// <summary>"Giro desta catraca": o mapa de giro da catraca escolhida (o da configuração).</summary>
+    public MapaDeGiroViewModel Giro => Central.Giro;
 
-    public ComandoAssincrono FecharPainelDoGiro { get; }
+    /// <summary>O painel aberto é de uma peça que mostra o giro (braços ou urna).</summary>
+    public bool PainelDoGiroAberto => Central.PainelAberto && Central.MostraGiro;
+
+    /// <summary>Fecha o painel da peça (nome antigo, de quando só o giro tinha painel).</summary>
+    public ComandoAssincrono FecharPainelDoGiro => Central.FecharPainel;
+
+    /// <summary>O título do quadro da configuração que o desenho segue.</summary>
+    public string TituloDaConfiguracao => ModoAoVivo ? "Na catraca agora" : "Configuração do evento (o desenho segue)";
+
+    /// <summary>De onde vêm os valores que o desenho usa, em uma frase.</summary>
+    public string TextoDaConfiguracao => !ModoAoVivo
+        ? "Na demonstração, o desenho usa o padrão do evento. A configuração desta catraca fica no painel ao lado."
+        : Central.AplicadaConhecida
+            ? Central.TextoNaCatracaAgora
+            : Central.TextoNaCatracaAgora + " Enquanto isso, o desenho usa o padrão do evento.";
 
     /// <summary>
     /// O sentido do braço que a seta do desenho mostra: o da linha em foco do mapa, com o painel
@@ -323,22 +327,23 @@ public sealed class GemeoDigitalViewModel : TelaBase
     /// </summary>
     public SentidoDoGiro? SetaDoGiro => PainelDoGiroAberto ? Giro.LinhaEmFoco?.Seta : null;
 
-    /// <summary>Abre o painel do giro na catraca escolhida, com a origem em foco.</summary>
-    public void AbrirGiro(Contracts.Edge.V1.OrigemDoGiro? foco)
-    {
-        PainelDoGiroAberto = true;
-        Giro.Focar(foco);
-
-        if (Catraca > 0 && Giro.Catraca != Catraca)
-        {
-            _ = CarregarGiroAsync();
-        }
-    }
+    /// <summary>Abre o painel do giro: a urna para o leitor 2; qualquer outra origem, os braços.</summary>
+    public void AbrirGiro(Contracts.Edge.V1.OrigemDoGiro? foco) =>
+        Escolher(foco is Contracts.Edge.V1.OrigemDoGiro.Leitor2 ? PecaDaCatraca.Urna : PecaDaCatraca.Rotor);
 
     /// <summary>Carrega o mapa da catraca escolhida e põe de novo a origem em foco.</summary>
     public async Task CarregarGiroAsync()
     {
-        await Giro.CarregarAsync(Catraca).ConfigureAwait(true);
+        await Central.EsperarCargaAsync().ConfigureAwait(true);
+        if (Central.Catraca != Catraca)
+        {
+            await Central.CarregarAsync(Catraca).ConfigureAwait(true);
+        }
+        else
+        {
+            await Giro.CarregarAsync(Catraca).ConfigureAwait(true);
+        }
+
         Avisar(nameof(SetaDoGiro));
     }
 
@@ -518,15 +523,8 @@ public sealed class GemeoDigitalViewModel : TelaBase
     {
         PecaSelecionada = CatalogoDaFit4.De(peca);
 
-        // Clicar de novo na mesma peça reabre o painel do giro, se ele tiver sido fechado.
-        if (peca is PecaDaCatraca.Rotor)
-        {
-            AbrirGiro(foco: null);
-        }
-        else if (peca is PecaDaCatraca.Urna)
-        {
-            AbrirGiro(Contracts.Edge.V1.OrigemDoGiro.Leitor2);
-        }
+        // Clicar de novo na mesma peça reabre o painel, se ele tiver sido fechado.
+        Central.Abrir(peca);
     }
 
     /// <summary>Um evento vindo do serviço. Na thread da tela.</summary>
@@ -645,9 +643,20 @@ public sealed class GemeoDigitalViewModel : TelaBase
                 Mensagem = "Nenhuma catraca cadastrada: a demonstração funciona; o modo ao vivo precisa de uma catraca.";
             }
 
-            if (PainelDoGiroAberto && Catraca > 0 && Giro.Mudancas.Count == 0)
+            // A configuração da catraca: a primeira vez, carrega; depois, só acompanha (a
+            // situação na catraca e os pedidos), sem desfazer o que o operador está mudando.
+            if (Catraca > 0)
             {
-                await Giro.CarregarAsync(Catraca, cancelamento);
+                await Central.EsperarCargaAsync();
+                if (Central.Catraca != Catraca)
+                {
+                    await Central.CarregarAsync(Catraca, cancelamento);
+                }
+                else
+                {
+                    await Central.AcompanharAsync(cancelamento);
+                }
+
                 Avisar(nameof(SetaDoGiro));
             }
         });
@@ -656,30 +665,88 @@ public sealed class GemeoDigitalViewModel : TelaBase
     public void AplicarConfiguracao(ConfiguracaoDoEvento configuracao)
     {
         ArgumentNullException.ThrowIfNull(configuracao);
-
-        var mensagemMudou = !string.Equals(MensagemPadrao, configuracao.MensagemPadrao, StringComparison.Ordinal);
-        MensagemPadrao = configuracao.MensagemPadrao;
-        _cena.DefinirMensagemPadrao(configuracao.MensagemPadrao);
-        UrnaLigada = configuracao.LeitorDaUrna;
-
-        if (mensagemMudou)
-        {
-            TextoDaPrevia = configuracao.MensagemPadrao;
-        }
+        _configuracaoDoEvento = configuracao;
 
         if (ModoAoVivo && configuracao.EsperaPeloGiroSegundos > 0)
         {
             _cena.LimiteDaLiberacao = TimeSpan.FromSeconds(configuracao.EsperaPeloGiroSegundos);
         }
 
-        ResumoDaConfiguracao =
-        [
-            new("Mensagem padrão", $"“{configuracao.MensagemPadrao}”"),
-            new("Leitor da urna", configuracao.LeitorDaUrna ? "Ligado" : "Desligado (a urna aparece apagada)"),
-            new("Tempo de acionamento", $"{configuracao.TempoDeAcionamentoSegundos} s"),
-            new("Espera pelo giro", $"{configuracao.EsperaPeloGiroSegundos} s"),
-            new("Tipo de leitor (técnico)", configuracao.TipoDeLeitor.ToString(CultureInfo.InvariantCulture)),
-        ];
+        Redesenhar();
+    }
+
+    /// <summary>
+    /// A mensagem padrão, a urna e o quadro "configuração" do desenho. Na demonstração, o padrão
+    /// do evento. Ao vivo, o que a catraca confirmou (versão aplicada igual à salva, Etapa A.5);
+    /// sem essa confirmação, o padrão do evento, e o quadro diz que não se sabe o que ela usa.
+    /// </summary>
+    private void Redesenhar()
+    {
+        string? mensagem;
+        bool urna;
+
+        if (ModoAoVivo && Central.AplicadaConhecida && Central.MensagemPadraoAplicada is { } aplicada && Central.UrnaLigadaAplicada is { } urnaAplicada)
+        {
+            mensagem = aplicada;
+            urna = urnaAplicada;
+            ResumoDaConfiguracao = Central.NaCatracaAgora;
+        }
+        else if (_configuracaoDoEvento is { } evento)
+        {
+            mensagem = evento.MensagemPadrao;
+            urna = evento.LeitorDaUrna;
+            ResumoDaConfiguracao = ModoAoVivo
+                ? []
+                :
+                [
+                    new("Mensagem padrão", $"“{evento.MensagemPadrao}”"),
+                    new("Leitor da urna", evento.LeitorDaUrna ? "Ligado" : "Desligado (a urna aparece apagada)"),
+                    new("Tempo de acionamento", $"{evento.TempoDeAcionamentoSegundos} s"),
+                    new("Espera pelo giro", $"{evento.EsperaPeloGiroSegundos} s"),
+                    new("Tipo de leitor (técnico)", evento.TipoDeLeitor.ToString(CultureInfo.InvariantCulture)),
+                ];
+        }
+        else
+        {
+            Avisar(nameof(TextoDaConfiguracao));
+            return;
+        }
+
+        var mensagemMudou = !string.Equals(MensagemPadrao, mensagem, StringComparison.Ordinal);
+        MensagemPadrao = mensagem;
+        _cena.DefinirMensagemPadrao(mensagem);
+        UrnaLigada = urna;
+
+        if (mensagemMudou)
+        {
+            TextoDaPrevia = mensagem;
+        }
+
+        Avisar(nameof(TextoDaConfiguracao));
+    }
+
+    private void AoMudarNaCentral(string? propriedade)
+    {
+        switch (propriedade)
+        {
+            case nameof(CentralDaCatracaViewModel.PainelAberto) or nameof(CentralDaCatracaViewModel.Painel):
+                Avisar(nameof(PainelDoGiroAberto));
+                Avisar(nameof(SetaDoGiro));
+                break;
+            case nameof(CentralDaCatracaViewModel.AplicadaConhecida) or nameof(CentralDaCatracaViewModel.NaCatracaAgora):
+                Redesenhar();
+                break;
+            case nameof(CentralDaCatracaViewModel.Mudancas):
+                // Mudar a mensagem padrão no painel do display mostra o rascunho na prévia.
+                if (Central.Parametrizacao.Campos.FirstOrDefault(c => c.Campo is Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao) is { Alterado: true, Herda: false } campo)
+                {
+                    TextoDaPrevia = campo.Valor;
+                }
+
+                break;
+            default:
+                break;
+        }
     }
 
     // O "Testar giro" do painel da peça: libera e gira, sem leitura.
