@@ -15,6 +15,7 @@
 - painel e assistente com o Rayzer Design System;
 - gerenciar catraca (fase 4): relógio acertado e conferido, liberação manual com motivo, mensagem no display, refazer a conexão, aplicar agora — tudo auditado ([docs/32](32-gerenciar-catraca.md));
 - gêmeo digital da TopFit 4: a catraca em 3D, fichas das peças, cenários de demonstração e espelho ao vivo — ainda não visto numa tela Windows ([docs/33](33-gemeo-digital.md));
+- **mapa de giro** (decisão D9, 01/10): por catraca e por origem (leitor 1, urna, teclado, liberação manual), qual função libera o braço e se o giro conta como entrada ou saída, no gêmeo (clique nos braços ou na urna) e na aba Giro da Parametrização; totais e prestação de contas pelo rótulo; falta a conferência de sentido na bancada ([docs/21](21-roteiro-da-bancada.md) §6H, [docs/32](32-gerenciar-catraca.md) §5A);
 - MSI e Setup em português;
 - prestação de contas atual (totais e CSV);
 - pacote web `rayzer-ui`.
@@ -95,7 +96,7 @@ Roteiro pronto em [`21`](21-roteiro-da-bancada.md); pacote da bancada publicado 
 2. **O maior risco físico:** o painel guarda cartões de 12 e 14 dígitos, e um leitor Mifare "ABA 10 dígitos" entrega no máximo 10 (docs/22 §9.4). Tabela de leituras 1–12 do docs/21: origem, código e número de caracteres que a catraca entrega. As linhas 8–12 decidem os zeros à esquerda dos cartões reais.
 3. Qual `TipoLeitor` o QR aceita (5 ou 8) e se passam letras e 20 caracteres.
 4. Recolhimento pela urna: relé 2 → origem 7 → liberar → origem 6; qual variante de `LiberarCatracaEntrada*`; capacidade da urna.
-5. A TopFit 4 distingue o sentido do giro? Sem isso não há lotação, só entradas (docs/25 §6).
+5. A TopFit 4 distingue o sentido do giro? Sem isso não há lotação, só entradas (docs/25 §6). Desde a D9 o sistema **classifica** cada giro pela função de liberação usada e pelo mapa de giro (entrada ou saída); o que falta na bancada é a **conferência de sentido** (NOVO-HIL-DIR-11, docs/21 §6H: para que lado o braço gira com cada função, por catraca), o `Complemento` da origem 6 (T14, gravado bruto em `turn_complement`) e o texto do giro no display (NOVO-HIL-DIR-12, chave `catraca.exibir_texto_do_giro`, desligada).
 6. Tempos medidos: urna × QR por pessoa, latência p95.
 7. Relógio: `EnviarRelogio`/`ReceberRelogio`, semântica e formato. É pré-requisito da fase 4.
 8. Mensagens no visor, bip e relés: o que cada função faz de fato (`A_CONFIRMAR_COM_TOPDATA`).

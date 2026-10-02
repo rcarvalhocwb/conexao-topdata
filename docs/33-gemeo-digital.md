@@ -20,7 +20,7 @@ XAcess é **C# / .NET 10 com WPF** (ADR-0012, ADR-0019). Então:
 | Nova máquina de estados `OFFLINE…URN_FULL` | **Cena visual** (`CenaDaCatraca`) que resume a `DeviceStateMachine` real | A máquina real já existe no worker; duplicá-la criaria duas verdades |
 | `SimulationTurnstileAdapter` / `TopdataTurnstileAdapter` | Já existem: `src/Simulator` e `Topdata.EasyInner.Adapter` | O gêmeo não fala com catraca nenhuma: fala com o serviço, pelo IPC, como toda tela |
 | Event bus novo | O fluxo `AcompanharEventos` que o Painel ao vivo já usa | Uma fonte só de eventos |
-| Botões "Recolher cartão", "Urna cheia", "Dois sentidos", facial | Aparecem, com o selo **Aguardando confirmação** ou **Fora do escopo** | Mesma regra da tela Gerenciar catraca (docs/32, seção 5): nada de fingir |
+| Botões "Recolher cartão", "Urna cheia", "Dois sentidos" (evacuação, D5), facial | Aparecem, com o selo **Aguardando confirmação** ou **Fora do escopo** | Mesma regra da tela Gerenciar catraca (docs/32, seção 5): nada de fingir |
 
 ## 2. O que a tela faz
 
@@ -42,6 +42,19 @@ XAcess é **C# / .NET 10 com WPF** (ADR-0012, ADR-0019). Então:
   muda o desenho.
 - **Ao vivo:** escolhe a catraca; cada acesso gravado vira leitura → decisão → giro no
   desenho. Sem notícia da catraca, o display apaga. **O gêmeo não comanda nada.**
+- **Giro desta catraca (mapa de giro, D9 do docs/34 §9):** clicar nos braços (ou escolhê-los na
+  lista) abre o painel com o mapa da catraca escolhida; clicar na urna abre o mesmo painel com o
+  **leitor 2 (urna)** em destaque. Para cada origem: padrão, ou a função que libera o braço,
+  como o giro conta (entrada/saída) e o texto curto. Uma **seta** em volta do eixo dos braços
+  (`GeometriaFit4.SetaDoGiro`) mostra o lado da regra em destaque — prevista pelo nome da função
+  (entrada e saída invertida para um lado; saída e entrada invertida para o outro); qual serve
+  a cada instalação é a conferência. "Ver no gêmeo" anima o sentido **só no desenho** (cenário
+  "Pré-visualização do giro", narração "nada foi enviado"; recusado ao vivo). Salvar com o nome,
+  aplicar em dois passos (o mesmo "Aplicar configuração" da Parametrização) e a conferência
+  "Girou para o lado da seta / ao contrário", com o selo "Sentido ainda não conferido nesta
+  instalação" até lá. A mesma ViewModel (`MapaDeGiroViewModel`) e o mesmo controle
+  (`Telas/MapaDeGiro.xaml`) estão na aba Giro da Parametrização. Captura `NN-gemeo-digital-giro`
+  (urna clicada, seta e pré-visualização), feita depois das três de sempre, sem renumerar.
 
 O selo no alto do desenho diz sempre de onde vem o que se vê: *DEMONSTRAÇÃO* ou
 *AO VIVO · CATRACA NN*.
@@ -167,6 +180,11 @@ O autoteste do painel (`--autoteste`) já passa por esta tela nos dois temas.
 - `tests/Unit/GemeoDigital/GemeoDigitalTests.cs` — display 2 × 16, especificação, catálogo
   (o que não existe aparece como aguardando), todos os cenários terminam com a catraca livre,
   códigos de teste existem no `simulacao.exemplo.json`, tradução do fluxo ao vivo.
-- `tests/Integration/TelasTests.cs` — a ViewModel contra o serviço de verdade.
+- `tests/Integration/TelasTests.cs` — a ViewModel contra o serviço de verdade; mapa de giro:
+  braços abrem o painel, urna leva ao leitor 2, a seta acompanha a função, salvar exige o nome,
+  aplicar em dois passos, conferência tira o selo, pré-visualização não grava nem comanda, aba
+  Giro da Parametrização.
+- `GeometriaFit4Tests.Seta_do_giro_aponta_no_sentido_da_cena` — a seta gira para o mesmo lado
+  que o rotor da cena.
 - `tests/Integration/LigacoesDasTelasTests.cs` — toda ligação do XAML aponta para propriedade
   que existe.

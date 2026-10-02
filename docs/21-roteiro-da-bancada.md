@@ -396,10 +396,42 @@ que você muda e uma testemunha.
 | 4 | Aplicar nesta catraca… → Aplicar agora | Pede confirmação; "Aplicando" até o pedido terminar; depois "Aplicada" e a mensagem nova no display; a testemunha continua com a do evento | Quantos s sem atender? Quanto tempo até "Aplicada"? |
 | 5 | Mude o tempo para 7 s, Salvar, **tire o cabo** e Aplicar | Fica "Aplicando"; depois de ~2 min o pedido falha e a tela diz "Salva, não aplicada: o último pedido falhou" — **nunca** "Aplicada" | O texto do resultado no histórico |
 | 6 | Ponha o cabo de volta e espere "Atendendo" | O worker já tinha trocado a configuração no pedido que falhou: ao reconectar, envia o salvo. A tela diz "A catraca está com a configuração salva, mas o último pedido não foi concluído" (versões iguais, pedido falho); Aplicar de novo leva a "Aplicada" | Veio sozinha em quantos s? |
-| 7 | Modo técnico, aba Instalação | Wiegand e rearme do leitor **desabilitados**, com o selo e o ensaio que os libera (HIL-CARD-05, INT-SM-032); na aba Liberação só "Entrada" pode ser escolhida (HIL-DIR-05/06) | — |
+| 7 | Modo técnico, aba Instalação | Wiegand e rearme do leitor **desabilitados**, com o selo e o ensaio que os libera (HIL-CARD-05, INT-SM-032). Na aba Liberação as quatro funções podem ser escolhidas desde a decisão D9 (docs/34 §9), com o aviso de conferir o sentido na aba Giro (§6H) | — |
 
 Ensaio aprovado: os passos 4 e 5 batem (aplicada só depois de concluído e com a versão igual;
 falha nunca vira aplicada), e a testemunha não muda em nenhum passo.
+
+---
+
+## 6H. Mapa de giro: conferência de sentido no comissionamento (`NOVO-HIL-DIR-11`, `NOVO-HIL-DIR-12`, D9)
+
+Decisão D9 do dono do produto (docs/34 §9): **o que conta como entrada ou saída é do sistema**.
+"Entrada" e "saída" na DLL (EI-041 a EI-044) são só o nome do lado em que o braço gira, do ponto
+de vista da catraca. O mapa de giro diz, para cada origem — leitor 1 (frente e QR), leitor 2
+(urna), teclado, liberação manual — qual função chamar e como o giro conta. O que continua do
+mundo físico é **para que lado o braço gira com cada função nesta instalação**: isso não espera
+a Topdata, é conferido aqui, uma vez por catraca e por função usada.
+
+Precisa do sistema instalado. Use cartões de teste sintéticos (`0000000101`…). Gêmeo digital →
+clique nos braços (ou na urna) → painel **Giro desta catraca**, ou Parametrização → aba **Giro**.
+
+| # | Faça | Deve acontecer | Anote |
+|---|---|---|---|
+| 1 | Abra o painel sem mapa | As quatro origens em "Padrão", seta "sentido de entrada", nenhum selo de conferência na catraca | — |
+| 2 | Clique na urna no 3D | O painel abre com o **leitor 2 (urna)** em destaque | — |
+| 3 | Urna: desmarque Padrão, escolha **Liberar saída (EI-042)**, conte como **Entrada**, Salvar com o nome | A seta no 3D vira para o outro lado; "o que muda" com uma linha; depois de salvar, o selo **"Sentido ainda não conferido nesta instalação"** | — |
+| 4 | Aplicar nesta catraca… → Aplicar agora | "Aplicando" e depois "Aplicada" (a versão do salvo inclui o mapa) | Segundos sem atender |
+| 5 | Passe um cartão de teste **na urna** e gire | A catraca libera pela função escolhida; o braço gira para um lado. No painel ao vivo: **"Entrada liberada"**; o total de entradas sobe 1, o de saídas não | **Para que lado o braço girou** (olhando de frente para o display) |
+| 6 | Se girou para o lado da seta: **Girou para o lado da seta**. Se não: **Girou ao contrário** | Fica registrado com o nome e a hora; o selo some (ou vira "girou ao contrário: troque a função") | — |
+| 7 | Passe o mesmo tipo de cartão **na frente** (leitor 1, sem regra) | Libera por `LiberarCatracaEntrada`, como sempre; conta como entrada | Lado do braço |
+| 8 | Repita 3–6 para cada função que for usar (EI-041 a EI-044), em cada catraca | Uma conferência por (catraca, função) | Tabela função × lado, por catraca |
+| 9 | Na base: `SELECT counted_as, release_function, turn_complement FROM ticket_use_attempt ORDER BY rowid DESC LIMIT 2;` | `entrada`, `Saida`, e o **Complemento bruto** da origem 6 | **O Complemento mudou com o lado do giro?** (é a T14, NOVO-HIL-DIR-08) |
+| 10 | (`NOVO-HIL-DIR-12`) Ligue `catraca.exibir_texto_do_giro` = `1`, reinicie o serviço, repita o passo 5 | O display mostra o texto do giro ("Entrada liberada" ou o personalizado) **antes** de liberar | O giro continua normal? Quanto tempo a mais até liberar? O texto some sozinho? |
+
+Ensaio aprovado: em cada catraca, toda função usada no mapa tem a conferência registrada, o lado
+anotado bate com a seta (ou a função foi trocada), e entradas e saídas no painel batem com o que
+se passou. A chave `catraca.exibir_texto_do_giro` só é ligada se o passo 10 não atrapalhar o giro
+nem a vazão (cada chamada a mais no caminho da passagem custa tempo, docs/34 §8).
 
 ---
 
