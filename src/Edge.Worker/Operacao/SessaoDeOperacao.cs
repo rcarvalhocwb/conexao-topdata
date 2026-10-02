@@ -61,6 +61,8 @@ public sealed class SessaoDeOperacao
     private DateTimeOffset _comandosConsultadosEm = DateTimeOffset.MinValue;
     private IReadOnlyList<SituacaoDaCatraca> _publicada = [];
     private DateTimeOffset _publicadaEm = DateTimeOffset.MinValue;
+    private readonly ColetorDeTelemetria _coletor;
+    private DateTimeOffset _ultimoDescarregamentoDoColetor = DateTimeOffset.MinValue;
 
     /// <summary>Todas as catracas com a mesma configuração (bancada, testes, quem não lê a base).</summary>
     /// <param name="adapter">Acesso à EasyInner.</param>
@@ -95,6 +97,7 @@ public sealed class SessaoDeOperacao
     /// <param name="exibirTextoDoGiro">
     /// Chave técnica <c>catraca.exibir_texto_do_giro</c> (ver <see cref="DevicePump"/>). Desligada por padrão.
     /// </param>
+    /// <param name="coletor">Coletor mínimo (Etapa I.1). Nulo por padrão.</param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -110,7 +113,8 @@ public sealed class SessaoDeOperacao
         bool sequenciaOficial = false,
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         Func<bool>? coletaLigada = null,
-        bool exibirTextoDoGiro = false)
+        bool exibirTextoDoGiro = false,
+        ColetorDeTelemetria? coletor = null)
         : this(
             adapter,
             inners,
@@ -126,7 +130,8 @@ public sealed class SessaoDeOperacao
             sequenciaOficial,
             gravadorDeBilhetes,
             coletaLigada,
-            exibirTextoDoGiro)
+            exibirTextoDoGiro,
+            coletor)
     {
     }
 
@@ -174,6 +179,7 @@ public sealed class SessaoDeOperacao
     /// <param name="exibirTextoDoGiro">
     /// Chave técnica <c>catraca.exibir_texto_do_giro</c> (ver <see cref="DevicePump"/>). Desligada por padrão.
     /// </param>
+    /// <param name="coletor">Coletor mínimo (Etapa I.1). Nulo por padrão.</param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -189,7 +195,8 @@ public sealed class SessaoDeOperacao
         bool sequenciaOficial = false,
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         Func<bool>? coletaLigada = null,
-        bool exibirTextoDoGiro = false)
+        bool exibirTextoDoGiro = false,
+        ColetorDeTelemetria? coletor = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
@@ -225,6 +232,7 @@ public sealed class SessaoDeOperacao
         _comandos = comandos;
         _recarregarConfiguracao = recarregarConfiguracao;
         _coletaLigada = coletaLigada;
+        _coletor = coletor ?? ColetorDeTelemetria.Nulo;
 
         var bomba = new DevicePump(
             adapter,
@@ -287,6 +295,7 @@ public sealed class SessaoDeOperacao
         }
 
         PublicarSeFor();
+        DescarregarColetorSeFor();
     }
 
     /// <summary>Roda até o cancelamento.</summary>
@@ -483,6 +492,34 @@ public sealed class SessaoDeOperacao
         }
     }
 
+    /// <summary>Descarrega o coletor de telemetria a cada 2 s (entre voltas, no mesmo try/catch da publicação).</summary>
+    private void DescarregarColetorSeFor()
+    {
+        var agora = _relogio();
+        if (agora - _ultimoDescarregamentoDoColetor < TimeSpan.FromSeconds(2))
+        {
+            return;
+        }
+
+        _ultimoDescarregamentoDoColetor = agora;
+
+        try
+        {
+            // "worker-1" é um placeholder; em produção, será algo como "x86-1" ou "x86-5"
+            var (desc, disc) = _coletor.Descarregar(sessionId: null, worker: "worker-1");
+            if (disc > 0)
+            {
+                _registrar($"coletor: {desc} sinais gravados, {disc} descartados (anel cheio)");
+            }
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            // Falha de telemetria: não afeta a operação (Invariante I3).
+            // Invariante I1: nunca deixa uma catraca presa.
+            _registrar($"não foi possível descarregar telemetria: {erro.GetType().Name}");
+        }
+    }
+
     private Decision Decidir(DeviceEvent evento)
     {
         // A regra do mapa de giro (D9) para a origem desta leitura, tirada da mesma
@@ -496,6 +533,13 @@ public sealed class SessaoDeOperacao
         var decisao = _decisor.Decidir(evento, giro);
         _ultimaDecisao[evento.Key.DeviceId] = decisao.ShouldRelease ? "liberado" : "negado";
 
+        // Telemetria: latência da decisão (G-03)
+        if (_porDispositivo.TryGetValue(evento.Key.DeviceId, out var s))
+        {
+            _coletor.RegistrarLatenciaDecisao(s.Inner, (long)decisao.Elapsed.TotalMilliseconds);
+            _coletor.ContarDecisao(s.Inner);
+        }
+
         _registrar(string.Create(
             CultureInfo.InvariantCulture,
             $"{evento.Key.DeviceId}: {(decisao.ShouldRelease ? "LIBERADO" : "NEGADO")} {decisao.Reason} em {decisao.Elapsed.TotalMilliseconds:F0} ms"));
@@ -507,6 +551,25 @@ public sealed class SessaoDeOperacao
     {
         var codigo = evento.RawCardData is null ? string.Empty : $" {CredentialValue.Mascarar(evento.RawCardData)}";
         _registrar($"{evento.Key.DeviceId}: origem {evento.Origin}{codigo}");
+
+        // Telemetria: origem (G-01 ou G-02)
+        if (_porDispositivo.TryGetValue(evento.Key.DeviceId, out var slot))
+        {
+            if (evento.Origin >= 0 && evento.Origin <= 255)
+            {
+                _coletor.Enfileirar(new SinalDaOperacao(
+                    Guid.NewGuid().ToString(),
+                    slot.Inner,
+                    TipoDeSinal.Origem,
+                    OrigemBruta: evento.Origin,
+                    RecebidoEm: _relogio()));
+            }
+            else
+            {
+                _coletor.ContarOrigemDesconhecida(slot.Inner);
+            }
+        }
+
         _decisor.AoReceberEvento(evento);
     }
 }

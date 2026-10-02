@@ -98,6 +98,10 @@ Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco)
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
 new Migrator(fabrica).Aplicar();
 
+// Etapa I.11: garantir que as chaves técnicas da camada inteligente estão com seus valores padrão.
+// Após NOVO-LOAD-IA-01, NOVO-CHAOS-IA-01 e NOVO-SOAK-IA-24H passarem, a camada fica ligada por padrão.
+new InicializacaoDasChavesDaInteligencia(fabrica).GarantirChavesComValoresPadrao();
+
 // A chave da impressão de código (Etapa B.1) vai para o worker pela entrada padrão: é com ela
 // que ele grava os bilhetes coletados sem o código em claro (Etapa A.9, migração 015). Só no
 // Windows, onde existe o cofre (DPAPI). Sem ela, o worker sobe e opera, e a coleta de

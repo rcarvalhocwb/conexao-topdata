@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Contracts.Edge.V1;
 
@@ -514,6 +515,8 @@ public sealed class ParametrizacaoViewModel : TelaBase
     private Google.Protobuf.WellKnownTypes.Timestamp? _alteradaEm;
     private string _alteradaPor = string.Empty;
     private Google.Protobuf.WellKnownTypes.Timestamp? _aplicadaEm;
+    private IReadOnlyList<SugestaoDeParametrizacao> _sugestoes = [];
+    private ComandoAssincrono _carregarSugestoes;
 
     public ParametrizacaoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null, TimeSpan? esperaPeloResultado = null)
         : base(cliente, relogio)
@@ -537,6 +540,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
                 return Task.CompletedTask;
             },
             () => ConfirmandoAplicacao);
+        _carregarSugestoes = new ComandoAssincrono(CarregarSugestoesAsync, () => Catraca > 0);
     }
 
     public override string Titulo => "Parametrização";
@@ -687,6 +691,12 @@ public sealed class ParametrizacaoViewModel : TelaBase
 
     /// <summary>Os últimos pedidos de aplicar desta catraca, do histórico de comandos.</summary>
     public IReadOnlyList<LinhaDeComando> Aplicacoes { get => _aplicacoes; private set => Definir(ref _aplicacoes, value); }
+
+    /// <summary>Sugestões abertas para esta catraca (Etapa I.9, IN-07).</summary>
+    public IReadOnlyList<SugestaoDeParametrizacao> Sugestoes { get => _sugestoes; private set => Definir(ref _sugestoes, value); }
+
+    /// <summary>Carrega as sugestões abertas para a catraca.</summary>
+    public ComandoAssincrono CarregarSugestoes => _carregarSugestoes;
 
     /// <summary>A confirmação de aplicar está aberta.</summary>
     public bool ConfirmandoAplicacao
@@ -890,6 +900,7 @@ public sealed class ParametrizacaoViewModel : TelaBase
             AplicarVersoes(c);
             await AcompanharInternoAsync(inner, cancelamento);
             await Giro.CarregarAsync(inner, cancelamento);
+            await CarregarSugestoesAsync();  // I.9: carrega sugestões abertas
         });
 
     private void AplicarVersoes(ConfiguracaoDaCatraca c)
@@ -998,6 +1009,88 @@ public sealed class ParametrizacaoViewModel : TelaBase
             await AcompanharInternoAsync(inner, CancellationToken.None);
             await Task.Delay(EsperaPeloResultado);
             await AcompanharInternoAsync(inner, CancellationToken.None);
+        }).ConfigureAwait(true);
+    }
+
+    private async Task CarregarSugestoesAsync()
+    {
+        if (Catraca == 0)
+        {
+            Sugestoes = [];
+            return;
+        }
+
+        await Tentar(async () =>
+        {
+            try
+            {
+                var r = await Cliente.ObterSugestoesAsync(new ObterSugestoesRequest { Inner = Catraca });
+                Sugestoes = [.. r.Abertas];
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Camada inteligente desligada ou erro de conexão: sem sugestões.
+                Sugestoes = [];
+            }
+        }).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Usa uma sugestão: preenche o campo correspondente com o valor sugerido. O operador precisa
+    /// salvar manualmente (a sugestão só preenche o formulário).
+    /// </summary>
+    /// <remarks>
+    /// Invariante I7 (docs/36-anexos/02 §3.1): nenhuma sugestão muda a base sem ato do operador com
+    /// nome. "Usar sugestão" só preenche; salvar faz o ato.
+    /// </remarks>
+    public void UsarSugestao(SugestaoDeParametrizacao sugestao)
+    {
+        ArgumentNullException.ThrowIfNull(sugestao);
+
+        // Acha o campo correspondente.
+        var campo = _campos.FirstOrDefault(c => c.Campo == sugestao.Campo);
+        if (campo is null)
+        {
+            Mensagem = "Campo não encontrado (modo técnico necessário?).";
+            return;
+        }
+
+        // Preenche o valor sugerido.
+        campo.Valor = sugestao.ValorSugerido;
+        Mensagem = $"Preenchido: {campo.Rotulo} = {campo.Descrever(sugestao.ValorSugerido)}. Revise antes de salvar.";
+
+        // Registra o uso (assíncrono, sem bloquear a UI).
+        _ = RegistrarDestinoDaSugestaoAsync(sugestao.Id, "usada");
+    }
+
+    /// <summary>Descarta uma sugestão.</summary>
+    public async Task DescartarSugestaoAsync(string sugestaoId)
+    {
+        ArgumentNullException.ThrowIfNull(sugestaoId);
+        await RegistrarDestinoDaSugestaoAsync(sugestaoId, "descartada");
+    }
+
+    private async Task RegistrarDestinoDaSugestaoAsync(string sugestaoId, string situacao)
+    {
+        await Tentar(async () =>
+        {
+            try
+            {
+                await Cliente.RegistrarDestinoDaSugestaoAsync(new RegistrarDestinoDaSugestaoRequest
+                {
+                    SugestaoId = sugestaoId,
+                    Situacao = situacao,
+                    Operador = Operador.Trim(),
+                });
+
+                // Remove a sugestão da lista.
+                Sugestoes = [.. Sugestoes.Where(s => s.Id != sugestaoId)];
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Erro ao registrar: continua a sugestão aberta para tentar depois.
+                Debug.WriteLine($"Erro ao registrar destino da sugestão: {ex.Message}");
+            }
         }).ConfigureAwait(true);
     }
 }

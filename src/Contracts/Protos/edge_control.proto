@@ -61,6 +61,34 @@ service EdgeControl {
   // operador. Só leitura; funciona com a camada inteligente desligada (texto determinístico sobre
   // o que a decisão já gravou). Não devolve código, máscara nem identificador de ingresso.
   rpc ExplicarNegativa(ExplicarNegativaRequest) returns (ExplicacaoDaNegativa);
+
+  // Sugestões de parametrização (Etapa I.9 do docs/36, IN-07): recomendações de mudança nos
+  // campos de tempo do relé, leitor e display. Só leitura; as sugestões nunca são aplicadas
+  // automaticamente — o operador escolhe usar ou descartar, e o registro fica para pós-evento.
+  rpc ObterSugestoes(ObterSugestoesRequest) returns (SugestoesDaCatraca);
+  rpc RegistrarDestinoDaSugestao(RegistrarDestinoDaSugestaoRequest) returns (RegistrarDestinoDaSugestaoResponse);
+
+  // Saúde das catracas (Etapa I.3 do docs/36, IN-01): sete sinais por catraca com nível,
+  // conta e recomendação. Só leitura; os sinais são comparados com as vizinhas na mesma janela.
+  // Índice de 0–100 no modo técnico (pior sinal visto primeiro).
+  rpc ObterSaudeDasCatracas(ObterSaudeDasCatracasRequest) returns (SaudeDasCatracas);
+
+  // Ritmo, ocupação e fluxo por sentido (Etapa I.5 do docs/36, IN-04 e IN-05): chegadas,
+  // capacidade, ocupação estimada, entradas e saídas. Só leitura; dados agregados sem código.
+  rpc ObterRitmo(ObterRitmoRequest) returns (DadosDoRitmo);
+
+  // Alertas da camada inteligente (Etapa I.4 do docs/36, IN-02): regras por janela e por
+  // comparação entre catracas, com ciclo de vida (Aberto → Ciente → Fechado) e correlação.
+  rpc ListarAlertas(ListarAlertasRequest) returns (ListarAlertasResponse);
+  rpc MarcarAlertaComoCiente(MarcarAlertaComoCienteRequest) returns (MarcarAlertaComoCienteResponse);
+
+  // Sugestões de parametrização (Etapa I.9 do docs/36, IN-07): recomendações baseadas
+  // em histórico observado (ex.: tempo do relé × janela real medida).
+  rpc ObterSugestoes(ObterSugestoesRequest) returns (ObterSugestoesResponse);
+
+  // Relatório pós-evento (Etapa I.10 do docs/36, IN-09 e IN-08): achados determinísticos
+  // e replay com linha do tempo. Só leitura; retorna agregados sem código de ingresso.
+  rpc ObterRelatorioPosEvento(ObterRelatorioPosEventoRequest) returns (RelatorioPosEvento);
 }
 
 message ObterEstadoRequest {}
@@ -710,4 +738,233 @@ message ExplicacaoDaNegativa {
   string o_que_aconteceu = 6;
   string o_que_dizer = 7;                     // a frase para dizer a quem está na catraca
   string o_que_fazer = 8;                     // o que o operador confere ou faz
+}
+
+// Etapa I.9 (docs/36, IN-07): sugestões de parametrização.
+message ObterSugestoesRequest {
+  int32 inner = 1;                            // número da catraca
+}
+
+message SugestoesDaCatraca {
+  repeated SugestaoDeParametrizacao abertas = 1;
+}
+
+message SugestaoDeParametrizacao {
+  string id = 1;                              // UUIDv7, para RegistrarDestinoDaSugestao
+  CampoDaCatraca campo = 2;
+  string valor_atual = 3;
+  string valor_sugerido = 4;
+  string evidencia_json = 5;                  // {"motivo": "...", "valorMedido": "...", "amostra": N, "referencia": "..."}
+  google.protobuf.Timestamp criada_em = 6;
+}
+
+message RegistrarDestinoDaSugestaoRequest {
+  string sugestao_id = 1;                     // o id da sugestão
+  string situacao = 2;                        // "usada" ou "descartada"
+  string operador = 3;                        // quem registrou
+}
+
+message RegistrarDestinoDaSugestaoResponse {
+  bool registrada = 1;
+  repeated string problemas = 2;
+}
+
+// Etapa I.5 (docs/36, IN-04 e IN-05): ritmo, ocupação e fluxo por sentido.
+message ObterRitmoRequest {
+  int32 inner = 1;                            // número da catraca
+}
+
+message DadosDoRitmo {
+  int32 inner = 1;
+  google.protobuf.Timestamp no_minuto = 2;   // início do minuto agregado
+  
+  // Fluxo por sentido lógico (migração 017)
+  int64 entradas = 3;                         // giros contados como entrada
+  int64 saidas = 4;                           // giros contados como saída
+  int64 giros_sem_sentido = 5;                // giros sem sentido conhecido (origem 6 órfã ou sem mapa)
+  
+  // Lotação estimada = entradas − saídas desde a abertura do evento.
+  // Mostrada só se houver catraca mapeada para saída.
+  // SEMPRE com aviso "giros sem sentido: N" ao lado (docs/36-anexos/02 §5.2, IN-05).
+  int64 lotacao_estimada = 6;
+  
+  // Ritmo medido (IN-04)
+  double chegadas_por_minuto = 7;             // λ = leituras/min
+  double capacidade_estimada = 8;             // μ = giros/min quando ocupada
+  double ocupacao_fracao = 9;                 // ρ = fração da janela em ciclo ocupado
+}
+
+// Saúde das catracas (I.3 do docs/36, IN-01)
+message ObterSaudeDasCatracasRequest {
+  // Vazio; retorna a saúde de todas as catracas do evento.
+}
+
+message SaudeDasCatracas {
+  repeated SaudeDaCatraca por_catraca = 1;
+  string versao_dos_parametros = 2;           // hash dos limiares (invariante I5)
+  google.protobuf.Timestamp calculada_em = 3;
+}
+
+message SaudeDaCatraca {
+  int32 inner = 1;
+  NivelDeSaude nivel_geral = 2;              // pior nível entre os sinais
+  int32 indice_0_100 = 3;                    // 100 − Σ(peso × penalidade); modo técnico
+  repeated SinalDeSaude sinais = 4;
+  string recomendacao = 5;                   // "o que fazer" do pior sinal
+}
+
+message SinalDeSaude {
+  TipoDeSinal tipo = 1;
+  NivelDeSinal nivel = 2;
+  string resumo = 3;                         // descrição legível
+  double valor = 4;                          // valor observado
+  double referencia = 5;                     // valor esperado ou limite
+  int64 amostras = 6;                        // número de dados
+  google.protobuf.Timestamp desde = 7;
+  google.protobuf.Timestamp ate = 8;
+  string o_que_fazer = 9;
+}
+
+enum TipoDeSinal {
+  TIPO_NAO_ESPECIFICADO = 0;
+  COMUNICACAO = 1;
+  GIRO = 2;
+  LEITURA = 3;
+  RELOGIO = 4;
+  CONFIGURACAO = 5;
+  GIRO_SEM_PEDIDO = 6;
+  LACO = 7;
+}
+
+enum NivelDeSinal {
+  NIVEL_NAO_ESPECIFICADO = 0;
+  NORMAL = 1;
+  ATENCAO = 2;
+  ACAO = 3;
+  SEM_DADOS = 4;
+  APRENDENDO = 5;
+}
+
+enum NivelDeSaude {
+  NIVEL_SAUDE_NAO_ESPECIFICADO = 0;
+  SAUDAVEL = 1;
+  COM_ATENCAO = 2;
+  COM_ACAO_NECESSARIA = 3;
+  SEM_DADOS = 4;
+  APRENDENDO = 5;
+}
+
+// Etapa I.10 (docs/36, IN-09 e IN-08): relatório pós-evento com achados determinísticos.
+message ObterRelatorioPosEventoRequest {
+  // Vazio; retorna os achados do evento que terminou (corte por hash).
+}
+
+message RelatorioPosEvento {
+  // Achados determinísticos (R1–R8)
+  string maior_pico_portao = 1;               // portão com maior pico de 15 min
+  int64 maior_pico_leituras = 2;              // número de leituras no pico
+  google.protobuf.Timestamp maior_pico_momento = 3;  // quando aconteceu o pico
+
+  int32 catraca_mais_lenta = 4;               // número da catraca (inner)
+  int32 catraca_mais_lenta_delta_ms = 5;      // mediana de Δ liberação→giro em ms
+
+  int32 catraca_mais_ociosa = 6;              // número da catraca (inner)
+  double catraca_mais_ociosa_ocupacao = 7;    // ρ (0.0 a 1.0)
+
+  double desperdicio_segundos = 8;            // Σ liberações sem giro × tempo do relé
+
+  double disponibilidade_media = 9;           // (0.0 a 1.0) tempo online / tempo total
+
+  int64 total_alertas = 10;                   // alertas disparados no evento
+  int64 alertas_com_ciencia = 11;             // marcados ciente por operador
+
+  double dimensionamento_catracas = 12;       // pico de chegadas / μ medido
+
+  string versao_dos_parametros = 13;          // hash dos parâmetros (I5)
+  google.protobuf.Timestamp calculado_em = 14;
+
+  // Replay da linha do tempo (IN-08): marcas de tentativas, sinais, transições, comandos.
+  // INVARIANTE: replay ⊆ gravado (todo marco aponta para uma linha em telemetria.db)
+  repeated MarcoDaLinhaDoTempo marcos = 15;
+
+  // Perguntas prontas determinísticas (IN-11 parcial)
+  repeated PerguntaPronta perguntas_prontas = 16;
+}
+
+message MarcoDaLinhaDoTempo {
+  google.protobuf.Timestamp momento = 1;     // ISO-8601 UTC
+  string tipo = 2;                            // "tentativa", "sinal", "comando", "transicao"
+  string descricao = 3;                       // narração gerada a partir do tipo
+  int32 catraca = 4;                          // número da catraca (inner), se aplicável
+  int64 quantidade = 5;                       // para agregados (ex: 5 leituras vazias)
+}
+
+message PerguntaPronta {
+  string pergunta = 1;                        // Ex.: "Por que a catraca 3 está em Atenção?"
+  string resposta = 2;                        // Resposta em modelo de texto fixo
+  google.protobuf.Timestamp respondida_em = 3;
+}
+
+// Alertas da camada inteligente (Etapa I.4 do docs/36, IN-02)
+message ListarAlertasRequest {
+  // Vazio: retorna todos os alertas ativos (abertos e pendentes de fechar).
+  // Preenchido: retorna alertas deste período.
+  google.protobuf.Timestamp desde = 1;
+  google.protobuf.Timestamp ate = 2;
+}
+
+message ListarAlertasResponse {
+  repeated Alerta alertas = 1;
+  google.protobuf.Timestamp consultada_em = 2;
+  string versao_dos_parametros = 3;           // hash dos limiares (invariante I5)
+}
+
+message Alerta {
+  string id = 1;                              // UUIDv7
+  TipoDeAlerta regra = 2;
+  int32 inner = 3;                            // número da catraca
+  string portao = 4;                          // nome do portão/guichê
+  NivelDeAlerta nivel = 5;                    // severidade: atencao, acao
+  string titulo = 6;                          // "Catraca 05 sem leituras há 4 min"
+  string descricao = 7;                       // "as vizinhas leram 63 no mesmo período"
+  string o_que_fazer = 8;                     // recomendação do operador
+
+  google.protobuf.Timestamp aberto_em = 9;
+  google.protobuf.Timestamp atualizado_em = 10;
+  google.protobuf.Timestamp fechado_em = 11;  // nulo enquanto aberto
+
+  // Ciclo de vida: Aberto → Ciente → Fechado
+  bool ciente = 12;                           // false: operador ainda não viu
+  string ciente_por = 13;                     // nome do operador que marcou como ciente
+  google.protobuf.Timestamp ciente_em = 14;
+
+  string conta_json = 15;                     // dados brutos que dispararam a regra
+}
+
+enum TipoDeAlerta {
+  TIPO_ALERTA_NAO_ESPECIFICADO = 0;
+  LEITOR_CALADO = 1;                          // 0 leituras por ≥ 3 min
+  COMUNICACAO_INSTAVEL = 2;                   // ≥ 3 reconexões em 15 min
+  RELOGIO_DERIVANDO = 3;                      // divergência > 30 s
+  CONFIGURACAO_NAO_APLICADA = 4;              // salva ≠ aplicada por > 2 min
+  MUITOS_DESCONHECIDOS = 5;                   // ≥ 10 "Desconhecido" em 5 min
+  COMPARTILHAMENTO_POSSIVEL = 6;              // mesma impressão negada em múltiplas catracas
+  URNA_CHEIA = 7;                             // origem 20 detectada
+  GIRO_SEM_LIBERACAO = 8;                     // origem 6 sem pedido
+}
+
+enum NivelDeAlerta {
+  NIVEL_ALERTA_NAO_ESPECIFICADO = 0;
+  ATENCAO = 1;                                // operador precisa verificar
+  ACAO_NECESSARIA = 2;                        // operador deve agir (ex.: esvazie urna)
+}
+
+message MarcarAlertaComoCienteRequest {
+  string alerta_id = 1;
+  string operador = 2;                        // nome de quem marcou (não há login)
+}
+
+message MarcarAlertaComoCienteResponse {
+  bool marcado = 1;
+  repeated string problemas = 2;              // ex.: "alerta não existe" ou "já estava marcado"
 }

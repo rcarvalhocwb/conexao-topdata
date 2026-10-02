@@ -22,8 +22,16 @@ public static class ChavesDaInteligencia
     /// <summary>
     /// O serviço roda o Analisador (<c>AnalisadorDaOperacao</c>). Desligada: o Analisador não
     /// lê a base nem cria <c>telemetria.db</c>; o Diagnóstico diz "desligada nesta instalação".
+    /// Ligada por padrão na I.11 após <c>NOVO-LOAD-IA-01</c>, <c>NOVO-CHAOS-IA-01</c> e
+    /// <c>NOVO-SOAK-IA-24H</c> passarem (docs/36-anexos/02 §9).
     /// </summary>
     public const string Ligada = "inteligencia.ligada";
+
+    /// <summary>
+    /// O coletor mínimo no worker (I.1 do docs/36) escreve sinais e saúde em <c>telemetria.db</c>.
+    /// Ligada por padrão na I.11.
+    /// </summary>
+    public const string ColetorLigado = "inteligencia.coletor";
 
     /// <summary>Valor gravado em <c>edge_setting.value</c> que liga uma chave.</summary>
     public const string ValorQueLiga = "1";
