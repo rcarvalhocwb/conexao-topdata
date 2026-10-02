@@ -1092,4 +1092,504 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.NotEmpty(teclado.Erro);
         Assert.False(tela.Giro.Salvar.CanExecute(null));
     }
+
+    // ------------------------------------------------------------------ gêmeo, central da configuração (docs/33 §9)
+
+    private static readonly string[] TermosDoSdkNoGuiado =
+    [
+        "Configurar", "Liberar", "Enviar", "EI-", "FUN:", "HIL-", "INT-", "NOVO-", "T25", "Wiegand", "Abatrack",
+        "SmartCard", "por letras", "serial", "Inner", "relé", "Habilita",
+    ];
+
+    private async Task<GemeoDigitalViewModel> GemeoCarregadoAsync()
+    {
+        var tela = new GemeoDigitalViewModel(Cliente(), relogioDaCena: () => TimeSpan.Zero, esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        Assert.Equal(1, tela.Central.Catraca);
+        Assert.Equal(8, tela.Central.Parametrizacao.Campos.Count);
+        return tela;
+    }
+
+    private static Contracts.Edge.V1.CampoDaCatraca[] CamposDoPainel(GemeoDigitalViewModel tela) =>
+        [.. tela.Central.CamposDaPeca.Select(c => c.Campo)];
+
+    /// <summary>
+    /// Clicar em cada peça abre o painel dela com os campos certos: no guiado, só os do operador;
+    /// no técnico, os de instalação também. Peça sem parâmetro diz que não há nada a configurar.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_cada_peca_abre_o_painel_certo_com_os_campos_certos()
+    {
+        var tela = await GemeoCarregadoAsync();
+        Assert.False(tela.Central.PainelAberto);
+        Assert.True(tela.Central.SemPainel);
+
+        // Leitor da frente (QR): tipo de leitor; o leitor 1 só no técnico.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr);
+        Assert.True(tela.Central.PainelAberto);
+        Assert.Equal("Leitor da frente (QR)", tela.Central.TituloDoPainel);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor], CamposDoPainel(tela));
+        Assert.Contains(tela.Central.CamposDaPeca[0].Selos, s => s.Length > 0);
+        Assert.False(tela.Central.MostraGiro);
+        Assert.False(tela.PainelDoGiroAberto);
+        Assert.Equal("No modo técnico aparece mais 1 ajuste desta peça.", tela.Central.AvisoDoModo);
+
+        // Urna: o leitor 2 e só a linha do leitor 2 do giro.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.OperacaoDoLeitor2], CamposDoPainel(tela));
+        Assert.True(tela.PainelDoGiroAberto);
+        var linhaDaUrna = Assert.Single(tela.Giro.LinhasVisiveis);
+        Assert.Equal(Contracts.Edge.V1.OrigemDoGiro.Leitor2, linhaDaUrna.Origem);
+        Assert.False(tela.Giro.ControlesProprios);
+
+        // Braços: tempo de liberação e o mapa de giro inteiro.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1], CamposDoPainel(tela));
+        Assert.Equal(4, tela.Giro.LinhasVisiveis.Count);
+        Assert.NotNull(tela.SetaDoGiro);
+
+        // Display: mensagem padrão e, como pedido imediato, a mensagem temporária.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao], CamposDoPainel(tela));
+        Assert.True(tela.Central.MostraMensagemTemporaria);
+        Assert.False(tela.Central.MostraAcertarRelogio);
+        Assert.Null(tela.SetaDoGiro);
+
+        // Placa (na coluna): no guiado, só o equipamento e os pedidos de manutenção.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Coluna);
+        Assert.Empty(CamposDoPainel(tela));
+        Assert.True(tela.Central.MostraEquipamento);
+        Assert.True(tela.Central.MostraAcertarRelogio);
+        Assert.True(tela.Central.MostraRefazerConexao);
+        Assert.False(tela.Central.MostraRele2);
+        Assert.Equal("4.2.0", tela.Central.Firmware);
+        Assert.Equal("No modo técnico aparecem mais 3 ajustes desta peça.", tela.Central.AvisoDoModo);
+
+        // Peças sem parâmetro: a ficha, e "nada a configurar".
+        foreach (var peca in new[]
+        {
+            Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Base, Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Tampa,
+            Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Teclado, Desktop.ViewModels.GemeoDigital.PecaDaCatraca.SinalLiberado,
+        })
+        {
+            tela.Escolher(peca);
+            Assert.True(tela.Central.NadaAConfigurar, peca.ToString());
+            Assert.Empty(CamposDoPainel(tela));
+            Assert.Equal(peca, tela.Central.Ficha!.Peca);
+            Assert.False(string.IsNullOrWhiteSpace(tela.Central.Ficha.OQueFaz));
+        }
+
+        // Técnico: os campos técnicos de cada peça aparecem, na ordem do painel.
+        tela.Central.ModoTecnico = true;
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.TipoDeLeitor, Contracts.Edge.V1.CampoDaCatraca.OperacaoDoLeitor1], CamposDoPainel(tela));
+        Assert.Equal(string.Empty, tela.Central.AvisoDoModo);
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1, Contracts.Edge.V1.CampoDaCatraca.FuncaoDeLiberacaoDaEntrada], CamposDoPainel(tela));
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Coluna);
+        Assert.Equal([Contracts.Edge.V1.CampoDaCatraca.WiegandDoisLeitores, Contracts.Edge.V1.CampoDaCatraca.FormasDeEntradaOnLine], CamposDoPainel(tela));
+        Assert.True(tela.Central.MostraRele2);
+
+        // Pela lista de peças (teclado), o mesmo painel.
+        tela.PecaSelecionada = Desktop.ViewModels.GemeoDigital.CatalogoDaFit4.De(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        Assert.Equal(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display, tela.Central.Peca);
+
+        await tela.Central.FecharPainel.ExecutarAsync();
+        Assert.True(tela.Central.SemPainel);
+    }
+
+    /// <summary>
+    /// Alterações em duas peças (e no giro) se acumulam num só "o que muda"; as peças ganham a
+    /// marcação de alteração não salva; um só Salvar grava tudo, e só com o nome digitado. Depois
+    /// de salvar, a marcação vira "diferente do padrão do evento". Desfazer volta tudo.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_alteracoes_de_varias_pecas_vao_juntas_num_so_o_que_muda_e_salvar_exige_nome()
+    {
+        var tela = await GemeoCarregadoAsync();
+        var central = tela.Central;
+        Assert.Empty(central.Mudancas);
+        Assert.Empty(central.Marcas);
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        var mensagem = Assert.Single(central.CamposDaPeca);
+        mensagem.Herda = false;
+        mensagem.Valor = "Portao sintetico 2";
+        Assert.Equal("Portao sintetico 2", tela.TextoDaPrevia);
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+        var urna = Assert.Single(central.CamposDaPeca);
+        urna.Herda = false;
+        urna.Escolhida = urna.Opcoes.Single(o => o.Nome == "Desligado");
+        var giroDaUrna = Assert.Single(tela.Giro.LinhasVisiveis);
+        giroDaUrna.Herda = false;
+        giroDaUrna.ContaComoEscolhida = giroDaUrna.OpcoesDeContagem.Single(o => o.Nome == "Saída");
+
+        // Navegar para outra peça não perde nada: o "o que muda" é da catraca inteira.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        Assert.Equal(3, central.Mudancas.Count);
+        Assert.Contains(central.Mudancas, m => m.Campo == mensagem.Rotulo && m.Novo == "“Portao sintetico 2”");
+        Assert.Contains(central.Mudancas, m => m.Campo == urna.Rotulo && m.Novo == "Desligado");
+        Assert.Contains(central.Mudancas, m => m.Campo == "Giro · Leitor 2 (urna)");
+        Assert.Equal("3 alterações não salvas.", central.ResumoDasMudancas);
+        Assert.Equal("3 alterações não salvas", central.AlteracoesPendentes);
+
+        var naoSalvas = central.Marcas.Where(m => m.Tipo is Desktop.ViewModels.GemeoDigital.TipoDeMarca.AlteracaoNaoSalva).Select(m => m.Peca).ToHashSet();
+        Assert.Equal(
+            new HashSet<Desktop.ViewModels.GemeoDigital.PecaDaCatraca>
+            {
+                Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display, Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna,
+                Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor,
+            },
+            naoSalvas);
+        Assert.DoesNotContain(central.Marcas, m => m.Tipo is Desktop.ViewModels.GemeoDigital.TipoDeMarca.DiferenteDoEvento);
+        var versaoDasMarcas = central.VersaoDasMarcas;
+
+        // Aplicar só depois de salvar; salvar só com o nome.
+        Assert.False(central.PedirAplicacao.CanExecute(null));
+        Assert.StartsWith("Salve as alterações", central.MotivoParaNaoAplicar, StringComparison.Ordinal);
+        Assert.False(central.Salvar.CanExecute(null));
+        central.Operador = "A";
+        Assert.False(central.Salvar.CanExecute(null));
+        central.Operador = "Ana Sintética";
+        Assert.True(central.Salvar.CanExecute(null));
+        Assert.Equal("Ana Sintética", tela.Giro.Operador);
+        Assert.Equal("Ana Sintética", central.Comandos.Operador);
+
+        await central.Salvar.ExecutarAsync();
+        Assert.Empty(central.Problemas);
+        Assert.Empty(central.Mudancas);
+        Assert.StartsWith("Salvo para a catraca 1.", central.Mensagem, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, tela.Giro.Mensagem);
+
+        // Gravado de verdade, nos dois RPCs, com o nome.
+        var salvo = await Cliente().ObterConfiguracaoDaCatracaAsync(new ObterConfiguracaoDaCatracaRequest { Inner = 1 });
+        Assert.Equal("Portao sintetico 2", salvo.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao).ValorDaCatraca);
+        Assert.Equal("0", salvo.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.OperacaoDoLeitor2).ValorDaCatraca);
+        Assert.Equal("Ana Sintética", salvo.AlteradaPor);
+        var mapa = await Cliente().ObterMapaDeGiroAsync(new ObterMapaDeGiroRequest { Inner = 1 });
+        Assert.Equal(ContagemDoGiro.Saida, mapa.Regras.Single(r => r.Origem == Contracts.Edge.V1.OrigemDoGiro.Leitor2).ContaComo);
+        Assert.Equal(salvo.VersaoSalva, central.Parametrizacao.VersaoSalva);
+        Assert.StartsWith("Salva", central.SituacaoNaCatraca, StringComparison.Ordinal);
+
+        // Salvo: as peças ficam marcadas como diferentes do padrão do evento.
+        Assert.NotEqual(versaoDasMarcas, central.VersaoDasMarcas);
+        Assert.DoesNotContain(central.Marcas, m => m.Tipo is Desktop.ViewModels.GemeoDigital.TipoDeMarca.AlteracaoNaoSalva);
+        var diferentes = central.Marcas.Where(m => m.Tipo is Desktop.ViewModels.GemeoDigital.TipoDeMarca.DiferenteDoEvento).Select(m => m.Peca).ToHashSet();
+        Assert.Contains(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display, diferentes);
+        Assert.Contains(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna, diferentes);
+        Assert.DoesNotContain(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr, diferentes);
+
+        // Desfazer volta todas as peças ao salvo.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        var tempo = Assert.Single(central.CamposDaPeca);
+        tempo.Herda = false;
+        tempo.Valor = "9";
+        tela.Giro.Linhas.Single(l => l.Origem == Contracts.Edge.V1.OrigemDoGiro.Teclado).Herda = false;
+        Assert.Equal(2, central.Mudancas.Count);
+        await central.Desfazer.ExecutarAsync();
+        Assert.Empty(central.Mudancas);
+        Assert.Null(central.Parametrizacao.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1).ValorSalvo);
+    }
+
+    /// <summary>
+    /// Aplicar pede confirmação e usa o mesmo comando por catraca da Parametrização ("Aplicar
+    /// configuração", só desta catraca). "Aplicada" só depois de Concluido com a versão igual.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_aplicar_exige_confirmacao_usa_o_comando_da_catraca_e_so_diz_aplicada_depois_de_concluido()
+    {
+        var fila = new FilaDeComandosSqlite(_banco.Fabrica);
+        var operacao = new Operacao(_banco.Fabrica);
+        void Publicar(string? versao) => operacao.GravarSituacao(
+        [
+            new SituacaoDoEquipamento(
+                "inner-1", 1, "setor-a", "Polling", true, "4.2.0", 0, null, null, DateTimeOffset.UtcNow,
+                ConfiguracaoAplicadaEm: versao is null ? null : DateTimeOffset.UtcNow, ConfiguracaoVersao: versao),
+        ]);
+
+        var tela = await GemeoCarregadoAsync();
+        var central = tela.Central;
+        central.Operador = "Ana Sintética";
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        var tempo = Assert.Single(central.CamposDaPeca);
+        tempo.Herda = false;
+        tempo.Valor = "8";
+        await central.Salvar.ExecutarAsync();
+        var versaoNova = central.Parametrizacao.VersaoSalva;
+        Assert.NotEmpty(versaoNova);
+
+        // Dois passos: pedir mostra a confirmação; nada vai antes de confirmar.
+        Assert.True(central.PedirAplicacao.CanExecute(null));
+        Assert.False(central.ConfirmarAplicacao.CanExecute(null));
+        await central.PedirAplicacao.ExecutarAsync();
+        Assert.True(central.ConfirmandoAplicacao);
+        Assert.Contains("fica alguns segundos sem atender", central.TextoDaConfirmacao, StringComparison.Ordinal);
+        Assert.Empty(fila.Listar(1));
+
+        await central.CancelarAplicacao.ExecutarAsync();
+        Assert.False(central.ConfirmandoAplicacao);
+        Assert.Empty(fila.Listar(1));
+
+        await central.PedirAplicacao.ExecutarAsync();
+        await central.ConfirmarAplicacao.ExecutarAsync();
+        var pedido = Assert.Single(fila.Listar(1)).Comando;
+        Assert.Equal((1, "Ana Sintética"), (pedido.Inner, pedido.Operador));
+        Assert.Equal(Access.Application.Devices.TipoDeComando.AplicarConfiguracao, pedido.Tipo);
+        Assert.Equal(("Aplicando: aguardando a catraca", Sinal.Atencao), (central.SituacaoNaCatraca, central.SinalDaSituacao));
+        Assert.False(central.PedirAplicacao.CanExecute(null));
+
+        // O worker pega o pedido e a catraca aceita a versão nova; o pedido ainda não terminou.
+        var id = pedido.Id;
+        Assert.True(fila.Receber(id, DateTimeOffset.UtcNow));
+        Publicar(versaoNova);
+        await tela.AtualizarAsync();
+        Assert.StartsWith("Aplicando", central.SituacaoNaCatraca, StringComparison.Ordinal);
+        Assert.False(central.AplicadaConhecida);
+
+        // Concluído, mas a versão publicada é outra: não aplicada.
+        Publicar(new string('a', 64));
+        fila.Concluir(id, Access.Application.Devices.SituacaoDoComando.Concluido, "configuração enviada; catraca atendendo", DateTimeOffset.UtcNow);
+        await tela.AtualizarAsync();
+        Assert.Equal(("Salva, não aplicada", Sinal.Atencao), (central.SituacaoNaCatraca, central.SinalDaSituacao));
+
+        // Concluído e a versão igual: aplicada.
+        Publicar(versaoNova);
+        await tela.AtualizarAsync();
+        Assert.Equal(Sinal.Bom, central.SinalDaSituacao);
+        Assert.StartsWith("Aplicada", central.SituacaoNaCatraca, StringComparison.Ordinal);
+        Assert.True(central.AplicadaConhecida);
+    }
+
+    /// <summary>
+    /// No painel da placa (modo técnico), o que aguarda confirmação aparece desabilitado, com o
+    /// selo e o motivo: os campos atrás de chave técnica desligada e o relé 2, que nem é campo.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_campo_a_confirmar_fica_desabilitado_com_selo_no_painel_da_peca()
+    {
+        var tela = await GemeoCarregadoAsync();
+        tela.Central.ModoTecnico = true;
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Coluna);
+
+        foreach (var campo in tela.Central.CamposDaPeca)
+        {
+            Assert.False(campo.Disponivel);
+            Assert.False(campo.Editavel);
+            Assert.NotEmpty(campo.Selos);
+            campo.Herda = false;
+            Assert.True(campo.Herda);
+        }
+
+        Assert.Contains(tela.Central.CamposDaPeca[0].Selos, s => s.Contains("HIL-CARD-05", StringComparison.Ordinal));
+        Assert.Contains(tela.Central.CamposDaPeca[1].Selos, s => s.Contains("INT-SM-032", StringComparison.Ordinal));
+        Assert.Empty(tela.Central.Mudancas);
+
+        Assert.True(tela.Central.MostraRele2);
+        Assert.Contains("NOVO-HIL-REL-04/06", CentralDaCatracaViewModel.SeloDoRele2, StringComparison.Ordinal);
+        Assert.Contains("padrão de fábrica", CentralDaCatracaViewModel.ValorDoRele2, StringComparison.Ordinal);
+
+        // O tipo de leitor segue editável, com o aviso do 5 × 8.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr);
+        var tipo = tela.Central.CamposDaPeca[0];
+        Assert.True(tipo.Disponivel);
+        Assert.Contains(tipo.Selos, s => s.Contains("NOVO-HIL-QR-02", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// No modo guiado, nenhum painel de peça mostra campo técnico ou termo do SDK (GLOSSARIO;
+    /// docs/34 §7, P13). O aviso diz só que há mais ajustes no modo técnico.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_modo_guiado_nao_mostra_campo_tecnico_nem_termo_do_sdk_em_nenhuma_peca()
+    {
+        var tela = await GemeoCarregadoAsync();
+        Assert.False(tela.Central.ModoTecnico);
+
+        foreach (var ficha in tela.Pecas)
+        {
+            tela.Escolher(ficha.Peca);
+            Assert.All(tela.Central.CamposDaPeca, c => Assert.False(c.SoTecnico, $"{ficha.Peca}: {c.Campo}"));
+            Assert.False(tela.Central.MostraRele2);
+
+            var textos = tela.Central.CamposDaPeca
+                .SelectMany(c => (IEnumerable<string>)[c.Rotulo, c.TextoHerdar, c.TextoDaOrigem, .. c.Selos, .. c.Opcoes.Select(o => o.Nome)])
+                .Append(tela.Central.TituloDoPainel)
+                .Append(tela.Central.AvisoDoModo);
+            foreach (var texto in textos)
+            {
+                Assert.DoesNotContain(TermosDoSdkNoGuiado, termo => texto.Contains(termo, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+    }
+
+    /// <summary>
+    /// A configuração é real; o selo DEMONSTRAÇÃO fala dos cenários. Ao vivo, o gêmeo mostra a
+    /// configuração que a catraca confirmou (versão aplicada igual à salva, Etapa A.5) — e diz que
+    /// não sabe quando ela está com outra versão.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_ao_vivo_mostra_a_configuracao_aplicada_e_nao_presume()
+    {
+        var operacao = new Operacao(_banco.Fabrica);
+        void Publicar(string? versao) => operacao.GravarSituacao(
+        [
+            new SituacaoDoEquipamento(
+                "inner-1", 1, "setor-a", "Polling", true, "4.2.0", 0, null, null, DateTimeOffset.UtcNow,
+                ConfiguracaoAplicadaEm: versao is null ? null : DateTimeOffset.UtcNow, ConfiguracaoVersao: versao),
+        ]);
+
+        var tela = await GemeoCarregadoAsync();
+        Assert.StartsWith("DEMONSTRAÇÃO · cenários", tela.SeloDoModo, StringComparison.Ordinal);
+        Assert.Equal("Configuração real desta catraca — vale depois de Aplicar.", CentralDaCatracaViewModel.AvisoDaConfiguracao);
+
+        var central = tela.Central;
+        central.Operador = "Ana Sintética";
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        var mensagem = Assert.Single(central.CamposDaPeca);
+        mensagem.Herda = false;
+        mensagem.Valor = "Bem vindo portao 9";
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+        var urna = Assert.Single(central.CamposDaPeca);
+        urna.Herda = false;
+        urna.Escolhida = urna.Opcoes.Single(o => o.Nome == "Desligado");
+        await central.Salvar.ExecutarAsync();
+        var versao = central.Parametrizacao.VersaoSalva;
+
+        // Salvo, mas a catraca não confirmou: o desenho não presume.
+        tela.ModoAoVivo = true;
+        await tela.AtualizarAsync();
+        Assert.Equal("Na catraca agora", tela.TituloDaConfiguracao);
+        Assert.False(central.AplicadaConhecida);
+        Assert.Empty(tela.ResumoDaConfiguracao);
+        Assert.Contains("não sabe o que ela está usando", tela.TextoDaConfiguracao, StringComparison.Ordinal);
+        Assert.Equal("Aproxime o ingresso", tela.MensagemPadrao);
+        Assert.True(tela.UrnaLigada);
+
+        // A catraca confirmou a versão do salvo: o desenho e o quadro mostram o que ela usa.
+        Publicar(versao);
+        await tela.AtualizarAsync();
+        Assert.True(central.AplicadaConhecida);
+        Assert.Equal("Bem vindo portao 9", tela.MensagemPadrao);
+        Assert.False(tela.UrnaLigada);
+        Assert.Contains(tela.ResumoDaConfiguracao, p => p.Valor == "“Bem vindo portao 9”");
+        Assert.Contains(tela.ResumoDaConfiguracao, p => p.Rotulo == urna.Rotulo && p.Valor == "Desligado");
+        Assert.Contains(tela.ResumoDaConfiguracao, p => p.Rotulo.StartsWith("Giro · ", StringComparison.Ordinal));
+        Assert.StartsWith("A catraca confirmou", tela.TextoDaConfiguracao, StringComparison.Ordinal);
+
+        // Outra versão na catraca: o gêmeo diz que não sabe, e não mostra o salvo como se fosse dela.
+        Publicar(new string('b', 64));
+        await tela.AtualizarAsync();
+        Assert.False(central.AplicadaConhecida);
+        Assert.Empty(tela.ResumoDaConfiguracao);
+        Assert.Contains("outra versão", tela.TextoDaConfiguracao, StringComparison.Ordinal);
+        Assert.Equal("Aproxime o ingresso", tela.MensagemPadrao);
+
+        // Na demonstração, o desenho volta ao padrão do evento.
+        tela.ModoAoVivo = false;
+        Assert.Contains(tela.ResumoDaConfiguracao, p => p.Rotulo == "Mensagem padrão");
+    }
+
+    /// <summary>
+    /// O gêmeo é a porta principal: "Abrir no gêmeo" (Gerenciar e Parametrização) leva à mesma
+    /// catraca, com o nome já digitado; "Ver em lista" leva de volta à Parametrização. Nada some.
+    /// </summary>
+    [Fact]
+    public async Task Abrir_no_gemeo_e_ver_em_lista_levam_a_mesma_catraca_com_o_nome()
+    {
+        var janela = new JanelaViewModel(Cliente());
+        await janela.Gerenciar.ExecutarAsync(2);
+        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana Sintética";
+
+        await janela.AbrirNoGemeo.ExecutarAsync(2);
+        var gemeo = Assert.IsType<GemeoDigitalViewModel>(janela.TelaAtual);
+        await gemeo.AtualizarAsync();
+        Assert.Equal((2, 2, "Ana Sintética"), (gemeo.Catraca, gemeo.Central.Catraca, gemeo.Central.Operador));
+
+        await janela.Parametrizar.ExecutarAsync(gemeo.Central.Catraca);
+        var lista = Assert.IsType<ParametrizacaoViewModel>(janela.TelaAtual);
+        await lista.AtualizarAsync();
+        Assert.Equal((2, "Ana Sintética"), (lista.Catraca, lista.Operador));
+
+        // A Parametrização e a Gerenciar continuam existindo.
+        Assert.Contains(janela.Telas, t => t is GerenciarCatracaViewModel);
+        Assert.NotNull(janela.Parametrizacao);
+    }
+
+    /// <summary>
+    /// Um erro em qualquer peça bloqueia o Salvar da catraca inteira: nada é gravado pela metade
+    /// por causa de um campo inválido que o operador nem está vendo.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_erro_numa_peca_bloqueia_o_salvar_da_catraca_inteira()
+    {
+        var tela = await GemeoCarregadoAsync();
+        var central = tela.Central;
+        central.Operador = "Ana Sintética";
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        var mensagem = Assert.Single(central.CamposDaPeca);
+        mensagem.Herda = false;
+        mensagem.Valor = "Portao sintetico 3";
+        Assert.True(central.Salvar.CanExecute(null));
+
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor);
+        var tempo = Assert.Single(central.CamposDaPeca);
+        tempo.Herda = false;
+        tempo.Valor = "51";
+        Assert.Equal("O tempo vai de 1 a 50 segundos.", tempo.Erro);
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        Assert.False(central.Salvar.CanExecute(null));
+
+        tempo.Valor = "6";
+        Assert.True(central.Salvar.CanExecute(null));
+        var teclado = tela.Giro.Linhas.Single(l => l.Origem == Contracts.Edge.V1.OrigemDoGiro.Teclado);
+        teclado.Herda = false;
+        teclado.Texto = new string('x', 33);
+        Assert.False(central.Salvar.CanExecute(null));
+
+        await central.Salvar.ExecutarAsync();
+        Assert.Equal(0, new MapasDeGiro(_banco.Fabrica).RevisoesNoHistorico(1));
+        var salvo = await Cliente().ObterConfiguracaoDaCatracaAsync(new ObterConfiguracaoDaCatracaRequest { Inner = 1 });
+        Assert.False(salvo.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao).HasValorDaCatraca);
+    }
+
+    /// <summary>
+    /// Salvo em outro lugar (a Parametrização): sem nada pendente, o gêmeo recarrega e mostra o
+    /// novo; com algo pendente, não apaga o rascunho, mas avisa antes que alguém grave por cima.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_recarrega_o_que_foi_salvo_na_parametrizacao_e_avisa_se_ha_rascunho()
+    {
+        var tela = await GemeoCarregadoAsync();
+        var lista = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero) { Operador = "Bia Sintética" };
+        await lista.AtualizarAsync();
+
+        var tempo = CampoDe(lista, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        tempo.Herda = false;
+        tempo.Valor = "12";
+        await lista.Salvar.ExecutarAsync();
+        Assert.Empty(lista.Problemas);
+
+        await tela.AtualizarAsync();
+        Assert.Equal("12", tela.Central.Parametrizacao.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1).ValorSalvo);
+        Assert.Contains(tela.Central.Marcas, m => m.Peca is Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor
+                                                  && m.Tipo is Desktop.ViewModels.GemeoDigital.TipoDeMarca.DiferenteDoEvento);
+
+        // Rascunho no gêmeo, e outra gravação na Parametrização: o rascunho fica, com o aviso.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        var mensagem = Assert.Single(tela.Central.CamposDaPeca);
+        mensagem.Herda = false;
+        mensagem.Valor = "Rascunho sintetico";
+
+        tempo = CampoDe(lista, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        tempo.Valor = "13";
+        await lista.Salvar.ExecutarAsync();
+
+        await tela.AtualizarAsync();
+        Assert.Single(tela.Central.Mudancas);
+        Assert.Equal("Rascunho sintetico", mensagem.Valor);
+        Assert.Contains("salva em outro lugar", tela.Central.Mensagem, StringComparison.Ordinal);
+    }
 }

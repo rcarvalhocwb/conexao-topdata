@@ -1058,11 +1058,12 @@ public sealed class JanelaViewModel : Notificavel
                 return;
             }
 
-            // Quem já digitou o nome no Gerenciar não precisa digitar de novo.
+            // Quem já digitou o nome no Gerenciar ou no gêmeo não precisa digitar de novo.
             var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+            var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (Parametrizacao.Operador.Length == 0)
             {
-                Parametrizacao.Operador = gerenciar.Operador;
+                Parametrizacao.Operador = gemeo.Central.Operador.Length > 0 ? gemeo.Central.Operador : gerenciar.Operador;
             }
 
             var mesmaTela = ReferenceEquals(TelaAtual, Parametrizacao);
@@ -1076,6 +1077,33 @@ public sealed class JanelaViewModel : Notificavel
             else if (mesmaCatraca)
             {
                 await Parametrizacao.AtualizarAsync().ConfigureAwait(true);
+            }
+        });
+        // O gêmeo é a porta principal da configuração da catraca (docs/33 §9): a Parametrização
+        // e a Gerenciar têm o atalho "Abrir no gêmeo"; o gêmeo tem "Ver em lista".
+        AbrirNoGemeo = new ComandoComParametro(async parametro =>
+        {
+            if (parametro is not int inner || inner <= 0)
+            {
+                return;
+            }
+
+            var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
+            if (gemeo.Central.Operador.Length == 0)
+            {
+                var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+                gemeo.Central.Operador = Parametrizacao.Operador.Length > 0 ? Parametrizacao.Operador : gerenciar.Operador;
+            }
+
+            gemeo.Catraca = inner;
+
+            if (ReferenceEquals(TelaAtual, gemeo))
+            {
+                await gemeo.AtualizarAsync().ConfigureAwait(true);
+            }
+            else
+            {
+                TelaAtual = gemeo;
             }
         });
         AbrirDiagnostico = new ComandoAssincrono(() =>
@@ -1128,6 +1156,9 @@ public sealed class JanelaViewModel : Notificavel
 
     /// <summary>Abre a Parametrização de uma catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro Parametrizar { get; }
+
+    /// <summary>Abre o gêmeo digital numa catraca, para configurá-la (parâmetro: o número do Inner).</summary>
+    public ComandoComParametro AbrirNoGemeo { get; }
 
     /// <summary>A ação "Gerenciar" do cartão da catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro Gerenciar { get; }

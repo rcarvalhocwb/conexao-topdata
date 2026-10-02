@@ -717,7 +717,8 @@ public sealed class ParametrizacaoViewModel : TelaBase
 
     private bool PodeAplicar => MotivoParaNaoAplicar.Length == 0;
 
-    private bool AplicacaoEmAndamento =>
+    /// <summary>O último pedido de aplicar desta catraca ainda está na fila ou em curso.</summary>
+    public bool AplicacaoEmAndamento =>
         _ultimaAplicacao?.Situacao is SituacaoDoComando.Pendente or SituacaoDoComando.Recebido;
 
     /// <summary>
@@ -774,6 +775,24 @@ public sealed class ParametrizacaoViewModel : TelaBase
     /// </summary>
     public Task AcompanharAsync(CancellationToken cancelamento = default) =>
         Catraca == 0 ? Task.CompletedTask : Tentar(() => AcompanharInternoAsync(Catraca, cancelamento));
+
+    /// <summary>
+    /// Carrega uma catraca sem o carregamento solto que a troca pelo seletor dispara: quem chama
+    /// (o gêmeo, docs/33 §9) espera o resultado.
+    /// </summary>
+    internal Task<bool> CarregarCatracaAsync(int inner, CancellationToken cancelamento = default)
+    {
+        if (_catraca != inner)
+        {
+            _catraca = inner;
+            Avisar(nameof(Catraca));
+            ConfirmandoAplicacao = false;
+            Campos = [];
+            Reavaliar();
+        }
+
+        return CarregarAsync(cancelamento);
+    }
 
     private IReadOnlyList<CampoDaParametrizacao> Visiveis(AbaDaParametrizacao aba) =>
         [.. _campos.Where(c => c.Aba == aba && (ModoTecnico || !c.SoTecnico))];

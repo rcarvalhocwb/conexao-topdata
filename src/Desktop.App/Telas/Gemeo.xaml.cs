@@ -73,6 +73,11 @@ public partial class Gemeo : UserControl
     private bool _depositoNaCena;
     private Ponto3 _deslocamentoDoDeposito;
 
+    // As marcações da configuração (docs/33 §9): bola = alteração não salva; cubo = diferente do
+    // padrão do evento. Fora das peças, não entram na escolha pelo mouse.
+    private readonly List<GeometryModel3D> _marcas = [];
+    private int _versaoDasMarcasDesenhada = -1;
+
     // Câmera orbital: onde está (alvo, distância, ângulos) e para onde vai, suavizado.
     private Ponto3 _alvo;
     private Ponto3 _alvoDesejado;
@@ -162,10 +167,29 @@ public partial class Gemeo : UserControl
                 break;
             case nameof(GemeoDigitalViewModel.VersaoDoFoco) when vm.PecaSelecionada is { } ficha:
                 Focar(ficha.Peca);
+
+                // O painel da peça fica logo abaixo da escolha da catraca: a coluna volta ao topo
+                // para ele aparecer ao lado do desenho, mesmo que o operador tenha rolado até os cenários.
+                ColunaDireita.ScrollToTop();
                 break;
             default:
                 break;
         }
+    }
+
+    /// <summary>
+    /// Rola a página até o cartão "Configuração desta catraca" aparecer inteiro, com a parte de
+    /// baixo do desenho acima dele. Para a captura do CI (alterações pendentes).
+    /// </summary>
+    internal void MostrarConfiguracao()
+    {
+        if (Pagina.Content is not Visual conteudo)
+        {
+            return;
+        }
+
+        var topo = CartaoDaConfiguracao.TransformToAncestor(conteudo).Transform(new Point(0, 0)).Y;
+        Pagina.ScrollToVerticalOffset(Math.Max(0, topo + CartaoDaConfiguracao.ActualHeight - Pagina.ViewportHeight + 12));
     }
 
     // ------------------------------------------------------------------ montagem
@@ -184,6 +208,8 @@ public partial class Gemeo : UserControl
         _depositoNaCena = false;
         _setaDoGiro = null;
         _setaDesenhada = null;
+        _marcas.Clear();
+        _versaoDasMarcasDesenhada = -1;
 
         var grupos = new Dictionary<PecaDaCatraca, Model3DGroup>();
 
@@ -468,6 +494,7 @@ public partial class Gemeo : UserControl
         AtualizarFacial(vm.MostrarLeitorFacial);
         AtualizarRealce(vm.PecaSelecionada?.Peca, vm.PecaApontada?.Peca, vm.PecaEmDestaque);
         AtualizarSetaDoGiro(vm);
+        AtualizarMarcas(vm);
         AtualizarCamera(dt);
     }
 
@@ -504,6 +531,47 @@ public partial class Gemeo : UserControl
         }
 
         _catraca.Children.Add(_setaDoGiro);
+    }
+
+    /// <summary>
+    /// As marcações das peças, refeitas só quando mudam: bola na cor de atenção para alteração não
+    /// salva, cubo na cor de informação para valor diferente do padrão do evento. As duas cores
+    /// passam 4,5:1 sobre o fundo do desenho nos dois temas (RayzerDesignTests).
+    /// </summary>
+    private void AtualizarMarcas(GemeoDigitalViewModel vm)
+    {
+        var central = vm.Central;
+        if (central.VersaoDasMarcas == _versaoDasMarcasDesenhada)
+        {
+            return;
+        }
+
+        _versaoDasMarcasDesenhada = central.VersaoDasMarcas;
+        foreach (var marca in _marcas)
+        {
+            _catraca.Children.Remove(marca);
+        }
+
+        _marcas.Clear();
+
+        foreach (var marca in central.Marcas)
+        {
+            if (!_modelosDaPeca.ContainsKey(marca.Peca))
+            {
+                continue; // peça que esta variante não desenha
+            }
+
+            var malha = GeometriaFit4.MarcaDaPeca(vm.Modelo, marca.Peca, marca.Tipo);
+            var material = Aceso(CorDoTema(marca.NaoSalva ? "Rayzer.Warning" : "Rayzer.Info"));
+            var modelo = new GeometryModel3D(Malha(malha), material) { BackMaterial = material };
+            if (_separacaoDaPeca.TryGetValue(marca.Peca, out var separacao))
+            {
+                modelo.Transform = separacao;
+            }
+
+            _marcas.Add(modelo);
+            _catraca.Children.Add(modelo);
+        }
     }
 
     private void AtualizarDisplay(QuadroDaCena quadro)
