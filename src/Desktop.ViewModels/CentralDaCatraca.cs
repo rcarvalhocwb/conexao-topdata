@@ -388,8 +388,10 @@ public sealed class CentralDaCatracaViewModel : TelaBase
     public Task EsperarCargaAsync() => _carregando;
 
     /// <summary>
-    /// A atualização periódica: a situação na catraca, os pedidos e, sem alteração pendente no
-    /// giro, o mapa (conferências). Os campos não são recarregados por cima do operador.
+    /// A atualização periódica: a situação na catraca e os pedidos. Os campos não são recarregados
+    /// por cima do operador nem a cada volta (o editor aberto fecharia): só quando o salvo mudou em
+    /// outro lugar (a Parametrização, outro painel) e não há nada pendente aqui. Com algo pendente,
+    /// a tela avisa, para ninguém gravar por cima sem saber.
     /// </summary>
     public async Task AcompanharAsync(CancellationToken cancelamento = default)
     {
@@ -398,9 +400,23 @@ public sealed class CentralDaCatracaViewModel : TelaBase
             return;
         }
 
+        var versaoAntes = Parametrizacao.VersaoSalva;
+        var alteradaAntes = Parametrizacao.DetalheDaSituacao;
         await Parametrizacao.AcompanharAsync(cancelamento).ConfigureAwait(true);
-        if (Giro.Mudancas.Count == 0)
+        var mudouLaFora = !string.Equals(versaoAntes, Parametrizacao.VersaoSalva, StringComparison.Ordinal)
+            || !string.Equals(alteradaAntes, Parametrizacao.DetalheDaSituacao, StringComparison.Ordinal);
+
+        if (mudouLaFora && Mudancas.Count == 0)
         {
+            await Parametrizacao.CarregarCatracaAsync(Catraca, cancelamento).ConfigureAwait(true);
+        }
+        else if (mudouLaFora)
+        {
+            Mensagem = "A configuração desta catraca foi salva em outro lugar enquanto você mudava. Desfaça para ver a nova, ou salve para gravar a sua por cima.";
+        }
+        else if (Giro.Mudancas.Count == 0 && PainelAberto && MostraGiro)
+        {
+            // As conferências do sentido, registradas na bancada enquanto o painel está aberto.
             await Giro.CarregarAsync(Catraca, cancelamento).ConfigureAwait(true);
         }
 

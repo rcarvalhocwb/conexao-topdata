@@ -1554,4 +1554,42 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         var salvo = await Cliente().ObterConfiguracaoDaCatracaAsync(new ObterConfiguracaoDaCatracaRequest { Inner = 1 });
         Assert.False(salvo.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.MensagemPadrao).HasValorDaCatraca);
     }
+
+    /// <summary>
+    /// Salvo em outro lugar (a Parametrização): sem nada pendente, o gêmeo recarrega e mostra o
+    /// novo; com algo pendente, não apaga o rascunho, mas avisa antes que alguém grave por cima.
+    /// </summary>
+    [Fact]
+    public async Task Gemeo_recarrega_o_que_foi_salvo_na_parametrizacao_e_avisa_se_ha_rascunho()
+    {
+        var tela = await GemeoCarregadoAsync();
+        var lista = new ParametrizacaoViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero) { Operador = "Bia Sintética" };
+        await lista.AtualizarAsync();
+
+        var tempo = CampoDe(lista, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        tempo.Herda = false;
+        tempo.Valor = "12";
+        await lista.Salvar.ExecutarAsync();
+        Assert.Empty(lista.Problemas);
+
+        await tela.AtualizarAsync();
+        Assert.Equal("12", tela.Central.Parametrizacao.Campos.Single(c => c.Campo == Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1).ValorSalvo);
+        Assert.Contains(tela.Central.Marcas, m => m.Peca is Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Rotor
+                                                  && m.Tipo is Desktop.ViewModels.GemeoDigital.TipoDeMarca.DiferenteDoEvento);
+
+        // Rascunho no gêmeo, e outra gravação na Parametrização: o rascunho fica, com o aviso.
+        tela.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+        var mensagem = Assert.Single(tela.Central.CamposDaPeca);
+        mensagem.Herda = false;
+        mensagem.Valor = "Rascunho sintetico";
+
+        tempo = CampoDe(lista, Contracts.Edge.V1.CampoDaCatraca.TempoDoAcionamento1);
+        tempo.Valor = "13";
+        await lista.Salvar.ExecutarAsync();
+
+        await tela.AtualizarAsync();
+        Assert.Single(tela.Central.Mudancas);
+        Assert.Equal("Rascunho sintetico", mensagem.Valor);
+        Assert.Contains("salva em outro lugar", tela.Central.Mensagem, StringComparison.Ordinal);
+    }
 }
