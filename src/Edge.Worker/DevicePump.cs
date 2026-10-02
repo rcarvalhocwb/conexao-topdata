@@ -199,6 +199,12 @@ internal sealed class ComandoEmCurso(ComandoDeCatraca comando, DateTimeOffset in
     /// <summary>Veio o giro (origem 6) depois da liberação.</summary>
     public bool Girou { get; set; }
 
+    /// <summary>
+    /// O laço desistiu de esperar o giro pelo prazo (C1, docs/36), sem origem 5 nem 6. Guarda
+    /// o prazo aplicado, para o desfecho dizer qual foi.
+    /// </summary>
+    public TimeSpan? GiroNaoConfirmadoNoPrazo { get; set; }
+
     /// <summary>A reconexão pedida já saiu de Polling (para não concluir antes de começar).</summary>
     public bool SaiuDeOperacao { get; set; }
 }
@@ -247,6 +253,7 @@ public sealed class DevicePump
     private readonly Action<string>? _antesDaLiberacaoManual;
     private readonly bool _sequenciaOficial;
     private readonly IGravadorDeBilhetes? _gravadorDeBilhetes;
+    private readonly Action<string>? _aoDesistirDoGiro;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -280,6 +287,12 @@ public sealed class DevicePump
     /// este laço <b>não coleta</b>: o comando falha e o estado de coleta sai sem chamar a catraca —
     /// coletar sem gravar apagaria marcações da memória dela.
     /// </param>
+    /// <param name="aoDesistirDoGiro">
+    /// Chamado com o id do equipamento quando o laço desiste de esperar o giro pelo prazo de
+    /// <see cref="DeviceState.MonitoraGiroCatraca"/>, sem origem 5 nem 6 (Etapa I.1b do docs/36,
+    /// C1). O decisor encerra a tentativa pendente sem giro, como faria com a origem 5: um giro
+    /// que chegue depois não é da pessoa liberada, e confirmá-la com ele daria a passagem a outro.
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -290,9 +303,11 @@ public sealed class DevicePump
         Action<ComandoDeCatraca, SituacaoDoComando, string>? aoConcluirComando = null,
         Action<string>? antesDaLiberacaoManual = null,
         bool sequenciaOficial = false,
-        IGravadorDeBilhetes? gravadorDeBilhetes = null)
+        IGravadorDeBilhetes? gravadorDeBilhetes = null,
+        Action<string>? aoDesistirDoGiro = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
+        _aoDesistirDoGiro = aoDesistirDoGiro;
         _sequenciaOficial = sequenciaOficial;
         _gravadorDeBilhetes = gravadorDeBilhetes;
         _acertarRelogioAoDivergir = acertarRelogioAoDivergir;
@@ -363,12 +378,12 @@ public sealed class DevicePump
 
         if (dispositivo.EsperarAte is { } ate && agora < ate)
         {
-            return "aguardando backoff";
+            return PrazoComOPassoImpedido(dispositivo, agora, "aguardando backoff") ?? "aguardando backoff";
         }
 
         if (!dispositivo.Disjuntor.PermitePassar)
         {
-            return "disjuntor aberto";
+            return PrazoComOPassoImpedido(dispositivo, agora, "disjuntor aberto") ?? "disjuntor aberto";
         }
 
         // Comandos do operador e relógio só em Polling: é o ponto ocioso e seguro, sem
@@ -384,6 +399,14 @@ public sealed class DevicePump
             {
                 return relogio;
             }
+        }
+
+        // A coleta é de vários passos, um bilhete por vez: o prazo do estado (10 min) corta
+        // antes de pedir o próximo, nunca entre a coleta e a gravação (R-68, tratada acima).
+        if (dispositivo.Maquina.Current is DeviceState.ColetarBilhetes
+            && PrazoEstourado(dispositivo, agora) is { } prazoDaColeta)
+        {
+            return EsgotarPrazo(dispositivo, agora, prazoDaColeta);
         }
 
         return dispositivo.Maquina.Current switch
@@ -565,8 +588,9 @@ public sealed class DevicePump
                     : $"evento {evento.Origin}";
 
             case AdapterStatus.SemEventos:
+            {
                 d.Disjuntor.RegistrarSucesso();
-                Disparar(d, DeviceTrigger.SemEventos, agora);
+                string? erroDeRecepcao = null;
                 if (resultado.NativeReturn != 0)
                 {
                     // Retorno ≠ 0 que o adaptador, com a reconexão desligada até HIL-EVT-01,
@@ -574,13 +598,25 @@ public sealed class DevicePump
                     // Se a DLL devolver ≠ 0 em toda volta sem evento, uma linha por volta
                     // afogaria o registro: registra a 1ª, a 10ª, a 100ª... e o total fica no contador.
                     d.ErrosDeRecepcao++;
-                    return EhMarco(d.ErrosDeRecepcao)
-                        ? $"sem eventos com retorno {resultado} — erro de recepção nº {d.ErrosDeRecepcao}, " +
-                            "sem reconectar até HIL-EVT-01"
-                        : "sem eventos";
+                    if (EhMarco(d.ErrosDeRecepcao))
+                    {
+                        erroDeRecepcao = $"sem eventos com retorno {resultado} — erro de recepção nº {d.ErrosDeRecepcao}, " +
+                            "sem reconectar até HIL-EVT-01";
+                    }
                 }
 
-                return "sem eventos";
+                // Prazo do giro (C1, docs/36): só depois de uma espera que voltou vazia. Um giro
+                // ou uma origem 5 que já esteja na fila da DLL sai antes, por mais que a volta
+                // tenha demorado; o prazo nunca corta o que a catraca já mandou.
+                if (d.Maquina.Current is DeviceState.MonitoraGiroCatraca && PrazoEstourado(d, agora) is { } prazo)
+                {
+                    var desistiu = EsgotarPrazo(d, agora, prazo);
+                    return erroDeRecepcao is null ? desistiu : $"{desistiu} · {erroDeRecepcao}";
+                }
+
+                Disparar(d, DeviceTrigger.SemEventos, agora);
+                return erroDeRecepcao ?? "sem eventos";
+            }
 
             case AdapterStatus.FalhaDeDependencia:
                 // Retorno 8 não é problema de rede: é DLL, .NET Framework ou
@@ -906,8 +942,9 @@ public sealed class DevicePump
 
             if (estado is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
             {
-                // A_CONFIRMAR: a saída de MonitoraGiro depende da origem 5 (fim do tempo de
-                // acionamento). Se a catraca não mandar, o comando não fica aberto para sempre.
+                // A saída de MonitoraGiro é a origem 5 (fim do tempo de acionamento) ou, se ela
+                // não vier, o prazo do estado (C1, docs/36: tempo do relé 1 + 3 s, no máximo
+                // 53 s). Este limite é a última defesa, para o comando não ficar aberto para sempre.
                 if (agora - emCurso.IniciadoEm <= LimiteDaLiberacaoManual)
                 {
                     return null;
@@ -926,6 +963,8 @@ public sealed class DevicePump
             {
                 { Liberou: false } => (SituacaoDoComando.Falhou, "a catraca não recebeu a liberação"),
                 { Girou: true } => (SituacaoDoComando.Concluido, $"{liberada}; girou"),
+                { GiroNaoConfirmadoNoPrazo: { } prazo } =>
+                    (SituacaoDoComando.Concluido, $"{liberada}; {GiroNaoConfirmado(prazo)}"),
                 _ => (SituacaoDoComando.Concluido, $"{liberada}; ninguém girou"),
             };
             Concluir(emCurso.Comando, situacao, resultado);
@@ -1039,6 +1078,82 @@ public sealed class DevicePump
 
         return $"relógio divergente ({descricao}) — acerte pelo painel";
     }
+
+    /// <summary>
+    /// O prazo do estado atual, quando já estourou; nulo quando não estourou, quando o estado não
+    /// tem prazo ou quando o laço não o aplica.
+    /// </summary>
+    /// <remarks>
+    /// Medido desde a entrada no estado (<see cref="DeviceStateMachine.EstadoAtualDesde"/>), pelo
+    /// relógio injetado. O prazo de <see cref="DeviceState.ValidarAcesso"/> (150 ms) nunca é
+    /// aplicado aqui: é o orçamento da decisão (medido em <see cref="Decision"/>), não um prazo
+    /// de passo, e o destino da tabela para ele é <see cref="DeviceState.LiberarCatraca"/> —
+    /// aplicá-lo liberaria o giro sem decisão sempre que a vez da catraca no laço demorasse mais
+    /// de 150 ms, ou com o motor de decisão ausente. Falha de base nega, nunca libera (ADR-0013).
+    /// </remarks>
+    private static TimeSpan? PrazoEstourado(DeviceSlot d, DateTimeOffset agora)
+    {
+        var estado = d.Maquina.Current;
+        if (estado is DeviceState.ValidarAcesso
+            || d.Maquina.EstadoAtualDesde is not { } desde
+            || DeviceStateMachine.PrazoEfetivo(estado, d.Configuracao) is not { } prazo)
+        {
+            return null;
+        }
+
+        return agora - desde >= prazo ? prazo : null;
+    }
+
+    /// <summary>
+    /// O prazo dos estados de uma chamada só (conexão, identidade, configuração, rearme,
+    /// mensagem, liberação), quando o passo não pôde fazer a chamada.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Nesses estados o próprio passo resolve o estado: a chamada dá certo e a máquina segue, ou
+    /// falha e vai para a reconexão. O prazo só tem o que fazer quando o passo é impedido de
+    /// chamar — espera de backoff ou disjuntor aberto — e o estado ficaria parado. Aí o caminho
+    /// é o da tabela: reconectar, degradar ou quarentenar.
+    /// </para>
+    /// <para>
+    /// A espera pela vez no laço <b>não</b> conta contra eles. Com até 20 catracas numa thread
+    /// e chamadas que bloqueiam segundos (conexão a uma catraca morta, envio da configuração),
+    /// uma volta passa de 5 s numa reconexão em massa: aplicar o prazo no começo do passo
+    /// mandaria a catraca sadia, que acabou de conectar, para a quarentena (prazo de
+    /// <see cref="DeviceState.LendoIdentidade"/>) ou prenderia as catracas num ciclo de
+    /// configurar e reconectar sem nunca chegar a enviar.
+    /// </para>
+    /// </remarks>
+    private string? PrazoComOPassoImpedido(DeviceSlot d, DateTimeOffset agora, string motivo) =>
+        PrazoEstourado(d, agora) is { } prazo ? $"{EsgotarPrazo(d, agora, prazo)} ({motivo})" : null;
+
+    /// <summary>Dispara o tempo esgotado do estado atual, com o efeito próprio de cada um.</summary>
+    private string EsgotarPrazo(DeviceSlot d, DateTimeOffset agora, TimeSpan prazo)
+    {
+        var estado = d.Maquina.Current;
+        Disparar(d, DeviceTrigger.TempoEsgotado, agora);
+
+        if (estado is not DeviceState.MonitoraGiroCatraca)
+        {
+            return $"prazo de {Segundos(prazo)} s em {estado} esgotado — {d.Maquina.Current}";
+        }
+
+        // Liberou e não veio origem 5 nem 6: o mesmo desfecho da origem 5, sem inventar giro. A
+        // tentativa pendente termina sem giro e o leitor é rearmado no próximo passo
+        // (MonitoraGiroCatraca → ConfigurarEntradasOnline → EnviarMsgPadrao → Polling).
+        _aoDesistirDoGiro?.Invoke(d.Maquina.DeviceId);
+        if (d.EmCurso is { Liberou: true, Girou: false } manual)
+        {
+            manual.GiroNaoConfirmadoNoPrazo = prazo;
+        }
+
+        return $"{GiroNaoConfirmado(prazo)}, sem origem 5 nem 6 — rearmando o leitor";
+    }
+
+    private static string GiroNaoConfirmado(TimeSpan prazo) => $"giro não confirmado: prazo de {Segundos(prazo)} s";
+
+    private static string Segundos(TimeSpan prazo) =>
+        prazo.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
 
     private static void Disparar(DeviceSlot d, DeviceTrigger gatilho, DateTimeOffset agora) =>
         d.Maquina.TryFire(gatilho, agora, $"pump-{d.Inner}-{agora.UtcTicks}", out _);

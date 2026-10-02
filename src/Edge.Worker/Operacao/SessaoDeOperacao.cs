@@ -225,7 +225,8 @@ public sealed class SessaoDeOperacao
             aoConcluirComando: Concluir,
             antesDaLiberacaoManual: decisor.DescartarPendente,
             sequenciaOficial: sequenciaOficial,
-            gravadorDeBilhetes: gravadorDeBilhetes);
+            gravadorDeBilhetes: gravadorDeBilhetes,
+            aoDesistirDoGiro: decisor.DescartarPendente);
 
         _laco = new DeviceGroupLoop(
             adapter,
