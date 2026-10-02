@@ -184,6 +184,8 @@
       <DataTemplate DataType="{x:Type vm:ParametrizacaoViewModel}"><telas:Parametrizacao /></DataTemplate>
       <!-- Painel, não tela: o mapa de giro dentro do gêmeo e da aba Giro da Parametrização (D9). -->
       <DataTemplate DataType="{x:Type vm:MapaDeGiroViewModel}"><telas:MapaDeGiro /></DataTemplate>
+      <!-- Painel, não tela: a configuração da catraca inteira, ao lado do desenho do gêmeo (docs/33 §9). -->
+      <DataTemplate DataType="{x:Type vm:CentralDaCatracaViewModel}"><telas:CentralDaCatraca /></DataTemplate>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

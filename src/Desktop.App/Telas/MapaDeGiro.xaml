@@ -29,11 +29,14 @@
     <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap"
                Text="Entrada e saída, na catraca, são só o nome do lado em que o braço gira. Aqui você escolhe, para cada leitor, qual lado liberar e se a passagem conta como entrada ou saída." />
 
-    <TextBlock Margin="0,10,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado)" />
-    <TextBox Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador do giro" />
+    <!-- No gêmeo, o nome, o "o que muda", salvar e aplicar são os da catraca inteira (ControlesProprios falso). -->
+    <StackPanel Visibility="{Binding ControlesProprios, Converter={StaticResource BoolParaVisibilidade}}">
+      <TextBlock Margin="0,10,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado)" />
+      <TextBox Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador do giro" />
+    </StackPanel>
 
     <!-- Uma origem por bloco. A urna clicada no gêmeo chega com o leitor 2 em destaque. -->
-    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding Linhas}" Focusable="False" AutomationProperties.Name="Origens do giro">
+    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding LinhasVisiveis}" Focusable="False" AutomationProperties.Name="Origens do giro">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
           <Border x:Name="Bloco" Margin="0,0,0,8" Padding="10,8" BorderThickness="1" BorderBrush="{DynamicResource Rayzer.Border.Subtle}"
@@ -95,7 +98,8 @@
       </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <!-- Antes de salvar: exatamente o que muda. -->
+    <!-- Antes de salvar: exatamente o que muda. Só na aba Giro da Parametrização. -->
+    <StackPanel Visibility="{Binding ControlesProprios, Converter={StaticResource BoolParaVisibilidade}}">
     <rz:RayzerSectionHeader Titulo="O que muda (atual → novo)" />
     <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding ResumoDasMudancas}" />
     <ItemsControl ItemsSource="{Binding Mudancas}" AutomationProperties.Name="O que muda no giro">
@@ -141,5 +145,6 @@
         </WrapPanel>
       </StackPanel>
     </Border>
+    </StackPanel>
   </StackPanel>
 </UserControl>

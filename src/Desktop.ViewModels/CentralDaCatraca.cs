@@ -147,6 +147,9 @@ public sealed class CentralDaCatracaViewModel : TelaBase
         }
     }
 
+    /// <summary>Nenhum painel de peça aberto: a tela diz como abrir um.</summary>
+    public bool SemPainel => !PainelAberto;
+
     /// <summary>A peça do painel; nula antes do primeiro clique.</summary>
     public PecaDaCatraca? Peca { get => _peca; private set => Definir(ref _peca, value); }
 
@@ -243,6 +246,14 @@ public sealed class CentralDaCatracaViewModel : TelaBase
         0 => "Nenhuma alteração. Clique numa peça e mude um parâmetro para ver aqui o que muda.",
         1 => "1 alteração não salva.",
         var n => $"{n} alterações não salvas.",
+    };
+
+    /// <summary>"3 alterações não salvas", para a faixa do desenho; vazio quando não há.</summary>
+    public string AlteracoesPendentes => Mudancas.Count switch
+    {
+        0 => string.Empty,
+        1 => "1 alteração não salva",
+        var n => $"{n} alterações não salvas",
     };
 
     /// <summary>O que o serviço recusou na última gravação ou no último pedido.</summary>
@@ -510,6 +521,7 @@ public sealed class CentralDaCatracaViewModel : TelaBase
             .. Giro.Mudancas.Select(m => m with { Campo = $"Giro · {m.Campo}" }),
         ];
         Avisar(nameof(ResumoDasMudancas));
+        Avisar(nameof(AlteracoesPendentes));
         Avisar(nameof(ModoTecnico));
         Avisar(nameof(Catraca));
         Avisar(nameof(TextoDaConfirmacao));
@@ -556,6 +568,7 @@ public sealed class CentralDaCatracaViewModel : TelaBase
 
     private void AvisarPainel()
     {
+        Avisar(nameof(SemPainel));
         Avisar(nameof(Ficha));
         Avisar(nameof(Painel));
         Avisar(nameof(TituloDoPainel));

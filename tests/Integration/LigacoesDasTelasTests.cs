@@ -35,7 +35,7 @@ public sealed partial class LigacoesDasTelasTests
         [
             typeof(GemeoDigitalViewModel), typeof(LinhaDeCatraca), typeof(Desktop.ViewModels.GemeoDigital.FichaDaPeca),
             typeof(Desktop.ViewModels.GemeoDigital.FuncaoDaPeca), typeof(Desktop.ViewModels.GemeoDigital.RoteiroDeDemonstracao),
-            typeof(Desktop.ViewModels.GemeoDigital.LinhaDaNarracao), typeof(ParDeTexto),
+            typeof(Desktop.ViewModels.GemeoDigital.LinhaDaNarracao), typeof(ParDeTexto), typeof(Desktop.ViewModels.GemeoDigital.MarcaDaPeca),
         ],
         ["Telas/Configuracoes.xaml"] = [typeof(ConfiguracoesViewModel)],
         ["Telas/Parametrizacao.xaml"] =
@@ -44,6 +44,11 @@ public sealed partial class LigacoesDasTelasTests
             typeof(LinhaDeMudanca), typeof(LinhaDeComando),
         ],
         ["Telas/MapaDeGiro.xaml"] = [typeof(MapaDeGiroViewModel), typeof(LinhaDoMapaDeGiro), typeof(OpcaoDoGiro), typeof(LinhaDeMudanca)],
+        ["Telas/CampoDaCatraca.xaml"] = [typeof(CampoDaParametrizacao), typeof(OpcaoDoCampo)],
+        ["Telas/CentralDaCatraca.xaml"] =
+        [
+            typeof(CentralDaCatracaViewModel), typeof(LinhaDeMudanca), typeof(Desktop.ViewModels.GemeoDigital.FuncaoDaPeca),
+        ],
         ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker)],
         ["Telas/Simulador.xaml"] = [typeof(SimuladorViewModel), typeof(LinhaDeAcesso), typeof(ParDeTexto)],
         ["JanelaPrincipal.xaml"] = [typeof(JanelaViewModel), typeof(PainelAoVivoViewModel), typeof(EstadoDoPainel), typeof(ITela)],
