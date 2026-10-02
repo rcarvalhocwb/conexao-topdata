@@ -68,7 +68,7 @@ public sealed class CarregaDaInteligenciaTests
         }
 
         var latencias = new List<double>();
-        var decisorMonitor = (Func<RawAccess, Decision>)(rawAccess =>
+        var decisorMonitor = (Func<DeviceEvent, Decision>)(deviceEvent =>
         {
             var inicio = Stopwatch.GetTimestamp();
             var decisao = new Decision(
@@ -159,10 +159,11 @@ public sealed class CarregaDaInteligenciaTests
         }
 
         var decisoes = new List<(int DeviceId, bool Liberou)>();
-        var decisor = (Func<RawAccess, Decision>)(rawAccess =>
+        var decisor = (Func<DeviceEvent, Decision>)(deviceEvent =>
         {
-            var resultado = !rawAccess.IsEmpty; // Leitura não vazia = liberado
-            decisoes.Add((rawAccess.DeviceId, resultado));
+            // DeviceEvent pode ser leitura ou giro
+            var resultado = !deviceEvent.IsEmpty; // Leitura não vazia = liberado
+            decisoes.Add((deviceEvent.DeviceId, resultado));
             return new Decision(
                 resultado ? DecisionOutcome.Allowed : DecisionOutcome.Denied,
                 resultado ? ReasonCodes.Autorizado : ReasonCodes.Desconhecido,

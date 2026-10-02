@@ -71,7 +71,7 @@ public sealed class TeleconvergenciadoCaosTests
             simulador,
             Enumerable.Range(1, Catracas).Select(i => new DeviceSlot(i, ConfiguracaoPadrao(), () => relogio)),
             cao,
-            new DevicePump(simulador, () => relogio, decidir: rawAccess =>
+            new DevicePump(simulador, () => relogio, decidir: deviceEvent =>
             {
                 // Simular caos: latência aleatória (até 200 ms)
                 var caos = new Random(42);
@@ -80,8 +80,8 @@ public sealed class TeleconvergenciadoCaosTests
                     Thread.Sleep(caos.Next(50, 200));
                 }
 
-                var liberado = !rawAccess.IsEmpty;
-                sequenciaNativa.Add((rawAccess.DeviceId, liberado));
+                var liberado = !deviceEvent.IsEmpty;
+                sequenciaNativa.Add((deviceEvent.DeviceId, liberado));
 
                 return new Decision(
                     liberado ? DecisionOutcome.Allowed : DecisionOutcome.Denied,
