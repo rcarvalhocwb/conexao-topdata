@@ -82,10 +82,6 @@ service EdgeControl {
   rpc ListarAlertas(ListarAlertasRequest) returns (ListarAlertasResponse);
   rpc MarcarAlertaComoCiente(MarcarAlertaComoCienteRequest) returns (MarcarAlertaComoCienteResponse);
 
-  // Sugestões de parametrização (Etapa I.9 do docs/36, IN-07): recomendações baseadas
-  // em histórico observado (ex.: tempo do relé × janela real medida).
-  rpc ObterSugestoes(ObterSugestoesRequest) returns (SugestoesDaCatraca);
-
   // Relatório pós-evento (Etapa I.10 do docs/36, IN-09 e IN-08): achados determinísticos
   // e replay com linha do tempo. Só leitura; retorna agregados sem código de ingresso.
   rpc ObterRelatorioPosEvento(ObterRelatorioPosEventoRequest) returns (RelatorioPosEvento);
@@ -847,11 +843,11 @@ enum NivelDeSinal {
 
 enum NivelDeSaude {
   NIVEL_SAUDE_NAO_ESPECIFICADO = 0;
-  SAUDAVEL = 1;
-  COM_ATENCAO = 2;
-  COM_ACAO_NECESSARIA = 3;
-  SEM_DADOS = 4;
-  APRENDENDO = 5;
+  SAUDE_SAUDAVEL = 1;
+  SAUDE_COM_ATENCAO = 2;
+  SAUDE_COM_ACAO_NECESSARIA = 3;
+  SAUDE_SEM_DADOS = 4;
+  SAUDE_APRENDENDO = 5;
 }
 
 // Etapa I.10 (docs/36, IN-09 e IN-08): relatório pós-evento com achados determinísticos.
@@ -955,8 +951,8 @@ enum TipoDeAlerta {
 
 enum NivelDeAlerta {
   NIVEL_ALERTA_NAO_ESPECIFICADO = 0;
-  ATENCAO = 1;                                // operador precisa verificar
-  ACAO_NECESSARIA = 2;                        // operador deve agir (ex.: esvazie urna)
+  ALERTA_ATENCAO = 1;                         // operador precisa verificar
+  ALERTA_ACAO_NECESSARIA = 2;                 // operador deve agir (ex.: esvazie urna)
 }
 
 message MarcarAlertaComoCienteRequest {
