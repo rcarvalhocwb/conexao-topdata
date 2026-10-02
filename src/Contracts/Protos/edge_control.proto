@@ -84,7 +84,7 @@ service EdgeControl {
 
   // Sugestões de parametrização (Etapa I.9 do docs/36, IN-07): recomendações baseadas
   // em histórico observado (ex.: tempo do relé × janela real medida).
-  rpc ObterSugestoes(ObterSugestoesRequest) returns (ObterSugestoesResponse);
+  rpc ObterSugestoes(ObterSugestoesRequest) returns (SugestoesDaCatraca);
 
   // Relatório pós-evento (Etapa I.10 do docs/36, IN-09 e IN-08): achados determinísticos
   // e replay com linha do tempo. Só leitura; retorna agregados sem código de ingresso.

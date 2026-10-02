@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace Access.Inteligencia;
@@ -11,19 +10,31 @@ namespace Access.Inteligencia;
 /// </summary>
 public class GerenciadorDaSaude
 {
-    private readonly Dictionary<int, SaudeDaCatraca> _saude = new();
+    private readonly Dictionary<int, CachedSaude> _saude = new();
     private readonly ReaderWriterLockSlim _lock = new();
     private DateTimeOffset _ultimaAtualizacao = DateTimeOffset.UtcNow;
     private string _versaoParametros = "1.0";
 
     /// <summary>
+    /// Registro em cache de saúde de uma catraca.
+    /// </summary>
+    public record CachedSaude(
+        int Inner,
+        NivelDeSinal NivelGeral,
+        int Indice0A100,
+        IReadOnlyList<SinalDeSaude> Sinais,
+        string Recomendacao,
+        DateTimeOffset CalculadoEm);
+
+    /// <summary>
     /// Atualiza a saúde de uma catraca com seus sinais.
     /// </summary>
-    public void AtualizarSaude(int inner, SaudeDaCatraca saude)
+    public void AtualizarSaude(int inner, NivelDeSinal nivel, int indice, IReadOnlyList<SinalDeSaude> sinais, string recomendacao)
     {
-        ArgumentNullException.ThrowIfNull(saude);
         if (inner < 1 || inner > 99)
             throw new ArgumentException($"Inner deve estar entre 1 e 99, recebido: {inner}", nameof(inner));
+
+        var saude = new CachedSaude(inner, nivel, indice, sinais, recomendacao, DateTimeOffset.UtcNow);
 
         _lock.EnterWriteLock();
         try
@@ -40,12 +51,12 @@ public class GerenciadorDaSaude
     /// <summary>
     /// Retorna a saúde de todas as catracas conhecidas.
     /// </summary>
-    public IReadOnlyDictionary<int, SaudeDaCatraca> ObterTodasAsSaudes()
+    public IReadOnlyDictionary<int, CachedSaude> ObterTodasAsSaudes()
     {
         _lock.EnterReadLock();
         try
         {
-            return new Dictionary<int, SaudeDaCatraca>(_saude);
+            return new Dictionary<int, CachedSaude>(_saude);
         }
         finally
         {
@@ -56,7 +67,7 @@ public class GerenciadorDaSaude
     /// <summary>
     /// Retorna a saúde de uma catraca específica, ou null se não há dados.
     /// </summary>
-    public SaudeDaCatraca? ObterSaude(int inner)
+    public CachedSaude? ObterSaude(int inner)
     {
         _lock.EnterReadLock();
         try
@@ -81,16 +92,4 @@ public class GerenciadorDaSaude
 
     public string VersaoParametros => _versaoParametros;
     public DateTimeOffset UltimaAtualizacao => _ultimaAtualizacao;
-}
-
-/// <summary>
-/// Dados de saúde de uma catraca que será enviado via RPC.
-/// </summary>
-public class SaudeDaCatraca
-{
-    public int Inner { get; set; }
-    public NivelDeSinal NivelGeral { get; set; }
-    public int Indice0A100 { get; set; }
-    public List<SinalDeSaude> Sinais { get; set; } = new();
-    public string Recomendacao { get; set; } = string.Empty;
 }
