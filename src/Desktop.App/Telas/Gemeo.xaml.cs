@@ -167,10 +167,29 @@ public partial class Gemeo : UserControl
                 break;
             case nameof(GemeoDigitalViewModel.VersaoDoFoco) when vm.PecaSelecionada is { } ficha:
                 Focar(ficha.Peca);
+
+                // O painel da peça fica logo abaixo da escolha da catraca: a coluna volta ao topo
+                // para ele aparecer ao lado do desenho, mesmo que o operador tenha rolado até os cenários.
+                ColunaDireita.ScrollToTop();
                 break;
             default:
                 break;
         }
+    }
+
+    /// <summary>
+    /// Rola a página até o cartão "Configuração desta catraca" aparecer inteiro, com a parte de
+    /// baixo do desenho acima dele. Para a captura do CI (alterações pendentes).
+    /// </summary>
+    internal void MostrarConfiguracao()
+    {
+        if (Pagina.Content is not Visual conteudo)
+        {
+            return;
+        }
+
+        var topo = CartaoDaConfiguracao.TransformToAncestor(conteudo).Transform(new Point(0, 0)).Y;
+        Pagina.ScrollToVerticalOffset(Math.Max(0, topo + CartaoDaConfiguracao.ActualHeight - Pagina.ViewportHeight + 12));
     }
 
     // ------------------------------------------------------------------ montagem

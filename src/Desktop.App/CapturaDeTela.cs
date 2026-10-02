@@ -247,10 +247,44 @@ internal static class CapturaDeTela
 
             await EsperarAsync(moldura, TimeSpan.FromSeconds(1.8)).ConfigureAwait(true);
             gravados.Add(FotografarJanela(fonte, Path.Combine(pasta, nome + "-giro.png")));
+
+            // 5. Gêmeo como central da configuração (docs/33 §9): o painel do leitor da frente
+            //    aberto ao lado do desenho, com o tipo de leitor, a origem e o selo do 5 × 8.
+            await gemeo.PararRoteiro.ExecutarAsync().ConfigureAwait(true);
+            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.LeitorQr);
+            await gemeo.MudarVista.ExecutarAsync("Painel").ConfigureAwait(true);
+            await EsperarAsync(moldura, TimeSpan.FromSeconds(2)).ConfigureAwait(true);
+            gravados.Add(FotografarJanela(fonte, Path.Combine(pasta, nome + "-config-peca.png")));
+
+            // 6. Alterações pendentes em duas peças (display e urna), nada salvo: as marcações no
+            //    desenho e o único "o que muda" embaixo dele, com Salvar e Aplicar.
+            gemeo.Central.Operador = "Operador sintetico";
+            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Display);
+            foreach (var campo in gemeo.Central.CamposDaPeca)
+            {
+                campo.Herda = false;
+                campo.Valor = "Entrada pelo portao 2";
+            }
+
+            gemeo.Escolher(Desktop.ViewModels.GemeoDigital.PecaDaCatraca.Urna);
+            foreach (var campo in gemeo.Central.CamposDaPeca)
+            {
+                campo.Herda = false;
+                campo.Escolhida = campo.Opcoes.FirstOrDefault(o => o.Valor == "0") ?? campo.Escolhida;
+            }
+
+            await gemeo.MudarVista.ExecutarAsync("Inicial").ConfigureAwait(true);
+            await EsperarAsync(moldura, TimeSpan.FromSeconds(1.5)).ConfigureAwait(true);
+            Descendente<Telas.Gemeo>(moldura)?.MostrarConfiguracao();
+            await EsperarAsync(moldura, TimeSpan.FromSeconds(1.5)).ConfigureAwait(true);
+            gravados.Add(FotografarJanela(fonte, Path.Combine(pasta, nome + "-config-pendente.png")));
         }
         finally
         {
             gemeo.PecasSeparadas = false;
+
+            // Nada da captura fica salvo: o rascunho volta ao que está gravado.
+            await gemeo.Central.Desfazer.ExecutarAsync().ConfigureAwait(true);
             await gemeo.FecharPainelDoGiro.ExecutarAsync().ConfigureAwait(true);
 
             // Sem a raiz, a tela recebe Unloaded e desliga o laço de animação antes de a janela sumir.
@@ -365,6 +399,28 @@ internal static class CapturaDeTela
         }
 
         return IntPtr.Zero;
+    }
+
+    /// <summary>O primeiro elemento de um tipo na árvore visual, em largura.</summary>
+    private static T? Descendente<T>(DependencyObject raiz)
+        where T : DependencyObject
+    {
+        var fila = new Queue<DependencyObject>([raiz]);
+        while (fila.Count > 0)
+        {
+            var atual = fila.Dequeue();
+            if (atual is T achado)
+            {
+                return achado;
+            }
+
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(atual); i++)
+            {
+                fila.Enqueue(VisualTreeHelper.GetChild(atual, i));
+            }
+        }
+
+        return null;
     }
 
     private static async Task EsperarAsync(FrameworkElement tela, TimeSpan quanto)

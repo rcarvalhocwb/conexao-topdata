@@ -3,16 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              xmlns:vm="clr-namespace:Desktop.ViewModels;assembly=Desktop.ViewModels"
-             AutomationProperties.Name="Configuração desta catraca">
+             AutomationProperties.Name="Configuração da peça">
   <!--
-    A configuração da catraca inteira, no gêmeo (docs/33 §9). Dois cartões, numa coluna de 360 px
-    ao lado do desenho, em 1366 × 768 (a página rola na vertical):
-      1. A catraca inteira: a situação na catraca (Aplicada / Salva, não aplicada / Aplicando…),
-         o aviso de que é configuração real, o nome de quem muda, "o que muda (atual → novo)" de
-         todas as peças, um Salvar, um Desfazer e um "Aplicar nesta catraca…" com confirmação.
-      2. A peça clicada: o que ela faz (a ficha de sempre) e os parâmetros dela, com origem e
-         situação; o que aguarda confirmação aparece desabilitado, com o selo e o motivo. Peça sem
-         parâmetro diz "nada a configurar nesta peça".
+    O painel da peça clicada, na coluna de 360 px ao lado do desenho do gêmeo (docs/33 §9), que
+    rola sozinha em 1366 × 768: o que a peça faz (a ficha de sempre) e os parâmetros dela, com
+    origem e situação; o que aguarda confirmação aparece desabilitado, com o selo e o motivo.
+    Peça sem parâmetro diz "nada a configurar nesta peça". O "o que muda", o Salvar e o Aplicar
+    da catraca inteira ficam embaixo do desenho (Gemeo.xaml), visíveis de qualquer peça.
     Os campos, as regras e os pedidos são os da Parametrização e da Gerenciar catraca.
   -->
   <UserControl.Resources>
@@ -24,84 +21,7 @@
   </UserControl.Resources>
 
   <StackPanel>
-    <!-- 1. A catraca inteira. -->
-    <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
-      <StackPanel>
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" MinWidth="0" Padding="10,0" Content="Ver em lista"
-                  Command="{Binding DataContext.Parametrizar, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding Catraca}" AutomationProperties.Name="Ver esta configuração em lista (Parametrização)"
-                  ToolTip="A mesma configuração, em abas (Parametrização)." />
-          <rz:RayzerSectionHeader Titulo="Configuração desta catraca" />
-        </DockPanel>
-        <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" TextWrapping="Wrap"
-                   Text="{x:Static vm:CentralDaCatracaViewModel.AvisoDaConfiguracao}" />
-
-        <rz:RayzerStatusPill Margin="0,8,0,0" HorizontalAlignment="Left" Tom="{Binding SinalDaSituacao, Converter={StaticResource SinalParaTom}}"
-                             Texto="{Binding SituacaoNaCatraca}" AutomationProperties.Name="Situação da configuração na catraca" />
-        <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding DetalheDaSituacao}" />
-
-        <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}" Margin="0,8,0,0"
-                        Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
-        <ItemsControl ItemsSource="{Binding AvisosDoSalvo}" AutomationProperties.Name="Avisos do que está salvo">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <rz:RayzerAlert Margin="0,8,0,0" Tom="Atencao" Titulo="{Binding}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <TextBlock Margin="0,10,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado)" />
-        <TextBox Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador" />
-        <CheckBox Margin="0,8,0,0" IsChecked="{Binding ModoTecnico}" Content="Modo técnico"
-                  ToolTip="Mostra todos os parâmetros, com os nomes técnicos. É uma conveniência, não uma proteção: o que não está confirmado continua bloqueado." />
-
-        <!-- Um só "o que muda", de todas as peças. -->
-        <TextBlock Margin="0,12,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="O que muda (atual → novo)" />
-        <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding ResumoDasMudancas}" />
-        <ItemsControl ItemsSource="{Binding Mudancas}" AutomationProperties.Name="O que muda na catraca">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Margin="0,8,0,0">
-                <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Campo}" />
-                <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap">
-                  <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{Binding Atual, Mode=OneWay}" /><Run Text=" → " /><Run FontWeight="SemiBold" Text="{Binding Novo, Mode=OneWay}" />
-                </TextBlock>
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <ItemsControl ItemsSource="{Binding Problemas}" AutomationProperties.Name="Problemas">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <rz:RayzerAlert Margin="0,8,0,0" Tom="Perigo" Titulo="{Binding}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <WrapPanel Margin="0,12,0,0">
-          <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,8,6" Content="Salvar" Command="{Binding Salvar}"
-                  ToolTip="Grava as alterações de todas as peças. A catraca só passa a usar depois de aplicar." />
-          <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,6" Content="Desfazer" Command="{Binding Desfazer}"
-                  ToolTip="Volta todas as peças ao que está salvo para esta catraca." />
-          <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,0,6" Content="Aplicar nesta catraca…" Command="{Binding PedirAplicacao}" />
-        </WrapPanel>
-        <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding MotivoParaNaoAplicar}"
-                   Visibility="{Binding MotivoParaNaoAplicar, Converter={StaticResource VazioSome}}" />
-        <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}" BorderThickness="1"
-                BorderBrush="{DynamicResource Rayzer.Warning}" Background="{DynamicResource Rayzer.Surface}"
-                Visibility="{Binding ConfirmandoAplicacao, Converter={StaticResource BoolParaVisibilidade}}">
-          <StackPanel>
-            <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding TextoDaConfirmacao}" />
-            <WrapPanel Margin="0,10,0,0">
-              <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,8,0" Content="Aplicar agora" Command="{Binding ConfirmarAplicacao}" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Cancelar" Command="{Binding CancelarAplicacao}" />
-            </WrapPanel>
-          </StackPanel>
-        </Border>
-      </StackPanel>
-    </Border>
-
-    <!-- 2. A peça clicada. -->
+    <!-- A peça clicada. -->
     <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
       <StackPanel>
         <!-- Nenhuma peça aberta: como chegar lá. -->

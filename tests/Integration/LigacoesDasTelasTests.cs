@@ -36,6 +36,7 @@ public sealed partial class LigacoesDasTelasTests
             typeof(GemeoDigitalViewModel), typeof(LinhaDeCatraca), typeof(Desktop.ViewModels.GemeoDigital.FichaDaPeca),
             typeof(Desktop.ViewModels.GemeoDigital.FuncaoDaPeca), typeof(Desktop.ViewModels.GemeoDigital.RoteiroDeDemonstracao),
             typeof(Desktop.ViewModels.GemeoDigital.LinhaDaNarracao), typeof(ParDeTexto), typeof(Desktop.ViewModels.GemeoDigital.MarcaDaPeca),
+            typeof(LinhaDeMudanca),
         ],
         ["Telas/Configuracoes.xaml"] = [typeof(ConfiguracoesViewModel)],
         ["Telas/Parametrizacao.xaml"] =
