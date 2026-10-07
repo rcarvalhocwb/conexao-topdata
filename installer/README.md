@@ -118,11 +118,44 @@ Execute como administrador. Ele:
 
 | Item | Por que não vem | Como resolver |
 |---|---|---|
-| SDK da Topdata (`EasyInner.dll`) | É da Topdata, e este repositório é público | Instale o SDK Inner Acesso, **ou** no assistente clique em **Localizar EasyInner.dll…** e escolha o arquivo (pasta do SDK, pendrive). Ele recusa a DLL de 64 bits |
+| SDK da Topdata (`EasyInner.dll`) | É da Topdata, e **este repositório é público** — o SDK proprietário nunca é versionado aqui | **No instalador de produção** o SDK já vem embarcado (ver abaixo). **No instalador de teste** (CI público, sem SDK): instale o SDK Inner Acesso, **ou** no assistente clique em **Localizar EasyInner.dll…**. Ele recusa a DLL de 64 bits |
 | .NET Framework 3.5 | É recurso do Windows, não arquivo | O Setup **habilita sozinho** durante a instalação (DISM; pode precisar de internet). Se falhar, a instalação segue e o assistente tem o botão **Habilitar .NET Framework 3.5** |
 
 **Sem catraca física?** Marque **Modo simulação** no passo 2 do assistente: o SDK não é
 necessário e o painel ganha a tela **Simulador**. Ver [docs/23](../docs/23-modo-simulacao.md).
+
+### Instalador de produção com o SDK da Topdata embarcado
+
+Com autorização da Topdata, o instalador de produção sai com a `EasyInner.dll` (e as DLLs
+que ela usa) **embarcadas** ao lado do `Edge.Worker.X86.exe`. Assim o operador só instala e
+configura — nada de baixar ou registrar o SDK à parte; o assistente detecta a DLL sozinha.
+
+O SDK é proprietário e **nunca entra neste repositório público**. Ele chega ao build de uma
+destas duas formas:
+
+**A) Na bancada (uma máquina Windows com o SDK instalado):**
+
+```powershell
+# Aponte para a pasta do SDK Inner Acesso (onde está a EasyInner.dll)
+.\installer\publicar.ps1 -SdkDir "C:\Topdata\SDK Inner Acesso"
+```
+
+A `EasyInner.dll` é copiada para `artifacts\Edge.Worker.X86`, e o build do MSI a embarca.
+
+**B) No CI (o repositório segue público, o SDK fica num repositório privado):**
+
+1. Crie um repositório **privado** (ex.: `rcarvalhocwb/conexao-topdata-sdk`) com a pasta
+   `inner/` contendo a `EasyInner.dll` e as DLLs que ela usa.
+2. Em **Settings → Secrets and variables → Actions** deste repositório:
+   - **Secret** `TOPDATA_SDK_PAT`: um token com permissão de leitura no repositório privado.
+   - **Variable** `TOPDATA_SDK_REPO`: `owner/repo` do repositório privado.
+3. A partir daí, cada build do instalador no CI sai com o SDK embarcado; sem esses dois, o
+   CI segue gerando o instalador de teste (simulação), sem o SDK. O SDK nunca é commitado
+   aqui.
+
+Antes de liberar a uma catraca de verdade, falta só o ensaio de bancada **HIL-STACK-01**
+(a `EasyInner.dll` carrega num processo .NET 10 de 32 bits?) e a primeira conversa com o
+equipamento.
 
 ### Configurar — Assistente de configuração
 
@@ -198,16 +231,17 @@ Não use `ImageControl` como fundo: ele fica por cima dos botões.
 
 ## Antes de encostar em hardware
 
-Dois ensaios precisam ser feitos **antes** de conectar uma catraca de verdade:
+Antes de conectar uma catraca de verdade falta um ensaio:
 
-1. **`HIL-STACK-01`** — um processo .NET moderno compilado `win-x86` consegue carregar a
-   `EasyInner.dll`? A DLL exige .NET Framework 3.5, o que sugere assembly *mixed-mode*.
-   Se falhar, só o worker vira .NET Framework 4.8, isolado atrás do IPC
-   (ver `docs/12-decisao-de-stack.md`).
-2. **Obter o `EasyInner.cs`** do pacote de exemplos, que traz as assinaturas P/Invoke
-   reais. Elas **não foram deduzidas** de propósito — ver
-   `src/Topdata.EasyInner.Adapter/VinculacaoNativaPendente.cs` e
-   `vendor/topdata/README.md`.
+**`HIL-STACK-01`** — um processo .NET moderno compilado `win-x86` consegue carregar a
+`EasyInner.dll`? A DLL exige .NET Framework 3.5, o que sugere assembly *mixed-mode*.
+Se falhar, só o worker vira .NET Framework 4.8, isolado atrás do IPC
+(ver `docs/12-decisao-de-stack.md`).
+
+As assinaturas P/Invoke **já são reais** (escritas à mão em
+`src/Topdata.EasyInner.Interop/EasyInnerNative.cs` e geradas do SDK 6.0.2.0 em
+`EasyInnerGerada.cs`); o adapter real existe. O que resta é a DLL na máquina (embarcada no
+instalador de produção, acima) e o ensaio de carga acima.
 
 Enquanto isso, o worker roda contra o simulador e toda a lógica já é exercitada.
 
