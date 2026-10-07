@@ -165,10 +165,10 @@ public static class CatalogoDaFit4
                     new("Liberar um giro de entrada", SituacaoDaFuncao.Disponivel,
                         "Pelo ingresso válido, ou pela liberação manual com motivo."),
                     new("Confirmar a passagem pelo sensor de giro", SituacaoDaFuncao.Disponivel,
-                        "A passagem só é contada quando a catraca avisa o giro (origem 6). Liberado sem giro não conta."),
+                        "A passagem só é contada quando a catraca avisa o giro. Liberado sem giro não conta."),
                     new("Escolher o sentido do giro e como ele conta", SituacaoDaFuncao.Disponivel,
                         "Clique nos braços: para cada leitor e para a liberação manual, qual função libera o braço " +
-                        "(EI-041 a EI-044) e se o giro conta como entrada ou saída. É decisão do sistema (D9, docs/34 §9). " +
+                        "e se o giro conta como entrada ou saída. É decisão do sistema. " +
                         "O lado em que o braço gira nesta instalação se confere girando uma vez."),
                     new("Liberar nos dois sentidos", SituacaoDaFuncao.AguardandoConfirmacao,
                         "Permite carona; só para evacuação, e depende da decisão do dono do produto (D5)."),
@@ -219,9 +219,9 @@ public static class CatalogoDaFit4
                     new("Sentido do giro pela urna", SituacaoDaFuncao.Disponivel,
                         "No painel da urna, a linha do leitor 2 do giro: o lado em que o braço gira e se conta como entrada."),
                     new("Recolher o cartão", SituacaoDaFuncao.AguardandoConfirmacao,
-                        "A função do relé 2 não está documentada pela Topdata (docs/21, seção 8). A urna ainda não engole o cartão."),
+                        "A função do relé 2 não está documentada pela Topdata. A urna ainda não engole o cartão."),
                     new("Aviso de urna cheia", SituacaoDaFuncao.AguardandoConfirmacao,
-                        "A origem 20 é recebida e guardada, mas o aviso na tela ainda não foi ensaiado na bancada."),
+                        "O aviso de urna cheia é recebido e guardado, mas ainda não foi ensaiado na bancada."),
                 ],
                 $"{aqui}: leitor da urna e giro pela urna"),
             new FichaDaPeca(
@@ -255,7 +255,7 @@ public static class CatalogoDaFit4
                 "Existe na variante Facial da TopFit 4, sobre uma haste. Usa outro SDK (WebSocket), separado da EasyInner.",
                 [
                     new("Reconhecimento facial", SituacaoDaFuncao.ForaDoEscopo,
-                        "Fase 5, só com base legal definida (B9). Ver docs/13 e ADR-0011."),
+                        "Fase 5, só com base legal definida."),
                 ],
                 nenhuma),
             new FichaDaPeca(

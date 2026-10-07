@@ -208,13 +208,13 @@ public sealed class LinhaDoMapaDeGiro : Notificavel
               (Texto.Trim().Length > 0 ? $", \"{Texto.Trim()}\"" : string.Empty);
     }
 
-    /// <summary>Nome da função para o operador, com o número da matriz.</summary>
+    /// <summary>Nome da função de liberação, em linguagem de operador.</summary>
     public static string NomeDaFuncao(FuncaoDoGiro funcao) => funcao switch
     {
-        FuncaoDoGiro.Entrada => "Liberar entrada (EI-041)",
-        FuncaoDoGiro.Saida => "Liberar saída (EI-042)",
-        FuncaoDoGiro.EntradaInvertida => "Liberar entrada invertida (EI-043)",
-        FuncaoDoGiro.SaidaInvertida => "Liberar saída invertida (EI-044)",
+        FuncaoDoGiro.Entrada => "Liberar entrada",
+        FuncaoDoGiro.Saida => "Liberar saída",
+        FuncaoDoGiro.EntradaInvertida => "Liberar entrada invertida",
+        FuncaoDoGiro.SaidaInvertida => "Liberar saída invertida",
         _ => "Função desconhecida",
     };
 

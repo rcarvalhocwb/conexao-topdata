@@ -78,7 +78,7 @@
         <DockPanel Margin="16">
           <StackPanel DockPanel.Dock="Top">
             <TextBlock Style="{StaticResource Titulo}" Text="Quais catracas este computador atende?" />
-            <TextBlock Style="{StaticResource Descricao}" Text="O número é o do Inner configurado em cada catraca. O nome é o que aparece no painel. Em cada catraca, aponte o servidor para o IP deste computador e para a porta abaixo." />
+            <TextBlock Style="{StaticResource Descricao}" Text="O número é o da catraca (Inner), configurado em cada equipamento. O nome é o que aparece no painel. Em cada catraca, aponte o servidor para o IP deste computador e para a porta abaixo." />
             <CheckBox x:Name="CaixaSimulacao" Click="VerificarAmbiente" Margin="0,8,0,0"
                       Content="Modo simulação: catracas simuladas, sem catraca física (para treinar e testar)" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Porta (padrão 3570)" />
@@ -88,7 +88,7 @@
           <DataGrid x:Name="GradeDeCatracas" IsReadOnly="False" CanUserAddRows="True" CanUserDeleteRows="True"
                     AutomationProperties.Name="Catracas">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="NÚMERO DO INNER" Binding="{Binding Inner}" Width="170" />
+              <DataGridTextColumn Header="NÚMERO DA CATRACA (INNER)" Binding="{Binding Inner}" Width="260" />
               <DataGridTextColumn Header="NOME NO PAINEL" Binding="{Binding Nome}" Width="*" />
             </DataGrid.Columns>
           </DataGrid>
@@ -106,7 +106,7 @@
             <TextBox x:Name="CampoBase" AutomationProperties.Name="Endereço da nuvem" />
             <TextBlock Style="{StaticResource Rotulo}" Text="Identificador deste computador no painel" />
             <TextBox x:Name="CampoDispositivo" Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Identificador do computador" />
-            <TextBlock Style="{StaticResource Rotulo}" Text="Formato do número do cartão (confirmar na bancada — docs/21)" />
+            <TextBlock Style="{StaticResource Rotulo}" Text="Formato do número do cartão (confirmar na bancada)" />
             <ComboBox x:Name="CampoPerfil" Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Formato do cartão">
               <ComboBoxItem Content="raw" />
               <ComboBoxItem Content="mifare-catraca4" />

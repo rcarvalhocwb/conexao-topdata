@@ -158,7 +158,7 @@ public static class Roteiros
         "O aviso de urna cheia chega da catraca; o tratamento ainda não foi ensaiado.",
         [
             new(S(0), SinalDaCena.UrnaCheia(),
-                "A catraca avisa urna cheia (origem 20). O sistema guarda o evento.", PecaDaCatraca.Urna),
+                "A catraca avisa urna cheia. O sistema guarda o evento.", PecaDaCatraca.Urna),
             new(S(2.6), null,
                 "Como a urna ainda não recolhe cartão, o efeito na operação precisa ser confirmado na bancada.",
                 PecaDaCatraca.Urna),
