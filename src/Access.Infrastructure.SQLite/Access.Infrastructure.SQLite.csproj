@@ -12,7 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
     <ProjectReference Include="../Access.Application/Access.Application.csproj" />
-    <ProjectReference Include="../Access.Inteligencia/Access.Inteligencia.csproj" />
     <ProjectReference Include="../Sync.Core/Sync.Core.csproj" />
     <ProjectReference Include="../Sync.Ingestao/Sync.Ingestao.csproj" />
     <ProjectReference Include="../Edge.Worker/Edge.Worker.csproj" />
