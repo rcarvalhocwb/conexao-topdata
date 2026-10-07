@@ -158,7 +158,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
         AtualizarResumo(_cena.Quadro(_relogioDaCena()), forcar: true);
     }
 
-    public override string Titulo => "Gêmeo digital";
+    public override string Titulo => "Configuração da catraca";
 
     /// <summary>A planta da catraca desenhada.</summary>
     public EspecificacaoDaFit4 Especificacao { get; }

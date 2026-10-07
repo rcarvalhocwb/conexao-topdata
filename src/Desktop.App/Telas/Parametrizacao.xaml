@@ -27,10 +27,10 @@
                            Descricao="O que esta catraca usa de diferente do evento. Salvar grava; a catraca só passa a usar depois de &quot;Aplicar nesta catraca&quot;, que pede confirmação.">
         <StackPanel Orientation="Horizontal">
           <!-- O gêmeo é a porta principal da configuração (docs/33 §9); esta é a mesma, em lista. -->
-          <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Abrir no gê_meo"
+          <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Abrir a confi_guração"
                   Command="{Binding DataContext.AbrirNoGemeo, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding Catraca}" AutomationProperties.Name="Abrir esta catraca no gêmeo digital"
-                  ToolTip="A mesma configuração, peça por peça, no desenho 3D da catraca." />
+                  CommandParameter="{Binding Catraca}" AutomationProperties.Name="Abrir a configuração desta catraca"
+                  ToolTip="A mesma configuração, peça por peça, no desenho da catraca." />
           <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Voltar a _Gerenciar catraca"
                   Command="{Binding DataContext.Gerenciar, RelativeSource={RelativeSource AncestorType=Window}}"
                   CommandParameter="{Binding Catraca}" AutomationProperties.Name="Voltar a Gerenciar catraca" />

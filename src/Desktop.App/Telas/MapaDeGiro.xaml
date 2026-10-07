@@ -76,8 +76,8 @@
                                    Texto="{Binding SeloDaConferencia}" AutomationProperties.Name="Conferência do sentido" />
               <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding DetalheDaConferencia}" />
               <WrapPanel Margin="0,6,0,0">
-                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Ver no gêmeo"
-                        ToolTip="Anima o sentido no desenho. Nada vai para a catraca."
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Ver no desenho"
+                        ToolTip="Anima o sentido no desenho da catraca. Nada vai para a catraca."
                         Command="{Binding DataContext.PreVisualizar, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"
                         Visibility="{Binding DataContext.PreVisualizacaoDisponivel, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolParaVisibilidade}}" />
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,6,6" Content="Girou para o lado da seta"

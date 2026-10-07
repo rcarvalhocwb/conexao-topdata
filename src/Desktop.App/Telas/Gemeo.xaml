@@ -4,7 +4,7 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              xmlns:gd="clr-namespace:Desktop.ViewModels.GemeoDigital;assembly=Desktop.ViewModels"
              xmlns:vm="clr-namespace:Desktop.ViewModels;assembly=Desktop.ViewModels"
-             AutomationProperties.Name="Gêmeo digital da catraca">
+             AutomationProperties.Name="Configuração da catraca">
   <!--
     Gêmeo digital da TopFit 4 (docs/33). O desenho 3D é montado no código por trás, a partir
     da geometria da ViewModel; aqui ficam a moldura e os painéis. Tudo o que se faz com o
@@ -25,8 +25,8 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <rz:RayzerPageHeader Titulo="Gêmeo digital"
-                         Descricao="A TopFit 4 em 3D e a configuração dela. Clique numa peça para ver o que ela faz e mudar os parâmetros dela; salve e aplique a catraca inteira de uma vez. Os cenários da demonstração ficam só no desenho." />
+    <rz:RayzerPageHeader Titulo="Configuração da catraca"
+                         Descricao="O desenho da catraca e a configuração dela. Clique numa peça para ver o que ela faz e mudar os ajustes dela; salve e aplique a catraca inteira de uma vez. Os cenários da demonstração ficam só no desenho." />
 
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
@@ -53,7 +53,7 @@
           <Border Padding="14,10,14,4" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1">
             <WrapPanel>
               <rz:RayzerStatusPill Margin="0,0,10,6" Tom="{Binding SeloDoModoSinal, Converter={StaticResource SinalParaTom}}"
-                                   Texto="{Binding SeloDoModo}" AutomationProperties.Name="Modo do gêmeo digital" />
+                                   Texto="{Binding SeloDoModo}" AutomationProperties.Name="Modo da tela (ao vivo ou demonstração)" />
               <StackPanel Margin="0,0,10,6" Orientation="Horizontal">
                 <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Label}" Text="Configuração:" />
                 <rz:RayzerStatusPill Tom="{Binding Central.SinalDaSituacao, Converter={StaticResource SinalParaTom}}"
