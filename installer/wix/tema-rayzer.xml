@@ -32,6 +32,14 @@
       não desenha a arte (só desenha quando o fundo não foi apagado). Foi o fundo branco da 0.1.79.
     -->
     <Font Id="6" Height="-13" Weight="400" Foreground="EDE3DA">Segoe UI</Font>
+    <!--
+      7: igual à 4, mas COM fundo na cor da faixa (221008 = BGR de #0B1A33, COR_DA_FAIXA do
+      gerador do fundo). É para os rótulos que MUDAM na tela de progresso: sem um fundo que
+      apague, cada nome novo era pintado por cima do anterior e as letras se empilhavam
+      (texto transparente sobre a arte não é apagado no repaint). Com o fundo, cada repaint
+      limpa o texto antigo.
+    -->
+    <Font Id="7" Height="-13" Weight="400" Foreground="EDE3DA" Background="221008">Segoe UI</Font>
 
     <!--
       SourceX/SourceY: o fundo é o recorte 0,0–820,461 de Theme/@ImageFile, pintado pela
@@ -88,8 +96,8 @@
         </Page>
         <Page Name="Progress">
             <Label X="470" Y="82" Width="-24" Height="28" FontId="2" DisablePrefix="yes">#(loc.ProgressHeader)</Label>
-            <Label X="470" Y="124" Width="96" Height="18" FontId="4" DisablePrefix="yes">#(loc.ProgressLabel)</Label>
-            <Label Name="OverallProgressPackageText" X="570" Y="124" Width="-24" Height="18" FontId="4" DisablePrefix="yes">#(loc.OverallProgressPackageText)</Label>
+            <Label X="470" Y="124" Width="96" Height="18" FontId="7" DisablePrefix="yes">#(loc.ProgressLabel)</Label>
+            <Label Name="OverallProgressPackageText" X="570" Y="124" Width="-24" Height="18" FontId="7" DisablePrefix="yes">#(loc.OverallProgressPackageText)</Label>
             <Progressbar Name="OverallCalculatedProgressbar" X="470" Y="150" Width="-24" Height="16" />
             <Button Name="ProgressCancelButton" X="-24" Y="-16" Width="96" Height="28" TabStop="yes" FontId="0">#(loc.ProgressCancelButton)</Button>
         </Page>
