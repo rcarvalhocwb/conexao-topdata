@@ -2,6 +2,8 @@ using Microsoft.Data.Sqlite;
 
 namespace Access.Infrastructure.SQLite;
 
+#pragma warning disable CA1822
+
 /// <summary>
 /// Stub implementation of CadernoDesugestoes.
 /// TODO: Implement full suggestion management logic.
