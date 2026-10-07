@@ -103,6 +103,7 @@ public partial class App : Application
         if (!naBandeja)
         {
             janela.Show();
+            janela.MostrarNovidadesUmaVez();
         }
     }
 
@@ -203,6 +204,16 @@ public partial class App : Application
 
                 Passo($"simulação: {simulador.Mensagem}");
             }
+
+            // Aviso de novidades: nenhuma tela o exercita, então o autoteste o constrói, mostra e
+            // fecha — é o que pega chave de recurso ou ligação quebrada antes da bancada.
+            var novidades = new Desktop.ViewModels.NovidadesViewModel(
+                "0.0.0", edicaoVista: 0, haInstalacaoAnterior: true, marcarVista: _ => { });
+            var avisoNovidades = new JanelaDeNovidades(novidades) { Owner = janela };
+            avisoNovidades.Show();
+            await janela.Dispatcher.InvokeAsync(avisoNovidades.UpdateLayout, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            avisoNovidades.Close();
+            Passo("novidades: ok");
 
             janela.Close();
             Passo("ok");

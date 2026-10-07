@@ -112,6 +112,29 @@ public partial class JanelaPrincipal : Window
         Topmost = true;
         Topmost = false;
         Focus();
+
+        // Primeira vez que o operador vê o painel após atualizar: o aviso de novidades.
+        MostrarNovidadesUmaVez();
+    }
+
+    private bool _novidadesConferidas;
+
+    /// <summary>
+    /// Mostra o aviso "Novidades desta versão" uma vez por abertura do painel, depois que a janela
+    /// já pintou. A <see cref="JanelaDeNovidades"/> decide se há algo a mostrar; se não, não abre
+    /// nada. Fora do autoteste e da captura, que nunca chamam isto.
+    /// </summary>
+    internal void MostrarNovidadesUmaVez()
+    {
+        if (_novidadesConferidas)
+        {
+            return;
+        }
+
+        _novidadesConferidas = true;
+        Dispatcher.BeginInvoke(
+            () => JanelaDeNovidades.MostrarSePreciso(this),
+            DispatcherPriority.ApplicationIdle);
     }
 
     /// <summary>Fecha de verdade (sair do painel, desligar o Windows).</summary>
