@@ -390,7 +390,7 @@ public sealed class ColetorDeTelemetriaReal : ColetorDeTelemetria
                             comando.Parameters.AddWithValue("$lat_dec", latenciaDecisao.TryGetValue(inner, out var ld) ? ld.SerializarParaJson() : "{}");
                             comando.Parameters.AddWithValue("$lat_rec", latenciaRecepcao.TryGetValue(inner, out var lr) ? lr.SerializarParaJson() : "{}");
                             comando.Parameters.AddWithValue("$lat_volta", latenciaVolta.TryGetValue(inner, out var lv) ? lv.SerializarParaJson() : "{}");
-                            comando.Parameters.AddWithValue("$desvio", desvios.TryGetValue(inner, out var dev) ? dev : (long?)DBNull.Value);
+                            comando.Parameters.AddWithValue("$desvio", (object?)(desvios.TryGetValue(inner, out var dev) ? dev : null) ?? (object)DBNull.Value);
                             comando.Parameters.AddWithValue("$desc", descartados);
                             comando.ExecuteNonQuery();
                         }
