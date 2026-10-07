@@ -159,8 +159,11 @@ public sealed class InstaladorTests
     {
         var texto = File.ReadAllText(Path.Combine(PastaDoInstalador, "README.md"));
 
+        // O ensaio de carga ainda pendente, e a honestidade de que o código está pronto mas o
+        // hardware não foi provado. (As assinaturas P/Invoke já são reais, do SDK 6.0.2.0 — o
+        // README deixou de listar "obter o EasyInner.cs" porque isso já foi feito.)
         Assert.Contains("HIL-STACK-01", texto, StringComparison.Ordinal);
-        Assert.Contains("EasyInner.cs", texto, StringComparison.Ordinal);
+        Assert.Contains("catraca de verdade", texto, StringComparison.Ordinal);
     }
 
     private static HashSet<string> IdsConferidosPeloScript()
