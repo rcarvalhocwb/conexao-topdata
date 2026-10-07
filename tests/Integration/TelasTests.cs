@@ -1585,7 +1585,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal("Na catraca agora", tela.TituloDaConfiguracao);
         Assert.False(central.AplicadaConhecida);
         Assert.Empty(tela.ResumoDaConfiguracao);
-        Assert.Contains("não sabe o que ela está usando", tela.TextoDaConfiguracao, StringComparison.Ordinal);
+        Assert.Contains("não dá para saber o que ela está usando", tela.TextoDaConfiguracao, StringComparison.Ordinal);
         Assert.Equal("Aproxime o ingresso", tela.MensagemPadrao);
         Assert.True(tela.UrnaLigada);
 
