@@ -142,16 +142,22 @@ destas duas formas:
 
 A `EasyInner.dll` é copiada para `artifacts\Edge.Worker.X86`, e o build do MSI a embarca.
 
-**B) No CI (o repositório segue público, o SDK fica num repositório privado):**
+**B) No repositório privado, pelo workflow de modelo (recomendado):**
 
-1. Crie um repositório **privado** (ex.: `rcarvalhocwb/conexao-topdata-sdk`) com a pasta
-   `inner/` contendo a `EasyInner.dll` e as DLLs que ela usa.
-2. Em **Settings → Secrets and variables → Actions** deste repositório:
-   - **Secret** `TOPDATA_SDK_PAT`: um token com permissão de leitura no repositório privado.
-   - **Variable** `TOPDATA_SDK_REPO`: `owner/repo` do repositório privado.
-3. A partir daí, cada build do instalador no CI sai com o SDK embarcado; sem esses dois, o
-   CI segue gerando o instalador de teste (simulação), sem o SDK. O SDK nunca é commitado
-   aqui.
+O SDK fica num repositório **privado** próprio. O código público nunca o recebe: o CI
+público reprova qualquer MSI que contenha a `EasyInner.dll`.
+
+1. Crie um repositório **privado** (ex.: `rcarvalhocwb/rayzer-xacess-sdk`) com a pasta
+   `inner/` na raiz, contendo a `EasyInner.dll` e as DLLs que ela usa.
+2. Copie [`installer/privado/publicar-com-sdk.yml`](privado/publicar-com-sdk.yml) para
+   `.github/workflows/publicar-com-sdk.yml` desse repositório privado.
+3. Em **Actions → Publicar o instalador com o SDK da Topdata → Run workflow**, informe o SHA
+   completo de um commit deste repositório público que **já passou no CI**.
+
+O workflow só empacota commit com todas as verificações em sucesso, monta o MSI e o Setup com
+a `EasyInner.dll` e publica como pré-release **do repositório privado**. Não há token nem
+segredo para configurar. Quem for instalar a versão com o SDK precisa de acesso ao repositório
+privado, ou receber o `.zip` por fora.
 
 Antes de liberar a uma catraca de verdade, falta só o ensaio de bancada **HIL-STACK-01**
 (a `EasyInner.dll` carrega num processo .NET 10 de 32 bits?) e a primeira conversa com o

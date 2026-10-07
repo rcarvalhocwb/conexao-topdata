@@ -1,0 +1,184 @@
+# Workflow do REPOSITÓRIO PRIVADO que guarda o SDK da Topdata.
+#
+# Este arquivo mora no repositório público só como modelo: fica fora de .github/workflows/,
+# então não roda aqui. Para usar:
+#
+#   1. Crie um repositório PRIVADO (ex.: rcarvalhocwb/rayzer-xacess-sdk) e, nele:
+#      - coloque a pasta do SDK em inner/ (EasyInner.dll e as DLLs que ela usa);
+#      - copie este arquivo para .github/workflows/publicar-com-sdk.yml.
+#   2. Aba Actions > "Publicar o instalador com o SDK da Topdata" > Run workflow, com o SHA
+#      completo de um commit do repositório público que já passou no CI.
+#
+# O que ele garante:
+#   - só empacota commit com TODAS as verificações do CI público em sucesso;
+#   - o MSI e o Setup saem com a EasyInner.dll dentro, e o job confere que ela entrou;
+#   - a pré-release é publicada DESTE repositório, que é privado. O SDK não sai daqui.
+#
+# O repositório público segue sem o SDK: o invariante está no job "Instalador MSI (Windows)"
+# do ci.yml, que reprova o MSI se a EasyInner.dll aparecer nele.
+#
+# Não há segredo nem token para configurar: o checkout do repositório público é anônimo, e a
+# release é deste próprio repositório.
+
+name: Publicar o instalador com o SDK da Topdata
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'SHA completo do commit do repositório público que já passou no CI'
+        required: true
+        type: string
+      public_repo:
+        description: 'Repositório público do instalador (owner/repo)'
+        required: true
+        default: 'rcarvalhocwb/conexao-topdata'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    name: Montar o instalador com o SDK
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      REF: ${{ inputs.ref }}
+      PUBLICO: ${{ inputs.public_repo }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Conferir o SDK neste repositório
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'inner/EasyInner.dll')) {
+            throw 'Falta inner/EasyInner.dll na raiz deste repositório (a pasta do SDK da Topdata).'
+          }
+          Write-Host 'SDK encontrado.'
+
+      - name: Baixar o código público no commit pedido
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ inputs.ref }}
+          path: publico
+          fetch-depth: 1
+
+      - name: Conferir que o commit passou no CI público
+        shell: pwsh
+        run: |
+          $sha = (git -C publico rev-parse HEAD).Trim()
+          $linhas = @(gh api "repos/$env:PUBLICO/commits/$sha/check-runs?per_page=100" --paginate --jq '.check_runs[] | "\(.name)|\(.status)|\(.conclusion)"' | Where-Object { $_ })
+          if ($linhas.Count -eq 0) { throw "Nenhuma verificação encontrada para $sha." }
+          $ruins = @($linhas | Where-Object { $_ -notmatch '\|completed\|success$' })
+          if ($ruins.Count -gt 0) { throw "O commit $sha não está verde no CI público:`n$($ruins -join "`n")" }
+          Write-Host "Commit $sha verde: $($linhas.Count) verificações em sucesso."
+          "SHA_PUBLICO=$sha" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: publico/global.json
+
+      - name: Instalar o WiX
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 6.0.2
+          wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
+          wix extension add --global WixToolset.Util.wixext/6.0.2
+          wix extension add --global WixToolset.Firewall.wixext/6.0.2
+
+      # Self-contained, como o CI público: o Setup instala sem pedir runtime ao operador.
+      - name: Publicar os componentes
+        shell: pwsh
+        working-directory: publico
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -p:Version=$versao -o ../publicado/Servico
+          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -p:Version=$versao -o ../publicado/Painel
+          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -p:Version=$versao -o ../publicado/Worker
+          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -p:Version=$versao -o ../publicado/Configurador
+
+      - name: Embarcar o SDK da Topdata no worker
+        shell: pwsh
+        run: |
+          Copy-Item (Join-Path inner '*') publicado/Worker -Recurse -Force
+          if (-not (Test-Path publicado/Worker/EasyInner.dll)) { throw 'A EasyInner.dll não chegou ao worker.' }
+          Write-Host 'SDK embarcado no worker.'
+
+      # O worker precisa sair em 32 bits, senão a EasyInner.dll não carrega.
+      - name: Conferir que o worker é de 32 bits
+        shell: pwsh
+        run: |
+          $fluxo = [System.IO.File]::OpenRead((Resolve-Path publicado/Worker/Edge.Worker.X86.exe).Path)
+          try {
+              $leitor = New-Object System.IO.BinaryReader($fluxo)
+              $fluxo.Position = 0x3C
+              $inicio = $leitor.ReadInt32()
+              $fluxo.Position = $inicio + 4
+              $maquina = $leitor.ReadUInt16()
+          } finally { $fluxo.Dispose() }
+
+          if ($maquina -ne 0x014C) {
+              throw "O worker saiu com maquina PE 0x{0:X4}, e nao 0x014C (I386)." -f $maquina
+          }
+          Write-Host 'Worker em 32 bits: ok'
+
+      - name: Construir o MSI
+        shell: pwsh
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build publico/installer/wix/ConexaoTopdata.wxs -arch x64 -ext WixToolset.Util.wixext -ext WixToolset.Firewall.wixext `
+            -d Versao=$versao `
+            -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
+            -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
+            -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
+            -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
+            -d PastaModelos=$((Resolve-Path publico/installer/modelos).Path) `
+            -o RayzerXAcess-$versao.msi
+
+      # Aqui a regra é o inverso da do CI público: a EasyInner.dll TEM de estar no MSI.
+      - name: Conferir o conteúdo do MSI
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+          $instalador = New-Object -ComObject WindowsInstaller.Installer
+          $banco = $instalador.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $instalador, @($msi, 0))
+          $consulta = $banco.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $banco, @('SELECT `FileName` FROM `File`'))
+          $consulta.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $consulta, $null) | Out-Null
+          $arquivos = @()
+          while ($null -ne ($linha = $consulta.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $consulta, $null))) {
+              $nome = $linha.GetType().InvokeMember('StringData', 'GetProperty', $null, $linha, 1)
+              $arquivos += ($nome -split '\|')[-1]
+          }
+          Write-Host "$($arquivos.Count) arquivos no MSI ($([math]::Round((Get-Item $msi).Length / 1MB, 1)) MB)"
+
+          $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
+                          'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
+                          'Edge.Configurador.exe', 'modelo-cadastro-de-cartoes.xlsx', 'EasyInner.dll'
+          $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
+          if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
+          Write-Host 'Conteúdo do MSI: ok (com o SDK da Topdata)'
+
+      - name: Construir o Setup.exe
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          wix build publico/installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
+            -d Versao=$versao -d Msi=$msi -o RayzerXAcess-Setup.exe
+
+      # Pré-release PRIVADA: só quem tem acesso a este repositório baixa. O SDK não sai daqui.
+      - name: Publicar a pré-release privada
+        shell: pwsh
+        run: |
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          $tag = "sdk-teste-$versao"
+          $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
+
+          Compress-Archive -Path RayzerXAcess-Setup.exe -DestinationPath "RayzerXAcess-Setup-$versao.zip" -Force
+          Compress-Archive -Path $msi -DestinationPath "RayzerXAcess-MSI-$versao.zip" -Force
+
+          $notas = "Instalador de teste $versao COM o SDK da Topdata embarcado.`n`nREPOSITÓRIO PRIVADO: não redistribuir.`n`nCódigo público: $env:PUBLICO@$env:SHA_PUBLICO"
+          gh release create $tag "RayzerXAcess-Setup-$versao.zip" RayzerXAcess-Setup.exe "RayzerXAcess-MSI-$versao.zip" `
+            --prerelease --title "Instalador com SDK $versao" --notes $notas
+          Write-Host "Publicado (privado): https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"

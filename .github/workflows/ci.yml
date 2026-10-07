@@ -117,13 +117,8 @@ jobs:
     # Escrita só aqui, e só para publicar o Setup.exe na pré-release de teste.
     permissions:
       contents: write
-    # SDK da Topdata, opcional. Quando o segredo TOPDATA_SDK_PAT e a variável
-    # TOPDATA_SDK_REPO (owner/repo privado com o SDK) existem, o instalador sai com a
-    # EasyInner.dll embarcada. Sem eles (padrão, forks, repo público), o instalador sai
-    # de teste/simulação, sem o SDK — e o SDK nunca é versionado aqui.
-    env:
-      SDK_PAT: ${{ secrets.TOPDATA_SDK_PAT }}
-      SDK_REPO: ${{ vars.TOPDATA_SDK_REPO }}
+    # Este instalador é PÚBLICO: nunca leva o SDK da Topdata. O MSI com a EasyInner.dll é
+    # montado no repositório privado (installer/privado/), e nunca sai daqui.
     steps:
       - uses: actions/checkout@v4
 
@@ -150,23 +145,6 @@ jobs:
           dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Painel
           dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -p:Version=$versao -o publicado/Worker
           dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Configurador
-
-      # SDK da Topdata (opcional): só quando TOPDATA_SDK_PAT + TOPDATA_SDK_REPO estão
-      # configurados. Clona o repositório PRIVADO com o SDK e copia a EasyInner.dll (e as DLLs
-      # que ela usa, da pasta inner/) para junto do worker, onde o P/Invoke a acha e o
-      # assistente a detecta. O SDK nunca é versionado neste repositório público.
-      - name: Embarcar o SDK da Topdata (se configurado)
-        if: ${{ env.SDK_PAT != '' && env.SDK_REPO != '' }}
-        shell: pwsh
-        run: |
-          git clone --depth 1 "https://x-access-token:$($env:SDK_PAT)@github.com/$($env:SDK_REPO).git" sdk-topdata
-          $origem = Join-Path sdk-topdata 'inner'
-          if (-not (Test-Path (Join-Path $origem 'EasyInner.dll'))) {
-            throw "O repositório do SDK não tem inner/EasyInner.dll."
-          }
-          Copy-Item (Join-Path $origem '*') publicado/Worker -Recurse -Force
-          "SDK_EMBARCADO=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "SDK da Topdata embarcado no worker."
 
       # Abre as janelas de verdade, publicadas como vão para o Setup, e percorre cada tela
       # e cada passo. Compilar não prova que a tela abre: o painel subia sem janela (App.xaml
@@ -343,16 +321,10 @@ jobs:
           $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
           if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
 
-          # Com o SDK embarcado (TOPDATA_SDK_*), a EasyInner.dll TEM de estar no MSI; sem ele
-          # (instalador de teste/simulação, repo público), ela NÃO pode estar.
-          if ($env:SDK_EMBARCADO -eq '1') {
-              if ($arquivos -notcontains 'EasyInner.dll') { throw 'SDK configurado, mas a EasyInner.dll não entrou no MSI.' }
-              Write-Host 'Conteúdo do MSI: ok (com o SDK da Topdata embarcado)'
-          }
-          else {
-              if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI de teste (sem SDK).' }
-              Write-Host 'Conteúdo do MSI: ok (instalador de teste, sem o SDK)'
-          }
+          # Invariante: o MSI público nunca leva a EasyInner.dll (é da Topdata; a versão com o
+          # SDK sai do repositório privado, em installer/privado/).
+          if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI público.' }
+          Write-Host 'Conteúdo do MSI: ok (instalador de teste, sem o SDK)'
 
       # O teste que faltava: instalar de verdade, abrir o painel instalado e desinstalar
       # com ele aberto. Prova que o botão final do Setup aponta para um arquivo que existe,
