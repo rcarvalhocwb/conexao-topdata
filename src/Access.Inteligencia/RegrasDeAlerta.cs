@@ -167,7 +167,7 @@ public sealed record ResultadoDeRegra(NivelDeAlerta Nivel, string Texto, string 
 /// Métodos avaliadores das 5 regras de alerta da Etapa I.4 (docs/36-anexos/02 §5.2).
 /// Funções puras que recebem dados e devolvem resultado.
 /// </summary>
-public static class RegrasDeAlertaV1
+public static class RegrasDeAlerta
 {
     /// <summary>
     /// A1: Leitor calado (C13 do 01). Nenhuma leitura em ≥3 min, vizinhas leram ≥20.
@@ -177,7 +177,7 @@ public static class RegrasDeAlertaV1
     /// <param name="leiturasDasVizinhas">Contagem de leituras das vizinhas na mesma janela.</param>
     /// <param name="vizinhasEmOperacao">Quantas vizinhas estão em operação.</param>
     /// <returns>Alerta se dispara; nulo se não dispara.</returns>
-    public static ResultadoDeRegra? A1_LeitorCalado(int leituras, int leiturasDasVizinhas, int vizinhasEmOperacao)
+    public static ResultadoDeRegra? A1LeitorCalado(int leituras, int leiturasDasVizinhas, int vizinhasEmOperacao)
     {
         const int minVizinhas = 2;
         const int minLeituraDasVizinhas = 20;
@@ -202,7 +202,7 @@ public static class RegrasDeAlertaV1
     /// </summary>
     /// <param name="reconexoes">Contagem de reconexões na janela de 15 min.</param>
     /// <returns>Alerta se dispara; nulo se não dispara.</returns>
-    public static ResultadoDeRegra? A2_Comunicacao(int reconexoes)
+    public static ResultadoDeRegra? A2Comunicacao(int reconexoes)
     {
         const int limiteReconexoes = 3;
 
@@ -224,7 +224,7 @@ public static class RegrasDeAlertaV1
     /// <param name="divergenciaSegundos">Divergência do relógio em segundos.</param>
     /// <param name="inclinacaoSegundosPorHora">Inclinação do relógio em segundos/hora.</param>
     /// <returns>Alerta se dispara; nulo se não dispara.</returns>
-    public static ResultadoDeRegra? A3_Relogio(int? divergenciaSegundos, double? inclinacaoSegundosPorHora)
+    public static ResultadoDeRegra? A3Relogio(int? divergenciaSegundos, double? inclinacaoSegundosPorHora)
     {
         const int limiteDivergencia = 30;
         const double limiteInclinacao = 2.0;
@@ -259,7 +259,7 @@ public static class RegrasDeAlertaV1
     /// <param name="versaoAplicada">Hash da versão aplicada.</param>
     /// <param name="idadeDasAplicacaoMinutos">Quantos minutos desde a última aplicação.</param>
     /// <returns>Alerta se dispara; nulo se não dispara.</returns>
-    public static ResultadoDeRegra? A4_Configuracao(string? versaoSalva, string? versaoAplicada, int? idadeDasAplicacaoMinutos)
+    public static ResultadoDeRegra? A4Configuracao(string? versaoSalva, string? versaoAplicada, int? idadeDasAplicacaoMinutos)
     {
         const int limiteMinutos = 2;
 
@@ -282,7 +282,7 @@ public static class RegrasDeAlertaV1
     /// <param name="desconhecidosEm5Min">Contagem de códigos desconhecidos em 5 min.</param>
     /// <param name="idadeSincronizacaoMinutos">Minutos desde o último sucesso de sincronização.</param>
     /// <returns>Alerta se dispara; nulo se não dispara.</returns>
-    public static ResultadoDeRegra? A5_Desconhecidos(int desconhecidosEm5Min, int? idadeSincronizacaoMinutos)
+    public static ResultadoDeRegra? A5Desconhecidos(int desconhecidosEm5Min, int? idadeSincronizacaoMinutos)
     {
         const int limiteDesconhecidos = 10;
         const int limiteSincronizacao = 5;

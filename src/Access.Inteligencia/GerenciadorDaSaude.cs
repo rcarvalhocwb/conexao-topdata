@@ -8,7 +8,7 @@ namespace Access.Inteligencia;
 /// Gerencia a saúde de todas as catracas, mantendo em memória o estado dos sinais
 /// e permitindo consultas por catraca (para o RPC ObterSaudeDasCatracas).
 /// </summary>
-public class GerenciadorDaSaude
+public class GerenciadorDaSaude : IDisposable
 {
     private readonly Dictionary<int, CachedSaude> _saude = new();
     private readonly ReaderWriterLockSlim _lock = new();
@@ -92,4 +92,10 @@ public class GerenciadorDaSaude
 
     public string VersaoParametros => _versaoParametros;
     public DateTimeOffset UltimaAtualizacao => _ultimaAtualizacao;
+
+    public void Dispose()
+    {
+        _lock?.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }

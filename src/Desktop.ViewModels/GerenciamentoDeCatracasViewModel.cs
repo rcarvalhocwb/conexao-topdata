@@ -27,7 +27,7 @@ public sealed record LinhaDeSaude(
 /// Implementa polling periódico e sincronização thread-safe com a UI.
 /// Quando a camada inteligente está desligada, mostra "não disponível".
 /// </remarks>
-public sealed class GerenciamentoDeCatracasViewModel
+public sealed class GerenciamentoDeCatracasViewModel : IDisposable
 {
     private readonly EdgeControl.EdgeControlClient _cliente;
     private readonly Func<DateTimeOffset> _relogio;
@@ -150,11 +150,11 @@ public sealed class GerenciamentoDeCatracasViewModel
         {
             var nivelTexto = saude.NivelGeral switch
             {
-                NivelDeSaude.Saudavel => "✓ Saudável",
-                NivelDeSaude.ComAtencao => "⚠ Atenção",
-                NivelDeSaude.ComAcaoNecessaria => "✗ Ação",
-                NivelDeSaude.SemDados => "? Sem dados",
-                NivelDeSaude.Aprendendo => "⏳ Aprendendo",
+                NivelDeSaude.SaudeSaudavel => "✓ Saudável",
+                NivelDeSaude.SaudeComAtencao => "⚠ Atenção",
+                NivelDeSaude.SaudeComAcaoNecessaria => "✗ Ação",
+                NivelDeSaude.SaudeSemDados => "? Sem dados",
+                NivelDeSaude.SaudeAprendendo => "⏳ Aprendendo",
                 _ => "Indefinido"
             };
 
@@ -166,7 +166,7 @@ public sealed class GerenciamentoDeCatracasViewModel
                 Inner: saude.Inner,
                 Nome: $"Catraca {saude.Inner:D2}",
                 NivelSaude: nivelTexto,
-                Indice: saude.IndiceOA100,
+                Indice: saude.Indice0100,
                 ResumoSinal: resumo,
                 Recomendacao: saude.Recomendacao,
                 AbrirDetalhes: new RelayCommand(() =>
@@ -182,6 +182,15 @@ public sealed class GerenciamentoDeCatracasViewModel
         {
             _catracas.Add(linha);
         }
+    }
+
+    /// <summary>
+    /// Libera recursos gerenciados da ViewModel.
+    /// </summary>
+    public void Dispose()
+    {
+        PararPolling();
+        _cancelamento?.Dispose();
     }
 }
 
@@ -199,7 +208,9 @@ internal sealed class RelayCommand : System.Windows.Input.ICommand
         _canExecute = canExecute;
     }
 
+#pragma warning disable CS0067
     public event EventHandler? CanExecuteChanged;
+#pragma warning restore CS0067
 
     public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
 

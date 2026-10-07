@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Access.Infrastructure.SQLite;
 using Access.Inteligencia;
 using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 
 namespace Edge.Supervisor;
 

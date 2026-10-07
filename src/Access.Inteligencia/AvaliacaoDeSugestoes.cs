@@ -57,12 +57,11 @@ public static class AvaliacaoDeSugestoes
     /// - reduzir para p95(Δ) + 1 s se o tempo configurado é maior e há ≤ 2% de giros tardios;
     /// - aumentar em 1 s se há ≥ 2% de giros tardios.
     ///
-    /// Sempre dentro da faixa 1–50 s (012:18 do docs/34) e da regra 11 (< 8 s, docs/34 §10.4).
+    /// Sempre dentro da faixa 1–50 s (docs/34 §2.18) e da regra 11 (&lt; 8 s, docs/34 §10.4).
     /// </summary>
     /// <param name="catraca">Número da catraca (inner).</param>
     /// <param name="tempoConfigurado">Tempo atual em segundos.</param>
-    /// <param name="deltaLiberacaoGiro">Histórico de Δ, em segundos; pode incluir nulos (sem giro).</param>
-    /// <param name="giroCom">Quanto tempo após a liberação o giro foi confirmado; mapeado como "(origem5 - at)" em 3 s ou menos é "tardio".</param>
+    /// <param name="deltaLiberacaoGiro">Histórico de Δ (liberação → giro confirmado), em segundos; pode incluir nulos (sem giro).</param>
     /// <returns>Sugestão, ou nula se não há motivo para mudar.</returns>
     public static SugestaoDeParametrizacao? SugerirTempoRele(
         int catraca,

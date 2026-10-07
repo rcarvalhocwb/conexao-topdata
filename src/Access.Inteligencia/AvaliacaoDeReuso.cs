@@ -173,7 +173,7 @@ public static class AvaliacaoDeReuso
             // Precisa de ≥ 5 tentativas em ≥ 2 catracas.
             if (grupo.Count() >= 5 && catracas.Count >= 2)
             {
-                var prova = MontarProvaCodigoDesconhecido(grupo.ToList(), catracas, grupo.Key);
+                var prova = MontarProvaCodigoDesconhecido(grupo.ToList(), catracas, grupo.Key!);
 
                 return new ResultadoDeReuso(
                     Detectado: true,
