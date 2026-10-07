@@ -1,11 +1,28 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Contracts.Edge.V1;
 
 namespace Access.Inteligencia;
 
 #pragma warning disable CA1869
+
+/// <summary>
+/// Campos da catraca sobre os quais a camada inteligente pode recomendar mudanças.
+/// É o espelho puro do enum de contrato (<c>Contracts.Edge.V1.CampoDaCatraca</c>): a camada
+/// não conhece o contrato (invariante NOVO-ARQ-IA-01); o serviço traduz um no outro.
+/// </summary>
+public enum CampoDaCatraca
+{
+    NaoEspecificado = 0,
+    TipoDeLeitor = 1,
+    OperacaoDoLeitor1 = 2,
+    OperacaoDoLeitor2 = 3,
+    TempoDoAcionamento1 = 4,
+    FuncaoDeLiberacaoDaEntrada = 5,
+    MensagemPadrao = 6,
+    WiegandDoisLeitores = 7,
+    FormasDeEntradaOnLine = 8,
+}
 
 /// <summary>Dados do cálculo que levou à sugestão, para a evidência em JSON.</summary>
 /// <param name="Motivo">Por que surgiu a sugestão (ex: "p95 do Δ + margens").</param>
@@ -54,10 +71,11 @@ public static class AvaliacaoDeSugestoes
     /// <summary>
     /// P1 — Tempo do relé 1 × giro medido (IN-07 §5.2).
     ///
-    /// Distribui os Δ (liberação → giro confirmado) e conta "giro tardio" (origem 6 até 3 s depois
-    /// da origem 5). Recomenda:
+    /// Distribui os Δ (liberação → giro confirmado) e conta "giro tardio": aquele em que a pessoa
+    /// só girou perto do fim da janela do relé (Δ ≥ tempo configurado), ou seja, quase não deu.
+    /// Recomenda:
     /// - reduzir para p95(Δ) + 1 s se o tempo configurado é maior e há ≤ 2% de giros tardios;
-    /// - aumentar em 1 s se há ≥ 2% de giros tardios.
+    /// - aumentar em 1 s se há ≥ 2% de giros tardios (muita gente quase não passou).
     ///
     /// Sempre dentro da faixa 1–50 s (docs/34 §2.18) e da regra 11 (&lt; 8 s, docs/34 §10.4).
     /// </summary>
@@ -93,9 +111,9 @@ public static class AvaliacaoDeSugestoes
         var p95 = comGiro[Math.Max(0, p95Index)];
         var sugerido = (int)Math.Ceiling(p95) + 1;
 
-        // Taxa de giros tardios (0–3 s após a liberação).
-        var girosteroidios = comGiro.Count(d => d is >= 0 and < 3);
-        var taxaTardia = (double)girosteroidios / comGiro.Count;
+        // Taxa de giros tardios: Δ ≥ tempo configurado (a pessoa quase não passou dentro da janela).
+        var girosTardios = comGiro.Count(d => d >= tempoConfigurado);
+        var taxaTardia = (double)girosTardios / comGiro.Count;
 
         // Decisão:
         string motivo;
@@ -105,7 +123,7 @@ public static class AvaliacaoDeSugestoes
         {
             // ≥ 2% de giros tardios → aumentar 1 s.
             novoTempo = Math.Min(50, tempoConfigurado + 1);
-            motivo = $"Giros tardios (0–3 s): {(taxaTardia * 100):F1}% (limite: 2%)";
+            motivo = $"Giros tardios (Δ ≥ {tempoConfigurado} s): {(taxaTardia * 100):F1}% (limite: 2%)";
         }
         else if (sugerido < tempoConfigurado)
         {
@@ -264,7 +282,7 @@ public static class AvaliacaoDeSugestoes
         }
 
         var evidencia = new EvidenciaDaSugestao(
-            Motivo: $"Muitas negações por '{motivo}'",
+            Motivo: $"Muitas negações por '{motivo}' ({contagem} de {totalNegacoes})",
             ValorMedido: $"{contagem} negações",
             Amostra: totalNegacoes,
             Referencia: $"Taxa: {(taxa * 100):F0}% (limite: {(taxaMinimaDeMotivo * 100):F0}%)");

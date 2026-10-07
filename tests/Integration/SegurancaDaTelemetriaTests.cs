@@ -38,11 +38,9 @@ public sealed class SegurancaDaTelemetriaTests
             // Se encontrar um código de teste em claro, falha.
             foreach (var codigo in CodigosDeTesteProibidos)
             {
-                Assert.DoesNotContain(
-                    codigo,
-                    valor,
-                    StringComparison.Ordinal,
-                    $"Código {codigo} encontrado em claro em {tabela}.{coluna}");
+                Assert.False(
+                    valor.Contains(codigo, StringComparison.Ordinal),
+                    $"Código {codigo} encontrado em claro em {tabela}.{coluna}.");
             }
         }
     }

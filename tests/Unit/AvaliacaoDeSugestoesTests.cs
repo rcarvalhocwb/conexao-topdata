@@ -1,5 +1,4 @@
 using Access.Inteligencia;
-using Contracts.Edge.V1;
 using Xunit;
 
 namespace Unit.Tests;
@@ -13,13 +12,12 @@ public class AvaliacaoDeSugestoesTests
     [Fact]
     public void SugerirTempoRele_LognormalComRelé5s_Sugere4s()
     {
-        // NOVO-SIM-SUG-01: simulador com Δ ~ lognormal (mediana 2 s) e relé 5 s sugere 4 s.
-        // Preparar: 200 deltas com mediana 2 s (p95 ≈ 3 s), sem giros tardios.
+        // NOVO-SIM-SUG-01: simulador com Δ típico ~2 s (p95 ≈ 3 s) e relé 5 s sugere 4 s.
+        // 200 deltas subindo de 1,5 s a 3,0 s: mediana ~2,25 s, p95 ~2,9 s, nenhum ≥ 5 s (sem tardios).
         var deltas = new List<double>();
         for (int i = 0; i < 200; i++)
         {
-            // Lognormal com mediana 2 s: simples aproximação com exponencial.
-            deltas.Add(2.0 * (1.0 + Math.Log(1.0 + i / 100.0)));
+            deltas.Add(1.5 + 1.5 * (i / 199.0));
         }
 
         var sugestao = AvaliacaoDeSugestoes.SugerirTempoRele(
@@ -170,16 +168,16 @@ public class AvaliacaoDeSugestoesTests
     [Fact]
     public void SugerirDisplay_MensagemJaEhASugerida_RetornaNull()
     {
-        // A mensagem sugerida já está configurada.
+        // ForaDaUrna domina (60%) e a mensagem sugerida para ele já está configurada → sem sugestão.
         var negacoes = new Dictionary<string, long>
         {
-            { "ForaDaUrna", 40 },
-            { "IngressoJaUsado", 60 },
+            { "ForaDaUrna", 60 },
+            { "IngressoJaUsado", 40 },
         };
 
         var sugestao = AvaliacaoDeSugestoes.SugerirDisplay(
             catraca: 2,
-            mensagemAtual: "Cartao: use a urna",  // Já é a sugerida.
+            mensagemAtual: "Cartao: use a urna",  // Já é a sugerida para ForaDaUrna.
             negacoesPorMotivo: negacoes);
 
         Assert.Null(sugestao);

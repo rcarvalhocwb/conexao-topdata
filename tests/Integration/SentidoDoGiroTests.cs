@@ -85,7 +85,6 @@ public class SentidoDoGiroTests
         // Arrange
         long entradas = 100;
         long saidas = 30;
-        long semSentido = 5;  // giros sem pedido ou sem mapa
 
         // Act
         var lotacaoComSentido = AvaliacaoDaFluidez.CalcularLotacao(entradas, saidas);

@@ -38,25 +38,38 @@ public sealed class RelatorioDosPosEvento
     {
         ArgumentNullException.ThrowIfNull(tentativas);
 
-        var agrupadas = tentativas
-            .Where(t => t.Em != default)
-            .GroupBy(t => (t.Portao ?? $"Catraca_{t.CatracaNumero:D2}", t.Em.Minute))
-            .Select(g => new
-            {
-                Portao = g.Key.Item1,
-                Minuto = g.Key.Item2,
-                Contagem = g.LongCount(),
-                UltimaMoment = g.Max(t => t.Em),
-            })
-            .ToList();
+        var janela = TimeSpan.FromMinutes(15);
 
-        if (agrupadas.Count == 0)
+        string? melhorPortao = null;
+        long melhorContagem = 0;
+        DateTimeOffset? melhorMomento = null;
+
+        // Maior pico = mais tentativas de um mesmo portão dentro de qualquer janela de 15 min.
+        // Janela deslizante por portão (soma de baldes, docs/36-anexos/02 §"janelas maiores").
+        foreach (var grupo in tentativas
+            .Where(t => t.Em != default)
+            .GroupBy(t => t.Portao ?? $"Catraca_{t.CatracaNumero:D2}", StringComparer.Ordinal))
         {
-            return (null, 0, null);
+            var tempos = grupo.Select(t => t.Em).OrderBy(e => e).ToList();
+            int inicio = 0;
+            for (int fim = 0; fim < tempos.Count; fim++)
+            {
+                while (tempos[fim] - tempos[inicio] >= janela)
+                {
+                    inicio++;
+                }
+
+                long contagem = fim - inicio + 1;
+                if (contagem > melhorContagem)
+                {
+                    melhorContagem = contagem;
+                    melhorPortao = grupo.Key;
+                    melhorMomento = tempos[fim];
+                }
+            }
         }
 
-        var pico = agrupadas.OrderByDescending(x => x.Contagem).FirstOrDefault();
-        return (pico?.Portao, pico?.Contagem ?? 0, pico?.UltimaMoment);
+        return (melhorPortao, melhorContagem, melhorMomento);
     }
 
     /// <summary>R2 — Catraca mais lenta (mediana de Δ liberação→giro).</summary>

@@ -90,13 +90,13 @@ public sealed class ColetorDeTelemetriaTests : IDisposable
         // Descarrega o que conseguiu guardar
         var (desc, disc) = coletor.Descarregar("session-1", "worker-1");
 
-        // Deve ter descartado os primeiros 6000 (10000 - 4096)
+        // Deve ter descartado os excedentes (10000 - 4096 = 5904).
         Assert.Equal(4096, desc);
-        Assert.Equal(6000, disc);  // Os antigos foram substituídos
+        Assert.Equal(5904, disc);  // Os antigos foram substituídos
     }
 
     [Fact]
-    public void ContadoresAtomicos_SemCorrida()
+    public async Task ContadoresAtomicos_SemCorrida()
     {
         var coletor = new ColetorDeTelemetriaReal(_fabrica);
         var tarefas = new List<Task>();
@@ -115,7 +115,7 @@ public sealed class ColetorDeTelemetriaTests : IDisposable
             }));
         }
 
-        Task.WaitAll(tarefas.ToArray());
+        await Task.WhenAll(tarefas);
 
         // Descarrega e verifica se os contadores estão corretos
         var (desc, disc) = coletor.Descarregar("session-test", "worker-test");

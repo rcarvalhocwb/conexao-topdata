@@ -26,9 +26,9 @@ CREATE TABLE agg_minute (
     sem_giro INTEGER NOT NULL CHECK (sem_giro >= 0),                  -- liberadas sem giro
     passage_delay_ms_hist TEXT NOT NULL,        -- JSON de baldes fixos: Δ(liberação→giro)
     
-    -- Leituras vazias e desconhecidas
+    -- Leituras vazias e desconhecidas (contagens; nunca o código em si — invariante I6)
     empty_reads INTEGER NOT NULL CHECK (empty_reads >= 0),
-    unknown_codes INTEGER NOT NULL CHECK (unknown_codes >= 0),
+    unknown_reads INTEGER NOT NULL CHECK (unknown_reads >= 0),
     
     -- Por origem de leitura (JSON: {"origin": count, ...})
     reads_by_origin TEXT NOT NULL DEFAULT '{}',

@@ -152,8 +152,21 @@ public sealed partial class CamadaInteligenteTests
             Assert.DoesNotContain("qr_raw", texto, StringComparison.Ordinal);
         }
 
-        // Quem escreve: só nas tabelas de telemetria.db.
-        var tabelasDaTelemetria = new HashSet<string>(StringComparer.Ordinal) { "analyzer_cycle", "schema_version" };
+        // Quem escreve: só nas tabelas de telemetria.db. O conjunto permitido é o que as próprias
+        // migrações de telemetria criam (mais schema_version, a escrituração do migrador) — assim
+        // novas tabelas de telemetria não envelhecem este teste.
+        var tabelasDaTelemetria = new HashSet<string>(StringComparer.Ordinal) { "schema_version" };
+        foreach (var sql in Directory.EnumerateFiles(
+            Path.Combine(RepositorioDeMatriz.RaizDoRepositorio, "src", "Access.Infrastructure.SQLite", "MigracoesDaTelemetria"), "*.sql"))
+        {
+            foreach (Match m in Escrita().Matches(File.ReadAllText(sql)))
+            {
+                if (m.Value.StartsWith("CREATE TABLE", StringComparison.OrdinalIgnoreCase))
+                {
+                    tabelasDaTelemetria.Add(m.Groups["tabela"].Value);
+                }
+            }
+        }
         var forasDaTelemetria = new List<string>();
         foreach (var arquivo in ArquivosQueEscrevemATelemetria())
         {

@@ -17,12 +17,12 @@ public class RelatorioDosPosEventoTests
     public void MaiorPicoDe15Min_ComTentativasValidas_RetornaOPico()
     {
         var agora = DateTimeOffset.UtcNow;
-        var tentativas = new[]
+        var tentativas = new (int CatracaNumero, DateTimeOffset Em, string? Portao)[]
         {
-            (CatracaNumero: 1, Em: agora, Portao: "Norte"),
-            (CatracaNumero: 1, Em: agora.AddSeconds(30), Portao: "Norte"),
-            (CatracaNumero: 1, Em: agora.AddMinutes(1), Portao: "Norte"),
-            (CatracaNumero: 2, Em: agora.AddMinutes(2), Portao: "Sul"),
+            (1, agora, "Norte"),
+            (1, agora.AddSeconds(30), "Norte"),
+            (1, agora.AddMinutes(1), "Norte"),
+            (2, agora.AddMinutes(2), "Sul"),
         };
 
         var (portao, leitura, momento) = _relatorio.MaiorPicoDe15Min(tentativas);

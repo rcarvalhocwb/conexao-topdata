@@ -138,7 +138,8 @@ public sealed partial class AnalisadorDaOperacaoTests : IDisposable
     public void A_telemetria_e_strict_e_nao_tem_coluna_para_codigo_nem_nome()
     {
         var fabrica = new FabricaDaTelemetria(CaminhoDaTelemetria);
-        Assert.Equal("T001_caderno_do_analisador.sql", Assert.Single(new MigradorDaTelemetria(fabrica).Aplicar()));
+        var aplicadas = new MigradorDaTelemetria(fabrica).Aplicar();
+        Assert.Equal("T001_caderno_do_analisador.sql", aplicadas[0]);
         Assert.Empty(new MigradorDaTelemetria(fabrica).Aplicar());
 
         using var conexao = fabrica.Abrir();
@@ -380,7 +381,9 @@ public sealed partial class AnalisadorDaOperacaoTests : IDisposable
     [GeneratedRegex(@"\)\s*STRICT\s*$")]
     private static partial Regex StrictNoFim();
 
-    [GeneratedRegex("qr|code|codigo|card|cartao|nome|name|mask|holder|titular|operador|operator", RegexOptions.IgnoreCase)]
+    // Casa o termo proibido só como palavra inteira do nome (snake_case), não como pedaço de outra:
+    // "dimensionamento_catracas" tem "name" dentro, mas não guarda nome; "codigo_titular" guardaria.
+    [GeneratedRegex(@"(^|_)(qr|code|codigo|card|cartao|nome|name|mask|holder|titular|operador|operator)(_|$)", RegexOptions.IgnoreCase)]
     private static partial Regex ColunaProibida();
 
     private sealed class RelogioManual(DateTimeOffset agora) : TimeProvider

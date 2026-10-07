@@ -336,7 +336,8 @@ public sealed class ColetorDeTelemetriaReal : ColetorDeTelemetria
                             comando.Parameters.AddWithValue("$fw", (object?)(sinal.Firmware) ?? (object)DBNull.Value);
                             comando.Parameters.AddWithValue("$tent", (object?)(sinal.IdTentativaPendente) ?? (object)DBNull.Value);
                             comando.Parameters.AddWithValue("$hora_eq", (object?)(sinal.HoraDoEquipamento) ?? (object)DBNull.Value);
-                            comando.Parameters.AddWithValue("$recebido", (object?)(sinal.RecebidoEm?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)) ?? (object)DBNull.Value);
+                            var recebidoEm = (sinal.RecebidoEm ?? _relogio()).ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+                            comando.Parameters.AddWithValue("$recebido", recebidoEm);
                             comando.ExecuteNonQuery();
                         }
                     }
@@ -357,44 +358,87 @@ public sealed class ColetorDeTelemetriaReal : ColetorDeTelemetria
                 todasAsCatracas.UnionWith(reconexoes.Keys);
                 todasAsCatracas.UnionWith(segundos.Keys);
 
-                if (todasAsCatracas.Count > 0)
+                foreach (int inner in todasAsCatracas)
                 {
-                    using (var comando = conexao.CreateCommand())
-                    {
-                        comando.Transaction = transacao;
-                        comando.CommandText =
-                            """
-                            INSERT OR REPLACE INTO health_minute
-                            (inner_number, minute, session_id, worker, seconds_in_operation, reconnects,
-                             recv_errors, empty_reads, unknown_origins, loop_turns, decisions,
-                             decision_ms_hist, recv_ms_hist, loop_ms_hist, clock_drift_s, dropped)
-                            VALUES ($inner, $min, $sessao, $worker, $seg_op, $recon,
-                                    $erros, $vazias, $descon, $voltas, $decisoes,
-                                    $lat_dec, $lat_rec, $lat_volta, $desvio, $desc);
-                            """;
+                    // Valores deste descarregamento (delta desde o último).
+                    long segTotal = segundos.TryGetValue(inner, out var seg) ? seg : 0;
+                    long reconTotal = reconexoes.TryGetValue(inner, out var rec) ? rec : 0;
+                    long errTotal = erros.TryGetValue(inner, out var err) ? err : 0;
+                    long vazTotal = vazias.TryGetValue(inner, out var vaz) ? vaz : 0;
+                    long desconTotal = desconhecidas.TryGetValue(inner, out var dsc) ? dsc : 0;
+                    long voltasTotal = voltas.TryGetValue(inner, out var vol) ? vol : 0;
+                    long decTotal = decisoes.TryGetValue(inner, out var dec) ? dec : 0;
+                    long? desvioTotal = desvios.TryGetValue(inner, out var dev) ? dev : null;
 
-                        foreach (int inner in todasAsCatracas)
+                    var histDec = new HistogramaDeBaldes();
+                    if (latenciaDecisao.TryGetValue(inner, out var ld)) histDec.Somar(ld);
+                    var histRec = new HistogramaDeBaldes();
+                    if (latenciaRecepcao.TryGetValue(inner, out var lr)) histRec.Somar(lr);
+                    var histVolta = new HistogramaDeBaldes();
+                    if (latenciaVolta.TryGetValue(inner, out var lv)) histVolta.Somar(lv);
+
+                    // Vários descarregamentos no mesmo minuto somam (docs/36-anexos/02: baldes se somam).
+                    using (var leitura = conexao.CreateCommand())
+                    {
+                        leitura.Transaction = transacao;
+                        leitura.CommandText =
+                            """
+                            SELECT seconds_in_operation, reconnects, recv_errors, empty_reads, unknown_origins,
+                                   loop_turns, decisions, decision_ms_hist, recv_ms_hist, loop_ms_hist, clock_drift_s
+                            FROM health_minute
+                            WHERE inner_number = $inner AND minute = $min AND worker = $worker;
+                            """;
+                        leitura.Parameters.AddWithValue("$inner", inner);
+                        leitura.Parameters.AddWithValue("$min", minutoAtual);
+                        leitura.Parameters.AddWithValue("$worker", worker);
+
+                        using var leitor = leitura.ExecuteReader();
+                        if (leitor.Read())
                         {
-                            comando.Parameters.Clear();
-                            comando.Parameters.AddWithValue("$inner", inner);
-                            comando.Parameters.AddWithValue("$min", minutoAtual);
-                            comando.Parameters.AddWithValue("$sessao", (object?)sessionId ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$worker", worker);
-                            comando.Parameters.AddWithValue("$seg_op", segundos.TryGetValue(inner, out var seg) ? seg : 0);
-                            comando.Parameters.AddWithValue("$recon", reconexoes.TryGetValue(inner, out var rec) ? rec : 0);
-                            comando.Parameters.AddWithValue("$erros", erros.TryGetValue(inner, out var err) ? err : 0);
-                            comando.Parameters.AddWithValue("$vazias", vazias.TryGetValue(inner, out var vaz) ? vaz : 0);
-                            comando.Parameters.AddWithValue("$descon", desconhecidas.TryGetValue(inner, out var dsc) ? dsc : 0);
-                            comando.Parameters.AddWithValue("$voltas", voltas.TryGetValue(inner, out var vol) ? vol : 0);
-                            comando.Parameters.AddWithValue("$decisoes", decisoes.TryGetValue(inner, out var dec) ? dec : 0);
-                            comando.Parameters.AddWithValue("$lat_dec", latenciaDecisao.TryGetValue(inner, out var ld) ? ld.SerializarParaJson() : "{}");
-                            comando.Parameters.AddWithValue("$lat_rec", latenciaRecepcao.TryGetValue(inner, out var lr) ? lr.SerializarParaJson() : "{}");
-                            comando.Parameters.AddWithValue("$lat_volta", latenciaVolta.TryGetValue(inner, out var lv) ? lv.SerializarParaJson() : "{}");
-                            comando.Parameters.AddWithValue("$desvio", (object?)(desvios.TryGetValue(inner, out var dev) ? dev : null) ?? (object)DBNull.Value);
-                            comando.Parameters.AddWithValue("$desc", descartados);
-                            comando.ExecuteNonQuery();
+                            segTotal += leitor.GetInt64(0);
+                            reconTotal += leitor.GetInt64(1);
+                            errTotal += leitor.GetInt64(2);
+                            vazTotal += leitor.GetInt64(3);
+                            desconTotal += leitor.GetInt64(4);
+                            voltasTotal += leitor.GetInt64(5);
+                            decTotal += leitor.GetInt64(6);
+                            histDec.Somar(HistogramaDeBaldes.DessSerializarDeJson(leitor.GetString(7)));
+                            histRec.Somar(HistogramaDeBaldes.DessSerializarDeJson(leitor.GetString(8)));
+                            histVolta.Somar(HistogramaDeBaldes.DessSerializarDeJson(leitor.GetString(9)));
+                            // O desvio do relógio é o mais recente que houver (medição pontual).
+                            desvioTotal ??= leitor.IsDBNull(10) ? null : leitor.GetInt64(10);
                         }
                     }
+
+                    using var comando = conexao.CreateCommand();
+                    comando.Transaction = transacao;
+                    comando.CommandText =
+                        """
+                        INSERT OR REPLACE INTO health_minute
+                        (inner_number, minute, session_id, worker, seconds_in_operation, reconnects,
+                         recv_errors, empty_reads, unknown_origins, loop_turns, decisions,
+                         decision_ms_hist, recv_ms_hist, loop_ms_hist, clock_drift_s, dropped)
+                        VALUES ($inner, $min, $sessao, $worker, $seg_op, $recon,
+                                $erros, $vazias, $descon, $voltas, $decisoes,
+                                $lat_dec, $lat_rec, $lat_volta, $desvio, $desc);
+                        """;
+                    comando.Parameters.AddWithValue("$inner", inner);
+                    comando.Parameters.AddWithValue("$min", minutoAtual);
+                    comando.Parameters.AddWithValue("$sessao", (object?)sessionId ?? DBNull.Value);
+                    comando.Parameters.AddWithValue("$worker", worker);
+                    comando.Parameters.AddWithValue("$seg_op", segTotal);
+                    comando.Parameters.AddWithValue("$recon", reconTotal);
+                    comando.Parameters.AddWithValue("$erros", errTotal);
+                    comando.Parameters.AddWithValue("$vazias", vazTotal);
+                    comando.Parameters.AddWithValue("$descon", desconTotal);
+                    comando.Parameters.AddWithValue("$voltas", voltasTotal);
+                    comando.Parameters.AddWithValue("$decisoes", decTotal);
+                    comando.Parameters.AddWithValue("$lat_dec", histDec.SerializarParaJson());
+                    comando.Parameters.AddWithValue("$lat_rec", histRec.SerializarParaJson());
+                    comando.Parameters.AddWithValue("$lat_volta", histVolta.SerializarParaJson());
+                    comando.Parameters.AddWithValue("$desvio", (object?)desvioTotal ?? DBNull.Value);
+                    comando.Parameters.AddWithValue("$desc", descartados);
+                    comando.ExecuteNonQuery();
                 }
 
                 transacao.Commit();

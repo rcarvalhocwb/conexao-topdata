@@ -1,6 +1,7 @@
 using Contracts.Edge.V1;
 using Desktop.ViewModels;
 using Desktop.ViewModels.GemeoDigital;
+using TipoDeSinal = Desktop.ViewModels.GemeoDigital.TipoDeSinal;
 
 namespace Unit.Tests.Gemeo;
 

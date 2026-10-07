@@ -242,5 +242,5 @@ public class AgrMinuto
     public int Giros { get; set; }
     public int SemGiro { get; set; }
     public int EmptyReads { get; set; }
-    public int UnknownCodes { get; set; }
+    public int UnknownReads { get; set; }
 }
