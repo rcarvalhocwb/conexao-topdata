@@ -120,9 +120,7 @@ public sealed class RepositorioDosAlertas
         var regra = (string)leitor["regra"] switch
         {
             "leitor_calado" => RegraDeAlerta.LeitorCalado,
-            "comunicacao" => RegraDeAlerta.Comunicacao,
-            "relogio" => RegraDeAlerta.Relogio,
-            "configuracao" => RegraDeAlerta.Configuracao,
+            "pico_negacao" => RegraDeAlerta.PicoDeNegacao,
             "desconhecidos" => RegraDeAlerta.Desconhecidos,
             _ => RegraDeAlerta.NaoEspecificado,
         };

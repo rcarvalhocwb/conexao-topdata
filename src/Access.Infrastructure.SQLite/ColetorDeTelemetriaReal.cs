@@ -324,19 +324,19 @@ public sealed class ColetorDeTelemetriaReal : ColetorDeTelemetria
                         {
                             comando.Parameters.Clear();
                             comando.Parameters.AddWithValue("$id", sinal.Id);
-                            comando.Parameters.AddWithValue("$sessao", (object?)sessionId ?? DBNull.Value);
+                            comando.Parameters.AddWithValue("$sessao", (object?)sessionId ?? (object)DBNull.Value);
                             comando.Parameters.AddWithValue("$inner", sinal.Inner);
                             comando.Parameters.AddWithValue("$tipo", sinal.Tipo.ToString().ToLowerInvariant());
-                            comando.Parameters.AddWithValue("$origem", sinal.OrigemBruta ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$compl", sinal.Complemento ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$est_ant", sinal.EstadoAnterior ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$est_novo", sinal.EstadoNovo ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$mot", sinal.MotivoTransicao ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$ret", sinal.RetornoNativo ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$fw", sinal.Firmware ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$tent", sinal.IdTentativaPendente ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$hora_eq", sinal.HoraDoEquipamento ?? DBNull.Value);
-                            comando.Parameters.AddWithValue("$recebido", sinal.RecebidoEm?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture) ?? DBNull.Value);
+                            comando.Parameters.AddWithValue("$origem", (object?)(sinal.OrigemBruta) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$compl", (object?)(sinal.Complemento) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$est_ant", (object?)(sinal.EstadoAnterior) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$est_novo", (object?)(sinal.EstadoNovo) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$mot", (object?)(sinal.MotivoTransicao) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$ret", (object?)(sinal.RetornoNativo) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$fw", (object?)(sinal.Firmware) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$tent", (object?)(sinal.IdTentativaPendente) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$hora_eq", (object?)(sinal.HoraDoEquipamento) ?? (object)DBNull.Value);
+                            comando.Parameters.AddWithValue("$recebido", (object?)(sinal.RecebidoEm?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)) ?? (object)DBNull.Value);
                             comando.ExecuteNonQuery();
                         }
                     }
