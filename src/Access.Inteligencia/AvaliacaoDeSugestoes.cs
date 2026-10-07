@@ -5,6 +5,8 @@ using Contracts.Edge.V1;
 
 namespace Access.Inteligencia;
 
+#pragma warning disable CA1869
+
 /// <summary>Dados do cálculo que levou à sugestão, para a evidência em JSON.</summary>
 /// <param name="Motivo">Por que surgiu a sugestão (ex: "p95 do Δ + margens").</param>
 /// <param name="ValorMedido">O valor ou a taxa medida que disparou a sugestão.</param>

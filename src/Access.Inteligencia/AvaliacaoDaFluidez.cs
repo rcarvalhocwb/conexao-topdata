@@ -2,6 +2,8 @@ using System.Globalization;
 
 namespace Access.Inteligencia;
 
+#pragma warning disable CA1707
+
 /// <summary>
 /// IN-04 e IN-04b (docs/36-anexos/02 §5, IN-04): ritmo, ocupação, recomendações
 /// e tempo para escoar a demanda conhecida (docs/14 §1).

@@ -3,6 +3,8 @@ using System.Text.Json;
 
 namespace Access.Inteligencia;
 
+#pragma warning disable CA1822, CA1869, CA1829
+
 /// <summary>
 /// Relatório pós-evento com achados determinísticos (Etapa I.10 do docs/36, IN-09).
 /// Cada método implementa um achado (R1–R8) para a prestação de contas.

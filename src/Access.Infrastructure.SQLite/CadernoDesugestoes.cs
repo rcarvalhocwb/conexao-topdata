@@ -1,6 +1,7 @@
 using Access.Inteligencia;
 using Contracts.Edge.V1;
 using Microsoft.Data.Sqlite;
+using SugestaoInt = Access.Inteligencia.SugestaoDeParametrizacao;
 
 namespace Access.Infrastructure.SQLite;
 
@@ -21,7 +22,7 @@ public sealed class CadernoDesugestoes
     /// <summary>
     /// Grava uma sugestão nova (só do Analisador, ciclo 15 min).
     /// </summary>
-    public void Gravar(int catraca, SugestaoDeParametrizacao sugestao, string? sessao, DateTimeOffset agora)
+    public void Gravar(int catraca, SugestaoInt sugestao, string? sessao, DateTimeOffset agora)
     {
         ArgumentNullException.ThrowIfNull(sugestao);
         ArgumentOutOfRangeException.ThrowIfLessThan(catraca, 1);

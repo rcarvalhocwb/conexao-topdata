@@ -63,7 +63,9 @@ public class AvaliacaoDaHealth
     /// Avalia o sinal de Giro: taxa de "sem giro" por Wilson.
     /// Regra (docs/36 §4.5): janela 15 min, comparação de medianas, razão ≥ 1,5, n ≥ 30 de cada lado.
     /// </summary>
+#pragma warning disable CA1822
     public SinalDeSaude AvaliarGiro(double taxaSemGiro, int amostras, double? taxaVizinhas = null)
+#pragma warning restore CA1822
     {
         var sinal = new SinalDeSaude { Tipo = TipoDeSinal.Giro, Valor = taxaSemGiro, Amostras = amostras };
 
@@ -113,7 +115,9 @@ public class AvaliacaoDaHealth
     /// <summary>
     /// Avalia o sinal de Relógio: divergência > 30s ou inclinação > 2s/h.
     /// </summary>
+#pragma warning disable CA1822
     public SinalDeSaude AvaliarRelogio(int? divergenciaSegundos, double? inclinacao2Sh = null)
+#pragma warning restore CA1822
     {
         var sinal = new SinalDeSaude { Tipo = TipoDeSinal.Relogio };
 
@@ -193,7 +197,9 @@ public class AvaliacaoDaHealth
     /// <summary>
     /// Avalia o sinal de Comunicação (vazio para I.3, será preenchido em I.5).
     /// </summary>
+#pragma warning disable CA1822
     public SinalDeSaude AvaliarComunicacao()
+#pragma warning restore CA1822
     {
         return new SinalDeSaude
         {

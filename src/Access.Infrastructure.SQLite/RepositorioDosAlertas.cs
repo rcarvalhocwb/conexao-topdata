@@ -120,18 +120,10 @@ public sealed class RepositorioDosAlertas
         var regra = (string)leitor["regra"] switch
         {
             "leitor_calado" => RegraDeAlerta.LeitorCalado,
-            "comunicacao_instavel" => RegraDeAlerta.ComunicacaoInstavel,
-            "relogio_derivando" => RegraDeAlerta.RelogioDerivando,
-            "configuracao_nao_aplicada" => RegraDeAlerta.ConfiguracaoNaoAplicada,
+            "comunicacao" => RegraDeAlerta.Comunicacao,
+            "relogio" => RegraDeAlerta.Relogio,
+            "configuracao" => RegraDeAlerta.Configuracao,
             "desconhecidos" => RegraDeAlerta.Desconhecidos,
-            "reuso" => RegraDeAlerta.Reuso,
-            "liberacao_manual_fora_padrao" => RegraDeAlerta.LiberacaoManualForaPadrao,
-            "giro_sem_pedido" => RegraDeAlerta.GiroSemPedido,
-            "urna_cheia" => RegraDeAlerta.UrnaCheia,
-            "queda_simultanea" => RegraDeAlerta.QuedaSimultanea,
-            "liberacao_recusada" => RegraDeAlerta.LiberacaoRecusada,
-            "giro_sentido_inesperado" => RegraDeAlerta.GiroSentidoInesperado,
-            "ocupacao_alta" => RegraDeAlerta.OcupacaoAlta,
             _ => RegraDeAlerta.NaoEspecificado,
         };
 
