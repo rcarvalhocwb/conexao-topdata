@@ -350,10 +350,10 @@ public sealed class CentralDaCatracaViewModel : TelaBase
 
             if (aplicada.Length == 0)
             {
-                return "A catraca ainda não confirmou nenhuma configuração desde que o programa dela começou: o gêmeo não sabe o que ela está usando.";
+                return "A catraca ainda não confirmou nenhuma configuração desde que o programa dela começou: não dá para saber o que ela está usando.";
             }
 
-            return $"A catraca está com outra versão ({Curta(aplicada)}), não a salva ({Curta(salva)}). Ela não devolve a própria configuração: aplique a salva para o gêmeo mostrar o que ela usa.";
+            return $"A catraca está com outra versão ({Curta(aplicada)}), não a salva ({Curta(salva)}). Ela não devolve a própria configuração: aplique a salva para a tela mostrar o que ela usa.";
         }
     }
 

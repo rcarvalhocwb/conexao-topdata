@@ -151,7 +151,7 @@ public static class CatalogoDaFit4
     {
         const string gerenciar = "Gerenciar catraca";
         const string configuracoes = "Configurações";
-        const string aqui = "Aqui no gêmeo, no painel desta peça (salvar e aplicar valem para a catraca inteira)";
+        const string aqui = "Aqui na configuração, no painel desta peça (salvar e aplicar valem para a catraca inteira)";
         const string nenhuma = "Não há ajuste pelo painel.";
 
         var lista = new[]
@@ -173,7 +173,7 @@ public static class CatalogoDaFit4
                     new("Liberar nos dois sentidos", SituacaoDaFuncao.AguardandoConfirmacao,
                         "Permite carona; só para evacuação, e depende da decisão do dono do produto (D5)."),
                     new("Queda dos braços em emergência", SituacaoDaFuncao.AguardandoConfirmacao,
-                        "Não documentada para a TopFit 4 desta instalação. O gêmeo não simula."),
+                        "Não documentada para a TopFit 4 desta instalação. O desenho não simula."),
                 ],
                 $"{aqui}: tempo de liberação e giro. A liberação manual fica em {gerenciar}"),
             new FichaDaPeca(

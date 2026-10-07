@@ -310,7 +310,11 @@ public sealed partial class AnalisadorDaOperacaoTests : IDisposable
         Assert.True(primeira.Liberou);
         Assert.Equal(MotivoDoUso.UsosEsgotados, segunda.Motivo);
         Assert.Equal(MotivoDoUso.Desconhecido, desconhecido.Motivo);
-        Assert.True(relogio.Elapsed < TimeSpan.FromMilliseconds(500), $"Decisões levaram {relogio.Elapsed}.");
+        // A garantia real de que a camada não entra no passo da decisão é estrutural (o worker não
+        // alcança Access.Inteligencia — NOVO_ARQ_IA_01). Aqui só confirmamos que a decisão não trava
+        // na telemetria presa: se travasse, esperaria o busy_timeout do acesso.db (5 s) por operação.
+        // O teto é 2 s (bem acima da variação do runner de CI, ~0,6 s, e bem abaixo de um bloqueio real).
+        Assert.True(relogio.Elapsed < TimeSpan.FromSeconds(2), $"Decisões levaram {relogio.Elapsed}.");
         Assert.Equal(nameof(SqliteException), analisador.Situacao.UltimoErro);
         Assert.False(host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.IsCancellationRequested);
 

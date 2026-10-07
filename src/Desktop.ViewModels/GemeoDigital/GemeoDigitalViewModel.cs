@@ -812,7 +812,7 @@ public sealed class GemeoDigitalViewModel : TelaBase
     {
         if (!ServicoEmSimulacao)
         {
-            Mensagem = "Só com o serviço em modo simulação. Com catraca física, o gêmeo apenas observa.";
+            Mensagem = "Só com o serviço em modo simulação. Com catraca física, a tela apenas observa.";
             return;
         }
 
