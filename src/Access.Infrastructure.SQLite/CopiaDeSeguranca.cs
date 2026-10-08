@@ -51,23 +51,47 @@ public sealed class CopiaDeSeguranca
             throw new InvalidOperationException($"Já existe uma cópia com este nome: {destino}.");
         }
 
-        using (var conexao = _fabrica.Abrir())
-        using (var comando = conexao.CreateCommand())
+        string? problema;
+        try
         {
-            // O caminho não pode ser parâmetro em VACUUM INTO; ele vem de um nome que nós geramos,
-            // sem entrada do usuário, e as aspas simples são dobradas por garantia.
-            comando.CommandText = $"VACUUM INTO '{destino.Replace("'", "''", StringComparison.Ordinal)}';";
-            comando.ExecuteNonQuery();
+            using (var conexao = _fabrica.Abrir())
+            using (var comando = conexao.CreateCommand())
+            {
+                // O caminho não pode ser parâmetro em VACUUM INTO; ele vem de um nome que nós geramos,
+                // sem entrada do usuário, e as aspas simples são dobradas por garantia.
+                comando.CommandText = $"VACUUM INTO '{destino.Replace("'", "''", StringComparison.Ordinal)}';";
+                comando.ExecuteNonQuery();
+            }
+
+            problema = Conferir(destino);
+        }
+        catch
+        {
+            // Disco cheio no meio do VACUUM INTO deixa um arquivo pela metade, que pareceria uma
+            // cópia na hora de restaurar. Some com ele e deixa a falha seguir para quem chamou.
+            ApagarSeExistir(destino);
+            throw;
         }
 
-        var problema = Conferir(destino);
         if (problema is not null)
         {
-            File.Delete(destino);
+            ApagarSeExistir(destino);
             throw new InvalidOperationException($"A cópia não passou na verificação ({problema}) e foi apagada.");
         }
 
         return destino;
+    }
+
+    private static void ApagarSeExistir(string arquivo)
+    {
+        try
+        {
+            File.Delete(arquivo);
+        }
+        catch (Exception erro) when (erro is IOException or UnauthorizedAccessException)
+        {
+            // Sem como apagar agora (arquivo preso): a retenção leva na próxima limpeza.
+        }
     }
 
     /// <summary>Apaga as cópias mais antigas e mantém só as <paramref name="manter"/> mais recentes.</summary>

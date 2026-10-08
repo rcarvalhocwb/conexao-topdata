@@ -26,6 +26,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Os laços em segundo plano (AgendadorDeCopias, por exemplo) são internos; o teste os exercita
+         direto, sem subir o host. -->
+    <InternalsVisibleTo Include="Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Ingressos de teste do modo simulação, carregados pelo serviço. -->
     <None Include="../../installer/simulacao.exemplo.json"
           Link="simulacao.exemplo.json"

@@ -4,6 +4,8 @@ using Access.Infrastructure.SQLite;
 using Contracts.Edge.V1;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Edge.Supervisor;
 
@@ -20,14 +22,15 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
     private readonly Operacao _operacao;
     private readonly DifusorDeEventos _difusor;
     private readonly TimeSpan _intervalo;
+    private readonly ILogger _log;
     private long _ultima;
 
-    public AcompanhamentoDaOperacao(Operacao operacao, EdgeControlService servico)
-        : this(operacao, servico.Eventos, TimeSpan.FromMilliseconds(500))
+    public AcompanhamentoDaOperacao(Operacao operacao, EdgeControlService servico, ILogger<AcompanhamentoDaOperacao> log)
+        : this(operacao, servico.Eventos, TimeSpan.FromMilliseconds(500), log)
     {
     }
 
-    public AcompanhamentoDaOperacao(Operacao operacao, DifusorDeEventos difusor, TimeSpan intervalo)
+    public AcompanhamentoDaOperacao(Operacao operacao, DifusorDeEventos difusor, TimeSpan intervalo, ILogger? log = null)
     {
         ArgumentNullException.ThrowIfNull(operacao);
         ArgumentNullException.ThrowIfNull(difusor);
@@ -35,6 +38,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
         _operacao = operacao;
         _difusor = difusor;
         _intervalo = intervalo;
+        _log = log ?? NullLogger.Instance;
     }
 
     /// <summary>Começa do fim: o painel não relê o dia inteiro ao abrir.</summary>
@@ -127,7 +131,11 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
         };
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    // Uma exceção que não seja de base ocupada recomeça o laço, em vez de parar o serviço (E2-02).
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        LacoResiliente.RodarAsync(nameof(AcompanhamentoDaOperacao), Rodar, _log, stoppingToken, TimeSpan.FromSeconds(5));
+
+    private async Task Rodar(CancellationToken stoppingToken)
     {
         try
         {

@@ -59,8 +59,11 @@ internal sealed class AgendadorDeCopias(
             var apagadas = copia.Limpar(CopiasMantidas);
             Log.CopiaFeita(log, Path.GetFileName(caminho), apagadas, null);
         }
-        catch (Exception erro) when (erro is InvalidOperationException or IOException or UnauthorizedAccessException)
+        catch (Exception erro) when (erro is not OutOfMemoryException)
         {
+            // Qualquer falha, inclusive SqliteException (disco cheio, base ocupada além do busy_timeout,
+            // cópia ilegível na conferência): antes só três tipos eram capturados, e uma SqliteException
+            // parava o serviço inteiro (achado E2-02 do docs/41).
             Log.CopiaFalhou(log, erro.Message, erro);
         }
     }

@@ -53,9 +53,32 @@
     <CustomAction Id="HabilitarNetFx35" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
                   Execute="deferred" Impersonate="no" Return="ignore" />
 
+    <!--
+      Atualização (achado E10-1 do docs/41): o MajorUpgrade remove a versão anterior, o que para e
+      apaga o serviço, e instala a nova sem iniciá-lo. Sem isto, depois de toda atualização nenhuma
+      catraca atendia até alguém iniciar o serviço ou reiniciar o PC.
+
+      Só numa atualização de uma instalação já configurada (workers.json existe). Na instalação
+      nova quem inicia o serviço é o assistente, depois de configurar. Falhar NÃO desfaz a
+      atualização (Return="ignore"): o painel mostra o serviço fora e o RB-01 cobre o caso.
+    -->
+    <Property Id="JA_CONFIGURADO">
+      <DirectorySearch Id="BuscaPastaDeDados" Path="[CommonAppDataFolder]ConexaoTopdata" Depth="0">
+        <FileSearch Id="BuscaWorkersJson" Name="workers.json" />
+      </DirectorySearch>
+    </Property>
+
+    <SetProperty Id="IniciarServicoAtualizado" Sequence="execute" Before="IniciarServicoAtualizado"
+                 Value="&quot;[WindowsFolder]Sysnative\sc.exe&quot; start ConexaoTopdataEdge" />
+
+    <CustomAction Id="IniciarServicoAtualizado" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
     <InstallExecuteSequence>
       <Custom Action="HabilitarNetFx35" Before="InstallFinalize"
               Condition="NOT Installed AND NETFX35INSTALADO &lt;&gt; &quot;#1&quot; AND NOT PULAR_NETFX35" />
+      <Custom Action="IniciarServicoAtualizado" After="HabilitarNetFx35"
+              Condition="WIX_UPGRADE_DETECTED AND JA_CONFIGURADO AND NOT (REMOVE ~= &quot;ALL&quot;)" />
     </InstallExecuteSequence>
 
     <!--

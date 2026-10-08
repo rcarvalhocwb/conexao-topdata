@@ -100,9 +100,9 @@ internal sealed class ZeladorDeRegistrosServico(
                     Log.Apagados(log, apagados, null);
                 }
             }
-            catch (Exception erro) when (erro is IOException or UnauthorizedAccessException)
+            catch (Exception erro) when (erro is not OutOfMemoryException)
             {
-                // Falha de limpeza não derruba o serviço; o próximo ciclo tenta de novo.
+                // Falha de limpeza não derruba o serviço; o próximo ciclo tenta de novo (achado E2-02).
                 Log.Falhou(log, erro.Message, erro);
             }
 

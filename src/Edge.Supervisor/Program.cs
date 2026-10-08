@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 // Serviço local: supervisiona os workers e atende o painel pelo IPC.
 //
@@ -48,6 +49,17 @@ if (OperatingSystem.IsWindows())
         [new SegurancaLocal.AlvoDaRestricao(InstalacaoLocal.PastaDeDados, Pasta: true)]));
 }
 
+// Erros da partida, antes do registro do serviço abrir: rodando como serviço não há console, e o
+// técnico do RB-01 abre registros\servico-AAAA-MM-DD.log. Vão para lá também (achado E10-6 do docs/41).
+var registroDaPartida = new Edge.Worker.Operacao.RegistroEmArquivo(
+    Path.Combine(InstalacaoLocal.PastaDeDados, "registros"), "servico");
+
+void FalhaNaPartida(string linha)
+{
+    Console.Error.WriteLine(linha);
+    registroDaPartida.Escrever("PARTIDA " + linha);
+}
+
 // Configuração: EDGE_CONFIG (desenvolvimento), a da pasta de dados (instalação), ou a
 // que estiver ao lado do executável.
 var caminhoDaConfig = Environment.GetEnvironmentVariable("EDGE_CONFIG")
@@ -76,7 +88,7 @@ else
     }
     catch (Exception erro) when (erro is IOException or InvalidDataException or System.Text.Json.JsonException)
     {
-        Console.Error.WriteLine($"Não foi possível ler {caminhoDaConfig}: {erro.Message}");
+        FalhaNaPartida($"Não foi possível ler {caminhoDaConfig}: {erro.Message}");
         return 1;
     }
 
@@ -84,11 +96,11 @@ else
 
     if (problemas.Count > 0)
     {
-        Console.Error.WriteLine($"{problemas.Count} problema(s) na configuração:");
+        FalhaNaPartida($"{problemas.Count} problema(s) na configuração ({caminhoDaConfig}):");
 
         foreach (var problema in problemas)
         {
-            Console.Error.WriteLine($"  - {problema}");
+            FalhaNaPartida($"  - {problema}");
         }
 
         return 1;
@@ -110,7 +122,17 @@ var caminhoDoBanco = configuracao.CaminhoDoBanco;
 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco))!);
 
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
-new Migrator(fabrica).Aplicar();
+try
+{
+    new Migrator(fabrica).Aplicar();
+}
+catch (Exception erro) when (erro is not OutOfMemoryException)
+{
+    // Banco ilegível, disco cheio ou migração que falha: o serviço não sobe sem base, e o motivo
+    // tem de ficar onde o técnico procura (RB-01 e RB-09).
+    FalhaNaPartida($"Não foi possível abrir ou atualizar a base local {caminhoDoBanco}: {erro.GetType().Name}: {erro.Message}");
+    return 1;
+}
 
 // Banco fora da pasta da instalação ("banco" no workers.json): restringe só o que o serviço cria ao
 // lado dele (arquivos do banco, copias, registros), nunca a pasta do banco, que pode ser a raiz de um
@@ -241,6 +263,16 @@ var construtor = WebApplication.CreateBuilder(new WebApplicationOptions
     // Como serviço, a pasta atual é System32; o conteúdo do programa está ao lado do exe.
     ContentRootPath = AppContext.BaseDirectory,
 });
+
+// Avisos e erros do ILogger (cópia, retenção, supervisão, falha de um laço) também no registro
+// do serviço em arquivo, que é o que o suporte abre (E2-05, E10-6).
+construtor.Logging.AddProvider(new ProvedorDeRegistroEmArquivo(registro.Escrever));
+
+// Rede final: os laços em segundo plano já não deixam exceção escapar (LacoResiliente). Se uma
+// escapar mesmo assim, ela fica registrada e o resto do serviço segue atendendo as catracas, em vez
+// de o host parar e encerrar todos os workers (padrão do .NET; achado E2-02).
+construtor.Services.Configure<HostOptions>(opcoes =>
+    opcoes.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
 
 // Responde ao gerenciador de serviços do Windows. Fora de um serviço, não faz nada.
 construtor.Host.UseWindowsService(opcoes => opcoes.ServiceName = "ConexaoTopdataEdge");

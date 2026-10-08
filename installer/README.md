@@ -112,7 +112,9 @@ Execute como administrador. Ele:
 - **atualiza** rodando o Setup novo por cima, e **desinstala** por "Aplicativos instalados"
   do Windows. Nos dois casos, fecha sozinho o painel e o assistente se estiverem abertos, e
   o serviço, ao parar, encerra o programa das catracas. Os dados em
-  `C:\ProgramData\ConexaoTopdata` ficam.
+  `C:\ProgramData\ConexaoTopdata` ficam. Na atualização de uma instalação já configurada, o
+  serviço é iniciado de novo ao fim; se não subir, a atualização não é desfeita e o painel
+  mostra o serviço fora (RB-01). Esse caminho ainda não foi ensaiado numa VM (docs/41, Fase 2).
 
 ### O que fica de fora, e como o assistente resolve
 

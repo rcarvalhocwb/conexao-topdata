@@ -88,13 +88,50 @@ public sealed class WorkerSupervisor
     public IReadOnlyDictionary<string, SituacaoDoWorker> Situacoes =>
         _workers.ToDictionary(w => w.Nome, Situacao, StringComparer.Ordinal);
 
-    /// <summary>Sobe todos os workers.</summary>
-    public void Iniciar()
+    /// <summary>Sobe os workers que ainda não foram iniciados.</summary>
+    /// <remarks>
+    /// Um grupo que não sobe (o executável bloqueado pelo antivírus ou preso numa atualização, por
+    /// exemplo) não impede os outros: ele fica como "morto", e a supervisão tenta de novo com backoff.
+    /// Antes, a exceção saía daqui, nenhum grupo seguinte subia e o laço de supervisão morria (achado
+    /// E2-02 do docs/41). Chamar de novo não sobe um worker duas vezes.
+    /// </remarks>
+    /// <returns>O que aconteceu com cada worker iniciado agora.</returns>
+    public IReadOnlyList<AcaoDeSupervisao> Iniciar()
     {
-        foreach (var worker in _workers)
+        lock (_trava)
         {
-            worker.Iniciar();
-            _estados[worker.Nome].IniciadoEm = _relogio();
+            if (_encerrado)
+            {
+                return [];
+            }
+
+            var acoes = new List<AcaoDeSupervisao>(_workers.Count);
+
+            foreach (var worker in _workers)
+            {
+                var estado = _estados[worker.Nome];
+                if (estado.IniciadoEm is not null)
+                {
+                    continue;
+                }
+
+                estado.IniciadoEm = _relogio();
+
+                try
+                {
+                    worker.Iniciar();
+                    acoes.Add(new AcaoDeSupervisao(worker.Nome, Situacao(worker), "iniciado"));
+                }
+                catch (Exception erro) when (erro is not OutOfMemoryException)
+                {
+                    acoes.Add(new AcaoDeSupervisao(
+                        worker.Nome,
+                        SituacaoDoWorker.Morto,
+                        $"não iniciou ({erro.Message}); a supervisão tenta de novo"));
+                }
+            }
+
+            return acoes;
         }
     }
 
