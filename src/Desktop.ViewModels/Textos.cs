@@ -36,7 +36,7 @@ public static class Textos
             "Degradado" => ("Com problema — veja o diagnóstico", Sinal.Problema),
             "Disabled" => ("Desligada", Sinal.Neutro),
             "Morto" => ("Programa da catraca parou", Sinal.Problema),
-            "Quarentena" => ("Programa da catraca parou várias vezes", Sinal.Problema),
+            "Quarentena" => ("Programa da catraca parou várias vezes; nova tentativa automática em até 15 min", Sinal.Problema),
             "SemBatimento" => ("Programa da catraca não responde", Sinal.Problema),
             "Parado" => ("Parada", Sinal.Neutro),
             _ => (estado, Sinal.Atencao),

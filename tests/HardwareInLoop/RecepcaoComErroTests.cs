@@ -124,6 +124,75 @@ public sealed class RecepcaoComErroTests
         Assert.Contains("nº 10", registrados[1], StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Achado E1-01 do docs/41: com a chave desligada (padrão), o retorno ≠ 0 em espera de leitura
+    /// vira "sem eventos" e a catraca seguia em Polling para sempre, aparecendo "Atendendo" com o cabo
+    /// puxado. A sonda de vida testa a conexão depois de 10 s sem sinal; sem resposta, reconecta.
+    /// </summary>
+    [Fact]
+    public void Catraca_muda_em_polling_e_detectada_pela_sonda_de_vida_e_vai_para_reconexao()
+    {
+        var agora = new DateTimeOffset(2026, 9, 24, 22, 0, 0, TimeSpan.Zero);
+        var costura = new CosturaFalsa { OrigemADevolver = 0 };
+        using var adapter = new TopdataInnerAdapter(costura);
+        var laco = new DevicePump(adapter, () => agora, new HashSet<byte> { 4 });
+        var catraca = new DeviceSlot(1, Configuracao(), () => agora);
+
+        for (var i = 0; i < 40 && catraca.Maquina.Current != DeviceState.Polling; i++)
+        {
+            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        }
+
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10)); // acerto do relógio
+
+        // Cabo puxado: a espera devolve ≠ 0 (que vira "sem eventos") e o teste de conexão falha.
+        costura.Retornos["ReceberDadosOnLine"] = 1;
+        costura.Retornos["Ping"] = 1;
+
+        agora += TimeSpan.FromSeconds(9);
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+        Assert.DoesNotContain("Ping", costura.Chamadas.Skip(costura.Chamadas.LastIndexOf("EnviarRelogio")));
+
+        agora += TimeSpan.FromSeconds(1);
+        costura.Chamadas.Clear();
+        var feito = laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+
+        Assert.Equal(["Ping"], costura.Chamadas);
+        Assert.Equal(DeviceState.Reconectar, catraca.Maquina.Current);
+        Assert.Contains("não respondeu à sonda de vida", feito, StringComparison.Ordinal);
+        Assert.Equal(1, catraca.Disjuntor.FalhasSeguidas);
+    }
+
+    /// <summary>A catraca que responde à sonda segue atendendo, e a sonda só volta depois de mais 10 s.</summary>
+    [Fact]
+    public void Catraca_que_responde_a_sonda_segue_em_polling_sem_sondar_a_cada_volta()
+    {
+        var agora = new DateTimeOffset(2026, 9, 24, 22, 0, 0, TimeSpan.Zero);
+        var costura = new CosturaFalsa { OrigemADevolver = 0 };
+        using var adapter = new TopdataInnerAdapter(costura);
+        var laco = new DevicePump(adapter, () => agora, new HashSet<byte> { 4 });
+        var catraca = new DeviceSlot(1, Configuracao(), () => agora);
+
+        for (var i = 0; i < 40 && catraca.Maquina.Current != DeviceState.Polling; i++)
+        {
+            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        }
+
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10)); // acerto do relógio
+        costura.Chamadas.Clear();
+
+        for (var segundo = 1; segundo <= 25; segundo++)
+        {
+            agora += TimeSpan.FromSeconds(1);
+            Assert.Equal("sem eventos", laco.Passo(catraca, TimeSpan.FromMilliseconds(10)));
+        }
+
+        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+        Assert.Equal(2, costura.Chamadas.Count(c => c == "Ping"));
+        Assert.Equal(23, costura.Chamadas.Count(c => c == "ReceberDadosOnLine"));
+    }
+
     /// <summary>O 8 continua sendo falha de dependência: insistir não adianta.</summary>
     [Fact]
     public void Retorno_oito_na_recepcao_continua_falha_de_dependencia()

@@ -48,6 +48,85 @@ public sealed class ProcessoDeWorkerTests
         }
     }
 
+    /// <summary>
+    /// Achado E2-01 do docs/41: um worker vivo mas travado (a DLL presa numa chamada) contava como
+    /// saudável, porque saudável era só "processo vivo", e nunca era reiniciado. Aqui a cobaia fica de
+    /// pé sem gravar nada na base, como um worker travado; passada a tolerância, a supervisão a mata e
+    /// sobe outra.
+    /// </summary>
+    [Fact]
+    public void Worker_vivo_que_para_de_dar_noticia_na_base_e_morto_e_reiniciado()
+    {
+        var agora = new DateTimeOffset(2026, 10, 8, 19, 0, 0, TimeSpan.Zero);
+        DateTimeOffset? noticia = null;
+
+        using var worker = new ProcessoDeWorker(
+            "travado", 3570, [1], ExecutavelDaCobaia(),
+            relogio: () => agora,
+            argumentosExtras: ["--esperar"],
+            ultimaNoticia: _ => noticia,
+            toleranciaDoBatimento: TimeSpan.FromSeconds(90));
+        var supervisor = new WorkerSupervisor([worker], () => agora);
+
+        try
+        {
+            supervisor.Iniciar();
+            Assert.True(worker.EstaVivo);
+
+            // Logo depois de subir, ainda sem notícia: dentro da tolerância, saudável.
+            agora += TimeSpan.FromSeconds(60);
+            Assert.True(worker.EstaSaudavel);
+
+            // Dando notícia, segue saudável mesmo depois da tolerância contada da subida.
+            noticia = agora;
+            agora += TimeSpan.FromSeconds(60);
+            Assert.True(worker.EstaSaudavel);
+
+            // Silêncio na base acima da tolerância: travado.
+            agora += TimeSpan.FromSeconds(31);
+            Assert.False(worker.EstaSaudavel);
+            Assert.Equal(SituacaoDoWorker.SemBatimento, supervisor.Situacao(worker));
+            Assert.Contains("sem notícia na base há 91s", worker.Diagnostico, StringComparison.Ordinal);
+
+            var acao = Assert.Single(supervisor.Supervisionar());
+            Assert.Contains("laço travado", acao.Acao, StringComparison.Ordinal);
+            Assert.Equal(1, supervisor.Reinicios("travado"));
+            Assert.True(worker.EstaVivo);
+
+            // O processo novo conta a tolerância da subida dele, não da notícia velha.
+            Assert.True(worker.EstaSaudavel);
+        }
+        finally
+        {
+            worker.Matar();
+        }
+    }
+
+    /// <summary>Base ocupada na hora de ler o batimento não é silêncio: não mata ninguém.</summary>
+    [Fact]
+    public void Base_ocupada_ao_ler_o_batimento_nao_conta_como_worker_travado()
+    {
+        var agora = new DateTimeOffset(2026, 10, 8, 19, 0, 0, TimeSpan.Zero);
+
+        using var worker = new ProcessoDeWorker(
+            "ocupado", 3571, [2], ExecutavelDaCobaia(),
+            relogio: () => agora,
+            argumentosExtras: ["--esperar"],
+            ultimaNoticia: _ => throw new InvalidOperationException("database is locked"));
+
+        try
+        {
+            worker.Iniciar();
+            agora += TimeSpan.FromMinutes(10);
+
+            Assert.True(worker.EstaSaudavel);
+        }
+        finally
+        {
+            worker.Matar();
+        }
+    }
+
     private static string ExecutavelDaCobaia()
     {
         var raiz = new DirectoryInfo(AppContext.BaseDirectory);

@@ -177,6 +177,17 @@ var pidDoServico = Environment.ProcessId;
 // serviço some, de qualquer jeito) e, em todo sistema, a vigia do pai no worker (--pai).
 var contencao = ContencaoDosWorkers.Criar();
 
+// Batimento dos workers (achado E2-01): a situação que cada um grava na base a cada 2 s, só desta
+// partida do serviço. O mais recente entre as catracas do grupo.
+var operacao = new Operacao(fabrica);
+
+DateTimeOffset? UltimaNoticiaDoGrupo(IReadOnlyList<int> inners) =>
+    operacao.ListarSituacao()
+        .Where(s => string.Equals(s.Sessao, sessaoDoServico, StringComparison.Ordinal) && inners.Contains(s.Inner))
+        .Select(s => (DateTimeOffset?)s.AtualizadoEm)
+        .DefaultIfEmpty()
+        .Max();
+
 var workers = configuracao.Grupos
     .Select(g => new ProcessoDeWorker(
         g.Nome,
@@ -190,7 +201,8 @@ var workers = configuracao.Grupos
             .. configuracao.Simulacao ? ["--simulador"] : Array.Empty<string>(),
             .. chaveDaImpressao is null ? Array.Empty<string>() : ["--chave-da-impressao-na-entrada"]],
         entradaPadrao: chaveDaImpressao is null ? null : () => chaveDaImpressao,
-        contencao: contencao))
+        contencao: contencao,
+        ultimaNoticia: UltimaNoticiaDoGrupo))
     .ToList();
 
 // Modo simulação: ingressos e cartões de teste carregados a cada partida (idempotente).
@@ -208,7 +220,6 @@ if (configuracao.Simulacao)
 }
 
 var supervisor = new WorkerSupervisor(workers);
-var operacao = new Operacao(fabrica);
 var nuvem = new EstadoDaNuvem();
 var registro = new Edge.Worker.Operacao.RegistroEmArquivo(
     Path.Combine(configuracao.PastaDeDados, "registros"), "servico");

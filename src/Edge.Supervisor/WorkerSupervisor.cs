@@ -1,3 +1,4 @@
+using System.Globalization;
 using Edge.Worker.Resiliencia;
 
 namespace Edge.Supervisor;
@@ -35,13 +36,23 @@ public sealed class WorkerSupervisor
     private readonly TimeSpan _janelaDeReinicios;
     private readonly Lock _trava = new();
     private bool _encerrado;
+    private readonly TimeSpan _duracaoDaQuarentena;
+
+    /// <summary>Quanto tempo um grupo fica isolado antes de uma nova tentativa automática.</summary>
+    /// <remarks>
+    /// Achado E2-03 do docs/41: a quarentena não tinha saída; só reiniciar o serviço, o que exige
+    /// administrador, tirava um grupo dela. Agora ela termina sozinha depois deste tempo (e de novo
+    /// entra, se o grupo continuar caindo), e o operador pode antecipar pelo painel.
+    /// </remarks>
+    public static readonly TimeSpan DuracaoPadraoDaQuarentena = TimeSpan.FromMinutes(15);
 
     public WorkerSupervisor(
         IEnumerable<IWorkerHost> workers,
         Func<DateTimeOffset>? relogio = null,
         BackoffComJitter? backoff = null,
         int reiniciosMaximos = 5,
-        TimeSpan? janelaDeReinicios = null)
+        TimeSpan? janelaDeReinicios = null,
+        TimeSpan? duracaoDaQuarentena = null)
     {
         ArgumentNullException.ThrowIfNull(workers);
 
@@ -75,6 +86,7 @@ public sealed class WorkerSupervisor
         _backoff = backoff ?? new BackoffComJitter(TimeSpan.FromSeconds(2), TimeSpan.FromMinutes(1));
         _reiniciosMaximos = reiniciosMaximos;
         _janelaDeReinicios = janelaDeReinicios ?? TimeSpan.FromMinutes(5);
+        _duracaoDaQuarentena = duracaoDaQuarentena ?? DuracaoPadraoDaQuarentena;
 
         foreach (var worker in _workers)
         {
@@ -191,13 +203,10 @@ public sealed class WorkerSupervisor
             }
             catch (Exception erro) when (erro is not OutOfMemoryException)
             {
-                // Um grupo que explode ao ser inspecionado não pode levar os outros
-                // junto. Vai para quarentena e o operador é avisado.
-                _estados[worker.Nome].EmQuarentena = true;
-                acoes.Add(new AcaoDeSupervisao(
-                    worker.Nome,
-                    SituacaoDoWorker.Quarentena,
-                    $"falha ao supervisionar, grupo isolado: {erro.Message}"));
+                // Um grupo que explode ao ser inspecionado não pode levar os outros junto. A falha
+                // conta como um reinício que não deu certo: com espera, e quarentena só se repetir
+                // (antes, a primeira exceção já isolava o grupo; achado E2-03).
+                acoes.Add(FalhaAoSupervisionar(worker, agora, erro));
             }
         }
 
@@ -231,14 +240,95 @@ public sealed class WorkerSupervisor
     /// <summary>Quantas vezes um worker foi reiniciado.</summary>
     public int Reinicios(string nomeDoWorker) => _estados[nomeDoWorker].Reinicios.Count;
 
+    /// <summary>
+    /// Tira o grupo da quarentena agora, a pedido do operador: a próxima ronda tenta subir o worker.
+    /// </summary>
+    /// <returns>Falso se o grupo não existe ou não estava em quarentena.</returns>
+    public bool TentarDeNovo(string nomeDoWorker)
+    {
+        lock (_trava)
+        {
+            if (!_estados.TryGetValue(nomeDoWorker, out var estado) || !estado.EmQuarentena)
+            {
+                return false;
+            }
+
+            SairDaQuarentena(estado);
+            return true;
+        }
+    }
+
+    private static void SairDaQuarentena(EstadoDeSupervisao estado)
+    {
+        estado.EmQuarentena = false;
+        estado.QuarentenaDesde = null;
+        estado.Reinicios.Clear();
+        estado.ReiniciarApos = null;
+    }
+
+    private static void EntrarEmQuarentena(EstadoDeSupervisao estado, DateTimeOffset agora)
+    {
+        estado.EmQuarentena = true;
+        estado.QuarentenaDesde = agora;
+    }
+
+    private AcaoDeSupervisao FalhaAoSupervisionar(IWorkerHost worker, DateTimeOffset agora, Exception erro)
+    {
+        var estado = _estados[worker.Nome];
+
+        if (estado.EmQuarentena)
+        {
+            return new AcaoDeSupervisao(worker.Nome, SituacaoDoWorker.Quarentena, $"em quarentena: {erro.Message}");
+        }
+
+        if (estado.ReiniciarApos is { } quando && agora < quando)
+        {
+            return new AcaoDeSupervisao(worker.Nome, SituacaoDoWorker.Morto, $"falha ao supervisionar ({erro.Message}); aguardando backoff");
+        }
+
+        estado.Reinicios.RemoveAll(r => agora - r > _janelaDeReinicios);
+        estado.Reinicios.Add(agora);
+
+        if (estado.Reinicios.Count >= _reiniciosMaximos)
+        {
+            EntrarEmQuarentena(estado, agora);
+            return new AcaoDeSupervisao(
+                worker.Nome,
+                SituacaoDoWorker.Quarentena,
+                $"falha ao supervisionar repetida ({erro.Message}); grupo isolado por {_duracaoDaQuarentena.TotalMinutes:F0} min");
+        }
+
+        estado.ReiniciarApos = agora + _backoff.Para(estado.Reinicios.Count);
+        return new AcaoDeSupervisao(worker.Nome, SituacaoDoWorker.Morto, $"falha ao supervisionar ({erro.Message}); nova tentativa com espera");
+    }
+
     private AcaoDeSupervisao Supervisionar(IWorkerHost worker, DateTimeOffset agora)
     {
         var estado = _estados[worker.Nome];
+
+        if (estado.EmQuarentena && estado.QuarentenaDesde is { } desde && agora - desde >= _duracaoDaQuarentena)
+        {
+            SairDaQuarentena(estado);
+            worker.Matar();
+            worker.Iniciar();
+            estado.IniciadoEm = agora;
+            estado.Reinicios.Add(agora);
+            estado.ReiniciarApos = agora + _backoff.Para(estado.Reinicios.Count);
+            return new AcaoDeSupervisao(
+                worker.Nome,
+                Situacao(worker),
+                $"fim da quarentena de {_duracaoDaQuarentena.TotalMinutes:F0} min: nova tentativa");
+        }
+
         var situacao = Situacao(worker);
 
         if (situacao is SituacaoDoWorker.Quarentena)
         {
-            return new AcaoDeSupervisao(worker.Nome, situacao, "em quarentena — exige ação humana");
+            var volta = estado.QuarentenaDesde is { } d ? d + _duracaoDaQuarentena : agora;
+            return new AcaoDeSupervisao(
+                worker.Nome,
+                situacao,
+                string.Create(CultureInfo.InvariantCulture, $"em quarentena; nova tentativa automática às {volta.ToLocalTime():HH:mm}"));
         }
 
         if (situacao is SituacaoDoWorker.Saudavel)
@@ -257,12 +347,12 @@ public sealed class WorkerSupervisor
 
         if (estado.Reinicios.Count >= _reiniciosMaximos)
         {
-            estado.EmQuarentena = true;
+            EntrarEmQuarentena(estado, agora);
             return new AcaoDeSupervisao(
                 worker.Nome,
                 SituacaoDoWorker.Quarentena,
                 $"reiniciou {estado.Reinicios.Count} vezes em {_janelaDeReinicios.TotalMinutes:F0} min — " +
-                "reinício não resolve, isolado para diagnóstico");
+                $"reinício não resolve, isolado por {_duracaoDaQuarentena.TotalMinutes:F0} min para diagnóstico");
         }
 
         var motivo = situacao is SituacaoDoWorker.SemBatimento
@@ -290,6 +380,8 @@ public sealed class WorkerSupervisor
         public DateTimeOffset? ReiniciarApos { get; set; }
 
         public bool EmQuarentena { get; set; }
+
+        public DateTimeOffset? QuarentenaDesde { get; set; }
 
         public List<DateTimeOffset> Reinicios { get; } = [];
     }

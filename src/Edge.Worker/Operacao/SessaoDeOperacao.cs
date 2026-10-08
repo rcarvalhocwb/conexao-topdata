@@ -49,6 +49,7 @@ public sealed class SessaoDeOperacao
     private readonly DeviceGroupLoop _laco;
     private readonly DecisorDeIngresso _decisor;
     private bool _avisouConfirmacoesPendentes;
+    private readonly Dictionary<int, (string Acao, long Repeticoes)> _ultimaAcao = [];
     private readonly Action<string> _registrar;
     private readonly Action<IReadOnlyList<SituacaoDaCatraca>> _publicar;
     private readonly TimeSpan _intervaloDePublicacao;
@@ -289,10 +290,7 @@ public sealed class SessaoDeOperacao
 
         foreach (var (inner, acao) in _laco.UmaVolta())
         {
-            if (!string.Equals(acao, "sem eventos", StringComparison.Ordinal))
-            {
-                _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{inner}: {acao}"));
-            }
+            Registrar(inner, acao);
         }
 
         GravarConfirmacoesSeFor();
@@ -334,7 +332,81 @@ public sealed class SessaoDeOperacao
         {
             UmaVolta();
             aCadaVolta?.Invoke();
+
+            if (PausaSugerida() is { } pausa)
+            {
+                cancelamento.WaitHandle.WaitOne(pausa);
+            }
         }
+    }
+
+    /// <summary>Teto da pausa de uma volta ociosa.</summary>
+    public static readonly TimeSpan PausaMaxima = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// Quanto esperar antes da próxima volta quando nenhuma catraca tem o que fazer: todas em espera
+    /// de reconexão ou com o disjuntor aberto. Nulo se alguma está atendendo ou pode tentar agora.
+    /// </summary>
+    /// <remarks>
+    /// Achado E1-03 do docs/41: nesse caso nenhum passo chama a DLL e a volta termina na hora. Sem
+    /// pausa, o laço ocupava um núcleo inteiro enquanto a rede estava fora. A pausa vai até a primeira
+    /// catraca poder tentar de novo, no máximo <see cref="PausaMaxima"/>, para um comando do operador
+    /// não esperar mais que isso.
+    /// </remarks>
+    public TimeSpan? PausaSugerida()
+    {
+        var agora = _relogio();
+        TimeSpan? menor = null;
+
+        foreach (var catraca in _laco.Dispositivos)
+        {
+            TimeSpan espera;
+            if (catraca.EsperarAte is { } ate && agora < ate)
+            {
+                espera = ate - agora;
+            }
+            else if (!catraca.Disjuntor.PermitePassar)
+            {
+                espera = PausaMaxima;
+            }
+            else
+            {
+                return null;
+            }
+
+            menor = menor is { } m && m < espera ? m : espera;
+        }
+
+        return menor is { } pausa ? (pausa < PausaMaxima ? pausa : PausaMaxima) : null;
+    }
+
+    // A mesma linha repetida a cada volta (aguardando backoff, disjuntor aberto, falha que se repete)
+    // vai ao registro uma vez; quando a ação muda, uma linha diz quantas vezes ela se repetiu
+    // (achado E1-03 do docs/41: com a rede fora, eram milhares de linhas por segundo).
+    private void Registrar(int inner, string acao)
+    {
+        if (string.Equals(acao, "sem eventos", StringComparison.Ordinal))
+        {
+            _ultimaAcao.Remove(inner);
+            return;
+        }
+
+        if (_ultimaAcao.TryGetValue(inner, out var anterior))
+        {
+            if (string.Equals(anterior.Acao, acao, StringComparison.Ordinal))
+            {
+                _ultimaAcao[inner] = (acao, anterior.Repeticoes + 1);
+                return;
+            }
+
+            if (anterior.Repeticoes > 0)
+            {
+                _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{inner}: (a linha anterior se repetiu mais {anterior.Repeticoes} vez(es))"));
+            }
+        }
+
+        _ultimaAcao[inner] = (acao, 0);
+        _registrar(string.Create(CultureInfo.InvariantCulture, $"inner-{inner}: {acao}"));
     }
 
     /// <summary>Fecha a porta.</summary>

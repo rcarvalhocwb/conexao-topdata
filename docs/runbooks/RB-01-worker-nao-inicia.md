@@ -13,8 +13,8 @@ mensagem fala em "retorno 8" ou em "DLL".
 ## Passos
 
 1. **Ver a mensagem exata no painel.** Abra *Diagnóstico* e copie a linha da catraca.
-   - Critério de sucesso: você sabe se é "retorno 8", "quarentena" ou outra coisa.
-   - Se for "quarentena": vá para o passo 4.
+   - Critério de sucesso: você sabe se é "retorno 8", "parou várias vezes" (quarentena) ou outra coisa.
+   - Se for "parou várias vezes": vá para o passo 4.
 2. **Rodar a verificação do ambiente.** Abra um PowerShell como administrador e rode (o `-ExecutionPolicy Bypass`
    vale só para este comando; sem ele, o Windows recusa scripts por padrão):
    `powershell -ExecutionPolicy Bypass -File "C:\Program Files\Rayzer\XAcess\verificar-ambiente.ps1"`
@@ -25,7 +25,8 @@ mensagem fala em "retorno 8" ou em "DLL".
 3. **Reiniciar o serviço.** Em `services.msc`, clique com o botão direito em `ConexaoTopdataEdge` → *Reiniciar*.
    - Critério de sucesso: em até 1 minuto, a catraca aparece como "Atendendo" no painel.
    - Se continuar sem atender: vá para o passo 4.
-4. **Reiniciar o serviço para tirar a quarentena.** A quarentena só sai com o reinício do serviço (passo 3).
+4. **Quarentena.** O sistema tenta de novo sozinho 15 minutos depois de isolar o grupo. Para não esperar, reinicie
+   o serviço (passo 3); isso derruba por alguns segundos todas as catracas, não só as do grupo isolado.
    Se a catraca voltar a cair logo depois, o problema é a DLL ou o ambiente, não a rede.
    - Critério de sucesso: a catraca fica em "Atendendo" por pelo menos 5 minutos.
    - Se cair de novo: vá para o passo 5.

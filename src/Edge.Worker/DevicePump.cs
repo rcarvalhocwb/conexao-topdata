@@ -130,6 +130,16 @@ public sealed class DeviceSlot
     /// </remarks>
     public long ErrosDeRecepcao { get; internal set; }
 
+    /// <summary>
+    /// Último sinal de que a catraca responde: conexão, evento recebido ou sonda de vida respondida.
+    /// </summary>
+    /// <remarks>
+    /// Em espera de leitura, a DLL pode devolver "sem eventos" para sempre com o cabo puxado
+    /// (achado E1-01 do docs/41). A sonda de vida (<see cref="DevicePump"/>) usa este instante para
+    /// saber quando testar a conexão.
+    /// </remarks>
+    public DateTimeOffset? UltimaProvaDeVida { get; internal set; }
+
     /// <summary>Identidade lida do equipamento, quando já conhecida.</summary>
     public FirmwareInfo? Firmware { get; internal set; }
 
@@ -261,6 +271,7 @@ public sealed class DevicePump
     private readonly IGravadorDeBilhetes? _gravadorDeBilhetes;
     private readonly bool _exibirTextoDoGiro;
     private readonly Action<string>? _aoDesistirDoGiro;
+    private readonly TimeSpan _sondaDeVida;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -308,6 +319,14 @@ public sealed class DevicePump
     /// C1). O decisor encerra a tentativa pendente sem giro, como faria com a origem 5: um giro
     /// que chegue depois não é da pessoa liberada, e confirmá-la com ele daria a passagem a outro.
     /// </param>
+    /// <param name="sondaDeVida">
+    /// Silêncio máximo em espera de leitura antes de testar a conexão (achado E1-01 do docs/41).
+    /// Com o cabo puxado ou o socket morto, a DLL pode seguir devolvendo "sem eventos", e a catraca
+    /// apareceria "Atendendo" sem atender. Depois deste tempo sem evento, um passo faz o teste de
+    /// conexão no lugar da espera (uma chamada nativa por passo, como sempre); sem resposta, a
+    /// catraca vai para reconexão e o painel deixa de mostrá-la em operação. Padrão: 10 s. Se testar
+    /// a conexão com a catraca em operação a atrapalha é <c>A_CONFIRMAR_COM_TOPDATA</c> (HIL-EVT-01).
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -320,10 +339,12 @@ public sealed class DevicePump
         bool sequenciaOficial = false,
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         bool exibirTextoDoGiro = false,
-        Action<string>? aoDesistirDoGiro = null)
+        Action<string>? aoDesistirDoGiro = null,
+        TimeSpan? sondaDeVida = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _aoDesistirDoGiro = aoDesistirDoGiro;
+        _sondaDeVida = sondaDeVida ?? TimeSpan.FromSeconds(10);
         _sequenciaOficial = sequenciaOficial;
         _exibirTextoDoGiro = exibirTextoDoGiro;
         _gravadorDeBilhetes = gravadorDeBilhetes;
@@ -468,6 +489,7 @@ public sealed class DevicePump
             d.Disjuntor.RegistrarSucesso();
             d.TentativasDeReconexao = 0;
             d.EsperarAte = null;
+            d.UltimaProvaDeVida = agora;
 
             // A cada conexão, o relógio é acertado assim que a catraca chegar a Polling —
             // o fluxo oficial acerta na passagem para on-line (manual 4.6.1).
@@ -562,6 +584,8 @@ public sealed class DevicePump
 
         if (resultado.IsOk)
         {
+            // A catraca acabou de responder: é a prova de vida com que ela entra em espera de leitura.
+            d.UltimaProvaDeVida = agora;
             Disparar(d, DeviceTrigger.ConfiguracaoEnviada, agora);
             return "mensagem padrão enviada";
         }
@@ -572,6 +596,12 @@ public sealed class DevicePump
 
     private string Aguardar(DeviceSlot d, DateTimeOffset agora, TimeSpan limite)
     {
+        // Só em espera de leitura: durante o giro, nada pode atrasar a origem 5 ou 6.
+        if (d.Maquina.Current is DeviceState.Polling && SondarVida(d, agora) is { } sonda)
+        {
+            return sonda;
+        }
+
         var (resultado, evento) = _adapter.AguardarEvento(d.Inner, limite);
 
         switch (resultado.Status)
@@ -579,6 +609,7 @@ public sealed class DevicePump
             case AdapterStatus.Ok when evento is not null:
                 d.Disjuntor.RegistrarSucesso();
                 d.UltimoEvento = evento;
+                d.UltimaProvaDeVida = agora;
 
                 if (evento.Origin.ConfirmaPassagemFisica && d.EmCurso is { Liberou: true } manual)
                 {
@@ -1206,6 +1237,35 @@ public sealed class DevicePump
         }
 
         return $"{GiroNaoConfirmado(prazo)}, sem origem 5 nem 6 — rearmando o leitor";
+    }
+
+    /// <summary>
+    /// Sonda de vida: depois de <see cref="_sondaDeVida"/> sem nenhum sinal da catraca, este passo
+    /// testa a conexão no lugar da espera por evento. Nulo quando ainda não é hora.
+    /// </summary>
+    private string? SondarVida(DeviceSlot d, DateTimeOffset agora)
+    {
+        d.UltimaProvaDeVida ??= agora;
+        if (agora - d.UltimaProvaDeVida.Value < _sondaDeVida)
+        {
+            return null;
+        }
+
+        var resultado = _adapter.TestarConexao(d.Inner);
+        if (resultado.IsOk)
+        {
+            d.UltimaProvaDeVida = agora;
+            return "sem eventos";
+        }
+
+        if (resultado.Status is AdapterStatus.FalhaDeDependencia)
+        {
+            Disparar(d, DeviceTrigger.DependenciaFatal, agora);
+            return $"falha de dependência na sonda de vida ({resultado}) — worker inutilizável";
+        }
+
+        Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
+        return $"catraca não respondeu à sonda de vida depois de {Segundos(agora - d.UltimaProvaDeVida.Value)} s sem evento ({resultado}) — reconectando";
     }
 
     /// <summary>

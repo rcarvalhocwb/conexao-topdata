@@ -27,6 +27,8 @@ public sealed class ProcessoDeWorker : IWorkerHost
     private readonly IReadOnlyList<string> _argumentosExtras;
     private readonly Func<string?>? _entradaPadrao;
     private readonly IContencaoDeProcessos? _contencao;
+    private readonly Func<IReadOnlyList<int>, DateTimeOffset?>? _ultimaNoticia;
+    private readonly TimeSpan _toleranciaDoBatimento;
     private readonly Queue<string> _ultimasLinhas = new();
     private readonly Lock _travaDasLinhas = new();
 
@@ -41,7 +43,9 @@ public sealed class ProcessoDeWorker : IWorkerHost
         Func<DateTimeOffset>? relogio = null,
         IReadOnlyList<string>? argumentosExtras = null,
         Func<string?>? entradaPadrao = null,
-        IContencaoDeProcessos? contencao = null)
+        IContencaoDeProcessos? contencao = null,
+        Func<IReadOnlyList<int>, DateTimeOffset?>? ultimaNoticia = null,
+        TimeSpan? toleranciaDoBatimento = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nome);
         ArgumentException.ThrowIfNullOrWhiteSpace(executavel);
@@ -56,7 +60,19 @@ public sealed class ProcessoDeWorker : IWorkerHost
         _argumentosExtras = argumentosExtras ?? [];
         _entradaPadrao = entradaPadrao;
         _contencao = contencao;
+        _ultimaNoticia = ultimaNoticia;
+        _toleranciaDoBatimento = toleranciaDoBatimento ?? ToleranciaPadraoDoBatimento;
     }
+
+    /// <summary>Silêncio máximo do worker na base antes de ele contar como travado.</summary>
+    /// <remarks>
+    /// O worker publica a situação das catracas a cada volta do laço, no máximo a cada 2 s
+    /// (SessaoDeOperacao). Uma volta legítima pode demorar: com até 20 catracas fora do ar, cada
+    /// teste de conexão bloqueia pelo tempo da DLL, que ainda não foi medido (T2, NOVO-LOAD-LOOP-01).
+    /// 90 s fica bem acima disso e de uma base ocupada, sem matar um worker que só está lento; o
+    /// painel já mostra "sem notícia" aos 15 s. Revisar com a medida da bancada.
+    /// </remarks>
+    public static readonly TimeSpan ToleranciaPadraoDoBatimento = TimeSpan.FromSeconds(90);
 
     public string Nome { get; }
 
@@ -67,15 +83,41 @@ public sealed class ProcessoDeWorker : IWorkerHost
     public bool EstaVivo => _processo is { HasExited: false };
 
     /// <summary>
-    /// Saudável enquanto o processo está de pé.
+    /// Saudável: processo de pé e dando notícia na base.
     /// </summary>
     /// <remarks>
-    /// <b>Não é batimento de verdade.</b> Um worker vivo mas travado dentro da DLL aparece
-    /// como saudável aqui. O batimento real exige o worker reportar pelo IPC, e isso só faz
-    /// sentido quando existir adapter nativo — hoje ele sai na largada.
-    /// A_CONFIRMAR: ver docs/07, Fase 2.
+    /// Achado E2-01 do docs/41: antes, "saudável" era só "processo vivo". Um worker travado
+    /// dentro da DLL (ReceberDadosOnLine que não volta) parava todas as catracas do grupo e nunca
+    /// era reiniciado. O batimento é a situação que o worker grava na base a cada 2 s (ADR-0024),
+    /// lida por <c>ultimaNoticia</c>: sem notícia desta partida há mais que a tolerância, o worker
+    /// está travado, e a supervisão o mata e sobe de novo. Base ocupada na leitura não conta como
+    /// silêncio. Sem <c>ultimaNoticia</c> (testes, bancada), vale só o processo vivo.
     /// </remarks>
-    public bool EstaSaudavel => EstaVivo;
+    public bool EstaSaudavel => EstaVivo && SilencioDoBatimento() is null;
+
+    // Nulo quando o worker deu notícia dentro da tolerância (ou não há como saber).
+    private TimeSpan? SilencioDoBatimento()
+    {
+        if (_ultimaNoticia is null || _iniciadoEm is not { } iniciado)
+        {
+            return null;
+        }
+
+        DateTimeOffset? noticia;
+        try
+        {
+            noticia = _ultimaNoticia(Inners);
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            return null;
+        }
+
+        // Notícia de antes desta subida é do processo anterior: conta a partir da subida.
+        var referencia = noticia is { } n && n > iniciado ? n : iniciado;
+        var silencio = _relogio() - referencia;
+        return silencio > _toleranciaDoBatimento ? silencio : null;
+    }
 
     public string Diagnostico
     {
@@ -85,9 +127,13 @@ public sealed class ProcessoDeWorker : IWorkerHost
                 ? string.Create(CultureInfo.InvariantCulture, $" · iniciado {(_relogio() - quando).TotalSeconds:F0}s atrás")
                 : string.Empty;
 
+            var silencio = EstaVivo && SilencioDoBatimento() is { } s
+                ? string.Create(CultureInfo.InvariantCulture, $" · sem notícia na base há {s.TotalSeconds:F0}s")
+                : string.Empty;
+
             return string.Create(
                 CultureInfo.InvariantCulture,
-                $"{Nome} · porta {Porta} · {Inners.Count} equipamento(s) · {_ultimaSaida}{idade}");
+                $"{Nome} · porta {Porta} · {Inners.Count} equipamento(s) · {_ultimaSaida}{idade}{silencio}");
         }
     }
 
@@ -173,7 +219,20 @@ public sealed class ProcessoDeWorker : IWorkerHost
             return;
         }
 
-        _processo.Kill(entireProcessTree: true);
+        try
+        {
+            _processo.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException)
+        {
+            // Saiu sozinho entre a conferência e o Kill.
+        }
+
+        // Kill só pede: o processo ainda aparece vivo por alguns instantes. Sem esperar, o Iniciar
+        // que a supervisão chama logo em seguida achava o worker "vivo" e não subia outro, e a
+        // catraca ficava parada até a ronda seguinte, gastando um reinício a mais (achado no teste
+        // do batimento, E2-01 do docs/41).
+        _processo.WaitForExit(TimeSpan.FromSeconds(5));
         _ultimaSaida = "morto pelo supervisor";
     }
 

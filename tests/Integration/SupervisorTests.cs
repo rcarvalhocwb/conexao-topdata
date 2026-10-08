@@ -164,20 +164,94 @@ public sealed class SupervisorTests
     }
 
     /// <summary>
-    /// Nem inspecionar um worker pode derrubar a supervisão dos demais.
+    /// Nem inspecionar um worker pode derrubar a supervisão dos demais. A falha conta como um
+    /// reinício que não deu certo; o grupo só é isolado se ela se repetir (achado E2-03 do docs/41:
+    /// antes, a primeira exceção já isolava o grupo, e a quarentena não tinha saída).
     /// </summary>
     [Fact]
-    public void Worker_inacessivel_e_isolado_sem_parar_a_supervisao()
+    public void Worker_inacessivel_nao_para_a_supervisao_e_so_e_isolado_se_a_falha_se_repetir()
     {
+        var agora = Inicio;
         var bom = new WorkerFalso("setor-bom", 3570, 1);
         var ruim = new WorkerExplosivo("setor-ruim", 3571);
-        var supervisor = new WorkerSupervisor([bom, ruim], () => Inicio);
+        var supervisor = new WorkerSupervisor([bom, ruim], () => agora, reiniciosMaximos: 3);
         supervisor.Iniciar();
 
         var acoes = supervisor.Supervisionar();
 
         Assert.Equal("ok", acoes.Single(x => x.Worker == "setor-bom").Acao);
+        var primeira = acoes.Single(x => x.Worker == "setor-ruim");
+        Assert.Equal(SituacaoDoWorker.Morto, primeira.Situacao);
+        Assert.Contains("falha ao supervisionar", primeira.Acao, StringComparison.Ordinal);
+
+        for (var i = 0; i < 2; i++)
+        {
+            agora = agora.AddMinutes(1); // além do backoff, dentro da janela
+            acoes = supervisor.Supervisionar();
+        }
+
         Assert.Equal(SituacaoDoWorker.Quarentena, acoes.Single(x => x.Worker == "setor-ruim").Situacao);
+        Assert.Equal("ok", acoes.Single(x => x.Worker == "setor-bom").Acao);
+    }
+
+    /// <summary>
+    /// Achado E2-03 do docs/41: a quarentena não tinha saída; só reiniciar o serviço (com
+    /// administrador) tirava um grupo dela. Agora ela termina sozinha depois de 15 min.
+    /// </summary>
+    [Fact]
+    public void Quarentena_termina_sozinha_depois_do_prazo_com_nova_tentativa()
+    {
+        var agora = Inicio;
+        var a = new WorkerFalso("setor-A", 3570, 1);
+        var supervisor = new WorkerSupervisor([a], () => agora, reiniciosMaximos: 3);
+        supervisor.Iniciar();
+
+        for (var i = 0; i < 4; i++)
+        {
+            a.Morrer();
+            supervisor.Supervisionar();
+            agora = agora.AddMinutes(1);
+        }
+
+        Assert.Equal(SituacaoDoWorker.Quarentena, supervisor.Situacao(a));
+        var iniciadas = a.Iniciadas;
+
+        agora = agora.AddMinutes(10);
+        Assert.Contains("nova tentativa automática", supervisor.Supervisionar().Single().Acao, StringComparison.Ordinal);
+        Assert.Equal(iniciadas, a.Iniciadas);
+
+        agora = agora.AddMinutes(5);
+        var acao = supervisor.Supervisionar().Single();
+
+        Assert.Contains("fim da quarentena de 15 min", acao.Acao, StringComparison.Ordinal);
+        Assert.Equal(iniciadas + 1, a.Iniciadas);
+        Assert.Equal(SituacaoDoWorker.Saudavel, supervisor.Situacao(a));
+    }
+
+    /// <summary>O operador antecipa o fim da quarentena pelo painel; a próxima ronda sobe o worker.</summary>
+    [Fact]
+    public void Tentar_de_novo_tira_da_quarentena_e_a_proxima_ronda_sobe_o_worker()
+    {
+        var agora = Inicio;
+        var a = new WorkerFalso("setor-A", 3570, 1);
+        var supervisor = new WorkerSupervisor([a], () => agora, reiniciosMaximos: 3);
+        supervisor.Iniciar();
+
+        for (var i = 0; i < 4; i++)
+        {
+            a.Morrer();
+            supervisor.Supervisionar();
+            agora = agora.AddMinutes(1);
+        }
+
+        Assert.False(supervisor.TentarDeNovo("nao-existe"));
+        Assert.True(supervisor.TentarDeNovo("setor-A"));
+        Assert.False(supervisor.TentarDeNovo("setor-A"));
+
+        var acao = supervisor.Supervisionar().Single();
+
+        Assert.Contains("reiniciado", acao.Acao, StringComparison.Ordinal);
+        Assert.Equal(SituacaoDoWorker.Saudavel, supervisor.Situacao(a));
     }
 
     /// <summary>
