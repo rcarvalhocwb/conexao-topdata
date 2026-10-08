@@ -84,7 +84,7 @@ public sealed class PainelViewModel : INotifyPropertyChanged
         catch (RpcException erro)
         {
             FalhasSeguidas++;
-            Estado = Estado.ComFalhaDeComunicacao($"{erro.StatusCode}: {erro.Status.Detail}", _relogio());
+            Estado = Estado.ComFalhaDeComunicacao($"{erro.StatusCode}: {erro.Status.Detail}", _relogio(), MensagemDeFalha.TokenSemPermissao);
         }
         catch (OperationCanceledException)
         {

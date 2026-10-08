@@ -25,6 +25,34 @@ public static class InstalacaoLocal
     public static string PastaDosSegredos => Path.Combine(PastaDeDados, "segredos");
 
     /// <summary>
+    /// Verdadeiro quando o arquivo do token existe mas esta conta não pode lê-lo. Isso acontece
+    /// quando o operador não está no grupo <c>ConexaoTopdata Operadores</c>, e é o único caso em
+    /// que o painel pode afirmar a causa com certeza. Arquivo ausente não conta.
+    /// </summary>
+    public static bool TokenIlegivel(string? arquivo = null)
+    {
+        var caminho = arquivo ?? ArquivoDoToken;
+
+        return File.Exists(caminho) && LeituraNegada(caminho);
+    }
+
+    private static bool LeituraNegada(string caminho)
+    {
+        try
+        {
+            using (File.OpenRead(caminho))
+            {
+            }
+
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
     /// O token do painel: da variável <c>EDGE_TOKEN</c> (desenvolvimento) ou do arquivo que
     /// o serviço gera ao subir. Nulo se nenhum dos dois existe ainda.
     /// </summary>

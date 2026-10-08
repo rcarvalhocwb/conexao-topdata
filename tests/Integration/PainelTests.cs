@@ -46,23 +46,34 @@ public sealed class PainelTests : IAsyncLifetime
         public void Dispose() => EstaVivo = false;
     }
 
+    private WorkerSupervisor? _supervisor;
+
     public async Task InitializeAsync()
     {
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"painel-{Guid.NewGuid():N}");
 
-        var supervisor = new WorkerSupervisor([new WorkerDeTeste("setor-A", 3570, 1, 2, 3)]);
-        supervisor.Iniciar();
+        _supervisor = new WorkerSupervisor([new WorkerDeTeste("setor-A", 3570, 1, 2, 3)]);
+        _supervisor.Iniciar();
 
+        _servidor = await SubirServicoAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Sobe o serviço no mesmo endereço e com o mesmo token, como o Windows faz ao reiniciá-lo.
+    /// </summary>
+    private async Task<WebApplication> SubirServicoAsync()
+    {
         var construtor = WebApplication.CreateBuilder();
         construtor.WebHost.ConfigureKestrel(o => TransporteLocal.Escutar(o, _endereco));
-        construtor.Services.AddSingleton(supervisor);
+        construtor.Services.AddSingleton(_supervisor!);
         construtor.Services.AddSingleton<EdgeControlService>();
         construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(_token));
 
-        _servidor = construtor.Build();
-        _servidor.MapGrpcService<EdgeControlService>();
-        await _servidor.StartAsync().ConfigureAwait(true);
+        var servidor = construtor.Build();
+        servidor.MapGrpcService<EdgeControlService>();
+        await servidor.StartAsync().ConfigureAwait(true);
+        return servidor;
     }
 
     public async Task DisposeAsync()
@@ -159,6 +170,30 @@ public sealed class PainelTests : IAsyncLifetime
         Assert.True(painel.Estado.Desatualizado);
         Assert.Equal(equipamentosAntes, painel.Equipamentos.Count);
         Assert.Contains("mostrando dados de", painel.Estado.Mensagem, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// O serviço reinicia sozinho (recuperação do Windows). O painel aberto não pode precisar ser
+    /// fechado e aberto de novo: quando o serviço volta, a próxima atualização já traz os dados
+    /// de novo, sem "desatualizado".
+    /// </summary>
+    [Fact]
+    public async Task Painel_aberto_volta_sozinho_quando_o_servico_reinicia()
+    {
+        var painel = Painel();
+        await painel.AtualizarAsync().ConfigureAwait(true);
+        var equipamentos = painel.Equipamentos.Count;
+        Assert.True(equipamentos > 0);
+
+        await _servidor!.StopAsync().ConfigureAwait(true);
+        await painel.AtualizarAsync().ConfigureAwait(true);
+        Assert.True(painel.Estado.Desatualizado);
+
+        _servidor = await SubirServicoAsync().ConfigureAwait(true);
+        await painel.AtualizarAsync().ConfigureAwait(true);
+
+        Assert.False(painel.Estado.Desatualizado);
+        Assert.Equal(equipamentos, painel.Equipamentos.Count);
     }
 
     [Fact]

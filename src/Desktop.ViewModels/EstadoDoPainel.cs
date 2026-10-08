@@ -145,13 +145,16 @@ public sealed record EstadoDoPainel
     /// porque o serviço caiu tiraria do operador justamente a informação de que algo
     /// caiu.
     /// </remarks>
-    public EstadoDoPainel ComFalhaDeComunicacao(string detalhe, DateTimeOffset agora)
+    public EstadoDoPainel ComFalhaDeComunicacao(string detalhe, DateTimeOffset agora, bool semPermissao = false)
     {
         var idade = AtualizadoEm is { } quando ? agora - quando : (TimeSpan?)null;
 
-        var mensagem = idade is { } tempo
-            ? $"Sem resposta do serviço local — mostrando dados de {Descrever(tempo)} atrás"
-            : "Sem resposta do serviço local — o Windows tenta reiniciá-lo sozinho; se não voltar em um minuto, chame o suporte";
+        // Sem permissão, a causa é certa e a ação também: o resto da mensagem não ajuda.
+        var mensagem = semPermissao
+            ? MensagemDeFalha.SemPermissao
+            : idade is { } tempo
+                ? $"Sem resposta do serviço local — mostrando dados de {Descrever(tempo)} atrás"
+                : "Sem resposta do serviço local — o Windows tenta reiniciá-lo sozinho; se não voltar em um minuto, chame o suporte";
 
         return this with
         {

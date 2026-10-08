@@ -55,9 +55,7 @@ public abstract class TelaBase : Notificavel, ITela
         }
         catch (RpcException erro)
         {
-            Mensagem = erro.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded
-                ? "Sem resposta do serviço local. Sem ele, as catracas não recebem comandos deste computador. O Windows tenta reiniciá-lo sozinho; se não voltar em um minuto, chame o suporte."
-                : $"O serviço recusou o pedido ({erro.StatusCode}).";
+            Mensagem = MensagemDeFalha.Para(erro.StatusCode);
             return false;
         }
         finally
@@ -224,7 +222,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
         if (!ok)
         {
-            Estado = Estado.ComFalhaDeComunicacao(Mensagem, Relogio());
+            Estado = Estado.ComFalhaDeComunicacao(Mensagem, Relogio(), MensagemDeFalha.TokenSemPermissao);
             ServicoResumo = "Sem resposta";
             ServicoSinal = Sinal.Problema;
         }

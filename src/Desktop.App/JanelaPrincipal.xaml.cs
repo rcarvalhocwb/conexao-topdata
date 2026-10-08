@@ -214,6 +214,9 @@ public partial class JanelaPrincipal : Window
     private static JanelaViewModel ConectarAoServico()
     {
         var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO") ?? TransporteLocal.EnderecoPadrao();
+        // Decidido uma vez, antes de qualquer chamada: se o token existe e esta conta não pode lê-lo,
+        // as mensagens de falha dizem que falta o grupo dos operadores (MensagemDeFalha).
+        Desktop.ViewModels.MensagemDeFalha.TokenSemPermissao = InstalacaoLocal.TokenIlegivel();
         var token = InstalacaoLocal.LerToken();
         var canal = TransporteLocal.CriarCanal(endereco, token);
         return new JanelaViewModel(new EdgeControl.EdgeControlClient(canal));
