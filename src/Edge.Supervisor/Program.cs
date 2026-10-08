@@ -95,6 +95,13 @@ var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO")
 // ao mesmo tempo.
 var caminhoDoBanco = configuracao.CaminhoDoBanco;
 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco))!);
+
+// Pasta de dados só para o serviço e os administradores (S04). O token mantém a leitura do grupo dos
+// operadores. Roda antes de criar o banco, para que o arquivo nasça com a permissão certa.
+if (OperatingSystem.IsWindows())
+{
+    SegurancaLocal.RestringirPastaDeDados(configuracao.PastaDeDados);
+}
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
 new Migrator(fabrica).Aplicar();
 
@@ -262,6 +269,11 @@ construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
 // Cópia de segurança de acesso.db (A05): verificada, com retenção. Fica em PastaDeDados\copias.
 construtor.Services.AddSingleton(new CopiaDeSeguranca(fabrica, Path.Combine(configuracao.PastaDeDados, "copias")));
 construtor.Services.AddHostedService<AgendadorDeCopias>();
+
+// Retenção dos registros do serviço: 30 dias e teto de 200 MB (ZeladorDeRegistros).
+construtor.Services.AddHostedService(sp => new ZeladorDeRegistrosServico(
+    Path.Combine(configuracao.PastaDeDados, "registros"),
+    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ZeladorDeRegistrosServico>>()));
 construtor.Services.AddHostedService(_ => analisador);
 
 if (sincronizacao is not null)

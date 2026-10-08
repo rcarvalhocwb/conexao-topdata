@@ -116,6 +116,62 @@ public static class SegurancaLocal
     }
 
     /// <summary>
+    /// A pasta de dados (banco, cópias, registros, cofre) só para SYSTEM e Administradores, por herança.
+    /// O arquivo do token não entra aqui: ele mantém a leitura do grupo dos operadores (ver Restringir).
+    /// </summary>
+    /// <remarks>
+    /// Pergunta S04 (respondida: permissão de pasta, sem cifragem). Protege o acesso.db, que tem o número
+    /// do cartão em claro (ADR-0014 recusa SQLCipher). A permissão real só se confirma numa VM Windows.
+    /// </remarks>
+    [SupportedOSPlatform("windows")]
+    public static void RestringirPastaDeDados(string pasta)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pasta);
+
+        var raiz = new DirectoryInfo(pasta);
+        if (!raiz.Exists)
+        {
+            return;
+        }
+
+        var herdam = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+        var diretorio = new DirectorySecurity();
+        diretorio.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        diretorio.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
+        diretorio.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
+        raiz.SetAccessControl(diretorio);
+
+        foreach (var subpasta in raiz.EnumerateDirectories("*", SearchOption.AllDirectories))
+        {
+            var seguranca = new DirectorySecurity();
+            seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+            seguranca.AddAccessRule(new FileSystemAccessRule(
+                new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
+            seguranca.AddAccessRule(new FileSystemAccessRule(
+                new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
+            subpasta.SetAccessControl(seguranca);
+        }
+
+        foreach (var arquivo in raiz.EnumerateFiles("*", SearchOption.AllDirectories))
+        {
+            if (arquivo.Name.Equals("token", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var seguranca = new FileSecurity();
+            seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+            seguranca.AddAccessRule(new FileSystemAccessRule(
+                new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
+            seguranca.AddAccessRule(new FileSystemAccessRule(
+                new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
+            arquivo.SetAccessControl(seguranca);
+        }
+    }
+
+    /// <summary>
     /// O token: SYSTEM e Administradores com controle total; o grupo dos operadores só lê. Nenhum
     /// usuário comum tem acesso, nem o de leitura.
     /// </summary>
