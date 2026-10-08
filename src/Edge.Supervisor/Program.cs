@@ -98,9 +98,9 @@ Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco)
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
 new Migrator(fabrica).Aplicar();
 
-// Etapa I.11: garantir que as chaves técnicas da camada inteligente estão com seus valores padrão.
-// Após NOVO-LOAD-IA-01, NOVO-CHAOS-IA-01 e NOVO-SOAK-IA-24H passarem, a camada fica ligada por padrão.
-new InicializacaoDasChavesDaInteligencia(fabrica).GarantirChavesComValoresPadrao();
+// A camada inteligente nasce DESLIGADA: sem linha em edge_setting, nada liga (ChavesDaInteligencia).
+// Não se chama InicializacaoDasChavesDaInteligencia aqui. Ligá-la por padrão é a Etapa I.11, só
+// depois de NOVO-LOAD-IA-01, NOVO-CHAOS-IA-01 e NOVO-SOAK-IA-24H; até lá, a chave não é gravada.
 
 // A chave da impressão de código (Etapa B.1) vai para o worker pela entrada padrão: é com ela
 // que ele grava os bilhetes coletados sem o código em claro (Etapa A.9, migração 015). Só no
@@ -258,6 +258,10 @@ construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token)
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
+
+// Cópia de segurança de acesso.db (A05): verificada, com retenção. Fica em PastaDeDados\copias.
+construtor.Services.AddSingleton(new CopiaDeSeguranca(fabrica, Path.Combine(configuracao.PastaDeDados, "copias")));
+construtor.Services.AddHostedService<AgendadorDeCopias>();
 construtor.Services.AddHostedService(_ => analisador);
 
 if (sincronizacao is not null)

@@ -56,7 +56,7 @@ public abstract class TelaBase : Notificavel, ITela
         catch (RpcException erro)
         {
             Mensagem = erro.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded
-                ? "Sem resposta do serviço local. As catracas continuam funcionando; confira se o serviço está iniciado."
+                ? "Sem resposta do serviço local. Sem ele, as catracas não recebem comandos deste computador. O Windows tenta reiniciá-lo sozinho; se não voltar em um minuto, chame o suporte."
                 : $"O serviço recusou o pedido ({erro.StatusCode}).";
             return false;
         }
@@ -193,8 +193,8 @@ public sealed class PainelAoVivoViewModel : TelaBase
             Internet = estado.InternetDisponivel
                 ? $"Nuvem: sincronizado {Textos.Ha(estado.UltimaSincronizacao?.ToDateTimeOffset(), agora)}"
                 : estado.UltimaSincronizacao is null
-                    ? "Nuvem: sem sincronização — as catracas funcionam normalmente"
-                    : $"Nuvem: sem internet desde {Textos.Ha(estado.UltimaSincronizacao.ToDateTimeOffset(), agora)} — as catracas funcionam normalmente";
+                    ? "Nuvem: sem sincronização — o acesso segue pela lista local deste computador"
+                    : $"Nuvem: sem internet desde {Textos.Ha(estado.UltimaSincronizacao.ToDateTimeOffset(), agora)} — o acesso segue pela lista local deste computador";
             Mensagem = string.Empty;
 
             ServicoResumo = "Operacional";
@@ -869,12 +869,50 @@ public sealed class ConfiguracoesViewModel : TelaBase
         : base(cliente, relogio)
     {
         Salvar = new ComandoAssincrono(SalvarAsync);
-        AplicarAgora = new ComandoAssincrono(AplicarAgoraAsync);
+        // Dois passos: "Aplicar agora" mexe em todas as catracas de uma vez; o primeiro clique só
+        // pede a confirmação. A confirmação só se encerra quando o pedido é aceito.
+        PrepararAplicacao = new ComandoAssincrono(() =>
+        {
+            ConfirmandoAplicacao = true;
+            return Task.CompletedTask;
+        }, () => !ConfirmandoAplicacao);
+        AplicarAgora = new ComandoAssincrono(AplicarAgoraAsync, () => ConfirmandoAplicacao);
+        CancelarAplicacao = new ComandoAssincrono(() =>
+        {
+            ConfirmandoAplicacao = false;
+            return Task.CompletedTask;
+        }, () => ConfirmandoAplicacao);
     }
 
+    private bool _confirmandoAplicacao;
+
+    /// <summary>A aplicação em todas as catracas espera a confirmação do operador.</summary>
+    public bool ConfirmandoAplicacao
+    {
+        get => _confirmandoAplicacao;
+        private set
+        {
+            if (Definir(ref _confirmandoAplicacao, value))
+            {
+                Avisar(nameof(TextoDaConfirmacaoDaAplicacao));
+            }
+        }
+    }
+
+    /// <summary>O que a confirmação diz ao operador antes de mandar o pedido a todas as catracas.</summary>
+    public string TextoDaConfirmacaoDaAplicacao => ConfirmandoAplicacao
+        ? "Aplicar a configuração salva em todas as catracas desta instalação? Cada uma reconecta e fica alguns segundos sem atender."
+        : string.Empty;
+
+    /// <summary>Primeiro passo: abre a confirmação de "Aplicar agora".</summary>
+    public ComandoAssincrono PrepararAplicacao { get; }
+
+    /// <summary>Desfaz a confirmação pendente sem enviar nada.</summary>
+    public ComandoAssincrono CancelarAplicacao { get; }
+
     /// <summary>
-    /// Pede a cada catraca que reconecte com a configuração gravada. Cada uma fica alguns
-    /// segundos sem atender enquanto reconecta.
+    /// Segundo passo: pede a cada catraca que reconecte com a configuração gravada. Cada uma
+    /// fica alguns segundos sem atender enquanto reconecta.
     /// </summary>
     public ComandoAssincrono AplicarAgora { get; }
 
@@ -962,6 +1000,12 @@ public sealed class ConfiguracoesViewModel : TelaBase
             Mensagem = r.Aceito
                 ? $"Pedido a {r.Ids.Count} catraca(s). Cada uma reconecta e fica alguns segundos sem atender. Acompanhe em Gerenciar catraca."
                 : "Não foi pedido. Corrija os itens abaixo.";
+
+            // Só some a confirmação quando o pedido saiu: um nome faltando não obriga a começar de novo.
+            if (r.Aceito)
+            {
+                ConfirmandoAplicacao = false;
+            }
         }).ConfigureAwait(true);
 }
 

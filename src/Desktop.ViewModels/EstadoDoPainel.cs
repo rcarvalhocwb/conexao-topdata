@@ -87,7 +87,7 @@ public sealed record EstadoDoPainel
 
             NivelDeDegradacao.T2ListaLocal => (
                 SaudeDoPainel.Atencao,
-                "Catracas operando com a lista local — parte do público pode não estar nela"),
+                "Catraca sem comunicação com este computador — siga o procedimento de contingência do evento"),
 
             NivelDeDegradacao.T3Isolado => (
                 SaudeDoPainel.Acao,
@@ -151,7 +151,7 @@ public sealed record EstadoDoPainel
 
         var mensagem = idade is { } tempo
             ? $"Sem resposta do serviço local — mostrando dados de {Descrever(tempo)} atrás"
-            : "Sem resposta do serviço local — abra o Assistente de configuração para iniciá-lo";
+            : "Sem resposta do serviço local — o Windows tenta reiniciá-lo sozinho; se não voltar em um minuto, chame o suporte";
 
         return this with
         {

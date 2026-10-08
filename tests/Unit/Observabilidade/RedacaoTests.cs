@@ -118,3 +118,32 @@ public sealed class RedacaoTests
         Assert.Equal(string.Empty, RedatorDeDadoSensivel.Redigir(string.Empty));
     }
 }
+
+/// <summary>
+/// S07 (auditoria de 07/10): nomes de campo do banco e do contrato precisam ser redigidos
+/// como os nomes genéricos, senão um log de ingresso expõe o titular.
+/// </summary>
+public sealed class RedacaoDeCamposTests
+{
+    [Theory]
+    [InlineData("card_number")]
+    [InlineData("card_id")]
+    [InlineData("customer_name")]
+    [InlineData("holder")]
+    [InlineData("email")]
+    [InlineData("telefone")]
+    [InlineData("voucher")]
+    [InlineData("qr_normalized")]
+    [InlineData("uid")]
+    [InlineData("observacao")]
+    public void Campo_com_nome_sensivel_nao_mostra_o_valor(string campo) =>
+        Assert.Equal(RedatorDeDadoSensivel.Marca, RedatorDeDadoSensivel.RedigirCampo(campo, "Maria da Silva"));
+
+    [Theory]
+    [InlineData("inner")]
+    [InlineData("porta")]
+    [InlineData("status")]
+    [InlineData("firmware")]
+    public void Campo_de_diagnostico_continua_legivel(string campo) =>
+        Assert.Equal("8", RedatorDeDadoSensivel.RedigirCampo(campo, 8));
+}

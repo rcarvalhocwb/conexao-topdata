@@ -5,7 +5,7 @@
              AutomationProperties.Name="Sincronização">
   <DockPanel>
     <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Sincronização"
-                         Descricao="Sem internet, as catracas continuam funcionando. O que não foi enviado espera aqui e sobe sozinho quando a conexão voltar." />
+                         Descricao="Sem internet, o acesso segue pela lista local deste computador. O que não foi enviado espera aqui e sobe sozinho quando a conexão voltar." />
 
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />

@@ -27,15 +27,22 @@ public static partial class RedatorDeDadoSensivel
     public const string Marca = "[REDIGIDO]";
 
     /// <summary>Nomes de campo cujo valor nunca pode aparecer.</summary>
+    /// <remarks>
+    /// Os nomes em snake_case e os de campo do banco e do contrato (card_id, card_number,
+    /// customer_name...) também entram: a auditoria de 07/10 achou que o redator comparava
+    /// por igualdade e deixava passar esses nomes.
+    /// </remarks>
     public static IReadOnlySet<string> CamposSensiveis { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "cartao", "card", "cardnumber", "credencial", "credential",
+        "cartao", "card", "cardnumber", "card_number", "card_id", "cardid", "credencial", "credential",
         "senha", "password", "pwd", "pin",
         "token", "secret", "apikey", "authorization",
-        "template", "biometria", "biometric", "digital",
+        "template", "biometria", "biometric", "digital", "uid",
         "foto", "photo", "image", "face", "record",
         "cpf", "documento", "document",
-        "nome", "name", "fullname",
+        "nome", "name", "fullname", "customer_name", "cliente", "customer", "titular", "holder",
+        "email", "telefone", "phone", "observacao",
+        "qr", "qr_normalized", "codigo_qr", "voucher", "codigo",
     };
 
     /// <summary>Redige um texto livre.</summary>

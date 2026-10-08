@@ -89,7 +89,7 @@ public sealed class PainelPorQue : Notificavel
         catch (RpcException)
         {
             Mostrar(Sinal.Neutro, "Sem resposta do serviço local",
-                "Não foi possível buscar a explicação agora. As catracas continuam funcionando.", string.Empty,
+                "Não foi possível buscar a explicação agora. Tente de novo em instantes.", string.Empty,
                 "Confira se o serviço está iniciado e tente de novo.");
         }
     }

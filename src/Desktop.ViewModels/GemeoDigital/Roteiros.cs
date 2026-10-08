@@ -144,7 +144,7 @@ public static class Roteiros
                 "O programa da catraca perde contato com ela. No painel, o cartão da catraca fica \"Sem notícia\".",
                 PecaDaCatraca.Display),
             new(S(2.6), null,
-                "Nesse intervalo a catraca não libera ninguém: o sistema não grava lista na catraca e a contingência sem o PC está desligada (decisões D5 e D8). Ninguém passa até a comunicação voltar.",
+                "Enquanto a comunicação não volta, o sistema não consegue confirmar a passagem: não há lista gravada na catraca. Siga o procedimento de contingência do evento.",
                 PecaDaCatraca.Tampa),
             new(S(5.0), SinalDaCena.Conectou(),
                 "A comunicação volta. A catraca recebe a configuração completa de novo e volta a atender.",

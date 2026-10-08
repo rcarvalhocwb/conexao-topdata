@@ -55,6 +55,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
     private int _duracao = 10;
     private string _motivo = string.Empty;
     private IReadOnlyList<LinhaDeComando> _historico = [];
+    private bool _confirmandoLiberacao;
 
     public GerenciarCatracaViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null, TimeSpan? esperaPeloResultado = null)
         : base(cliente, relogio)
@@ -64,9 +65,29 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         EnviarMensagem = new ComandoAssincrono(
             () => PedirAsync(TipoDeComando.MensagemTemporaria),
             () => TemCatracaEOperador() && MensagemTemporaria.Trim().Length is > 0 and <= 32);
+        // A liberação sem ingresso é de dois passos: o primeiro pede a confirmação com o nome da
+        // catraca e o motivo; só o segundo manda o pedido. Um clique só era fácil demais.
+        PrepararLiberacao = new ComandoAssincrono(
+            () =>
+            {
+                ConfirmandoLiberacao = true;
+                return Task.CompletedTask;
+            },
+            () => !ConfirmandoLiberacao && PodePedirLiberacao());
         LiberarManualmente = new ComandoAssincrono(
-            () => PedirAsync(TipoDeComando.LiberacaoManual),
-            () => TemCatracaEOperador() && Motivo.Trim().Length >= 5);
+            () =>
+            {
+                ConfirmandoLiberacao = false;
+                return PedirAsync(TipoDeComando.LiberacaoManual);
+            },
+            () => ConfirmandoLiberacao && PodePedirLiberacao());
+        CancelarLiberacao = new ComandoAssincrono(
+            () =>
+            {
+                ConfirmandoLiberacao = false;
+                return Task.CompletedTask;
+            },
+            () => ConfirmandoLiberacao);
         RefazerConexao = new ComandoAssincrono(() => PedirAsync(TipoDeComando.ReiniciarConexao), TemCatracaEOperador);
     }
 
@@ -79,7 +100,35 @@ public sealed class GerenciarCatracaViewModel : TelaBase
 
     public ComandoAssincrono EnviarMensagem { get; }
 
+    /// <summary>Primeiro passo: abre a confirmação da liberação manual.</summary>
+    public ComandoAssincrono PrepararLiberacao { get; }
+
+    /// <summary>Segundo passo: envia a liberação manual já confirmada.</summary>
     public ComandoAssincrono LiberarManualmente { get; }
+
+    /// <summary>Desfaz a confirmação pendente sem enviar nada.</summary>
+    public ComandoAssincrono CancelarLiberacao { get; }
+
+    /// <summary>A liberação manual está à espera da confirmação do operador.</summary>
+    public bool ConfirmandoLiberacao
+    {
+        get => _confirmandoLiberacao;
+        private set
+        {
+            if (Definir(ref _confirmandoLiberacao, value))
+            {
+                Avisar(nameof(TextoDaConfirmacaoDaLiberacao));
+                Reavaliar();
+            }
+        }
+    }
+
+    /// <summary>O que o operador confirma: a catraca, o motivo e que o nome dele fica registrado.</summary>
+    public string TextoDaConfirmacaoDaLiberacao => ConfirmandoLiberacao
+        ? $"Confirmar: liberar um giro na {Selecionada?.Nome ?? $"catraca {Catraca}"}, sem ingresso? O motivo \"{Motivo.Trim()}\" e o nome de quem confirma ficam registrados."
+        : string.Empty;
+
+    private bool PodePedirLiberacao() => TemCatracaEOperador() && Motivo.Trim().Length >= 5;
 
     public ComandoAssincrono RefazerConexao { get; }
 
@@ -95,6 +144,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
             {
                 Selecionada = Catracas.FirstOrDefault(c => c.Inner == value);
                 Historico = [];
+                ConfirmandoLiberacao = false;
                 Reavaliar();
             }
         }
@@ -139,6 +189,8 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         {
             if (Definir(ref _motivo, value ?? string.Empty))
             {
+                // Mudou o motivo: a confirmação anterior não vale para o novo texto.
+                ConfirmandoLiberacao = false;
                 Reavaliar();
             }
         }
@@ -192,7 +244,9 @@ public sealed class GerenciarCatracaViewModel : TelaBase
     {
         AcertarRelogio.ReavaliarDisponibilidade();
         EnviarMensagem.ReavaliarDisponibilidade();
+        PrepararLiberacao.ReavaliarDisponibilidade();
         LiberarManualmente.ReavaliarDisponibilidade();
+        CancelarLiberacao.ReavaliarDisponibilidade();
         RefazerConexao.ReavaliarDisponibilidade();
     }
 

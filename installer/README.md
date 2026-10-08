@@ -163,6 +163,22 @@ Antes de liberar a uma catraca de verdade, falta só o ensaio de bancada **HIL-S
 (a `EasyInner.dll` carrega num processo .NET 10 de 32 bits?) e a primeira conversa com o
 equipamento.
 
+### Operadores: quem pode abrir o painel
+
+O painel roda com a conta de cada operador, e o serviço só aceita quem está no grupo local
+**`ConexaoTopdata Operadores`** (ou for administrador). Sem isso, o painel dos operadores não
+conecta, e nenhum usuário comum da máquina consegue comandar as catracas.
+
+Depois de instalar, como administrador, na pasta de instalação:
+
+```powershell
+.\configurar-operador.ps1 -Operador 'PORTARIA\ana','PORTARIA\bruno'
+```
+
+O script cria o grupo (se faltar), põe as contas nele e reinicia o serviço. Cada operador
+precisa **sair e entrar de novo no Windows** para a permissão valer. O script não lê nem imprime
+o token do serviço. Ver `docs/runbooks/RB-01` se o painel continuar sem conectar.
+
 ### Configurar — Assistente de configuração
 
 Abra pelo menu Iniciar (ele pede permissão de administrador):

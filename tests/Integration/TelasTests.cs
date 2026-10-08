@@ -653,6 +653,31 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
+    /// A confirmação da liberação manual não vale para outro motivo nem para outra catraca:
+    /// mudar qualquer um dos dois desfaz a confirmação pendente, e nada é enviado.
+    /// </summary>
+    [Fact]
+    public async Task Liberacao_manual_confirmada_nao_sobrevive_a_mudanca_de_motivo_ou_catraca()
+    {
+        var tela = new GerenciarCatracaViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        tela.Operador = "Ana";
+        tela.Motivo = "Criança de colo sem ingresso";
+        await tela.PrepararLiberacao.ExecutarAsync();
+        Assert.True(tela.ConfirmandoLiberacao);
+
+        tela.Motivo = "Outro motivo";
+        Assert.False(tela.ConfirmandoLiberacao);
+        Assert.False(tela.LiberarManualmente.CanExecute(null));
+
+        tela.Motivo = "Criança de colo sem ingresso";
+        await tela.PrepararLiberacao.ExecutarAsync();
+        tela.Catraca = 2;
+        Assert.False(tela.ConfirmandoLiberacao);
+        Assert.Empty(tela.Historico);
+    }
+
+    /// <summary>
     /// Gerenciar catraca: a liberação manual só fica disponível com nome e motivo, o pedido
     /// vira linha no histórico, e o motivo não fica preenchido para a próxima.
     /// </summary>
@@ -671,8 +696,16 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.False(tela.LiberarManualmente.CanExecute(null));
 
         tela.Motivo = "Criança de colo sem ingresso";
-        Assert.True(tela.LiberarManualmente.CanExecute(null));
+        // Dois passos: sem a confirmação, nada sai.
+        Assert.False(tela.LiberarManualmente.CanExecute(null));
+        Assert.True(tela.PrepararLiberacao.CanExecute(null));
+        await tela.PrepararLiberacao.ExecutarAsync();
+        Assert.True(tela.ConfirmandoLiberacao);
+        Assert.Contains("Confirmar: liberar um giro na setor-a/1", tela.TextoDaConfirmacaoDaLiberacao, StringComparison.Ordinal);
+        Assert.Empty(tela.Historico);
+
         await tela.LiberarManualmente.ExecutarAsync();
+        Assert.False(tela.ConfirmandoLiberacao);
 
         var linha = Assert.Single(tela.Historico);
         Assert.Equal(("Liberação manual", "Criança de colo sem ingresso", "Ana"), (linha.Comando, linha.Detalhe, linha.Operador));
@@ -700,13 +733,20 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     {
         var tela = new ConfiguracoesViewModel(Cliente());
 
+        // Sem confirmação, o comando nem executa: nada sai para as catracas.
+        Assert.False(tela.AplicarAgora.CanExecute(null));
+        await tela.PrepararAplicacao.ExecutarAsync();
+        Assert.True(tela.ConfirmandoAplicacao);
+
         await tela.AplicarAgora.ExecutarAsync();
         Assert.Equal("Não foi pedido. Corrija os itens abaixo.", tela.Mensagem);
         Assert.Contains("Informe o nome de quem está pedindo (2 a 80 caracteres).", tela.Problemas);
+        Assert.True(tela.ConfirmandoAplicacao, "um pedido recusado mantém a confirmação");
 
         tela.Operador = "Ana";
         await tela.AplicarAgora.ExecutarAsync();
         Assert.StartsWith("Pedido a 2 catraca(s).", tela.Mensagem, StringComparison.Ordinal);
+        Assert.False(tela.ConfirmandoAplicacao);
     }
 
     /// <summary>
