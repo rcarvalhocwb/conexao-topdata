@@ -558,6 +558,51 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         return Task.FromResult(resposta);
     }
 
+    /// <summary>
+    /// O pacote de diagnóstico para o suporte. Monta no serviço, que lê a pasta de dados; falha vira
+    /// mensagem na resposta, nunca erro de comunicação.
+    /// </summary>
+    public override Task<PacoteDeDiagnostico> ObterPacoteDeDiagnostico(ObterPacoteDeDiagnosticoRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var agora = _relogio();
+
+        try
+        {
+            var linhas = new List<string>();
+            var situacoes = _supervisor.Situacoes;
+            linhas.Add("Programas das catracas:");
+            foreach (var worker in _supervisor.Workers)
+            {
+                linhas.Add($"  {worker.Nome}: {situacoes[worker.Nome]}, reinícios {_supervisor.Reinicios(worker.Nome)}, {worker.Diagnostico}");
+            }
+
+            linhas.Add(string.Empty);
+            linhas.Add("Pré-requisitos:");
+            foreach (var pre in Edge.Worker.VerificadorDePreRequisitos.Verificar())
+            {
+                linhas.Add($"  {pre.Id}: {(pre.Atendido is null ? "não conferido" : pre.Atendido is true ? "ok" : "falta")} · {pre.Mensagem}");
+            }
+
+            var zip = MontadorDoPacoteDeDiagnostico.Montar(_pastaDeDados, _versao, linhas, agora);
+            return Task.FromResult(new PacoteDeDiagnostico
+            {
+                Gerado = true,
+                Zip = Google.Protobuf.ByteString.CopyFrom(zip),
+                NomeDoArquivo = string.Create(CultureInfo.InvariantCulture, $"rayzer-xacess-diagnostico-{agora:yyyyMMdd-HHmmss}.zip"),
+                Mensagem = "Pacote montado.",
+            });
+        }
+        catch (Exception erro) when (erro is IOException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException)
+        {
+            return Task.FromResult(new PacoteDeDiagnostico
+            {
+                Gerado = false,
+                Mensagem = $"Não foi possível montar o pacote ({erro.GetType().Name}). Os registros podem estar em uso; tente de novo em instantes.",
+            });
+        }
+    }
+
     public override Task<Diagnostico> ObterDiagnostico(ObterDiagnosticoRequest request, ServerCallContext context)
     {
         var resposta = new Diagnostico { Versao = _versao, PastaDeDados = _pastaDeDados };

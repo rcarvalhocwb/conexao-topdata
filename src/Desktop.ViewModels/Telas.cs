@@ -1011,6 +1011,8 @@ public sealed class ConfiguracoesViewModel : TelaBase
 public sealed class DiagnosticoViewModel : TelaBase
 {
     private Diagnostico? _diagnostico;
+    private byte[]? _pacote;
+    private string _nomeDoPacote = string.Empty;
     private string _analisadorResumo = string.Empty;
     private Sinal _analisadorSinal = Sinal.Neutro;
     private IReadOnlyList<ParDeTexto> _analisador = [];
@@ -1018,6 +1020,56 @@ public sealed class DiagnosticoViewModel : TelaBase
     public DiagnosticoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
     {
+        PedirPacote = new ComandoAssincrono(PedirPacoteAsync);
+    }
+
+    /// <summary>Pede ao serviço o zip de diagnóstico. A tela, depois, pergunta onde salvar.</summary>
+    public ComandoAssincrono PedirPacote { get; }
+
+    /// <summary>O zip pronto para salvar; nulo enquanto não foi pedido ou se o serviço não conseguiu montar.</summary>
+    public byte[]? Pacote { get => _pacote; private set => Definir(ref _pacote, value); }
+
+    /// <summary>Nome sugerido para o arquivo, com a data de Brasília.</summary>
+    public string NomeDoPacote { get => _nomeDoPacote; private set => Definir(ref _nomeDoPacote, value); }
+
+    private async Task PedirPacoteAsync() =>
+        await Tentar(async () =>
+        {
+            var resposta = await Cliente.ObterPacoteDeDiagnosticoAsync(new ObterPacoteDeDiagnosticoRequest(), cancellationToken: default);
+            if (!resposta.Gerado)
+            {
+                Pacote = null;
+                Mensagem = resposta.Mensagem;
+                return;
+            }
+
+            Pacote = resposta.Zip.ToByteArray();
+            NomeDoPacote = resposta.NomeDoArquivo;
+            Mensagem = "Pacote de diagnóstico pronto. Escolha onde salvar.";
+        }).ConfigureAwait(true);
+
+    /// <summary>Grava o pacote no caminho escolhido. Falha vira mensagem, nunca exceção.</summary>
+    public void SalvarEm(string caminho)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(caminho);
+        if (Pacote is null)
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllBytes(caminho, Pacote);
+            Mensagem = $"Pacote salvo em {caminho}. Envie esse arquivo ao suporte.";
+        }
+        catch (IOException)
+        {
+            Mensagem = "Não foi possível salvar o arquivo. Verifique se ele não está aberto em outro programa.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Mensagem = "Sem permissão para salvar nesse lugar. Escolha outra pasta.";
+        }
     }
 
     public override string Titulo => "Diagnóstico";

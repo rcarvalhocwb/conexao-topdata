@@ -34,6 +34,10 @@ service EdgeControl {
   rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
   rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
 
+  // A7 (levantamento): pacote de diagnóstico para o suporte. Montado pelo serviço, que é quem lê a pasta
+  // de dados; o painel só salva o arquivo. Sem banco, sem token e sem segredo.
+  rpc ObterPacoteDeDiagnostico(ObterPacoteDeDiagnosticoRequest) returns (PacoteDeDiagnostico);
+
   // Modo simulação: "passa" um código numa catraca simulada. Recusado fora da simulação.
   rpc SimularLeitura(SimularLeituraRequest) returns (SimularLeituraResponse);
 
@@ -375,6 +379,15 @@ message ConsultarCodigoResponse {
 }
 
 message ObterDiagnosticoRequest {}
+
+message ObterPacoteDeDiagnosticoRequest {}
+
+message PacoteDeDiagnostico {
+  bool gerado = 1;                            // falso: o zip não pôde ser montado (ver mensagem)
+  bytes zip = 2;                              // o arquivo .zip, pronto para salvar
+  string nome_do_arquivo = 3;                 // sugestão de nome, com a data de Brasília
+  string mensagem = 4;                        // o que aconteceu, em português de suporte
+}
 
 message Diagnostico {
   string versao = 1;

@@ -10,6 +10,10 @@
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
 
+    <Button DockPanel.Dock="Top" Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left" Margin="0,0,0,12"
+            Content="_Exportar pacote de diagnóstico" Command="{Binding PedirPacote}" Click="SalvarPacote"
+            AutomationProperties.Name="Exportar pacote de diagnóstico para o suporte" />
+
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" DataContext="{Binding Diagnostico}">
       <UniformGrid Columns="2">
         <StackPanel Margin="0,0,16,0">
