@@ -81,7 +81,7 @@ public sealed class PainelPorQue : Notificavel
             var onde = string.IsNullOrEmpty(r.OndeFoiLido) ? string.Empty : $" · {r.OndeFoiLido}";
             Mostrar(
                 r.Negada ? Sinal.Problema : Sinal.Atencao,
-                string.Create(CultureInfo.InvariantCulture, $"{(r.Negada ? "× Negado" : "Liberado")}{quando} · Catraca {r.Inner:D2}{onde}"),
+                string.Create(CultureInfo.InvariantCulture, $"{(r.Negada ? "× Negado" : "Liberado")}{quando} · {NomeDaCatraca(r)}{onde}"),
                 r.OQueAconteceu,
                 r.OQueDizer,
                 r.OQueFazer);
@@ -103,4 +103,10 @@ public sealed class PainelPorQue : Notificavel
         OQueFazer = fazer;
         Aberto = true;
     }
+
+    /// <summary>O nome configurado da catraca; sem ele, "Catraca NN" (a mesma regra do serviço).</summary>
+    private static string NomeDaCatraca(ExplicacaoDaNegativa r) =>
+        string.IsNullOrWhiteSpace(r.NomeDaCatraca)
+            ? string.Create(CultureInfo.InvariantCulture, $"Catraca {r.Inner:D2}")
+            : r.NomeDaCatraca;
 }

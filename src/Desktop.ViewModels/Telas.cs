@@ -346,7 +346,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
         return new LinhaDeCatraca(
             e.Inner,
-            string.IsNullOrWhiteSpace(e.NomeDoGate) ? $"Catraca {e.Inner}" : e.NomeDoGate,
+            string.IsNullOrWhiteSpace(e.NomeDoGate) ? $"Catraca {e.Inner:D2}" : e.NomeDoGate,
             texto,
             sinal,
             e.UltimaDecisao switch

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Contracts.Edge.V1;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -200,7 +201,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
                 var equipamento = new Equipamento
                 {
                     Inner = inner,
-                    NomeDoGate = _nomes.TryGetValue(inner, out var nome) ? nome : $"{worker.Nome}/{inner}",
+                    NomeDoGate = NomeDaCatraca(inner),
                     Worker = worker.Nome,
                     Porta = worker.Porta,
                     Estado = situacoes[worker.Nome].ToString(),
@@ -507,6 +508,18 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// pedido pela função pura <see cref="Access.Inteligencia.PorQueNegou"/> com o contexto da base.
     /// Não depende da chave da camada inteligente nem do Analisador. Só leitura.
     /// </summary>
+    /// <summary>
+    /// O nome que o operador vê para uma catraca: o configurado no assistente; sem nome, "Catraca NN".
+    /// É a mesma regra em todas as telas e respostas.
+    /// </summary>
+    private string NomeDaCatraca(int inner) => NomeDaCatracaPara(_nomes, inner);
+
+    /// <summary>A regra do nome, pura: testável sem o serviço.</summary>
+    public static string NomeDaCatracaPara(IReadOnlyDictionary<int, string> nomes, int inner) =>
+        nomes.TryGetValue(inner, out var nome) && !string.IsNullOrWhiteSpace(nome)
+            ? nome
+            : string.Create(CultureInfo.InvariantCulture, $"Catraca {inner:D2}");
+
     public override Task<ExplicacaoDaNegativa> ExplicarNegativa(ExplicarNegativaRequest request, ServerCallContext context)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -536,6 +549,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         resposta.Encontrada = true;
         resposta.Negada = !tentativa.Liberou;
         resposta.Inner = contexto.Catraca;
+        resposta.NomeDaCatraca = NomeDaCatraca(contexto.Catraca);
         resposta.Em = Timestamp.FromDateTimeOffset(tentativa.Em);
         resposta.OndeFoiLido = Access.Inteligencia.PorQueNegou.OndeFoiLido(tentativa.Origem);
         resposta.OQueAconteceu = explicacao.OQueAconteceu;

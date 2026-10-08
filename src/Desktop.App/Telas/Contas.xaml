@@ -48,7 +48,7 @@
     </TextBlock>
 
     <UniformGrid DockPanel.Dock="Top" Rows="1" Margin="0,0,-12,12" DataContext="{Binding Contas}">
-      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Autorizados" Valor="{Binding Liberados}" Tom="Sucesso"
+      <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Liberados" Valor="{Binding Liberados}" Tom="Sucesso"
                            Icone="{DynamicResource Rayzer.Icon.Check}" Detalhe="✓ a catraca liberou" />
       <rz:RayzerMetricCard Margin="0,0,12,0" Rotulo="Com giro confirmado" Valor="{Binding Giros}" Tom="Marca"
                            Icone="{DynamicResource Rayzer.Icon.People}" Detalhe="a pessoa passou" />
@@ -69,7 +69,7 @@
           <DataGrid ItemsSource="{Binding PorCategoria}" AutomationProperties.Name="Por categoria" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="*" />
-              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
+              <DataGridTextColumn Header="LIBERADOS" Binding="{Binding Liberados}" Width="128" />
               <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="104" />
             </DataGrid.Columns>
           </DataGrid>
@@ -77,7 +77,7 @@
           <DataGrid ItemsSource="{Binding PorCatraca}" AutomationProperties.Name="Por catraca" Margin="0,0,0,16">
             <DataGrid.Columns>
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="*" />
-              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
+              <DataGridTextColumn Header="LIBERADOS" Binding="{Binding Liberados}" Width="128" />
               <DataGridTextColumn Header="COM GIRO" Binding="{Binding Giros}" Width="104" />
               <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="96" />
               <DataGridTextColumn Header="ENTRADAS" Binding="{Binding Entradas}" Width="96" />
@@ -91,7 +91,7 @@
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Width="*" ElementStyle="{StaticResource Celula.Mono}"
                                   Binding="{Binding Hora, Converter={StaticResource InstanteParaTexto}, ConverterParameter='dd/MM HH:00'}" />
-              <DataGridTextColumn Header="AUTORIZADOS" Binding="{Binding Liberados}" Width="128" />
+              <DataGridTextColumn Header="LIBERADOS" Binding="{Binding Liberados}" Width="128" />
               <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="96" />
             </DataGrid.Columns>
           </DataGrid>

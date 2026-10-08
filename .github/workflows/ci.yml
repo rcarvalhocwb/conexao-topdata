@@ -195,6 +195,9 @@ jobs:
             Autotestar (Resolve-Path publicado/Configurador/Edge.Configurador.exe) "$PWD\autoteste-assistente.txt" @()
 
             # Capturas de todas as telas, com o serviço em simulação, para revisão visual.
+            # Captura que falha reprova o job (decisão de 08/10): as falhas são juntadas e o
+            # passo termina com erro no fim, para o log mostrar todas.
+            $falhasDeCaptura = @()
             foreach ($tema in 'claro', 'escuro') {
               # Saídas redirecionadas: num estouro de pilha o .NET só diz onde foi na saída
               # de erro, e sem redirecionar ela se perde (o painel é um WinExe).
@@ -203,17 +206,17 @@ jobs:
                 -RedirectStandardOutput "$PWD\captura-$tema-saida.log" -RedirectStandardError "$PWD\captura-$tema-falha.log"
               if (-not $captura.WaitForExit(180000)) {
                 $captura.Kill()
-                Write-Host "::warning::A captura das telas (tema $tema) não terminou em 3 minutos."
+                $falhasDeCaptura += "captura das telas (tema $tema) não terminou em 3 minutos"
               }
               elseif ($captura.ExitCode -ne 0) {
-                Write-Host "::warning::A captura das telas (tema $tema) saiu com código $($captura.ExitCode)."
+                $falhasDeCaptura += "captura das telas (tema $tema) saiu com código $($captura.ExitCode)"
                 Get-Content "$PWD\captura-$tema-falha.log" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "  $_" }
               }
             }
             Get-ChildItem capturas -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "captura: $($_.Name)" }
             # Tela que falhou na captura deixa o erro num .txt ao lado das imagens.
             Get-ChildItem capturas -Filter '*erro*.txt' -ErrorAction SilentlyContinue | ForEach-Object {
-              Write-Host "::warning::A captura da tela $($_.BaseName) falhou (detalhe abaixo)."
+              $falhasDeCaptura += "captura da tela $($_.BaseName) falhou"
               Get-Content $_.FullName | Select-Object -First 40 | ForEach-Object { Write-Host "  $_" }
             }
             # Tamanho e DPI de cada imagem (docs/34 §7.1, P4: o gêmeo saía com 1044×768).
@@ -227,7 +230,7 @@ jobs:
               # PNG truncado (captura morta pelo tempo no meio da gravação) é aviso, como antes,
               # e não reprova o job por um motivo que não é o tamanho.
               try { $imagem = [System.Drawing.Image]::FromFile($_.FullName) }
-              catch { Write-Host "::warning::Captura ilegível (provavelmente incompleta): $($_.Exception.Message)"; return }
+              catch { $falhasDeCaptura += "captura ilegível ($($_.Name)): $($_.Exception.Message)"; return }
               $ok = $false
               # ±1 px: a janela arredonda o tamanho em escalas como 125 % e 175 %.
               foreach ($escala in 1, 1.25, 1.5, 1.75, 2) {
@@ -236,9 +239,10 @@ jobs:
               if (-not $ok) { $fora += "$($_.Name): $($imagem.Width)x$($imagem.Height) px" }
               $imagem.Dispose()
             }
-            if ($fora.Count -gt 0) {
-              $fora | ForEach-Object { Write-Host "::error::Captura fora de 1366x768 lógicos: $_" }
-              throw 'Há captura fora de 1366x768 lógicos (a tela mínima suportada, docs/10).'
+            foreach ($f in $fora) { $falhasDeCaptura += "fora de 1366x768 lógicos: $f" }
+            if ($falhasDeCaptura.Count -gt 0) {
+              $falhasDeCaptura | ForEach-Object { Write-Host "::error::$_" }
+              throw "Captura com falha ($($falhasDeCaptura.Count)): a tela não pode ser provada. Ver os erros acima."
             }
           }
           finally {

@@ -734,6 +734,7 @@ message ExplicacaoDaNegativa {
   string o_que_aconteceu = 6;
   string o_que_dizer = 7;                     // a frase para dizer a quem está na catraca
   string o_que_fazer = 8;                     // o que o operador confere ou faz
+  string nome_da_catraca = 9;                 // o nome configurado; sem nome, "Catraca NN" (mesma regra das telas)
 }
 
 // Etapa I.9 (docs/36, IN-07): sugestões de parametrização.

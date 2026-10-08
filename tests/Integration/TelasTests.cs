@@ -701,7 +701,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.True(tela.PrepararLiberacao.CanExecute(null));
         await tela.PrepararLiberacao.ExecutarAsync();
         Assert.True(tela.ConfirmandoLiberacao);
-        Assert.Contains("Confirmar: liberar um giro na setor-a/1", tela.TextoDaConfirmacaoDaLiberacao, StringComparison.Ordinal);
+        Assert.Contains("Confirmar: liberar um giro na Catraca 01", tela.TextoDaConfirmacaoDaLiberacao, StringComparison.Ordinal);
         Assert.Empty(tela.Historico);
 
         await tela.LiberarManualmente.ExecutarAsync();
