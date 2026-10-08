@@ -134,6 +134,7 @@ jobs:
             -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
             -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
             -d PastaModelos=$((Resolve-Path publico/installer/modelos).Path) `
+            -d PastaInstalador=$((Resolve-Path publico/installer).Path) `
             -o RayzerXAcess-$versao.msi
 
       # Aqui a regra é o inverso da do CI público: a EasyInner.dll TEM de estar no MSI.

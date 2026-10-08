@@ -106,6 +106,7 @@
       <ComponentGroupRef Id="Grupo_Worker" />
       <ComponentGroupRef Id="Grupo_Configurador" />
       <ComponentGroupRef Id="Grupo_Modelos" />
+      <ComponentGroupRef Id="Grupo_ScriptsDoOperador" />
       <ComponentGroupRef Id="Grupo_Atalhos" />
       <ComponentGroupRef Id="Grupo_Firewall" />
       <ComponentGroupRef Id="Grupo_Bandeja" />
@@ -219,6 +220,17 @@
     <ComponentGroup Id="Grupo_Modelos" Directory="DIR_MODELOS">
       <Files Include="$(var.PastaModelos)\*.xlsx" />
       <Files Include="$(var.PastaModelos)\*.csv" />
+    </ComponentGroup>
+
+    <!-- Scripts que o operador roda depois da instalação (runbooks RB-01 e o README do instalador).
+         Só estes dois: os de desenvolvimento (publicar, instalar-dev) não vão ao cliente. -->
+    <ComponentGroup Id="Grupo_ScriptsDoOperador" Directory="INSTALLFOLDER">
+      <Component Id="ScriptVerificarAmbiente" Guid="*">
+        <File Id="ArqVerificarAmbiente" Source="$(var.PastaInstalador)\verificar-ambiente.ps1" KeyPath="yes" />
+      </Component>
+      <Component Id="ScriptConfigurarOperador" Guid="*">
+        <File Id="ArqConfigurarOperador" Source="$(var.PastaInstalador)\configurar-operador.ps1" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
