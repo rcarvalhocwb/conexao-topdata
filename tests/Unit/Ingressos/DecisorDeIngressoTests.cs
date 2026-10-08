@@ -43,7 +43,19 @@ public sealed class DecisorDeIngressoTests
             return (Responder(qrNormalizado), UltimaTentativa);
         }
 
-        public void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em) => Confirmadas.Add(tentativaId);
+        /// <summary>Quantas gravações de giro ainda vão falhar (base ocupada, disco cheio).</summary>
+        public int FalhasAoConfirmar { get; set; }
+
+        public void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em)
+        {
+            if (FalhasAoConfirmar > 0)
+            {
+                FalhasAoConfirmar--;
+                throw new InvalidOperationException("database is locked");
+            }
+
+            Confirmadas.Add(tentativaId);
+        }
     }
 
     private static long _seq;
@@ -71,6 +83,34 @@ public sealed class DecisorDeIngressoTests
         Assert.Equal(ReasonCodes.Autorizado, decisao.Reason);
         Assert.Equal([tentativa], validador.Confirmadas);
         Assert.Equal(1, decisor.PassagensConfirmadas);
+    }
+
+    /// <summary>
+    /// Achado E1-04 do docs/41: a exceção ao gravar o giro subia até o processo do worker e o
+    /// derrubava, com todas as catracas, e o giro (só em memória) se perdia.
+    /// </summary>
+    [Fact]
+    public void Giro_que_a_base_recusa_nao_lanca_e_e_gravado_quando_a_base_volta()
+    {
+        var validador = new ValidadorFalso { FalhasAoConfirmar = 2 };
+        var decisor = new DecisorDeIngresso(validador);
+        decisor.Decidir(Evento(KnownEventOrigin.Leitor1, "1000000001"));
+        var tentativa = validador.UltimaTentativa;
+
+        var erro = Record.Exception(() => decisor.AoReceberEvento(Evento(KnownEventOrigin.GiroConfirmado)));
+
+        Assert.Null(erro);
+        Assert.Empty(validador.Confirmadas);
+        Assert.Equal(1, decisor.ConfirmacoesAGravar);
+        Assert.Equal(1, decisor.PassagensConfirmadas);
+
+        decisor.GravarConfirmacoesPendentes();
+        Assert.Equal(1, decisor.ConfirmacoesAGravar);
+
+        decisor.GravarConfirmacoesPendentes();
+        Assert.Equal([tentativa], validador.Confirmadas);
+        Assert.Equal(0, decisor.ConfirmacoesAGravar);
+        Assert.Equal(2, decisor.FalhasAoGravarConfirmacao);
     }
 
     [Fact]

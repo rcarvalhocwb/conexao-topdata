@@ -48,6 +48,7 @@ public sealed class SessaoDeOperacao
 
     private readonly DeviceGroupLoop _laco;
     private readonly DecisorDeIngresso _decisor;
+    private bool _avisouConfirmacoesPendentes;
     private readonly Action<string> _registrar;
     private readonly Action<IReadOnlyList<SituacaoDaCatraca>> _publicar;
     private readonly TimeSpan _intervaloDePublicacao;
@@ -294,8 +295,34 @@ public sealed class SessaoDeOperacao
             }
         }
 
+        GravarConfirmacoesSeFor();
         PublicarSeFor();
         DescarregarColetorSeFor();
+    }
+
+    // Giro recebido e ainda não gravado (base ocupada): repete a cada volta, e o registro diz quando
+    // a fila começa e quando esvazia, sem uma linha por volta.
+    private void GravarConfirmacoesSeFor()
+    {
+        var antes = _decisor.ConfirmacoesAGravar;
+        if (antes == 0)
+        {
+            return;
+        }
+
+        _decisor.GravarConfirmacoesPendentes();
+        var depois = _decisor.ConfirmacoesAGravar;
+
+        if (depois == 0)
+        {
+            _registrar(string.Create(CultureInfo.InvariantCulture, $"giros gravados depois de falha da base: {antes}"));
+            _avisouConfirmacoesPendentes = false;
+        }
+        else if (!_avisouConfirmacoesPendentes)
+        {
+            _registrar(string.Create(CultureInfo.InvariantCulture, $"base local não aceitou a gravação de {depois} giro(s); repetindo a cada volta"));
+            _avisouConfirmacoesPendentes = true;
+        }
     }
 
     /// <summary>Roda até o cancelamento.</summary>

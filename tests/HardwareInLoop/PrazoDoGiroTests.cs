@@ -107,6 +107,40 @@ public sealed class PrazoDoGiroTests
         Assert.Contains("LiberarCatracaEntrada", costura.Chamadas);
     }
 
+    /// <summary>
+    /// Achado E1-05 do docs/41: quando a chamada de liberação falhava depois da autorização, a
+    /// catraca ia para reconexão e a tentativa pendente ficava aberta. Um giro que chegasse depois
+    /// confirmaria a passagem errada. Agora a falha encerra a tentativa, como o prazo já fazia.
+    /// </summary>
+    [Fact]
+    public void Liberacao_que_a_dll_recusa_encerra_a_tentativa_pendente()
+    {
+        var costura = new CosturaFalsa { OrigemADevolver = 0 };
+        using var adapter = new TopdataInnerAdapter(costura);
+        var desistencias = new List<string>();
+        var laco = new DevicePump(
+            adapter, () => _agora, LinhaDaCosturaFalsa, decidir: _ => Autorizado(), aoDesistirDoGiro: desistencias.Add);
+        var catraca = new DeviceSlot(1, Configuracao(), () => _agora);
+        Ate(laco, catraca, DeviceState.Polling);
+        Passo(laco, catraca);
+
+        costura.Retornos["LiberarCatracaEntrada"] = 1;
+        costura.OrigemADevolver = (byte)KnownEventOrigin.QrCode;
+        costura.CartaoADevolver = "0000000101";
+        Passo(laco, catraca);
+        costura.OrigemADevolver = 0;
+        costura.CartaoADevolver = string.Empty;
+
+        string? feito = null;
+        for (var i = 0; i < 10 && feito?.Contains("falha ao liberar giro", StringComparison.Ordinal) != true; i++)
+        {
+            feito = Passo(laco, catraca);
+        }
+
+        Assert.Contains("falha ao liberar giro", feito, StringComparison.Ordinal);
+        Assert.Equal([catraca.Maquina.DeviceId], desistencias);
+    }
+
     [Fact]
     public void Liberacao_sem_origem_5_nem_6_volta_a_atender_depois_do_prazo_rearmando_o_leitor()
     {

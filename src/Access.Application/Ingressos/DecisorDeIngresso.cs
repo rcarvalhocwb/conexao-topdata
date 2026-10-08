@@ -110,6 +110,7 @@ public sealed class DecisorDeIngresso
     private readonly TimeProvider _relogio;
     private readonly CredentialNormalization _perfilDaLeitura;
     private readonly Dictionary<string, Guid> _pendentes = new(StringComparer.Ordinal);
+    private readonly List<(Guid Tentativa, DateTimeOffset Em, byte Complemento)> _confirmacoesAGravar = [];
 
     /// <summary>
     /// </summary>
@@ -142,6 +143,12 @@ public sealed class DecisorDeIngresso
 
     /// <summary>Autorizações que terminaram sem giro. Para o painel da bancada.</summary>
     public int AutorizacoesSemGiro { get; private set; }
+
+    /// <summary>Giros já recebidos cuja gravação na base ainda não deu certo (base ocupada, por exemplo).</summary>
+    public int ConfirmacoesAGravar => _confirmacoesAGravar.Count;
+
+    /// <summary>Tentativas de gravar uma confirmação de giro que falharam e serão repetidas.</summary>
+    public int FalhasAoGravarConfirmacao { get; private set; }
 
     /// <summary>Decide sobre uma leitura. Nunca lança: falha vira negativa com motivo.</summary>
     public Decision Decidir(DeviceEvent evento) => Decidir(evento, giro: null);
@@ -225,10 +232,11 @@ public sealed class DecisorDeIngresso
         {
             if (_pendentes.Remove(evento.Key.DeviceId, out var tentativa))
             {
-                _validador.ConfirmarPassagemFisica(tentativa, evento.ReceivedTime, evento.Complement);
+                _confirmacoesAGravar.Add((tentativa, evento.ReceivedTime, evento.Complement));
                 PassagensConfirmadas++;
             }
 
+            GravarConfirmacoesPendentes();
             return;
         }
 
@@ -237,6 +245,34 @@ public sealed class DecisorDeIngresso
         {
             // Autorizado e não girou: desistiu, travou, ou ninguém passou.
             AutorizacoesSemGiro++;
+        }
+    }
+
+    /// <summary>
+    /// Grava os giros recebidos que ainda não foram para a base, na ordem em que chegaram. Nunca
+    /// lança: o que falhar fica para a próxima chamada.
+    /// </summary>
+    /// <remarks>
+    /// Achado E1-04 do docs/41: a gravação do giro não tinha proteção. Uma exceção (base ocupada além
+    /// do prazo, disco cheio) subia até o processo e o derrubava, com todas as catracas do worker, e o
+    /// giro, que só existia em memória, se perdia. O laço chama este método a cada volta.
+    /// </remarks>
+    public void GravarConfirmacoesPendentes()
+    {
+        while (_confirmacoesAGravar.Count > 0)
+        {
+            var (tentativa, em, complemento) = _confirmacoesAGravar[0];
+            try
+            {
+                _validador.ConfirmarPassagemFisica(tentativa, em, complemento);
+            }
+            catch (Exception erro) when (erro is not OutOfMemoryException)
+            {
+                FalhasAoGravarConfirmacao++;
+                return;
+            }
+
+            _confirmacoesAGravar.RemoveAt(0);
         }
     }
 

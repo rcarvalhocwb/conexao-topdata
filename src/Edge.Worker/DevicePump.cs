@@ -647,6 +647,7 @@ public sealed class DevicePump
                 // backoff e reconexão —, sem derrubar o laço das outras catracas. Da DLL real só
                 // chega aqui com ReconectarEmErroDeRecepcao ligado no adaptador (HIL-EVT-01).
                 d.ErrosDeRecepcao++;
+                DesistirDoGiroEmCurso(d);
                 Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
                 return $"erro ao aguardar evento ({resultado}) — erro de recepção nº {d.ErrosDeRecepcao}";
         }
@@ -830,6 +831,7 @@ public sealed class DevicePump
                 : $"giro liberado ({direcao})";
         }
 
+        DesistirDoGiroEmCurso(d);
         Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
         return $"falha ao liberar giro ({resultado})";
     }
@@ -1204,6 +1206,20 @@ public sealed class DevicePump
         }
 
         return $"{GiroNaoConfirmado(prazo)}, sem origem 5 nem 6 — rearmando o leitor";
+    }
+
+    /// <summary>
+    /// Uma saída por erro de comunicação no meio de uma liberação encerra a tentativa pendente,
+    /// como o prazo já fazia (achado E1-05 do docs/41). Antes, a falha em LiberarCatraca ou na
+    /// recepção durante o giro deixava a tentativa aberta: o giro que chegasse depois da reconexão
+    /// confirmava a passagem errada, e a prestação de contas não via o uso sem passagem.
+    /// </summary>
+    private void DesistirDoGiroEmCurso(DeviceSlot d)
+    {
+        if (d.Maquina.Current is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
+        {
+            _aoDesistirDoGiro?.Invoke(d.Maquina.DeviceId);
+        }
     }
 
     private static string GiroNaoConfirmado(TimeSpan prazo) => $"giro não confirmado: prazo de {Segundos(prazo)} s";

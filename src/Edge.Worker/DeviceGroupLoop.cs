@@ -99,7 +99,21 @@ public sealed class DeviceGroupLoop
             Watchdog.Bater($"inner {dispositivo.Inner} em {dispositivo.Maquina.Current}");
 
             var estadoAntes = dispositivo.Maquina.Current;
-            var acao = _pump.Passo(dispositivo, _limiteDeEspera);
+            string acao;
+            try
+            {
+                acao = _pump.Passo(dispositivo, _limiteDeEspera);
+            }
+            catch (Exception erro) when (erro is not (OutOfMemoryException or DllNotFoundException
+                                                    or BadImageFormatException or EntryPointNotFoundException))
+            {
+                // Uma exceção no passo de uma catraca (a base ocupada ao gravar o giro, por exemplo)
+                // derrubava o processo e todas as catracas deste worker (achado E1-04 do docs/41).
+                // Agora ela fica no registro e as outras seguem. A falta da DLL continua subindo:
+                // o Program a transforma em orientação e código de saída.
+                acao = $"falha inesperada no passo ({erro.GetType().Name}: {erro.Message})";
+            }
+
             acoes.Add((dispositivo.Inner, acao));
 
             // Todo log passa pelo redator: nem a ação nem o número de cartão que ela
