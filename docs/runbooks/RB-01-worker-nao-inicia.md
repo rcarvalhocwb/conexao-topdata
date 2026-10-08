@@ -15,11 +15,13 @@ mensagem fala em "retorno 8" ou em "DLL".
 1. **Ver a mensagem exata no painel.** Abra *Diagnóstico* e copie a linha da catraca.
    - Critério de sucesso: você sabe se é "retorno 8", "quarentena" ou outra coisa.
    - Se for "quarentena": vá para o passo 4.
-2. **Rodar a verificação do ambiente.** Como administrador, na pasta de instalação:
-   `.\verificar-ambiente.ps1`
-   - Critério de sucesso: todas as linhas dizem `ok`.
-   - Se alguma linha não for `ok`: corrija o item indicado (por exemplo, o .NET Framework 3.5 pelo botão
-     *Habilitar .NET Framework 3.5* do assistente) e repita este passo.
+2. **Rodar a verificação do ambiente.** Abra um PowerShell como administrador e rode (o `-ExecutionPolicy Bypass`
+   vale só para este comando; sem ele, o Windows recusa scripts por padrão):
+   `powershell -ExecutionPolicy Bypass -File "C:\Program Files\Rayzer\XAcess\verificar-ambiente.ps1"`
+   - Critério de sucesso: nenhuma linha diz `FALHA`. Linhas `conferir` pedem uma checagem sua, descrita na própria
+     linha; com o sistema rodando, a porta aparece como `ok` (em uso pelo próprio programa das catracas).
+   - Se alguma linha disser `FALHA`: corrija o item indicado (por exemplo, o .NET Framework 3.5 pelo botão
+     *Habilitar .NET Framework 3.5* do assistente, ou a EasyInner.dll pelo botão *Localizar*) e repita este passo.
 3. **Reiniciar o serviço.** Em `services.msc`, clique com o botão direito em `ConexaoTopdataEdge` → *Reiniciar*.
    - Critério de sucesso: em até 1 minuto, a catraca aparece como "Atendendo" no painel.
    - Se continuar sem atender: vá para o passo 4.

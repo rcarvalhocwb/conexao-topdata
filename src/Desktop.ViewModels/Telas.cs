@@ -893,6 +893,12 @@ public sealed class ConfiguracoesViewModel : TelaBase
             if (Definir(ref _confirmandoAplicacao, value))
             {
                 Avisar(nameof(TextoDaConfirmacaoDaAplicacao));
+
+                // O botão do WPF só reconsulta CanExecute quando o comando avisa. Sem isto, "Confirmar"
+                // e "Cancelar" nasciam desabilitados e "Aplicar agora" não voltava (achado E6-1).
+                PrepararAplicacao.ReavaliarDisponibilidade();
+                AplicarAgora.ReavaliarDisponibilidade();
+                CancelarAplicacao.ReavaliarDisponibilidade();
             }
         }
     }

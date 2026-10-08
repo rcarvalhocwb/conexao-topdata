@@ -35,6 +35,19 @@ if (args.Contains("--gravar-segredo-da-nuvem"))
     return 0;
 }
 
+// Pasta da instalação (workers.json, token, cofre, banco) só para SYSTEM e Administradores (S04).
+// Roda ANTES de ler workers.json e o token: o serviço roda como SYSTEM e inicia o executável que o
+// workers.json indica, então não pode ler esses arquivos com a permissão herdada do ProgramData,
+// em que um usuário comum cria arquivos (achado E8-2 do docs/41). Uma falha aqui não impede a subida:
+// o motivo vai para o registro assim que ele abrir.
+var falhasDaRestricao = new List<string>();
+if (OperatingSystem.IsWindows())
+{
+    Directory.CreateDirectory(InstalacaoLocal.PastaDeDados);
+    falhasDaRestricao.AddRange(SegurancaLocal.RestringirPastaDeDados(
+        [new SegurancaLocal.AlvoDaRestricao(InstalacaoLocal.PastaDeDados, Pasta: true)]));
+}
+
 // Configuração: EDGE_CONFIG (desenvolvimento), a da pasta de dados (instalação), ou a
 // que estiver ao lado do executável.
 var caminhoDaConfig = Environment.GetEnvironmentVariable("EDGE_CONFIG")
@@ -96,14 +109,19 @@ var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO")
 var caminhoDoBanco = configuracao.CaminhoDoBanco;
 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco))!);
 
-// Pasta de dados só para o serviço e os administradores (S04). O token mantém a leitura do grupo dos
-// operadores. Roda antes de criar o banco, para que o arquivo nasça com a permissão certa.
-if (OperatingSystem.IsWindows())
-{
-    SegurancaLocal.RestringirPastaDeDados(configuracao.PastaDeDados);
-}
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
 new Migrator(fabrica).Aplicar();
+
+// Banco fora da pasta da instalação ("banco" no workers.json): restringe só o que o serviço cria ao
+// lado dele (arquivos do banco, copias, registros), nunca a pasta do banco, que pode ser a raiz de um
+// disco (achado E8-3). Depois da migração, para o arquivo do banco já existir.
+if (OperatingSystem.IsWindows())
+{
+    Directory.CreateDirectory(Path.Combine(configuracao.PastaDeDados, "copias"));
+    Directory.CreateDirectory(Path.Combine(configuracao.PastaDeDados, "registros"));
+    falhasDaRestricao.AddRange(SegurancaLocal.RestringirPastaDeDados(
+        SegurancaLocal.AlvosDaRestricao(InstalacaoLocal.PastaDeDados, caminhoDoBanco).Skip(1)));
+}
 
 // A camada inteligente nasce DESLIGADA: sem linha em edge_setting, nada liga (ChavesDaInteligencia).
 // Não se chama InicializacaoDasChavesDaInteligencia aqui. Ligá-la por padrão é a Etapa I.11, só
@@ -177,6 +195,11 @@ void Registrar(string linha)
 {
     registro.Escrever(linha);
     Console.WriteLine(linha);
+}
+
+foreach (var falha in falhasDaRestricao)
+{
+    Registrar($"permissão da pasta de dados não aplicada: {falha}");
 }
 
 Registrar($"partida {sessaoDoServico} · contenção dos workers: {contencao.Descricao}");

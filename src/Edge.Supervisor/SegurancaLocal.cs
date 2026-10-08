@@ -2,6 +2,7 @@ using System.IO.Pipes;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using Access.Infrastructure.SQLite;
 using Contracts;
 using Microsoft.AspNetCore.Hosting;
 
@@ -115,43 +116,99 @@ public static class SegurancaLocal
         }
     }
 
+    /// <summary>Um caminho que a restrição de permissão alcança.</summary>
+    /// <param name="Caminho">Caminho absoluto.</param>
+    /// <param name="Pasta">Pasta (com tudo o que estiver dentro) ou arquivo isolado.</param>
+    public sealed record AlvoDaRestricao(string Caminho, bool Pasta);
+
     /// <summary>
-    /// A pasta de dados (banco, cópias, registros, cofre) só para SYSTEM e Administradores, por herança.
-    /// O arquivo do token não entra aqui: ele mantém a leitura do grupo dos operadores (ver Restringir).
+    /// O que a restrição da pasta de dados alcança. Sempre, como primeiro alvo, a pasta da instalação inteira, que é nossa.
+    /// Se a configuração puser o banco fora dela, só o que o serviço cria ao lado do banco: os arquivos
+    /// do banco e da telemetria e as pastas <c>copias</c> e <c>registros</c>. Nunca a pasta do banco em
+    /// si, que pode ser a raiz de um disco (achado E8-3 do docs/41).
     /// </summary>
+    public static IReadOnlyList<AlvoDaRestricao> AlvosDaRestricao(string pastaDaInstalacao, string caminhoDoBanco)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pastaDaInstalacao);
+        ArgumentException.ThrowIfNullOrWhiteSpace(caminhoDoBanco);
+
+        var instalacao = Path.GetFullPath(pastaDaInstalacao);
+        var banco = Path.GetFullPath(caminhoDoBanco);
+        var pastaDoBanco = Path.GetDirectoryName(banco)!;
+        var alvos = new List<AlvoDaRestricao> { new(instalacao, Pasta: true) };
+
+        if (EstaDentro(pastaDoBanco, instalacao))
+        {
+            return alvos;
+        }
+
+        string[] sufixos = ["", "-wal", "-shm", "-journal"];
+        var telemetria = FabricaDaTelemetria.CaminhoAoLadoDe(banco);
+        alvos.AddRange(sufixos.Select(s => new AlvoDaRestricao(banco + s, Pasta: false)));
+        alvos.AddRange(sufixos.Select(s => new AlvoDaRestricao(telemetria + s, Pasta: false)));
+        alvos.Add(new AlvoDaRestricao(Path.Combine(pastaDoBanco, "copias"), Pasta: true));
+        alvos.Add(new AlvoDaRestricao(Path.Combine(pastaDoBanco, "registros"), Pasta: true));
+        return alvos;
+    }
+
+    /// <summary>Verdadeiro se <paramref name="caminho"/> é <paramref name="pasta"/> ou fica dentro dela.</summary>
+    public static bool EstaDentro(string caminho, string pasta)
+    {
+        var comparacao = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var c = Path.TrimEndingDirectorySeparator(Path.GetFullPath(caminho));
+        var p = Path.TrimEndingDirectorySeparator(Path.GetFullPath(pasta));
+
+        return c.Equals(p, comparacao)
+            || c.StartsWith(p + Path.DirectorySeparatorChar, comparacao);
+    }
+
+    /// <summary>
+    /// Deixa os alvos (ver <see cref="AlvosDaRestricao"/>) só para SYSTEM e Administradores. O arquivo do
+    /// token não entra aqui: ele mantém a leitura do grupo dos operadores (ver Restringir).
+    /// </summary>
+    /// <returns>
+    /// O que não foi possível restringir, com o motivo. Uma falha aqui não impede o serviço de subir:
+    /// as catracas não dependem dela, e o motivo vai para o registro.
+    /// </returns>
     /// <remarks>
     /// Pergunta S04 (respondida: permissão de pasta, sem cifragem). Protege o acesso.db, que tem o número
     /// do cartão em claro (ADR-0014 recusa SQLCipher). A permissão real só se confirma numa VM Windows.
     /// </remarks>
     [SupportedOSPlatform("windows")]
-    public static void RestringirPastaDeDados(string pasta)
+    public static IReadOnlyList<string> RestringirPastaDeDados(IEnumerable<AlvoDaRestricao> alvos)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(pasta);
+        ArgumentNullException.ThrowIfNull(alvos);
+        var falhas = new List<string>();
 
+        foreach (var alvo in alvos)
+        {
+            if (alvo.Pasta)
+            {
+                RestringirArvore(alvo.Caminho, falhas);
+            }
+            else if (File.Exists(alvo.Caminho))
+            {
+                Tentar(alvo.Caminho, () => RestringirArquivo(new FileInfo(alvo.Caminho)), falhas);
+            }
+        }
+
+        return falhas;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void RestringirArvore(string pasta, List<string> falhas)
+    {
         var raiz = new DirectoryInfo(pasta);
         if (!raiz.Exists)
         {
             return;
         }
 
-        var herdam = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
-        var diretorio = new DirectorySecurity();
-        diretorio.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-        diretorio.AddAccessRule(new FileSystemAccessRule(
-            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
-        diretorio.AddAccessRule(new FileSystemAccessRule(
-            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
-        raiz.SetAccessControl(diretorio);
+        Tentar(raiz.FullName, () => raiz.SetAccessControl(SegurancaDePasta()), falhas);
 
         foreach (var subpasta in raiz.EnumerateDirectories("*", SearchOption.AllDirectories))
         {
-            var seguranca = new DirectorySecurity();
-            seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-            seguranca.AddAccessRule(new FileSystemAccessRule(
-                new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
-            seguranca.AddAccessRule(new FileSystemAccessRule(
-                new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
-            subpasta.SetAccessControl(seguranca);
+            Tentar(subpasta.FullName, () => subpasta.SetAccessControl(SegurancaDePasta()), falhas);
         }
 
         foreach (var arquivo in raiz.EnumerateFiles("*", SearchOption.AllDirectories))
@@ -161,14 +218,49 @@ public static class SegurancaLocal
                 continue;
             }
 
-            var seguranca = new FileSecurity();
-            seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-            seguranca.AddAccessRule(new FileSystemAccessRule(
-                new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
-            seguranca.AddAccessRule(new FileSystemAccessRule(
-                new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
-            arquivo.SetAccessControl(seguranca);
+            Tentar(arquivo.FullName, () => RestringirArquivo(arquivo), falhas);
         }
+    }
+
+    private static void Tentar(string caminho, Action acao, List<string> falhas)
+    {
+        try
+        {
+            acao();
+        }
+        catch (Exception erro) when (erro is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // Sumiu entre a enumeração e a aplicação (um -journal, por exemplo): nada a proteger.
+        }
+        catch (Exception erro) when (erro is UnauthorizedAccessException or IOException or PrivilegeNotHeldException)
+        {
+            falhas.Add($"{caminho}: {erro.Message}");
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static DirectorySecurity SegurancaDePasta()
+    {
+        var herdam = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+        var seguranca = new DirectorySecurity();
+        seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        seguranca.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
+        seguranca.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
+        return seguranca;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void RestringirArquivo(FileInfo arquivo)
+    {
+        var seguranca = new FileSecurity();
+        seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        seguranca.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
+        seguranca.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
+        arquivo.SetAccessControl(seguranca);
     }
 
     /// <summary>

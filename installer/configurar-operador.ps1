@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Cria o grupo "ConexaoTopdata Operadores" e põe nele as contas dos operadores do evento.
 .DESCRIPTION

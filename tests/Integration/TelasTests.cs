@@ -765,6 +765,33 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
+    /// Achado E6-1 do docs/41: o botão do WPF só reconsulta CanExecute quando o comando dispara
+    /// CanExecuteChanged. Chamar ExecutarAsync direto (como o teste acima) não percebe o defeito.
+    /// </summary>
+    [Fact]
+    public async Task Aplicar_agora_avisa_os_botoes_quando_a_confirmacao_abre_e_fecha()
+    {
+        var tela = new ConfiguracoesViewModel(Cliente());
+        var avisos = new Dictionary<string, int> { ["preparar"] = 0, ["aplicar"] = 0, ["cancelar"] = 0 };
+        tela.PrepararAplicacao.CanExecuteChanged += (_, _) => avisos["preparar"]++;
+        tela.AplicarAgora.CanExecuteChanged += (_, _) => avisos["aplicar"]++;
+        tela.CancelarAplicacao.CanExecuteChanged += (_, _) => avisos["cancelar"]++;
+
+        await tela.PrepararAplicacao.ExecutarAsync();
+
+        Assert.True(avisos["aplicar"] > 0, "Confirmar nasceria desabilitado");
+        Assert.True(avisos["cancelar"] > 0, "Cancelar nasceria desabilitado");
+        Assert.True(tela.AplicarAgora.CanExecute(null));
+        Assert.True(tela.CancelarAplicacao.CanExecute(null));
+
+        var antes = avisos["preparar"];
+        await tela.CancelarAplicacao.ExecutarAsync();
+
+        Assert.True(avisos["preparar"] > antes, "Aplicar agora ficaria desabilitado depois de cancelar");
+        Assert.True(tela.PrepararAplicacao.CanExecute(null));
+    }
+
+    /// <summary>
     /// O ícone perto do relógio avisa só quando algo muda: a catraca que para, o serviço que
     /// some e o serviço que volta. Catraca parada há horas não gera aviso a cada 2 s.
     /// </summary>

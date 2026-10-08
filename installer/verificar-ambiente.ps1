@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Confere os pré-requisitos que a documentação aponta como causa do retorno 8.
 .DESCRIPTION
@@ -15,8 +15,23 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$raiz = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$pastaDoScript = Split-Path -Parent $MyInvocation.MyCommand.Path
 $problemas = @()
+
+# Dois lugares onde este script roda:
+#  - instalado: C:\Program Files\Rayzer\XAcess\verificar-ambiente.ps1, com o worker em Worker\;
+#  - no repositório: installer\verificar-ambiente.ps1, com o worker em artifacts\Edge.Worker.X86\.
+$instalado = Test-Path (Join-Path $pastaDoScript 'Worker')
+$pastaDoWorker = if ($instalado) {
+    Join-Path $pastaDoScript 'Worker'
+} else {
+    Join-Path (Split-Path -Parent $pastaDoScript) 'artifacts\Edge.Worker.X86'
+}
+$comoRefazerOWorker = if ($instalado) {
+    'Reinstale o Rayzer XAcess pelo Setup.'
+} else {
+    'Republique com .\installer\publicar.ps1.'
+}
 
 function Conferir {
     param([string]$Id, [nullable[bool]]$Atendido, [string]$Mensagem)
@@ -27,11 +42,11 @@ function Conferir {
 }
 
 # ---------------------------------------------------------------------------
-# ARQUITETURA_X86 — lida no cabeçalho PE do executável publicado.
+# ARQUITETURA_X86 — lida no cabeçalho PE do executável do worker.
 # Este script roda em PowerShell de 64 bits, então conferir o próprio processo não diria
-# nada. O que importa é o worker publicado: se ele sair x64, não carrega a DLL.
+# nada. O que importa é o worker: se ele for x64, não carrega a DLL.
 # ---------------------------------------------------------------------------
-$exeDoWorker = Join-Path $raiz 'artifacts\Edge.Worker.X86\Edge.Worker.X86.exe'
+$exeDoWorker = Join-Path $pastaDoWorker 'Edge.Worker.X86.exe'
 if (Test-Path $exeDoWorker) {
     $fluxo = [System.IO.File]::OpenRead($exeDoWorker)
     try {
@@ -46,13 +61,13 @@ if (Test-Path $exeDoWorker) {
 
     $ehI386 = ($maquina -eq 0x014C)
     Conferir 'ARQUITETURA_X86' $ehI386 $(if ($ehI386) {
-        'O worker publicado é de 32 bits, compatível com a EasyInner.dll.'
+        'O programa das catracas é de 32 bits, compatível com a EasyInner.dll.'
     } else {
-        "O worker publicado tem máquina PE 0x{0:X4}, não 0x014C (I386). A EasyInner.dll é de 32 bits e não carrega num processo de 64. Republique com .\installer\publicar.ps1." -f $maquina
+        "O programa das catracas tem máquina PE 0x{0:X4}, não 0x014C (I386). A EasyInner.dll é de 32 bits e não carrega num processo de 64. $comoRefazerOWorker" -f $maquina
     })
 } else {
-    Conferir 'ARQUITETURA_X86' $null `
-        'Worker ainda não publicado. Rode .\installer\publicar.ps1 e confira de novo.'
+    Conferir 'ARQUITETURA_X86' $false `
+        "Programa das catracas não encontrado em $exeDoWorker. $comoRefazerOWorker"
 }
 
 Conferir 'SISTEMA_WINDOWS' ($env:OS -eq 'Windows_NT') `
@@ -69,20 +84,35 @@ try {
 Conferir 'DOTNET_FRAMEWORK_35' $net35 `
     'Habilite em "Ativar ou desativar recursos do Windows". A ausência é causa documentada de retorno 8.'
 
-$dll = Get-ChildItem -Path "$env:SystemRoot\SysWOW64", "$env:SystemRoot\System32" `
-    -Filter 'EasyInner.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
-Conferir 'DLLS_REGISTRADAS' ($null -ne $dll) `
-    $(if ($dll) { "Encontrada em $($dll.FullName)." } else { 'Rode o instalador do SDK Inner Acesso (ver vendor/topdata/README.md).' })
+# Os mesmos lugares em que o assistente procura (AssistenteDeConfiguracao.VerificarAmbiente): a pasta
+# do worker primeiro, que é onde o instalador com o SDK e o botão "Localizar" do assistente a põem.
+$dll = @(
+    (Join-Path $pastaDoWorker 'EasyInner.dll'),
+    (Join-Path $env:SystemRoot 'SysWOW64\EasyInner.dll'),
+    (Join-Path $env:SystemRoot 'System32\EasyInner.dll')
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+Conferir 'DLLS_REGISTRADAS' ($null -ne $dll) $(if ($dll) {
+    "EasyInner.dll encontrada em $dll."
+} else {
+    "EasyInner.dll não encontrada (procurada em $pastaDoWorker, SysWOW64 e System32). No Assistente de configuração, use o botão Localizar para apontar a DLL do SDK da Topdata."
+})
 
-# Cada worker escuta numa porta própria (ADR-0021). Aqui só dá para conferir se a porta
-# está livre; se as catracas apontam para ela, só a bancada diz.
-$ocupada = Get-NetTCPConnection -LocalPort $Porta -State Listen -ErrorAction SilentlyContinue
-if ($ocupada) {
-    Conferir 'PORTA_DEDICADA' $false `
-        "Porta $Porta ocupada pelo processo $($ocupada.OwningProcess). Feche-o ou use outra porta."
+# Cada worker escuta numa porta própria (ADR-0021). Ocupada pelo próprio programa das catracas é o
+# normal com o sistema rodando; ocupada por outro programa impede as catracas de conectar.
+$ocupada = @(Get-NetTCPConnection -LocalPort $Porta -State Listen -ErrorAction SilentlyContinue)
+if ($ocupada.Count -gt 0) {
+    $dono = Get-Process -Id $ocupada[0].OwningProcess -ErrorAction SilentlyContinue
+    if ($dono -and $dono.ProcessName -eq 'Edge.Worker.X86') {
+        Conferir 'PORTA_DEDICADA' $true `
+            "Porta $Porta em uso pelo próprio programa das catracas (processo $($dono.Id)), como esperado com o sistema rodando."
+    } else {
+        $nome = if ($dono) { "$($dono.ProcessName) (processo $($dono.Id))" } else { "processo $($ocupada[0].OwningProcess)" }
+        Conferir 'PORTA_DEDICADA' $false `
+            "Porta $Porta ocupada por $nome, que não é o programa das catracas. Feche esse programa ou configure outra porta para o grupo no assistente."
+    }
 } else {
     Conferir 'PORTA_DEDICADA' $null `
-        "Porta $Porta livre. Confirme que as catracas deste grupo apontam para ela."
+        "Porta $Porta livre: o serviço não está escutando nela agora. Confirme que o serviço está rodando e que as catracas deste grupo apontam para esta porta."
 }
 
 Write-Host ""
@@ -91,4 +121,4 @@ if ($problemas.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Nenhum impeditivo. Os itens marcados 'conferir' dependem da bancada."
+Write-Host "Nenhuma FALHA. Os itens marcados 'conferir' pedem uma checagem sua, descrita na própria linha."
