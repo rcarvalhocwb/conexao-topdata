@@ -87,6 +87,13 @@ public sealed class LacoOciosoTests : IDisposable
         Assert.Contains("atingiu o teto", conteudo, StringComparison.Ordinal);
         Assert.True(registro.Perdidas > 150);
 
-        Directory.Delete(pasta, recursive: true);
+        try
+        {
+            Directory.Delete(pasta, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Sobra de arquivo temporário não reprova o teste.
+        }
     }
 }

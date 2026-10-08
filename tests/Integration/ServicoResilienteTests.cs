@@ -17,9 +17,16 @@ public sealed class ServicoResilienteTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_pasta))
+        // No Windows, a conexão que ficou no pool segura o arquivo e o Delete falha.
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        try
         {
             Directory.Delete(_pasta, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Sobra de arquivo temporário não reprova o teste.
         }
     }
 
