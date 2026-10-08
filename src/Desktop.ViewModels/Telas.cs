@@ -1166,6 +1166,22 @@ public sealed class JanelaViewModel : Notificavel
         ];
         _telaAtual = Painel;
 
+        // U07: o Simulador só aparece com o modo simulação ligado no serviço. Numa instalação real,
+        // a tela que passa QR de teste não fica ao alcance do operador do evento.
+        Painel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(PainelAoVivoViewModel.Estado))
+            {
+                return;
+            }
+
+            Avisar(nameof(TelasDoMenu));
+            if (TelaAtual is SimuladorViewModel && !Painel.Estado.Simulacao)
+            {
+                TelaAtual = Painel;
+            }
+        };
+
         // Etapa A.6: o detalhe da catraca, aberto pela "Gerenciar catraca" (docs/34 §7.3).
         // Fica fora do menu: só faz sentido com uma catraca escolhida.
         Parametrizacao = new ParametrizacaoViewModel(cliente, relogio);
@@ -1291,6 +1307,10 @@ public sealed class JanelaViewModel : Notificavel
     public PainelAoVivoViewModel Painel { get; }
 
     public IReadOnlyList<ITela> Telas { get; }
+
+    /// <summary>As telas do menu: o Simulador só entra com o modo simulação ligado (U07).</summary>
+    public IReadOnlyList<ITela> TelasDoMenu =>
+        [.. Telas.Where(t => t is not SimuladorViewModel || Painel.Estado.Simulacao)];
 
     public ITela TelaAtual
     {

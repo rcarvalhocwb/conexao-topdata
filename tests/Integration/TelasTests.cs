@@ -728,6 +728,21 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal(2, tela.Catraca);
     }
 
+    /// <summary>
+    /// U07: numa instalação real (sem modo simulação), o Simulador não aparece no menu do operador.
+    /// A tela continua registrada: só a entrada do menu some.
+    /// </summary>
+    [Fact]
+    public async Task Em_modo_real_o_simulador_nao_aparece_no_menu()
+    {
+        var janela = new JanelaViewModel(Cliente());
+        await janela.Painel.AtualizarAsync();
+
+        Assert.False(janela.Painel.Estado.Simulacao);
+        Assert.DoesNotContain(janela.TelasDoMenu, t => t is SimuladorViewModel);
+        Assert.Contains(janela.Telas, t => t is SimuladorViewModel);
+    }
+
     [Fact]
     public async Task Aplicar_agora_pede_a_todas_as_catracas_e_exige_o_nome()
     {

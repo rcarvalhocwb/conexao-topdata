@@ -85,7 +85,7 @@
         </StackPanel>
 
         <ListBox x:Name="Menu" Style="{StaticResource Rayzer.Nav.List}" ItemContainerStyle="{StaticResource Rayzer.Nav.Item}"
-                 ItemsSource="{Binding Telas}" SelectedItem="{Binding TelaAtual}" Tag="aberto" AutomationProperties.Name="Menu">
+                 ItemsSource="{Binding TelasDoMenu}" SelectedItem="{Binding TelaAtual}" Tag="aberto" AutomationProperties.Name="Menu">
           <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" ToolTip="{Binding Titulo}">
