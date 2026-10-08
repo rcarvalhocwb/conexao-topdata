@@ -185,6 +185,11 @@ public sealed partial class AnalisadorDaOperacaoTests : IDisposable
         await EsperarAte(() => analisador.Situacao.Ciclos >= 3, TimeSpan.FromSeconds(10));
         await analisador.StopAsync(CancellationToken.None);
 
+        // StopAsync espera no máximo 500 ms pelo ciclo em andamento (AnalisadorDaOperacao.PrazoParaParar).
+        // Num runner lento o ciclo termina depois disso, e a thread publica Rodando = false ao sair.
+        // A garantia é essa — a thread para e avisa —, não a de parar dentro de 500 ms.
+        await EsperarAte(() => !analisador.Situacao.Rodando, TimeSpan.FromSeconds(10));
+
         var situacao = analisador.Situacao;
         Assert.True(situacao.Ligada);
         Assert.False(situacao.Rodando);
