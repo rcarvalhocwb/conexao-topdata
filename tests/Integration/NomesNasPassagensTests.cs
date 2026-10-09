@@ -62,6 +62,16 @@ public sealed class NomesNasPassagensTests
         public Operacao Operacao { get; }
         public ConsultasDaOperacao Consultas { get; }
         public EdgeControlService Servico { get; }
+        public SessaoDoPainel UltimaSessao { get; private set; } = new();
+
+        public void RetirarPermissao(string login)
+        {
+            var admin = _usuarios.Listar().Single(u => u.Login == UsuariosDoSistema.LoginPadrao).Id;
+            var usuario = _usuarios.Listar().Single(u => u.Login == login);
+            var (_, problemas) = _usuarios.Gravar(admin, usuario.Id, usuario.Login, usuario.Nome,
+                true, ["somente_leitura"], null, Agora);
+            Assert.Empty(problemas);
+        }
 
         public void Passagens()
         {
@@ -100,6 +110,7 @@ public sealed class NomesNasPassagensTests
             {
                 SenhaAtual = "provisoria-1", SenhaNova = "senha-de-" + login,
             })).Trocada);
+            UltimaSessao = sessao;
             return cliente;
         }
 
@@ -222,5 +233,95 @@ public sealed class NomesNasPassagensTests
         var resposta = await m.Servico.ListarAcessos(new ListarAcessosRequest(), null!);
         Assert.Equal(3, resposta.Acessos.Count);
         Assert.All(resposta.Acessos, e => Assert.Empty(e.NomeDaPessoa));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Fluxo_ja_aberto_para_de_entregar_nomes_apos_sair_ou_perder_permissao(bool sair)
+    {
+        await using var m = new Montagem();
+        m.Passagens();
+        await m.IniciarAsync();
+        var cliente = await m.Entrar("port", "portaria");
+        var acompanhamento = new AcompanhamentoDaOperacao(m.Operacao, m.Servico.Eventos, TimeSpan.FromSeconds(1));
+        acompanhamento.UmaLeitura();
+        using var prazo = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var fluxo = cliente.AcompanharEventos(new AcompanharEventosRequest(), cancellationToken: prazo.Token);
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.True(await fluxo.ResponseStream.MoveNext(prazo.Token));
+        }
+
+        Assert.Equal(Nome, fluxo.ResponseStream.Current.NomeDaPessoa);
+        if (sair)
+        {
+            await cliente.SairAsync(new SairRequest());
+        }
+        else
+        {
+            m.RetirarPermissao("port");
+        }
+
+        m.Repositorio.TentarUsar(Cartao, "portao-1", "inner-1", Agora.AddSeconds(4));
+        Assert.Equal(1, acompanhamento.UmaLeitura());
+        Assert.True(await fluxo.ResponseStream.MoveNext(prazo.Token));
+        Assert.Empty(fluxo.ResponseStream.Current.NomeDaPessoa);
+        Assert.Equal("Negado · pessoa bloqueada", fluxo.ResponseStream.Current.MensagemAoOperador);
+    }
+
+    [Fact]
+    public async Task Trocar_o_usuario_da_janela_limpa_os_nomes_das_duas_listas()
+    {
+        await using var m = new Montagem();
+        m.Passagens();
+        await m.IniciarAsync();
+        var cliente = await m.Entrar("port", "portaria");
+        var sessao = new SessaoDoUsuarioViewModel(cliente, m.UltimaSessao);
+        await sessao.IniciarAsync();
+        var janela = new JanelaViewModel(cliente, () => Agora, sessao);
+        var acessos = janela.Telas.OfType<AcessosViewModel>().Single();
+        await janela.Painel.AtualizarAsync();
+        await acessos.AtualizarAsync();
+        Assert.Contains(janela.Painel.UltimosAcessos, l => l.NomeDaPessoa == Nome);
+        Assert.Contains(acessos.Linhas, l => l.NomeDaPessoa == Nome);
+
+        await sessao.Sair.ExecutarAsync();
+        Assert.Empty(janela.Painel.UltimosAcessos);
+        Assert.Empty(acessos.Linhas);
+        // Uma notificação que estava em trânsito não pode ressuscitar o nome após Sair.
+        janela.Painel.Acrescentar(LinhaDeAcesso.De(new EventoDeAcesso { NomeDaPessoa = Nome }));
+        Assert.Empty(janela.Painel.UltimosAcessos.Single().NomeDaPessoa);
+
+        await m.Entrar("leitor", "somente_leitura");
+        sessao.Login = "leitor";
+        sessao.Senha = "senha-de-leitor";
+        await sessao.Entrar.ExecutarAsync();
+        Assert.True(sessao.Logado, sessao.Mensagem);
+        await janela.Painel.AtualizarAsync();
+        await acessos.AtualizarAsync();
+        Assert.All(janela.Painel.UltimosAcessos, l => Assert.Empty(l.NomeDaPessoa));
+        Assert.All(acessos.Linhas, l => Assert.Empty(l.NomeDaPessoa));
+    }
+
+    [Fact]
+    public void Painel_sem_permissao_oculta_nomes_em_todos_os_caminhos_de_preenchimento()
+    {
+        var cliente = new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(
+            TransporteLocal.EnderecoPadrao("nomes-sem-conexao"), "teste", new SessaoDoPainel()));
+        var painel = new PainelAoVivoViewModel(cliente);
+        var linha = LinhaDeAcesso.De(new EventoDeAcesso { NomeDaPessoa = Nome });
+        painel.Repor([linha]);
+        Assert.Equal(Nome, painel.UltimosAcessos.Single().NomeDaPessoa);
+        painel.DefinirPermissaoDosNomes(false);
+        Assert.Empty(painel.UltimosAcessos);
+        painel.Repor([linha]);
+        painel.Completar([linha]);
+        painel.Acrescentar(linha);
+        Assert.Equal(3, painel.UltimosAcessos.Count);
+        Assert.All(painel.UltimosAcessos, l => Assert.Empty(l.NomeDaPessoa));
+        painel.DefinirPermissaoDosNomes(true);
+        painel.Acrescentar(linha);
+        Assert.Equal(Nome, painel.UltimosAcessos.Single().NomeDaPessoa);
     }
 }

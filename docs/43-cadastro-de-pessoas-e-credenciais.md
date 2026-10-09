@@ -157,6 +157,9 @@ da pessoa, decifrado pelo serviço. Sem essa permissão, o nome vem vazio; não 
 nome de pessoa. Se a chave do cofre estiver indisponível ou o nome não puder ser
 decifrado, aparece **(nome ilegível)** e a passagem continua visível. A negativa mantém
 o motivo de pessoa em português. Nome e tentativa de pessoa nunca vão à nuvem.
+Sair ou trocar de usuário limpa os nomes já carregados nas duas listas e reconecta
+o fluxo ao vivo. Um fluxo antigo deixa de entregar nomes se a sessão acabar ou se
+o usuário perder `pessoas.ver`.
 
 ### 6.2 Bloquear e desbloquear na hora
 
