@@ -1322,6 +1322,7 @@ public sealed class JanelaViewModel : Notificavel
         [typeof(PessoasViewModel)] = CodigosDePermissao.PessoasVer,
         [typeof(ParametrosDoCadastroViewModel)] = CodigosDePermissao.CadastroParametros,
         [typeof(UsuariosViewModel)] = CodigosDePermissao.UsuariosGerenciar,
+        [typeof(CartoesNaoReconhecidosViewModel)] = CodigosDePermissao.CartoesCadastrar,
     };
 
     /// <param name="cliente">O cliente do serviço.</param>
@@ -1352,6 +1353,7 @@ public sealed class JanelaViewModel : Notificavel
             new PessoasViewModel(cliente, relogio),
             new ParametrosDoCadastroViewModel(cliente, relogio),
             new UsuariosViewModel(cliente, relogio),
+            new CartoesNaoReconhecidosViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
 

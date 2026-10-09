@@ -23,6 +23,7 @@ public static class ReasonCodes
     public static readonly ReasonCode SetorNaoPermitido = new("SETOR_NAO_PERMITIDO");
     public static readonly ReasonCode GateNaoPermitido = new("GATE_NAO_PERMITIDO");
     public static readonly ReasonCode UsosEsgotados = new("USOS_ESGOTADOS");
+    public static readonly ReasonCode CadastradoNoLote = new("CADASTRADO_NO_LOTE");
     public static readonly ReasonCode LotacaoAtingida = new("LOTACAO_ATINGIDA");
     public static readonly ReasonCode AntiPassback = new("ANTI_PASSBACK");
     public static readonly ReasonCode BloqueioEmergencial = new("BLOQUEIO_EMERGENCIAL");

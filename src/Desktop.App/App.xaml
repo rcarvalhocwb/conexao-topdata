@@ -199,6 +199,7 @@
       <DataTemplate DataType="{x:Type vm:DiagnosticoViewModel}"><telas:Diagnostico /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:SimuladorViewModel}"><telas:Simulador /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:PessoasViewModel}"><telas:Pessoas /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:CartoesNaoReconhecidosViewModel}"><telas:CartoesNaoReconhecidos /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ParametrosDoCadastroViewModel}"><telas:ParametrosDoCadastro /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:UsuariosViewModel}"><telas:Usuarios /></DataTemplate>
       <!-- Fora do menu: aberta pela "Gerenciar catraca" (Etapa A.6). -->
