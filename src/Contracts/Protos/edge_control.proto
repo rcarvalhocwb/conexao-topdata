@@ -70,6 +70,11 @@ service EdgeControl {
   // o que a decisão já gravou). Não devolve código, máscara nem identificador de ingresso.
   rpc ExplicarNegativa(ExplicarNegativaRequest) returns (ExplicacaoDaNegativa);
 
+  // NÃO IMPLEMENTADAS (achado E7-1 do docs/41): as RPCs abaixo, de ObterSugestoes a
+  // ObterRelatorioPosEvento, respondem vazias com o campo "desligada" preenchido (as de gravar,
+  // recusadas com o mesmo texto em "problemas"). Os comentários descrevem o que cada uma fará
+  // quando a etapa correspondente do docs/36 for feita.
+  //
   // Sugestões de parametrização (Etapa I.9 do docs/36, IN-07): recomendações de mudança nos
   // campos de tempo do relé, leitor e display. Só leitura; as sugestões nunca são aplicadas
   // automaticamente — o operador escolhe usar ou descartar, e o registro fica para pós-evento.
@@ -772,6 +777,9 @@ message ObterSugestoesRequest {
 
 message SugestoesDaCatraca {
   repeated SugestaoDeParametrizacao abertas = 1;
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 2;
 }
 
 message SugestaoDeParametrizacao {
@@ -817,6 +825,9 @@ message DadosDoRitmo {
   double chegadas_por_minuto = 7;             // λ = leituras/min
   double capacidade_estimada = 8;             // μ = giros/min quando ocupada
   double ocupacao_fracao = 9;                 // ρ = fração da janela em ciclo ocupado
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 10;
 }
 
 // Saúde das catracas (I.3 do docs/36, IN-01)
@@ -828,6 +839,9 @@ message SaudeDasCatracas {
   repeated SaudeDaCatraca por_catraca = 1;
   string versao_dos_parametros = 2;           // hash dos limiares (invariante I5)
   google.protobuf.Timestamp calculada_em = 3;
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 4;
 }
 
 message SaudeDaCatraca {
@@ -914,6 +928,10 @@ message RelatorioPosEvento {
 
   // Perguntas prontas determinísticas (IN-11 parcial)
   repeated PerguntaPronta perguntas_prontas = 16;
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+
+  string desligada = 17;
 }
 
 message MarcoDaLinhaDoTempo {
@@ -942,6 +960,9 @@ message ListarAlertasResponse {
   repeated Alerta alertas = 1;
   google.protobuf.Timestamp consultada_em = 2;
   string versao_dos_parametros = 3;           // hash dos limiares (invariante I5)
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 4;
 }
 
 message Alerta {

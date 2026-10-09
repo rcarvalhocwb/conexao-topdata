@@ -292,7 +292,8 @@ public sealed class DeviceStateMachine
 
         Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoPermitido, DeviceState.LiberarCatraca);
         Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoNegado, DeviceState.EnviarMsgAcessoNegado);
-        Add(DeviceState.ValidarAcesso, DeviceTrigger.TempoEsgotado, DeviceState.LiberarCatraca);
+        // Decisão que não chega no prazo NEGA (fail-secure, D8): nunca libera sem decisão (achado E4-1 do docs/41).
+        Add(DeviceState.ValidarAcesso, DeviceTrigger.TempoEsgotado, DeviceState.EnviarMsgAcessoNegado);
         Add(DeviceState.ValidarAcesso, DeviceTrigger.ErroDeComunicacao, DeviceState.Reconectar);
 
         // Depois de negar, volta a configurar as entradas: é assim que o leitor é

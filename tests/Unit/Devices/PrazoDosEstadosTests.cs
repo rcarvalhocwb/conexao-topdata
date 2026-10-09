@@ -108,4 +108,25 @@ public sealed class PrazoDosEstadosTests
         Assert.Equal(DeviceState.ConfigurarEntradasOnline, porPrazo.To);
         Assert.Equal(porOrigem5.To, porPrazo.To);
     }
+
+    /// <summary>
+    /// Achado E4-1 do docs/41: a tabela levava <c>ValidarAcesso + TempoEsgotado</c> a <c>LiberarCatraca</c>.
+    /// Só um guarda no laço impedia uma liberação sem decisão. Agora a própria tabela nega, e a única
+    /// saída de <c>ValidarAcesso</c> para liberar é a decisão que permite.
+    /// </summary>
+    [Fact]
+    public void Validar_acesso_so_libera_com_acesso_permitido_e_o_prazo_nega()
+    {
+        var paraLiberar = DeviceStateMachine.Transitions
+            .Where(t => t.From is DeviceState.ValidarAcesso && t.To is DeviceState.LiberarCatraca)
+            .Select(t => t.Trigger);
+        Assert.Equal([DeviceTrigger.AcessoPermitido], paraLiberar);
+
+        var m = new DeviceStateMachine("catraca-08", DeviceState.Polling);
+        Disparar(m, DeviceTrigger.EventoRecebido, Agora);
+        Assert.Equal(DeviceState.ValidarAcesso, m.Current);
+
+        Disparar(m, DeviceTrigger.TempoEsgotado, Agora.AddSeconds(1));
+        Assert.Equal(DeviceState.EnviarMsgAcessoNegado, m.Current);
+    }
 }

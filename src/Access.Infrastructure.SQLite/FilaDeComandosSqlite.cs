@@ -123,7 +123,26 @@ public sealed class FilaDeComandosSqlite : IFilaDeComandos
         sql.ExecuteNonQuery();
     }
 
-    /// <summary>Pedidos que ninguém pegou a tempo viram "expirado". Devolve quantos.</summary>
+    /// <summary>
+    /// Quanto um comando pode ficar "recebido" sem desfecho antes de ser dado como de desfecho
+    /// desconhecido. Folgado de propósito: um desfecho que chega depois disto não é mais gravado
+    /// (situação final não muda), e o registro do worker é o que sobra.
+    /// </summary>
+    public static readonly TimeSpan PrazoDoDesfecho = TimeSpan.FromMinutes(10);
+
+    /// <summary>Texto gravado num comando recebido que ficou sem desfecho.</summary>
+    public const string DesfechoDesconhecido =
+        "desfecho desconhecido: o programa da catraca recebeu o comando e não confirmou em 10 min (caiu ou reiniciou); confira na catraca se ele foi executado";
+
+    /// <summary>
+    /// Pedidos que ninguém pegou a tempo viram "expirado". Pedidos recebidos que ficaram sem desfecho
+    /// por <see cref="PrazoDoDesfecho"/> viram "falhou" com <see cref="DesfechoDesconhecido"/>.
+    /// Devolve quantos mudaram.
+    /// </summary>
+    /// <remarks>
+    /// Achado E3-09 do docs/41: um comando "recebido" cujo worker morreu antes de concluir ficava
+    /// "recebido" para sempre, e uma liberação manual ficava sem desfecho na auditoria.
+    /// </remarks>
     public int ExpirarVencidos(DateTimeOffset agora)
     {
         using var conexao = _fabrica.Abrir();
@@ -134,8 +153,14 @@ public sealed class FilaDeComandosSqlite : IFilaDeComandos
             SET status = 'expirado', finished_at = $em,
                 result = 'ninguém executou a tempo: o programa da catraca estava parado ou ocupado'
             WHERE status = 'pendente' AND expires_at <= $em;
+
+            UPDATE operator_command
+            SET status = 'falhou', finished_at = $em, result = $desconhecido
+            WHERE status = 'recebido' AND taken_at <= $limite;
             """;
         sql.Parameters.AddWithValue("$em", Iso(agora));
+        sql.Parameters.AddWithValue("$limite", Iso(agora - PrazoDoDesfecho));
+        sql.Parameters.AddWithValue("$desconhecido", DesfechoDesconhecido);
         return sql.ExecuteNonQuery();
     }
 

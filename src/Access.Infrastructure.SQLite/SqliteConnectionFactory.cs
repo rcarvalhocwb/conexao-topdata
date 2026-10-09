@@ -13,12 +13,30 @@ namespace Access.Infrastructure.SQLite;
 /// </remarks>
 public sealed class SqliteConnectionFactory
 {
+    /// <summary>Quanto uma instrução espera pela trava de outro escritor antes de desistir.</summary>
+    public static readonly TimeSpan EsperaPadraoPorTrava = TimeSpan.FromSeconds(5);
+
     private readonly string _connectionString;
+    private readonly int _esperaPorTravaMs;
     private int _walConfigurado;
 
-    public SqliteConnectionFactory(string caminhoDoArquivo)
+    /// <param name="caminhoDoArquivo">Arquivo da base.</param>
+    /// <param name="esperaPorTrava">
+    /// Espera máxima pela trava de outro escritor; sem valor, <see cref="EsperaPadraoPorTrava"/>.
+    /// </param>
+    /// <remarks>
+    /// Achado E3-04 do docs/41: o <c>busy_timeout</c> era de 5 s, mas o Microsoft.Data.Sqlite repete
+    /// sozinho a instrução que achou a base travada até o <c>DefaultTimeout</c>, que vale 30 s quando não é
+    /// definido. Uma negação por base ocupada podia segurar a catraca ~30 s, e não os 5 s documentados.
+    /// Agora as duas esperas são a mesma.
+    /// </remarks>
+    public SqliteConnectionFactory(string caminhoDoArquivo, TimeSpan? esperaPorTrava = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(caminhoDoArquivo);
+
+        var espera = esperaPorTrava ?? EsperaPadraoPorTrava;
+        ArgumentOutOfRangeException.ThrowIfLessThan(espera, TimeSpan.FromSeconds(1), nameof(esperaPorTrava));
+        _esperaPorTravaMs = (int)espera.TotalMilliseconds;
 
         _connectionString = new SqliteConnectionStringBuilder
         {
@@ -26,6 +44,7 @@ public sealed class SqliteConnectionFactory
             Mode = SqliteOpenMode.ReadWriteCreate,
             Cache = SqliteCacheMode.Default,
             Pooling = false,
+            DefaultTimeout = (int)Math.Ceiling(espera.TotalSeconds),
         }.ToString();
 
         CaminhoDoArquivo = caminhoDoArquivo;
@@ -52,8 +71,8 @@ public sealed class SqliteConnectionFactory
         // localmente não pode se perder num corte de energia (CA-02).
         Executar(conexao, "PRAGMA synchronous = FULL;");
 
-        // Sem isso, escrita concorrente devolve SQLITE_BUSY imediatamente.
-        Executar(conexao, "PRAGMA busy_timeout = 5000;");
+        // Sem isso, escrita concorrente devolve SQLITE_BUSY imediatamente. Mesma espera do DefaultTimeout (E3-04).
+        Executar(conexao, string.Create(System.Globalization.CultureInfo.InvariantCulture, $"PRAGMA busy_timeout = {_esperaPorTravaMs};"));
 
         return conexao;
     }

@@ -36,4 +36,31 @@ public sealed class InteligenciaDesligadaTests
         Assert.Null(valor);
         Assert.False(ChavesDaInteligencia.EstaLigada(valor));
     }
+
+    [Fact]
+    public void Base_herdada_de_build_antigo_com_a_camada_ligada_fica_desligada_depois_de_atualizar()
+    {
+        // Achado E7-2 do docs/41: builds entre d6fd80c e 3a6cc94 gravavam as duas chaves com "1".
+        using var banco = new BancoTemporario();
+        banco.Migrar();
+        using (var conexao = banco.Fabrica.Abrir())
+        using (var sql = conexao.CreateCommand())
+        {
+            sql.CommandText =
+                """
+                INSERT INTO edge_setting (key, value, updated_at) VALUES
+                    ('inteligencia.ligada', '1', '2026-10-01T00:00:00Z'),
+                    ('inteligencia.coletor', '1', '2026-10-01T00:00:00Z');
+                DELETE FROM schema_version WHERE nome LIKE '018%';
+                """;
+            sql.ExecuteNonQuery();
+        }
+
+        var aplicadas = new Migrator(banco.Fabrica).Aplicar();
+
+        Assert.Contains(aplicadas, n => n.StartsWith("018", StringComparison.Ordinal));
+        var leitura = new LeituraSomenteDaOperacao(banco.Caminho);
+        Assert.Null(leitura.ValorDaChave(ChavesDaInteligencia.Ligada));
+        Assert.Null(leitura.ValorDaChave(ChavesDaInteligencia.ColetorLigado));
+    }
 }

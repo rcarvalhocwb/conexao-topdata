@@ -2,6 +2,7 @@ using System.Globalization;
 using Access.Application.Devices;
 using Access.Application.Ingressos;
 using Access.Domain.Devices;
+using Access.Domain.Credentials;
 using Access.Domain.Ticketing;
 using Microsoft.Data.Sqlite;
 using Sync.Core;
@@ -380,6 +381,17 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         var consumiu = ConsumirUmUso(conexao, transacao, qrNormalizado, gateId, agora, naUrna) == 1;
 
         var estado = Estado(conexao, transacao, qrNormalizado);
+
+        // Desconhecido como foi lido: pode ser um cartão cadastrado por um provedor que completa zeros
+        // (mifare-catraca4) e lido com menos dígitos (achado E4-2 do docs/41). Aplica à leitura o mesmo
+        // preenchimento do cadastro, só para os provedores com esse perfil.
+        if (!consumiu && estado is null && ComZerosDoCadastro(conexao, transacao, qrNormalizado) is { } preenchido)
+        {
+            qrNormalizado = preenchido;
+            consumiu = ConsumirUmUso(conexao, transacao, qrNormalizado, gateId, agora, naUrna) == 1;
+            estado = Estado(conexao, transacao, qrNormalizado);
+        }
+
         var tentativaId = Guid.CreateVersion7(agora);
 
         ResultadoDoUso resultado;
@@ -1078,6 +1090,38 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
                       WHERE a.provider_id = ticket.provider_id AND a.alias = ticket.category),
                     1)
         """;
+
+    /// <summary>
+    /// O código lido completado com zeros à esquerda como o perfil <c>mifare-catraca4</c> faz no cadastro,
+    /// quando existe um ingresso assim de um provedor com esse perfil. Nulo em qualquer outro caso.
+    /// </summary>
+    /// <remarks>
+    /// Só números com menos dígitos que o perfil, e só ingressos de provedor com o perfil: um código
+    /// cadastrado como foi gerado (<c>raw</c>, QR do site) nunca casa por aqui, e a leitura exata vem
+    /// sempre antes.
+    /// </remarks>
+    private static string? ComZerosDoCadastro(SqliteConnection conexao, SqliteTransaction transacao, string lido)
+    {
+        var perfil = PerfisDeLeitura.MifareCatraca4;
+        if (perfil.PadLeftTo is not { } tamanho || lido.Length >= tamanho || !lido.All(char.IsAsciiDigit))
+        {
+            return null;
+        }
+
+        var preenchido = perfil.Apply(lido);
+
+        using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
+        comando.CommandText =
+            """
+            SELECT 1 FROM ticket t JOIN ticket_provider p ON p.id = t.provider_id
+            WHERE t.qr_normalized = $qr AND p.normalization_profile = $perfil
+            LIMIT 1;
+            """;
+        comando.Parameters.AddWithValue("$qr", preenchido);
+        comando.Parameters.AddWithValue("$perfil", perfil.Name);
+        return comando.ExecuteScalar() is null ? null : preenchido;
+    }
 
     private static int ConsumirUmUso(
         SqliteConnection conexao,

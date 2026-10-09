@@ -82,6 +82,11 @@ public static class PerfisDeLeitura
     /// (docs/21, passo 3, linhas 8 a 12). Até lá, trocar este perfil sozinho quebraria o
     /// casamento dos QR de site, cadastrados com outro perfil — por isso ele é fixo.
     /// </para>
+    /// <para>
+    /// Para o cartão de provedor <c>mifare-catraca4</c> lido com menos de 10 dígitos, a base tenta, só
+    /// depois da leitura exata e só nos ingressos desse perfil, o código completado com zeros como o
+    /// cadastro fez (achado E4-2 do docs/41; <c>RepositorioDeIngressos.TentarUsar</c>).
+    /// </para>
     /// </remarks>
     public static CredentialNormalization DaLeitura => CredentialNormalization.Raw;
 

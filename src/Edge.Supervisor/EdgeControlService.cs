@@ -1005,4 +1005,35 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             return [];
         }
     }
+
+    /// <summary>
+    /// O que as RPCs da camada inteligente ainda não implementada respondem (achado E7-1 do docs/41).
+    /// Antes caíam na base gerada e devolviam <c>UNIMPLEMENTED</c>, um erro de transporte; o contrato
+    /// descrevia um serviço funcionando.
+    /// </summary>
+    public const string CamadaDesligada =
+        "desligada nesta instalação: a camada inteligente ainda não calcula isto (docs/29; só I.0 e I.2 existem)";
+
+    public override Task<SugestoesDaCatraca> ObterSugestoes(ObterSugestoesRequest request, ServerCallContext context) =>
+        Task.FromResult(new SugestoesDaCatraca { Desligada = CamadaDesligada });
+
+    public override Task<RegistrarDestinoDaSugestaoResponse> RegistrarDestinoDaSugestao(
+        RegistrarDestinoDaSugestaoRequest request, ServerCallContext context) =>
+        Task.FromResult(new RegistrarDestinoDaSugestaoResponse { Registrada = false, Problemas = { CamadaDesligada } });
+
+    public override Task<SaudeDasCatracas> ObterSaudeDasCatracas(ObterSaudeDasCatracasRequest request, ServerCallContext context) =>
+        Task.FromResult(new SaudeDasCatracas { Desligada = CamadaDesligada });
+
+    public override Task<DadosDoRitmo> ObterRitmo(ObterRitmoRequest request, ServerCallContext context) =>
+        Task.FromResult(new DadosDoRitmo { Desligada = CamadaDesligada });
+
+    public override Task<ListarAlertasResponse> ListarAlertas(ListarAlertasRequest request, ServerCallContext context) =>
+        Task.FromResult(new ListarAlertasResponse { Desligada = CamadaDesligada });
+
+    public override Task<MarcarAlertaComoCienteResponse> MarcarAlertaComoCiente(
+        MarcarAlertaComoCienteRequest request, ServerCallContext context) =>
+        Task.FromResult(new MarcarAlertaComoCienteResponse { Marcado = false, Problemas = { CamadaDesligada } });
+
+    public override Task<RelatorioPosEvento> ObterRelatorioPosEvento(ObterRelatorioPosEventoRequest request, ServerCallContext context) =>
+        Task.FromResult(new RelatorioPosEvento { Desligada = CamadaDesligada });
 }
