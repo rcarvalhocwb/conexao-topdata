@@ -400,7 +400,13 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
                 continue;
             }
 
-            await responseStream.WriteAsync(evento, context.CancellationToken).ConfigureAwait(false);
+            // O difusor e seu histórico continuam sem nomes. Cada sessão recebe a própria cópia,
+            // enriquecida só quando tem pessoas.ver; nunca muda o evento compartilhado.
+            var paraEstaSessao = evento.Clone();
+            paraEstaSessao.NomeDaPessoa = PodeVerPessoas(context) && Guid.TryParse(evento.EventoId, out var id)
+                ? NomeParaOPainel(_consultas?.PessoaDaTentativa(id))
+                : string.Empty;
+            await responseStream.WriteAsync(paraEstaSessao, context.CancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -428,10 +434,30 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             Limite: request.Limite > 0 ? request.Limite : 200);
 
         var (tentativas, haMais) = _consultas.ListarTentativas(filtro);
-        resposta.Acessos.AddRange(tentativas.Select(AcompanhamentoDaOperacao.Converter));
+        var podeVerPessoas = PodeVerPessoas(context);
+        resposta.Acessos.AddRange(tentativas.Select(t =>
+            AcompanhamentoDaOperacao.Converter(t, podeVerPessoas ? NomeParaOPainel(t.Pessoa) : string.Empty)));
         resposta.HaMais = haMais;
         return Task.FromResult(resposta);
     }
+
+    private bool PodeVerPessoas(ServerCallContext? context)
+    {
+        // Um fluxo pode ficar aberto depois de Sair ou de o papel mudar. A fotografia de
+        // permissões do começo da RPC não basta para entregar o nome da passagem seguinte.
+        if (_usuarios is null || Chamador(context) is not { } chamador
+            || _sessoes.Usuario(chamador.Token, DateTimeOffset.UtcNow) != chamador.Usuario.Id)
+        {
+            return false;
+        }
+
+        return _usuarios.Obter(chamador.Usuario.Id) is { Ativo: true, TrocarSenha: false }
+            && _usuarios.PermissoesDe(chamador.Usuario.Id).Contains(Access.Domain.Usuarios.Permissoes.PessoasVer);
+    }
+
+    private string NomeParaOPainel(Access.Infrastructure.SQLite.NomeDaPessoaCifrado? pessoa) =>
+        pessoa is null ? string.Empty
+        : _pessoas?.NomeParaPassagem(pessoa) ?? "(nome ilegível)";
 
     public override Task<ConfiguracaoDoEvento> ObterConfiguracao(ObterConfiguracaoRequest request, ServerCallContext context)
     {

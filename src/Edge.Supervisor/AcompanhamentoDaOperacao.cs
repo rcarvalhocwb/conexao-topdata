@@ -58,7 +58,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
         return novas.Count;
     }
 
-    /// <summary>Como uma tentativa aparece no painel.</summary>
+    /// <summary>Como uma tentativa aparece no painel. O nome só é acrescentado pela RPC autorizada.</summary>
     /// <remarks>
     /// A origem vem da tentativa gravada (migração 010): bruta sempre, e o nome só quando
     /// consta da tabela oficial — uma origem desconhecida chega com o número e marcada como
@@ -66,7 +66,10 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
     /// gêmeo digital tira "celular", "cartão na frente" ou "cartão na urna" (docs/33 §7).
     /// Tentativa sem origem gravada, anterior à migração, segue sem origem.
     /// </remarks>
-    public static EventoDeAcesso Converter(TentativaParaOPainel t)
+    public static EventoDeAcesso Converter(TentativaParaOPainel t) => Converter(t, string.Empty);
+
+    /// <summary>Conversão para a resposta da sessão que pode ver a pessoa.</summary>
+    public static EventoDeAcesso Converter(TentativaParaOPainel t, string nomeDaPessoa)
     {
         ArgumentNullException.ThrowIfNull(t);
 
@@ -84,6 +87,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             Categoria = t.Categoria ?? string.Empty,
             Portao = t.Portao,
             ContaComo = t.ContaComo ?? string.Empty,
+            NomeDaPessoa = nomeDaPessoa,
         };
 
         if (t.Origem is { } bruta)

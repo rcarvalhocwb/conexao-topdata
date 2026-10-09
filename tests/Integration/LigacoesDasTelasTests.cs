@@ -185,6 +185,16 @@ public sealed partial class LigacoesDasTelasTests
         tipo.GetProperty(nome, BindingFlags.Public | BindingFlags.Instance)
         ?? tipo.GetInterfaces().Select(i => i.GetProperty(nome)).FirstOrDefault(p => p is not null);
 
+    [Theory]
+    [InlineData("PainelAoVivo.xaml")]
+    [InlineData("Acessos.xaml")]
+    public void Lista_de_passagens_mostra_o_nome_da_pessoa_e_mantem_o_codigo_mascarado(string tela)
+    {
+        var xaml = File.ReadAllText(Path.Combine(PastaDoAplicativo(), "Telas", tela));
+        Assert.Contains("Header=\"PESSOA\" Binding=\"{Binding NomeDaPessoa}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"CÓDIGO\" Binding=\"{Binding Codigo}\"", xaml, StringComparison.Ordinal);
+    }
+
     private static string PastaDoAplicativo()
     {
         var raiz = new DirectoryInfo(AppContext.BaseDirectory);

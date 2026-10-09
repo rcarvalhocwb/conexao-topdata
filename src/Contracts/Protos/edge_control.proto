@@ -273,6 +273,10 @@ message EventoDeAcesso {
   // Como o giro desta leitura é contado pelo mapa de giro: "entrada", "saida", ou vazio quando
   // a catraca não tem regra para a origem (conta como entrada, como sempre).
   string conta_como = 16;
+
+  // Nome do cadastro local, decifrado pelo serviço; vazio sem pessoas.ver ou para ingresso.
+  // Este evento serve tanto ao fluxo ao vivo quanto à consulta de acessos. Nunca vai à nuvem.
+  string nome_da_pessoa = 17;
 }
 
 enum ResultadoDoAcesso {

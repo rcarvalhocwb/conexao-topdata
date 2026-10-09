@@ -101,6 +101,16 @@ public sealed partial class ContratoIpcTests
         Assert.Contains("credencial_mascarada", proto, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Nome_da_pessoa_acrescenta_o_campo_17_sem_mudar_os_campos_de_passagem()
+    {
+        var evento = Mensagens().Matches(Proto()).Single(m => m.Groups["nome"].Value == "EventoDeAcesso").Groups["corpo"].Value;
+        Assert.Contains("string nome_da_pessoa = 17;", evento, StringComparison.Ordinal);
+        Assert.Contains("string credencial_mascarada = 7;", evento, StringComparison.Ordinal);
+        Assert.Contains("string pessoa = 8;", evento, StringComparison.Ordinal);
+        Assert.Contains("string conta_como = 16;", evento, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Número de campo repetido dentro de uma mensagem corrompe a desserialização de
     /// forma silenciosa — o cliente lê um valor no lugar de outro.

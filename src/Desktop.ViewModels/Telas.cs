@@ -137,6 +137,26 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
     public ObservableCollection<LinhaDeAcesso> UltimosAcessos { get; } = [];
 
+    private volatile bool _podeVerNomes = true;
+    private readonly Lock _travaDoFluxo = new();
+    private CancellationTokenSource? _leituraAoVivo;
+    private int _geracaoDaSessao;
+
+    /// <summary>Trocar a sessão limpa os nomes já carregados e reconecta o fluxo com a sessão nova.</summary>
+    public void DefinirPermissaoDosNomes(bool podeVer)
+    {
+        _podeVerNomes = podeVer;
+        Interlocked.Increment(ref _geracaoDaSessao);
+        UltimosAcessos.Clear();
+        lock (_travaDoFluxo)
+        {
+            _leituraAoVivo?.Cancel();
+        }
+    }
+
+    private LinhaDeAcesso ComNomePermitido(LinhaDeAcesso linha) =>
+        _podeVerNomes ? linha : linha with { NomeDaPessoa = string.Empty };
+
     public long Liberados { get => _liberados; private set => Definir(ref _liberados, value); }
 
     public long Negados { get => _negados; private set => Definir(ref _negados, value); }
@@ -274,24 +294,51 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
         while (!cancelamento.IsCancellationRequested)
         {
+            using var leitura = CancellationTokenSource.CreateLinkedTokenSource(cancelamento);
+            lock (_travaDoFluxo)
+            {
+                _leituraAoVivo = leitura;
+            }
+
+            var geracao = Volatile.Read(ref _geracaoDaSessao);
             try
             {
-                using var fluxo = Cliente.AcompanharEventos(new AcompanharEventosRequest(), cancellationToken: cancelamento);
+                using var fluxo = Cliente.AcompanharEventos(new AcompanharEventosRequest(), cancellationToken: leitura.Token);
 
                 // O fluxo só traz o que acontece daqui para frente. Sem isto, o que passou antes de
                 // a tela abrir (ou enquanto o serviço reiniciava) entrava nos contadores e não na
                 // lista. O fluxo já está aberto: o que chegar enquanto a lista carrega fica na fila
                 // dele e o Acrescentar descarta o que a lista já trouxe.
                 var recentes = await Cliente.ListarAcessosAsync(
-                    new ListarAcessosRequest { Limite = AcessosNaTela }, cancellationToken: cancelamento);
+                    new ListarAcessosRequest { Limite = AcessosNaTela }, cancellationToken: leitura.Token);
                 var historico = recentes.Acessos.Select(LinhaDeAcesso.De).ToList();
-                despachar(() => Repor(historico));
+                despachar(() =>
+                {
+                    if (geracao == Volatile.Read(ref _geracaoDaSessao))
+                    {
+                        Repor(historico);
+                    }
+                });
 
-                while (await fluxo.ResponseStream.MoveNext(cancelamento).ConfigureAwait(false))
+                while (await fluxo.ResponseStream.MoveNext(leitura.Token).ConfigureAwait(false))
                 {
                     var linha = LinhaDeAcesso.De(fluxo.ResponseStream.Current);
-                    despachar(() => Acrescentar(linha));
+                    despachar(() =>
+                    {
+                        if (geracao == Volatile.Read(ref _geracaoDaSessao))
+                        {
+                            Acrescentar(linha);
+                        }
+                    });
                 }
+            }
+            catch (RpcException) when (leitura.IsCancellationRequested && !cancelamento.IsCancellationRequested)
+            {
+                continue;
+            }
+            catch (OperationCanceledException) when (leitura.IsCancellationRequested && !cancelamento.IsCancellationRequested)
+            {
+                continue;
             }
             catch (RpcException) when (cancelamento.IsCancellationRequested)
             {
@@ -306,6 +353,16 @@ public sealed class PainelAoVivoViewModel : TelaBase
             catch (OperationCanceledException)
             {
                 return;
+            }
+            finally
+            {
+                lock (_travaDoFluxo)
+                {
+                    if (ReferenceEquals(_leituraAoVivo, leitura))
+                    {
+                        _leituraAoVivo = null;
+                    }
+                }
             }
 
             try
@@ -330,7 +387,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
         foreach (var linha in historico.Take(AcessosNaTela))
         {
-            UltimosAcessos.Add(linha);
+            UltimosAcessos.Add(ComNomePermitido(linha));
         }
     }
 
@@ -351,7 +408,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
             if (linha.EventoId.Length == 0 || UltimosAcessos.All(l => !string.Equals(l.EventoId, linha.EventoId, StringComparison.Ordinal)))
             {
-                UltimosAcessos.Add(linha);
+                UltimosAcessos.Add(ComNomePermitido(linha));
             }
         }
     }
@@ -366,7 +423,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
             return;
         }
 
-        UltimosAcessos.Insert(0, linha);
+        UltimosAcessos.Insert(0, ComNomePermitido(linha));
 
         while (UltimosAcessos.Count > AcessosNaTela)
         {
@@ -464,6 +521,15 @@ public sealed class AcessosViewModel : TelaBase
     private DateTime? _ate;
     private string _horaDesde = string.Empty;
     private string _horaAte = string.Empty;
+    private volatile bool _podeVerNomes = true;
+
+    /// <summary>A sessão nova não herda nomes carregados pela sessão anterior.</summary>
+    public void DefinirPermissaoDosNomes(bool podeVer)
+    {
+        _podeVerNomes = podeVer;
+        Linhas = [];
+        HaMais = false;
+    }
 
     public AcessosViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
@@ -547,7 +613,8 @@ public sealed class AcessosViewModel : TelaBase
 
             var resposta = await Cliente.ListarAcessosAsync(pedido, cancellationToken: cancelamento);
             await UsosSemPassagem.AtualizarAsync(cancelamento).ConfigureAwait(true);
-            Linhas = [.. resposta.Acessos.Select(LinhaDeAcesso.De)];
+            Linhas = [.. resposta.Acessos.Select(e =>
+                _podeVerNomes ? LinhaDeAcesso.De(e) : LinhaDeAcesso.De(e) with { NomeDaPessoa = string.Empty })];
             HaMais = resposta.HaMais;
             Mensagem = Linhas.Count == 0
                 ? "Nenhum acesso com esses filtros."
@@ -1360,8 +1427,10 @@ public sealed class JanelaViewModel : Notificavel
 
         if (Sessao is not null)
         {
+            AtualizarPermissaoDosNomes();
             Sessao.SessaoMudou += (_, _) =>
             {
+                AtualizarPermissaoDosNomes();
                 Avisar(nameof(TelasDoMenu));
                 if (!TelasDoMenu.Contains(TelaAtual) && TelasDoMenu.Count > 0)
                 {
@@ -1521,6 +1590,16 @@ public sealed class JanelaViewModel : Notificavel
     /// </summary>
     public IReadOnlyList<ITela> TelasDoMenu =>
         [.. Telas.Where(t => (t is not SimuladorViewModel || Painel.Estado.Simulacao) && Permitida(t))];
+
+    private void AtualizarPermissaoDosNomes()
+    {
+        var podeVer = Sessao is { Logado: true } && Sessao.Pode(CodigosDePermissao.PessoasVer);
+        Painel.DefinirPermissaoDosNomes(podeVer);
+        foreach (var acessos in Telas.OfType<AcessosViewModel>())
+        {
+            acessos.DefinirPermissaoDosNomes(podeVer);
+        }
+    }
 
     private bool Permitida(ITela tela) =>
         Sessao is null

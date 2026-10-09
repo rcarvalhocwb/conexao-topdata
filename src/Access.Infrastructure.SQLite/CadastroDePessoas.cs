@@ -471,6 +471,20 @@ public sealed class CadastroDePessoas
         return linhas;
     }
 
+    /// <summary>Decifra apenas o nome de uma passagem local; chave ou cifrado ilegível não interrompe a operação.</summary>
+    public string NomeParaPassagem(NomeDaPessoaCifrado pessoa)
+    {
+        ArgumentNullException.ThrowIfNull(pessoa);
+        try
+        {
+            return _cifra.Decifrar(pessoa.Cifrado, pessoa.PessoaId) ?? string.Empty;
+        }
+        catch (CryptographicException)
+        {
+            return "(nome ilegível)";
+        }
+    }
+
     /// <summary>
     /// Muda a situação da pessoa na hora: a leitura seguinte já decide pela situação nova (docs/43 §6.2).
     /// Bloquear e inativar exigem motivo.

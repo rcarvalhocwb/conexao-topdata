@@ -151,6 +151,16 @@ Já vêm prontos: **Colaborador, Prestador, Visitante, Morador, Aluno, Staff, Im
    - `CatracaFechada`, conferido antes de tudo, para ingresso e pessoa.
 4. O "liberado sem giro" e o estorno continuam como hoje. Uma credencial de pessoa não consome ingresso, então não há uso para estornar.
 
+No **Painel ao vivo** e em **Acessos**, quem tem `pessoas.ver` vê também o nome completo
+da pessoa, decifrado pelo serviço. Sem essa permissão, o nome vem vazio; não é preciso
+`pessoas.ver_dados` para ver o nome. Ingressos continuam com o código mascarado e sem
+nome de pessoa. Se a chave do cofre estiver indisponível ou o nome não puder ser
+decifrado, aparece **(nome ilegível)** e a passagem continua visível. A negativa mantém
+o motivo de pessoa em português. Nome e tentativa de pessoa nunca vão à nuvem.
+Sair ou trocar de usuário limpa os nomes já carregados nas duas listas e reconecta
+o fluxo ao vivo. Um fluxo antigo deixa de entregar nomes se a sessão acabar ou se
+o usuário perder `pessoas.ver`.
+
 ### 6.2 Bloquear e desbloquear na hora
 
 Bloquear muda a situação na base, e a leitura seguinte já nega. A decisão é on-line, então não depende de enviar lista à catraca. Motivo obrigatório (5 a 200 letras), nome de quem pediu e conta do Windows ficam gravados na trilha.
