@@ -20,27 +20,25 @@
 | `8f79553` | E3-01/E5-4, E8-1, E5-1, E5-2, E5-3 | Sem internet, nada vira carta morta: a borda retenta sem limite de tentativas e com prazo de 7 dias. Sem o segredo da nuvem, a borda não sincroniza e o painel mostra a falha. A suspeita de corte faz a rodada falhar. 401/403 são temporários, com mensagem sobre a credencial. O painel ganhou "Reenviar os recusados", com o nome de quem pede. O `device_id` passou a ser o do equipamento. |
 | `74c0dbf` | E9-1, E9-2, E9-8, E10-4 (parcial), E10-2 | O teste de queda passou a cobrir o caminho real (`TentarUsar`), com kill no meio. O fio da `EasyInnerReal` é conferido pelo IL. O job Windows publica o TRX. O instalador só sai depois de Linux e Windows verdes. O canal de teste tem nome e UpgradeCode próprios. |
 | `a779ef4` | E6-2, E6-3, E6-4, E6-5, E6-6, E6-11, E10-7, E3-03, E10-13 | As chamadas do painel têm prazo (5 s, 15 s ou 60 s) e não se empilham. Sem resposta do serviço, os sinais ficam neutros, nunca verdes. "Refazer a conexão" pede confirmação, e o assistente pergunta antes de reiniciar o serviço. Os textos foram corrigidos. Antes de cada migração há uma cópia da base. O RB-09 proíbe restaurar durante o evento, e o RB-06 testa na direção certa. |
+| `d34b9d1` | E8-2, E2-04 | O serviço (SYSTEM) só inicia o programa das catracas que está na pasta do programa. Como SYSTEM, também toma posse da pasta de dados. O que continuar com dono desconhecido não é lido, e o serviço não sobe workers. Um cofre ilegível conta como ausente: a nuvem para e as catracas sobem. |
+| `6166962` | E3-04, E3-09, E4-1, E4-2, E7-1, E7-2 | Uma base travada por outro escritor segura a decisão por 5 s, não 30 s: o teste mede 31 s sem a correção e 1 s com ela. Um comando recebido e sem desfecho em 10 min vira "desfecho desconhecido". O prazo da decisão nega na própria tabela de estados. Um cartão `mifare-catraca4` lido sem os zeros casa, mas só depois da leitura exata. As 7 RPCs não implementadas respondem "desligada". A migração 018 apaga as chaves `inteligencia.*` herdadas. |
+| `c0a65e0` | E1-05 | Decisão: manter consumido, com registro. A tentativa guarda a causa da falha. Na tela Acessos, "Usos sem passagem" permite estornar em dois passos, com nome e motivo, depois de 2 min. O estorno devolve o uso ao ingresso, tira a entrada dos relatórios e fica auditado (migração 019). |
+| `8ff8bf3` | E10-8 | O assistente habilita o .NET 3.5 sem internet, pela pasta `sources\sxs` da mídia do Windows (`/Source` e `/LimitAccess`). O procedimento está no `installer/README.md`. |
 
 ## Desvios do docs/41, com o motivo
 
 1. **E10-4, "pré-release só no push para main":** não foi aplicado. Isso deixaria de gerar os instaladores de teste que este PR produz para a validação. Foi aplicada só a dependência (`needs: [linux, windows]`): um teste falhando já impede a pré-release.
 2. **E2-02, `FailureActionsOnNonCrashFailures`:** não foi aplicado, porque não teria efeito. O `WindowsServiceLifetime` do .NET relata código 0 numa parada limpa e ignora `Environment.ExitCode` (dotnet/runtime#67146). O que resolve é o serviço não parar mais por exceção de laço, que é o `c583a2a`.
-3. **E1-05, estorno do ingresso quando a liberação falha:** continua em aberto, porque é uma regra de produto e não de código. Hoje o ingresso fica consumido e a tentativa pendente é descartada. O descarte conta só no contador de "autorizações sem giro" do worker: não há registro individual que permita estornar depois.
+3. **E1-05, estorno do ingresso quando a liberação falha:** decidido como "manter consumido + registro" (`c0a65e0`). O estorno vale **nesta borda**. O uso já enviado à nuvem e ao provedor fica como foi, porque o contrato do retorno (docs/18 §10) não prevê estorno. A tela avisa disso antes da confirmação. *Correção do que este documento dizia antes:* cada uso sem giro sempre teve uma linha própria em `ticket_use_attempt` (consumida, sem prova de giro). O que faltava era a causa e o estorno.
 4. **Canal de teste do instalador (E10-2):** como o UpgradeCode de teste mudou, uma máquina que tem a versão de teste antiga precisa desinstalá-la antes de instalar a nova. Ver `installer/README.md`.
 
-## O que ainda falta na Fase 1 (não feito)
+## O que ainda falta (não é código desta fase)
 
-- **E8-2:** a pasta já é restringida antes da leitura de `workers.json` e do token. Falta restringir o campo `Executavel` à pasta da instalação. A elevação local continua HIPÓTESE até a VM (Fase 2).
-- **E2-04:** com o cofre DPAPI ilegível, o serviço não sobe.
-- **E1-06:** o firmware fora de {14,16} leva a um estado terminal. Os valores não têm fonte, e só a Topdata ou a bancada respondem.
+- **E8-2, parte do instalador:** o MSI ainda não cria a pasta de dados com permissão protegida. A partida do serviço resolve isso (troca dono e permissão). A hipótese de elevação só se prova ou se descarta numa VM (Fase 2).
+- **E1-06:** firmware fora de {14,16} leva a um estado terminal. Os valores não têm fonte; só a Topdata ou a bancada respondem.
 - **E1-07:** a chave `EnviarDigitosVariaveis`, para os dígitos de cartão e QR. Depende da bancada.
-- **E5-5, E5-6, E8-4:** maquininha e cortesia, o relé e o token na URL. Dependem de decisões e da hospedagem.
-- **Médios do docs/41 §3:**
-  - E3-04 (`DefaultTimeout` do SQLite);
-  - E3-09;
-  - E4-1, E4-2;
-  - E7-1, E7-2;
-  - E10-8.
+- **E5-5, E5-6, E8-4:** maquininha e cortesia, o relé e o token na URL. Dependem de decisão de produto e da hospedagem.
+- **E10-8, parte do instalador:** o DISM dentro do MSI continua sem prazo, e uma instalação sem internet pode esperar alguns minutos antes de seguir (a falha não desfaz a instalação).
 
 ## Próximas fases
 
