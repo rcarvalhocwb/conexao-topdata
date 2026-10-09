@@ -33,6 +33,7 @@ public static class Permissoes
     public const string PessoasImportar = "pessoas.importar";
     public const string CadastroParametros = "cadastro.parametros";
     public const string CatracaFechar = "catraca.fechar";
+    public const string CartoesCadastrar = "cartoes.cadastrar";
 
     /// <summary>Todas, na ordem da tela.</summary>
     public static IReadOnlyList<Permissao> Todas { get; } =
@@ -48,6 +49,7 @@ public static class Permissoes
         new(AcessosEstornar, "Acessos", "Estornar um uso sem passagem"),
         new(SimuladorUsar, "Acessos", "Usar o simulador de leituras"),
         new(CatracaFechar, "Catracas", "Fechar e reabrir uma catraca (ninguém passa enquanto fechada)"),
+        new(CartoesCadastrar, "Acessos", "Cadastrar cartões lidos na urna (lote) e cartões recusados como desconhecidos"),
         new(PessoasVer, "Pessoas", "Ver e buscar pessoas e credenciais (documento e contato mascarados)"),
         new(PessoasVerDados, "Pessoas", "Ver documento, contato e nascimento completos"),
         new(PessoasEditar, "Pessoas", "Cadastrar e alterar pessoas e dar credenciais"),

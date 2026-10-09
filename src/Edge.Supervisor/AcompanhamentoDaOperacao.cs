@@ -119,6 +119,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
         {
             "Desconhecido" => "Negado · código não cadastrado",
             "UsosEsgotados" => "Negado · já utilizado",
+            "CadastradoNoLote" => "Negado · cartão registrado no lote de cadastro",
             "Cancelado" => "Negado · cancelado",
             "Bloqueado" => "Negado · bloqueado",
             "ForaDaJanela" => "Negado · fora do horário de validade",

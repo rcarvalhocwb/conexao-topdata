@@ -74,6 +74,7 @@ public static class PorQueNegou
     {
         [nameof(MotivoDoUso.Desconhecido)] = ReasonCodes.CredencialDesconhecida,
         [nameof(MotivoDoUso.UsosEsgotados)] = ReasonCodes.UsosEsgotados,
+        [nameof(MotivoDoUso.CadastradoNoLote)] = ReasonCodes.CadastradoNoLote,
         [nameof(MotivoDoUso.Cancelado)] = ReasonCodes.IngressoCancelado,
         [nameof(MotivoDoUso.Bloqueado)] = ReasonCodes.CredencialBloqueada,
         [nameof(MotivoDoUso.ForaDaJanela)] = ReasonCodes.ForaDaJanela,
@@ -143,6 +144,10 @@ public static class PorQueNegou
             "O ingresso não vale neste horário: está fora do período de validade dele.",
             "Este ingresso não vale neste horário. " + ProcureOAtendimento,
             "Confira a data e o horário do ingresso e o relógio desta catraca (tela Catracas)."),
+        [ReasonCodes.CadastradoNoLote] = (
+            "Este cartão foi lido na urna durante o cadastro de um lote. Ele entrou no lote; ninguém passou.",
+            "Cartão cadastrado para o lote. Não é uma passagem.",
+            "Nada a fazer. Confira o lote na tela de cadastro de cartões, se precisar."),
         [ReasonCodes.SetorNaoPermitido] = (
             "O ingresso não vale para o setor desta catraca.",
             "Este ingresso é de outro setor. Procure a entrada indicada nele.",

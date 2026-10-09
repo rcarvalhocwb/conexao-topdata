@@ -110,6 +110,12 @@ public enum MotivoDoUso
 
     /// <summary>Fora da validade da pessoa ou da credencial (visita encerrada ou ainda não começou).</summary>
     ForaDaValidade,
+
+    /// <summary>
+    /// Cartão desconhecido lido na urna durante uma sessão de cadastro por leitura. Entrou no lote e
+    /// NÃO liberou ninguém: não é passagem.
+    /// </summary>
+    CadastradoNoLote
 }
 
 /// <summary>
