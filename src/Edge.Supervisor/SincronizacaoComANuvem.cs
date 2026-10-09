@@ -84,6 +84,19 @@ public sealed record ConfiguracaoDaNuvem(
 }
 
 /// <summary>
+/// A lista de cartões de uma rodada parece ter sido cortada pelo servidor (achado E5-1 do docs/41).
+/// </summary>
+/// <remarks>
+/// A fonte só avisa por callback; a rodada lê este marcador para dar a rodada como falha, em vez de
+/// "nuvem ok" com uns mil cartões faltando.
+/// </remarks>
+public sealed class SuspeitaDeCorte
+{
+    /// <summary>Quantos cartões vieram na lista suspeita, ou nulo se a última lista veio inteira.</summary>
+    public int? Recebidos { get; set; }
+}
+
+/// <summary>
 /// Sincroniza com o painel na nuvem, em segundo plano: cartões descem, tentativas sobem.
 /// </summary>
 /// <remarks>
@@ -104,14 +117,30 @@ public sealed class SincronizacaoComANuvem : BackgroundService
     private readonly TimeSpan _intervalo;
     private readonly TimeProvider _relogio;
     private readonly Action<string> _registrar;
+    private readonly Func<bool> _temSegredo;
+    private readonly SuspeitaDeCorte? _corte;
 
+    /// <param name="cartoes">O laço que traz os cartões da nuvem.</param>
+    /// <param name="tentativas">O drenador que sobe as tentativas.</param>
+    /// <param name="estado">O que o painel mostra da nuvem.</param>
+    /// <param name="intervalo">Intervalo entre rodadas.</param>
+    /// <param name="registrar">Registro do serviço.</param>
+    /// <param name="relogio">Relógio.</param>
+    /// <param name="temSegredo">
+    /// Se há segredo da nuvem gravado. Sem segredo a rodada não roda e o painel mostra o motivo
+    /// (achado E8-1 do docs/41): antes, as requisições saíam sem credencial e só uma linha no
+    /// registro avisava. Nulo: sempre há (testes).
+    /// </param>
+    /// <param name="corte">Marcador da lista de cartões cortada, preenchido pela fonte.</param>
     public SincronizacaoComANuvem(
         LacoDeIngestao cartoes,
         DrenadorDaOutbox tentativas,
         EstadoDaNuvem estado,
         TimeSpan intervalo,
         Action<string> registrar,
-        TimeProvider? relogio = null)
+        TimeProvider? relogio = null,
+        Func<bool>? temSegredo = null,
+        SuspeitaDeCorte? corte = null)
     {
         ArgumentNullException.ThrowIfNull(cartoes);
         ArgumentNullException.ThrowIfNull(tentativas);
@@ -124,8 +153,14 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         _intervalo = intervalo;
         _registrar = registrar;
         _relogio = relogio ?? TimeProvider.System;
+        _temSegredo = temSegredo ?? (() => true);
+        _corte = corte;
         _estado.Configurada = true;
     }
+
+    /// <summary>O que o painel mostra quando falta o segredo da nuvem.</summary>
+    public const string FaltaOSegredo =
+        "sem o segredo da nuvem nesta máquina: nada é enviado nem recebido. Grave o segredo pelo Assistente de configuração";
 
     /// <summary>
     /// Monta a sincronização a partir da configuração: registra o provedor local dos
@@ -181,37 +216,63 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             Timeout = TimeSpan.FromSeconds(30),
         };
 
+        var corte = new SuspeitaDeCorte();
         var fonte = new FonteDeCartoesDoPainel(
             http,
             nuvem.Provedor,
             nuvem.Dispositivo,
             perfil,
             aoRecusarCartao: (posicao, motivo) => registrar($"nuvem: cartão {posicao} recusado: {motivo}"),
-            aoSuspeitarDeCorte: n => registrar(
-                $"nuvem: a lista de cartões veio com {n}; pode ter sido cortada pelo limite do servidor. " +
-                "O cursor não avançou. Ver docs/22, seção 8.2."));
+            aoSuspeitarDeCorte: n =>
+            {
+                corte.Recebidos = n;
+                registrar(
+                    $"nuvem: a lista de cartões veio com {n}; pode ter sido cortada pelo limite do servidor. " +
+                    "O cursor não avançou. Ver docs/22, seção 8.2.");
+            });
 
         var ingestao = new LacoDeIngestao(fonte, repositorio, new CursoresSqlite(fabrica), relogio);
 
         var drenador = new DrenadorDaOutbox(
             new FilaDeSaidaSqlite(fabrica),
-            [new ConectorDeTentativasDoPainel(http, nuvem.Conector)],
+            // Um device_id por PC, o mesmo do segredo (decisão S10); a catraca vai em extra.catraca
+            // (achado E5-3 do docs/41: antes ia "inner-N", que não bate com o segredo do equipamento).
+            [new ConectorDeTentativasDoPainel(http, nuvem.Conector, equipamentoNoPainel: _ => nuvem.Dispositivo)],
             tentativa => TimeSpan.FromSeconds(Math.Min(300, 5 * Math.Pow(2, Math.Min(tentativa, 6)))),
             relogio);
 
         return new SincronizacaoComANuvem(
-            ingestao, drenador, estado, TimeSpan.FromSeconds(nuvem.IntervaloSegundos), registrar, relogio);
+            ingestao, drenador, estado, TimeSpan.FromSeconds(nuvem.IntervaloSegundos), registrar, relogio,
+            temSegredo: () => cofre.Ler(CabecalhoDeSegredo.NomeDoSegredo) is { Length: > 0 },
+            corte: corte);
     }
 
     /// <summary>Uma rodada: cartões, depois tentativas. Devolve se as duas deram certo.</summary>
     public async Task<bool> UmaRodadaAsync(CancellationToken cancelamento)
     {
+        if (!_temSegredo())
+        {
+            _estado.RegistrarFalha(FaltaOSegredo);
+            return false;
+        }
+
         var falhas = new List<string>();
+
+        if (_corte is not null)
+        {
+            _corte.Recebidos = null;
+        }
 
         var cartoes = await _cartoes.PuxarAsync(cancelamento).ConfigureAwait(false);
         if (cartoes.Interrompido)
         {
             falhas.Add($"cartões: {cartoes.Erro}");
+        }
+        else if (_corte?.Recebidos is { } recebidos)
+        {
+            falhas.Add(string.Create(
+                CultureInfo.InvariantCulture,
+                $"cartões: a lista veio com {recebidos} e pode ter sido cortada pelo servidor; os que faltam não chegaram a este computador"));
         }
         else if (cartoes.TeveTrabalho)
         {
@@ -230,7 +291,9 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         var envio = await _tentativas.DrenarUmaVezAsync(cancelamento).ConfigureAwait(false);
         if (envio.Adiados > 0 && envio.Enviados == 0)
         {
-            falhas.Add(string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s)"));
+            falhas.Add(envio.UltimoErro is { } erroDoEnvio
+                ? string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s): {erroDoEnvio}")
+                : string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s)"));
         }
 
         if (envio.CartasMortas > 0)

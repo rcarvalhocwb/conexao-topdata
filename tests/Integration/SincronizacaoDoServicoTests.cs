@@ -22,6 +22,10 @@ public sealed class SincronizacaoDoServicoTests
     {
         public HttpStatusCode Situacao { get; set; } = HttpStatusCode.OK;
 
+        public HttpStatusCode SituacaoDasTentativas { get; set; } = HttpStatusCode.OK;
+
+        public int CartoesNaLista { get; set; } = 1;
+
         public List<(string Caminho, string? Autorizacao, string Corpo)> Pedidos { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -34,8 +38,16 @@ public sealed class SincronizacaoDoServicoTests
                 return new HttpResponseMessage(Situacao);
             }
 
-            var resposta = request.RequestUri.AbsolutePath.EndsWith("middleware-sync-cards", StringComparison.Ordinal)
-                ? $$"""{"success":true,"cards":[{"card_number":"{{Cartao}}","active":true,"max_uses":null,"admission_type":"meia"}],"removed_cards":[],"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}"""
+            var cartoes = request.RequestUri.AbsolutePath.EndsWith("middleware-sync-cards", StringComparison.Ordinal);
+            if (!cartoes && SituacaoDasTentativas != HttpStatusCode.OK)
+            {
+                return new HttpResponseMessage(SituacaoDasTentativas);
+            }
+
+            var lista = string.Join(",", Enumerable.Range(0, CartoesNaLista).Select(i =>
+                $$"""{"card_number":"{{(i == 0 ? Cartao : (1_000_000_000 + i).ToString(System.Globalization.CultureInfo.InvariantCulture))}}","active":true,"max_uses":null,"admission_type":"meia"}"""));
+            var resposta = cartoes
+                ? $$"""{"success":true,"cards":[{{lista}}],"removed_cards":[],"sync_timestamp":"2026-11-14T20:00:00.000+00:00"}"""
                 : """{"success":true,"saved":1,"failed":0,"duplicates_ignored":0,"failed_events":[]}""";
 
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -47,9 +59,16 @@ public sealed class SincronizacaoDoServicoTests
 
     private sealed class Cenario : IDisposable
     {
-        public Cenario(ConfiguracaoDaNuvem? configuracao = null)
+        public const string Segredo = "segredo-de-teste-com-mais-de-32-caracteres";
+
+        public Cenario(ConfiguracaoDaNuvem? configuracao = null, bool comSegredo = true)
         {
             Banco.Migrar();
+            if (comSegredo)
+            {
+                Cofre.Gravar(CabecalhoDeSegredo.NomeDoSegredo, Segredo);
+            }
+
             Sincronizacao = SincronizacaoComANuvem.Montar(
                 configuracao ?? new ConfiguracaoDaNuvem(Base, "borda-01"),
                 Banco.Fabrica,
@@ -100,22 +119,83 @@ public sealed class SincronizacaoDoServicoTests
         Assert.True(repositorio.TentarUsar(Cartao, "p1", "inner-1", agora, leitor: KnownEventOrigin.Leitor2).Resultado.Liberou);
     }
 
+    /// <summary>
+    /// Achado E8-1 do docs/41: sem segredo gravado, as requisições saíam sem credencial e só uma linha
+    /// no registro avisava. Agora nada sai, e o painel diz o que falta; gravado o segredo, a próxima
+    /// rodada já vai com ele, sem reiniciar o serviço.
+    /// </summary>
     [Fact]
-    public async Task O_segredo_sai_do_cofre_para_o_cabecalho_e_nunca_para_o_registro()
+    public async Task Sem_segredo_nada_sai_e_o_painel_diz_o_que_falta_com_segredo_ele_vai_no_cabecalho()
     {
-        using var c = new Cenario();
-        const string Segredo = "segredo-de-teste-com-mais-de-32-caracteres";
+        using var c = new Cenario(comSegredo: false);
 
-        await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None);
-        Assert.All(c.Painel.Pedidos, p => Assert.Null(p.Autorizacao));
+        Assert.False(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
+        Assert.Empty(c.Painel.Pedidos);
+        Assert.Equal(SincronizacaoComANuvem.FaltaOSegredo, c.Estado.UltimaFalha);
 
-        c.Cofre.Gravar(CabecalhoDeSegredo.NomeDoSegredo, Segredo);
-        c.Painel.Pedidos.Clear();
-        await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None);
+        c.Cofre.Gravar(CabecalhoDeSegredo.NomeDoSegredo, Cenario.Segredo);
+        Assert.True(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
 
         Assert.NotEmpty(c.Painel.Pedidos);
-        Assert.All(c.Painel.Pedidos, p => Assert.Equal($"Bearer {Segredo}", p.Autorizacao));
-        Assert.DoesNotContain(c.Registro, l => l.Contains(Segredo, StringComparison.Ordinal));
+        Assert.All(c.Painel.Pedidos, p => Assert.Equal($"Bearer {Cenario.Segredo}", p.Autorizacao));
+        Assert.DoesNotContain(c.Registro, l => l.Contains(Cenario.Segredo, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Achado E5-1 do docs/41: a lista de cartões cortada pelo limite do servidor (1.000; o evento tem
+    /// 2.243) dava a rodada por bem-sucedida, e o painel mostrava "nuvem ok" com cartões faltando.
+    /// </summary>
+    [Fact]
+    public async Task Lista_de_cartoes_possivelmente_cortada_faz_a_rodada_falhar_com_o_motivo()
+    {
+        using var c = new Cenario();
+        c.Painel.CartoesNaLista = 1000;
+
+        Assert.False(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
+        Assert.Null(c.Estado.UltimoSucesso);
+        Assert.Contains("pode ter sido cortada", c.Estado.UltimaFalha, StringComparison.Ordinal);
+
+        // A lista volta inteira: a rodada seguinte dá certo e o aviso some.
+        c.Painel.CartoesNaLista = 1;
+        Assert.True(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
+        Assert.Null(c.Estado.UltimaFalha);
+    }
+
+    /// <summary>
+    /// Achados E5-2 e E5-3 do docs/41: o 401 mandava as tentativas para cartas mortas sem volta, e
+    /// o device_id ia "inner-N", que não bate com o segredo do equipamento. Agora o 401 deixa a
+    /// tentativa na fila com o motivo no painel, e o device_id é o da borda.
+    /// </summary>
+    [Fact]
+    public async Task Credencial_recusada_mantem_a_tentativa_na_fila_e_o_device_id_e_o_da_borda()
+    {
+        using var c = new Cenario();
+        var fila = new FilaDeSaidaSqlite(c.Banco.Fabrica);
+        using (var conexao = c.Banco.Fabrica.Abrir())
+        using (var comando = conexao.CreateCommand())
+        {
+            comando.CommandText =
+                """
+                INSERT INTO outbox (id, aggregate_type, aggregate_id, payload_json, priority, connector, idempotency_key, created_at)
+                VALUES ('t1', 'tentativa', 't1', $payload, 5, 'painel-tentativas', 'tentativa:t1', $agora);
+                """;
+            comando.Parameters.AddWithValue("$payload", new Access.Domain.Ticketing.TentativaEspelhada(
+                1, Guid.NewGuid(), Cartao, "inner-3", "portao-1", DateTimeOffset.UtcNow, true,
+                "Consumido", "bilheteria-local", "meia", null).ParaJson());
+            comando.Parameters.AddWithValue("$agora", DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+            comando.ExecuteNonQuery();
+        }
+
+        c.Painel.SituacaoDasTentativas = HttpStatusCode.Unauthorized;
+        Assert.False(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
+
+        Assert.Equal(0, fila.ContarCartasMortas());
+        Assert.Equal(1L, fila.BacklogPorConector()["painel-tentativas"]);
+        Assert.Contains("recusou a credencial", c.Estado.UltimaFalha, StringComparison.Ordinal);
+
+        var envio = c.Painel.Pedidos.Last(p => p.Caminho.EndsWith("middleware-sync-events", StringComparison.Ordinal));
+        Assert.Contains("\"device_id\":\"borda-01\"", envio.Corpo, StringComparison.Ordinal);
+        Assert.Contains("\"catraca\":\"inner-3\"", envio.Corpo, StringComparison.Ordinal);
     }
 
     [Fact]

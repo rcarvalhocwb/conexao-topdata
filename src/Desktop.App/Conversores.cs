@@ -89,6 +89,7 @@ public sealed class ZeroParaVisivel : IValueConverter
         var zero = value switch
         {
             int n => n == 0,
+            long n => n == 0,
             System.Collections.ICollection colecao => colecao.Count == 0,
             System.Collections.IEnumerable itens => !itens.GetEnumerator().MoveNext(),
             _ => true,

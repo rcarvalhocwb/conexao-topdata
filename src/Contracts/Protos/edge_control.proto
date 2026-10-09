@@ -38,6 +38,10 @@ service EdgeControl {
   // de dados; o painel só salva o arquivo. Sem banco, sem token e sem segredo.
   rpc ObterPacoteDeDiagnostico(ObterPacoteDeDiagnosticoRequest) returns (PacoteDeDiagnostico);
 
+  // Achado E5-2 (docs/41): devolve à fila as tentativas que a nuvem recusou (cartas mortas), depois
+  // de corrigida a causa. Fica anotado quem pediu. Reenviar é seguro: a nuvem reconhece repetição.
+  rpc ReenviarCartasMortas(ReenviarCartasMortasRequest) returns (ReenviarCartasMortasResponse);
+
   // Modo simulação: "passa" um código numa catraca simulada. Recusado fora da simulação.
   rpc SimularLeitura(SimularLeituraRequest) returns (SimularLeituraResponse);
 
@@ -381,6 +385,17 @@ message ConsultarCodigoResponse {
 message ObterDiagnosticoRequest {}
 
 message ObterPacoteDeDiagnosticoRequest {}
+
+message ReenviarCartasMortasRequest {
+  // Nome de quem pediu (2 a 80 caracteres), para a auditoria.
+  string operador = 1;
+}
+
+message ReenviarCartasMortasResponse {
+  bool aceito = 1;
+  int32 reenviadas = 2;
+  string mensagem = 3;
+}
 
 message PacoteDeDiagnostico {
   bool gerado = 1;                            // falso: o zip não pôde ser montado (ver mensagem)

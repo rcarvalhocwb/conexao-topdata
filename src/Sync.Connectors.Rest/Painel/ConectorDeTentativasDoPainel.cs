@@ -143,6 +143,16 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
 
         using (resposta)
         {
+            if (ClassificacaoHttp.CredencialRecusada(resposta.StatusCode))
+            {
+                // Antes ia para cartas mortas, sem volta: um segredo errado apagava a prestação de
+                // contas da nuvem. Agora o item espera, e o painel mostra o motivo (E5-2).
+                return Todos(
+                    grupo,
+                    ResultadoDoEnvio.FalhaTemporaria,
+                    $"o painel recusou a credencial desta borda ({ClassificacaoHttp.Detalhe(resposta.StatusCode)}); confira o segredo da nuvem");
+            }
+
             if (!resposta.IsSuccessStatusCode)
             {
                 var resultado = ClassificacaoHttp.ValeRepetir(resposta.StatusCode)
@@ -196,6 +206,7 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
             ["provedor"] = t.Provedor,
             ["giro_confirmado"] = t.GiroEm is not null,
             ["giro_em"] = t.GiroEm is { } g ? Horario(g) : null,
+            ["catraca"] = t.Dispositivo,
         },
     };
 

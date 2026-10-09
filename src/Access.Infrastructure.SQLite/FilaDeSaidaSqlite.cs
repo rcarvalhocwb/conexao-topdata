@@ -240,6 +240,56 @@ public sealed class FilaDeSaidaSqlite : IFilaDeSaida
         return resultado;
     }
 
+    /// <summary>
+    /// Devolve à fila as cartas mortas ainda não reprocessadas, a pedido do operador, e anota quem pediu.
+    /// </summary>
+    /// <remarks>
+    /// Achado E5-2 do docs/41: sem isto, o que ia para cartas mortas (um segredo errado, uma recusa já
+    /// corrigida do lado da nuvem) não tinha caminho de volta. Reenviar é seguro: o painel reconhece
+    /// repetição por equipamento, cartão e horário. A volta usa a mesma transação para copiar e marcar.
+    /// </remarks>
+    /// <returns>Quantos itens voltaram para a fila.</returns>
+    public int ReenviarCartasMortas(DateTimeOffset agora, string quemPediu)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(quemPediu);
+
+        using var conexao = _fabrica.Abrir();
+        using var transacao = conexao.BeginTransaction();
+
+        int devolvidos;
+        using (var copia = conexao.CreateCommand())
+        {
+            copia.Transaction = transacao;
+
+            // INSERT OR IGNORE: se a mesma chave de idempotência já voltou à fila por outro caminho,
+            // não duplica; a carta morta é marcada do mesmo jeito.
+            copia.CommandText =
+                """
+                INSERT OR IGNORE INTO outbox
+                    (id, aggregate_type, aggregate_id, payload_json, priority, connector, idempotency_key,
+                     created_at, attempts, next_attempt_at, last_error, sent_at)
+                SELECT outbox_id, aggregate_type, aggregate_id, payload_json, priority, connector, idempotency_key,
+                       created_at, 0, NULL, NULL, NULL
+                FROM dead_letter
+                WHERE reprocessed_at IS NULL;
+                """;
+            devolvidos = copia.ExecuteNonQuery();
+        }
+
+        using (var marca = conexao.CreateCommand())
+        {
+            marca.Transaction = transacao;
+            marca.CommandText =
+                "UPDATE dead_letter SET reprocessed_at = $em, reprocessed_by = $quem WHERE reprocessed_at IS NULL;";
+            marca.Parameters.AddWithValue("$em", Iso(agora));
+            marca.Parameters.AddWithValue("$quem", quemPediu.Length <= 80 ? quemPediu : quemPediu[..80]);
+            marca.ExecuteNonQuery();
+        }
+
+        transacao.Commit();
+        return devolvidos;
+    }
+
     /// <summary>Itens em cartas mortas ainda não reprocessados.</summary>
     public long ContarCartasMortas()
     {

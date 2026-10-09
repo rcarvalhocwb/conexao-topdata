@@ -285,7 +285,7 @@ public sealed class Operacao
             "SELECT COUNT(*) FROM ticket_use_attempt WHERE outcome = 'consumido' AND at >= $desde;",
             ("$desde", Iso(agora.AddMinutes(-5))));
         var pendentes = Escalar("SELECT COUNT(*) FROM outbox WHERE sent_at IS NULL;");
-        var mortas = Escalar("SELECT COUNT(*) FROM dead_letter;");
+        var mortas = Escalar("SELECT COUNT(*) FROM dead_letter WHERE reprocessed_at IS NULL;");
 
         DateTimeOffset? maisAntigo = null;
         using (var comando = conexao.CreateCommand())

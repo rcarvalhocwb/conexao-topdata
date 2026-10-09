@@ -87,6 +87,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// O Analisador da camada inteligente (Etapa I.0 do docs/36), só para o Diagnóstico mostrar a
     /// saúde dele. Nulo: o Diagnóstico diz que ele não existe neste serviço.
     /// </param>
+    /// <param name="filaDeSaida">A outbox, para reenviar as cartas mortas a pedido do operador (E5-2).</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -105,7 +106,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.ConfiguracaoPorCatraca? configuracaoPorCatraca = null,
         string? sessao = null,
         Access.Infrastructure.SQLite.MapasDeGiro? mapasDeGiro = null,
-        AnalisadorDaOperacao? analisador = null)
+        AnalisadorDaOperacao? analisador = null,
+        Access.Infrastructure.SQLite.FilaDeSaidaSqlite? filaDeSaida = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -126,6 +128,51 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _sessao = string.IsNullOrWhiteSpace(sessao) ? null : sessao;
         _mapasDeGiro = mapasDeGiro;
         _analisador = analisador;
+        _filaDeSaida = filaDeSaida;
+    }
+
+    private readonly Access.Infrastructure.SQLite.FilaDeSaidaSqlite? _filaDeSaida;
+
+    public override Task<ReenviarCartasMortasResponse> ReenviarCartasMortas(ReenviarCartasMortasRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var operador = request.Operador?.Trim() ?? string.Empty;
+        if (operador.Length is < 2 or > 80)
+        {
+            return Task.FromResult(new ReenviarCartasMortasResponse
+            {
+                Mensagem = "Informe o nome de quem está pedindo (2 a 80 caracteres).",
+            });
+        }
+
+        if (_filaDeSaida is null)
+        {
+            return Task.FromResult(new ReenviarCartasMortasResponse
+            {
+                Mensagem = "Este serviço não tem base local para reenviar.",
+            });
+        }
+
+        try
+        {
+            var reenviadas = _filaDeSaida.ReenviarCartasMortas(_relogio(), operador);
+            return Task.FromResult(new ReenviarCartasMortasResponse
+            {
+                Aceito = true,
+                Reenviadas = reenviadas,
+                Mensagem = reenviadas == 0
+                    ? "Não havia nada recusado para reenviar."
+                    : string.Create(CultureInfo.CurrentCulture, $"{reenviadas} tentativa(s) de volta à fila; sobem na próxima sincronização."),
+            });
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            return Task.FromResult(new ReenviarCartasMortasResponse
+            {
+                Mensagem = "A base local está ocupada agora. Tente de novo em alguns segundos.",
+            });
+        }
     }
 
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>

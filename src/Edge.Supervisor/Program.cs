@@ -263,7 +263,7 @@ if (configuracao.Nuvem is { } configuracaoDaNuvem)
 
     if (cofre.Ler(CabecalhoDeSegredo.NomeDoSegredo) is null)
     {
-        Registrar("nuvem: nenhum segredo gravado; as requisições saem sem credencial (docs/22, seção 8.1).");
+        Registrar("nuvem: nenhum segredo gravado; a sincronização fica parada até ele ser gravado (achado E8-1 do docs/41).");
     }
 }
 
@@ -326,7 +326,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     configuracaoPorCatraca: new ConfiguracaoPorCatraca(fabrica),
     sessao: sessaoDoServico,
     mapasDeGiro: new MapasDeGiro(fabrica),
-    analisador: analisador));
+    analisador: analisador,
+    filaDeSaida: new FilaDeSaidaSqlite(fabrica)));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();

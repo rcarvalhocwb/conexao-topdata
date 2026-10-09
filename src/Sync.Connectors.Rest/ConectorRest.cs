@@ -175,6 +175,14 @@ internal static class ClassificacaoHttp
     /// Sobrecarga, indisponibilidade e tempo esgotado do lado deles: repetir resolve.
     /// Os demais 4xx são recusa de conteúdo ou de permissão, e repetir não muda nada.
     /// </summary>
+    /// <summary>
+    /// 401 e 403: a credencial desta borda foi recusada. Não é defeito do item, e repetir com a
+    /// mesma credencial não resolve, mas também não pode descartar o item: corrigido o segredo, ele
+    /// tem de subir (achado E5-2 do docs/41).
+    /// </summary>
+    public static bool CredencialRecusada(HttpStatusCode status) =>
+        status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
     public static bool ValeRepetir(HttpStatusCode status) =>
         status is HttpStatusCode.RequestTimeout
             or HttpStatusCode.TooManyRequests

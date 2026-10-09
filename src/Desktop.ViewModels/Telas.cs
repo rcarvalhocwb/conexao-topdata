@@ -581,12 +581,49 @@ public sealed class SincronizacaoViewModel : TelaBase
     private IReadOnlyList<ProvedorCadastrado> _provedores = [];
     private Sinal _sinal;
 
+    private long _cartasMortas;
+    private string _operador = string.Empty;
+
     public SincronizacaoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
     {
+        ReenviarCartasMortas = new ComandoAssincrono(ReenviarCartasMortasAsync, () => CartasMortas > 0);
     }
 
     public override string Titulo => "Sincronização";
+
+    /// <summary>Tentativas que a nuvem recusou e que esperam alguém mandar de novo.</summary>
+    public long CartasMortas
+    {
+        get => _cartasMortas;
+        private set
+        {
+            if (Definir(ref _cartasMortas, value))
+            {
+                ReenviarCartasMortas.ReavaliarDisponibilidade();
+            }
+        }
+    }
+
+    /// <summary>Quem pede o reenvio; fica anotado na base.</summary>
+    public string Operador { get => _operador; set => Definir(ref _operador, value ?? string.Empty); }
+
+    /// <summary>
+    /// Devolve à fila o que a nuvem recusou, depois de corrigida a causa (achado E5-2 do docs/41).
+    /// </summary>
+    public ComandoAssincrono ReenviarCartasMortas { get; }
+
+    private async Task ReenviarCartasMortasAsync() =>
+        await Tentar(async () =>
+        {
+            var r = await Cliente.ReenviarCartasMortasAsync(new ReenviarCartasMortasRequest { Operador = Operador });
+            Mensagem = r.Mensagem;
+            if (r.Aceito)
+            {
+                await AtualizarAsync();
+                Mensagem = r.Mensagem;
+            }
+        });
 
     public IReadOnlyList<ParDeTexto> Situacao { get => _situacao; private set => Definir(ref _situacao, value); }
 
@@ -617,6 +654,7 @@ public sealed class SincronizacaoViewModel : TelaBase
                 new ParDeTexto("Recusados pela nuvem", string.Create(CultureInfo.CurrentCulture, $"{r.CartasMortas}")),
             ];
             Provedores = [.. r.Provedores];
+            CartasMortas = r.CartasMortas;
             Mensagem = string.Empty;
         });
 }

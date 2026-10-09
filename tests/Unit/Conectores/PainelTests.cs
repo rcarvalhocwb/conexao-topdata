@@ -250,8 +250,11 @@ public sealed class PainelTests
     private static async Task<IReadOnlyList<RespostaDeItem>> Enviar(Servidor servidor, params ItemDeSaida[] itens) =>
         await new ConectorDeTentativasDoPainel(Http(servidor)).EnviarAsync(itens, CancellationToken.None);
 
+    // 401 e 403 esperam na fila (achado E5-2 do docs/41): antes iam para cartas mortas, sem volta, e um
+    // segredo errado apagava a prestação de contas da nuvem.
     [Theory]
-    [InlineData(HttpStatusCode.Unauthorized, ResultadoDoEnvio.FalhaPermanente)]
+    [InlineData(HttpStatusCode.Unauthorized, ResultadoDoEnvio.FalhaTemporaria)]
+    [InlineData(HttpStatusCode.Forbidden, ResultadoDoEnvio.FalhaTemporaria)]
     [InlineData(HttpStatusCode.BadRequest, ResultadoDoEnvio.FalhaPermanente)]
     [InlineData(HttpStatusCode.ServiceUnavailable, ResultadoDoEnvio.FalhaTemporaria)]
     [InlineData(HttpStatusCode.TooManyRequests, ResultadoDoEnvio.FalhaTemporaria)]
@@ -259,6 +262,15 @@ public sealed class PainelTests
     {
         var resposta = Assert.Single(await Enviar(new Servidor(status, "{}"), Item("a")));
         Assert.Equal(esperado, resposta.Resultado);
+    }
+
+    [Fact]
+    public async Task Credencial_recusada_diz_ao_operador_para_conferir_o_segredo()
+    {
+        var resposta = Assert.Single(await Enviar(new Servidor(HttpStatusCode.Unauthorized, "{}"), Item("a")));
+
+        Assert.Contains("recusou a credencial", resposta.Erro, StringComparison.Ordinal);
+        Assert.Contains("segredo da nuvem", resposta.Erro, StringComparison.Ordinal);
     }
 
     [Fact]

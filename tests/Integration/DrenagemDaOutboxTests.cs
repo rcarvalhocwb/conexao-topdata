@@ -18,6 +18,13 @@ public sealed class DrenagemDaOutboxTests
 {
     private static readonly DateTimeOffset Agora = new(2026, 9, 25, 12, 0, 0, TimeSpan.Zero);
 
+    // Os itens nascem com a hora do evento (Agora). Com o relógio do sistema, ficariam "velhos" e
+    // iriam para cartas mortas pela idade (achado E3-01 do docs/41), não pela regra em teste.
+    private sealed class RelogioFixo(DateTimeOffset agora) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => agora;
+    }
+
     private sealed class ConectorDeTeste(string nome, Func<ItemDeSaida, ResultadoDoEnvio> veredito)
         : IConectorDeSincronizacao
     {
@@ -158,7 +165,8 @@ public sealed class DrenagemDaOutboxTests
         var drenador = new DrenadorDaOutbox(
             fila,
             [new ConectorDeTeste("erp", _ => ResultadoDoEnvio.FalhaTemporaria)],
-            _ => TimeSpan.FromHours(1));
+            _ => TimeSpan.FromHours(1),
+            new RelogioFixo(Agora));
 
         await drenador.DrenarUmaVezAsync(CancellationToken.None);
 
@@ -179,6 +187,49 @@ public sealed class DrenagemDaOutboxTests
 
         // Mas ele continua na fila, contado no backlog que a operação acompanha.
         Assert.Equal(1L, fila.BacklogPorConector()["erp"]);
+    }
+
+    /// <summary>
+    /// Achado E3-01 / E5-4 do docs/41: com o teto antigo de 12 tentativas, uns 35 minutos sem
+    /// internet mandavam as tentativas para cartas mortas. Falha temporária agora só morre por idade.
+    /// </summary>
+    [Fact]
+    public async Task Falha_temporaria_nao_vai_para_cartas_mortas_pela_contagem_so_pela_idade()
+    {
+        using var banco = new BancoTemporario();
+        var diario = banco.Migrar();
+        diario.Registrar(Evento(1), outbox: [Item("d1", PrioridadeDeSincronizacao.DecisaoDeAcesso)]);
+
+        var fila = new FilaDeSaidaSqlite(banco.Fabrica);
+        var agora = Agora;
+        var relogio = new RelogioQueAnda(() => agora);
+        var drenador = new DrenadorDaOutbox(
+            fila,
+            [new ConectorDeTeste("erp", _ => ResultadoDoEnvio.FalhaTemporaria)],
+            _ => TimeSpan.FromMinutes(5),
+            relogio);
+
+        // 6 horas sem internet, uma rodada a cada 5 minutos: 72 tentativas, nenhuma carta morta.
+        for (var i = 0; i < 72; i++)
+        {
+            await drenador.DrenarUmaVezAsync(CancellationToken.None);
+            agora = agora.AddMinutes(5);
+        }
+
+        Assert.Equal(0, fila.ContarCartasMortas());
+        Assert.Equal(1L, fila.BacklogPorConector()["erp"]);
+
+        // Passados 7 dias, sai da fila com o motivo.
+        agora = Agora + DrenadorDaOutbox.IdadeMaximaPadrao + TimeSpan.FromMinutes(1);
+        var resumo = await drenador.DrenarUmaVezAsync(CancellationToken.None);
+
+        Assert.Equal(1, resumo.CartasMortas);
+        Assert.Equal(1, fila.ContarCartasMortas());
+    }
+
+    private sealed class RelogioQueAnda(Func<DateTimeOffset> agora) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => agora();
     }
 
     [Fact]
@@ -214,7 +265,7 @@ public sealed class DrenagemDaOutboxTests
         var painel = new ConectorDeTeste("painel", _ => ResultadoDoEnvio.Aceito);
 
         var fila = new FilaDeSaidaSqlite(banco.Fabrica);
-        var drenador = new DrenadorDaOutbox(fila, [bilheteria, painel], _ => TimeSpan.FromHours(1));
+        var drenador = new DrenadorDaOutbox(fila, [bilheteria, painel], _ => TimeSpan.FromHours(1), new RelogioFixo(Agora));
 
         var resumo = await drenador.DrenarUmaVezAsync(CancellationToken.None);
 

@@ -29,6 +29,16 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Achado E5-2 do docs/41: o que a nuvem recusou volta para a fila a pedido do operador. -->
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
+                    Visibility="{Binding CartasMortas, Converter={StaticResource ZeroParaVisivel}, ConverterParameter=inverso}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" VerticalAlignment="Center" Margin="0,0,8,0" Text="Quem pede" />
+          <TextBox Width="200" Margin="0,0,12,0" Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.Name="Nome de quem pede o reenvio" />
+          <Button Content="Reenviar os recusados" Command="{Binding ReenviarCartasMortas}"
+                  ToolTip="Depois de corrigir a causa (o segredo da nuvem, por exemplo), manda de novo o que a nuvem recusou. A nuvem reconhece o que já recebeu." />
+        </StackPanel>
       </StackPanel>
     </Border>
 

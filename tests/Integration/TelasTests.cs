@@ -79,7 +79,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
             comandos: new FilaDeComandosSqlite(_banco.Fabrica),
             configuracoesDasCatracas: new ConfiguracoesDasCatracas(_banco.Fabrica),
             configuracaoPorCatraca: new ConfiguracaoPorCatraca(_banco.Fabrica),
-            mapasDeGiro: new MapasDeGiro(_banco.Fabrica));
+            mapasDeGiro: new MapasDeGiro(_banco.Fabrica),
+            filaDeSaida: new FilaDeSaidaSqlite(_banco.Fabrica));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"telas-{Guid.NewGuid():N}");
@@ -789,6 +790,53 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.True(avisos["preparar"] > antes, "Aplicar agora ficaria desabilitado depois de cancelar");
         Assert.True(tela.PrepararAplicacao.CanExecute(null));
+    }
+
+    /// <summary>
+    /// Achado E5-2 do docs/41: o que ia para cartas mortas não tinha caminho de volta. Pela tela de
+    /// Sincronização, com o nome de quem pede, volta para a fila e fica anotado na base.
+    /// </summary>
+    [Fact]
+    public async Task Reenviar_os_recusados_pela_tela_devolve_a_fila_e_anota_quem_pediu()
+    {
+        var fila = new FilaDeSaidaSqlite(_banco.Fabrica);
+        using (var conexao = _banco.Fabrica.Abrir())
+        using (var comando = conexao.CreateCommand())
+        {
+            comando.CommandText =
+                """
+                INSERT INTO outbox (id, aggregate_type, aggregate_id, payload_json, priority, connector, idempotency_key, created_at)
+                VALUES ('t1', 'tentativa', 't1', '{}', 5, 'painel-tentativas', 'tentativa:t1', '2026-10-08T20:00:00.0000000+00:00');
+                """;
+            comando.ExecuteNonQuery();
+        }
+
+        await fila.MoverParaCartasMortasAsync("t1", "HTTP 401 Unauthorized", DateTimeOffset.UtcNow, CancellationToken.None);
+        Assert.Empty(fila.BacklogPorConector());
+
+        var tela = new SincronizacaoViewModel(Cliente());
+        await tela.AtualizarAsync();
+        Assert.Equal(1, tela.CartasMortas);
+        Assert.True(tela.ReenviarCartasMortas.CanExecute(null));
+
+        // Sem nome, não reenvia.
+        await tela.ReenviarCartasMortas.ExecutarAsync();
+        Assert.Contains("Informe o nome", tela.Mensagem, StringComparison.Ordinal);
+        Assert.Equal(0, fila.BacklogPorConector().GetValueOrDefault("painel-tentativas"));
+
+        tela.Operador = "Ana";
+        await tela.ReenviarCartasMortas.ExecutarAsync();
+
+        Assert.StartsWith("1 tentativa(s) de volta à fila", tela.Mensagem, StringComparison.Ordinal);
+        Assert.Equal(1L, fila.BacklogPorConector()["painel-tentativas"]);
+        Assert.Equal(0, fila.ContarCartasMortas());
+        Assert.Equal(0, tela.CartasMortas);
+        Assert.False(tela.ReenviarCartasMortas.CanExecute(null));
+
+        using var leitura = _banco.Fabrica.Abrir();
+        using var consulta = leitura.CreateCommand();
+        consulta.CommandText = "SELECT reprocessed_by FROM dead_letter;";
+        Assert.Equal("Ana", consulta.ExecuteScalar());
     }
 
     /// <summary>

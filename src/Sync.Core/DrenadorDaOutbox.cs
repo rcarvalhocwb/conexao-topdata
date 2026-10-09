@@ -9,11 +9,13 @@ namespace Sync.Core;
 /// <param name="ConectoresSemImplementacao">
 /// Nomes que constam da fila mas para os quais nenhum conector está registrado.
 /// </param>
+/// <param name="UltimoErro">O motivo da última falha temporária da rodada, para o painel dizer por quê.</param>
 public sealed record ResumoDaRodada(
     int Enviados,
     int Adiados,
     int CartasMortas,
-    IReadOnlyList<string> ConectoresSemImplementacao)
+    IReadOnlyList<string> ConectoresSemImplementacao,
+    string? UltimoErro = null)
 {
     /// <summary>Rodada em que nada havia para fazer.</summary>
     public static ResumoDaRodada Vazia { get; } = new(0, 0, 0, []);
@@ -57,8 +59,12 @@ public sealed class DrenadorDaOutbox
     private readonly Dictionary<string, IConectorDeSincronizacao> _conectores;
     private readonly Func<int, TimeSpan> _esperaPorTentativa;
     private readonly TimeProvider _relogio;
-    private readonly int _maximoDeTentativas;
+    private readonly int? _maximoDeTentativas;
+    private readonly TimeSpan _idadeMaxima;
     private readonly Action<OcorrenciaDeDrenagem>? _observador;
+
+    /// <summary>Idade padrão a partir da qual um item com falhas só temporárias vai para cartas mortas.</summary>
+    public static readonly TimeSpan IdadeMaximaPadrao = TimeSpan.FromDays(7);
 
     /// <summary>
     /// </summary>
@@ -72,9 +78,14 @@ public sealed class DrenadorDaOutbox
     /// </param>
     /// <param name="relogio">Relógio. Injetável para que o teste não durma.</param>
     /// <param name="maximoDeTentativas">
-    /// Depois disto o item vai para cartas mortas. O padrão 12, com espera exponencial
-    /// limitada a dois minutos, cobre cerca de quatro horas de destino fora do ar — bem
-    /// mais que qualquer manutenção anunciada, e menos que um contrato encerrado.
+    /// Teto de tentativas por falha temporária, ou nulo (padrão) para não ter teto por contagem.
+    /// Achado E3-01 / E5-4 do docs/41: o teto antigo de 12, com a espera de produção (até 5 min),
+    /// mandava para cartas mortas o que ficasse uns 35 minutos sem internet, e a prestação de contas
+    /// na nuvem perdia esses acessos. Rede fora não é defeito do item.
+    /// </param>
+    /// <param name="idadeMaxima">
+    /// Idade a partir da qual um item que só recebe falha temporária vai para cartas mortas, para não
+    /// ficar na fila para sempre. Padrão: 7 dias, bem acima de qualquer evento sem internet.
     /// </param>
     /// <param name="observador">Recebe cada ocorrência, para log e métrica.</param>
     public DrenadorDaOutbox(
@@ -82,18 +93,23 @@ public sealed class DrenadorDaOutbox
         IEnumerable<IConectorDeSincronizacao> conectores,
         Func<int, TimeSpan> esperaPorTentativa,
         TimeProvider? relogio = null,
-        int maximoDeTentativas = 12,
-        Action<OcorrenciaDeDrenagem>? observador = null)
+        int? maximoDeTentativas = null,
+        Action<OcorrenciaDeDrenagem>? observador = null,
+        TimeSpan? idadeMaxima = null)
     {
         ArgumentNullException.ThrowIfNull(fila);
         ArgumentNullException.ThrowIfNull(conectores);
         ArgumentNullException.ThrowIfNull(esperaPorTentativa);
-        ArgumentOutOfRangeException.ThrowIfLessThan(maximoDeTentativas, 1);
+        if (maximoDeTentativas is { } teto)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(teto, 1, nameof(maximoDeTentativas));
+        }
 
         _fila = fila;
         _esperaPorTentativa = esperaPorTentativa;
         _relogio = relogio ?? TimeProvider.System;
         _maximoDeTentativas = maximoDeTentativas;
+        _idadeMaxima = idadeMaxima ?? IdadeMaximaPadrao;
         _observador = observador;
 
         _conectores = new Dictionary<string, IConectorDeSincronizacao>(StringComparer.Ordinal);
@@ -140,6 +156,7 @@ public sealed class DrenadorDaOutbox
         var adiados = 0;
         var cartasMortas = 0;
         var semImplementacao = new List<string>();
+        string? ultimoErro = null;
 
         foreach (var nome in pendentes)
         {
@@ -155,13 +172,14 @@ public sealed class DrenadorDaOutbox
                 continue;
             }
 
-            var (e, a, c) = await DrenarConectorAsync(conector, cancelamento).ConfigureAwait(false);
+            var (e, a, c, erro) = await DrenarConectorAsync(conector, cancelamento).ConfigureAwait(false);
             enviados += e;
             adiados += a;
             cartasMortas += c;
+            ultimoErro = erro ?? ultimoErro;
         }
 
-        return new ResumoDaRodada(enviados, adiados, cartasMortas, semImplementacao);
+        return new ResumoDaRodada(enviados, adiados, cartasMortas, semImplementacao, ultimoErro);
     }
 
     /// <summary>
@@ -211,7 +229,7 @@ public sealed class DrenadorDaOutbox
         }
     }
 
-    private async Task<(int Enviados, int Adiados, int CartasMortas)> DrenarConectorAsync(
+    private async Task<(int Enviados, int Adiados, int CartasMortas, string? UltimoErro)> DrenarConectorAsync(
         IConectorDeSincronizacao conector,
         CancellationToken cancelamento)
     {
@@ -223,7 +241,7 @@ public sealed class DrenadorDaOutbox
 
         if (lote.Count == 0)
         {
-            return (0, 0, 0);
+            return (0, 0, 0, null);
         }
 
         IReadOnlyList<RespostaDeItem> respostas;
@@ -258,6 +276,7 @@ public sealed class DrenadorDaOutbox
         var confirmados = new List<string>();
         var adiados = 0;
         var cartasMortas = 0;
+        string? ultimoErro = null;
 
         foreach (var item in lote)
         {
@@ -284,19 +303,26 @@ public sealed class DrenadorDaOutbox
 
                 default:
                     var tentativas = item.Tentativas + 1;
-                    if (tentativas >= _maximoDeTentativas)
+                    var instante = _relogio.GetUtcNow();
+                    var esgotou = _maximoDeTentativas is { } teto && tentativas >= teto;
+                    var velho = instante - item.CriadoEm >= _idadeMaxima;
+                    if (esgotou || velho)
                     {
+                        var motivo = esgotou
+                            ? $"esgotadas {tentativas} tentativas"
+                            : $"sem entrega há {(instante - item.CriadoEm).TotalDays:F0} dia(s), {tentativas} tentativas";
                         await _fila
                             .MoverParaCartasMortasAsync(
                                 item.Id,
-                                $"esgotadas {tentativas} tentativas; último erro: {resposta.Erro ?? "desconhecido"}",
-                                _relogio.GetUtcNow(),
+                                $"{motivo}; último erro: {resposta.Erro ?? "desconhecido"}",
+                                instante,
                                 cancelamento)
                             .ConfigureAwait(false);
                         cartasMortas++;
                     }
                     else
                     {
+                        ultimoErro = resposta.Erro ?? ultimoErro;
                         var proxima = _relogio.GetUtcNow() + _esperaPorTentativa(tentativas);
                         await _fila
                             .AdiarAsync(item.Id, tentativas, proxima, resposta.Erro ?? "falha temporária sem detalhe", cancelamento)
@@ -324,7 +350,7 @@ public sealed class DrenadorDaOutbox
             Observar(new OcorrenciaDeDrenagem(conector.Nome, "cartas_mortas", cartasMortas));
         }
 
-        return (confirmados.Count, adiados, cartasMortas);
+        return (confirmados.Count, adiados, cartasMortas, ultimoErro);
     }
 
     private void Observar(OcorrenciaDeDrenagem ocorrencia)
