@@ -119,6 +119,7 @@ public sealed class TelaParaIcone : IValueConverter
             ConfiguracoesViewModel => "\uE713",
             DiagnosticoViewModel => "\uE9D9",
             SimuladorViewModel => "\uE768",
+            UsuariosViewModel => "\uE716",
             _ => "\uE8FD",
         };
 

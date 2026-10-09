@@ -110,8 +110,7 @@
       <!--
         TopOperationalBar: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO, em qualquer tela.
         Blocos modulares (StatusCard) com o que existe hoje: serviço local, catracas, nuvem
-        e o modo simulação; relógio de Brasília à direita. (Perfil de usuário: não há login
-        — proposta futura, docs/27 §11.)
+        e o modo simulação; relógio de Brasília à direita e quem está logado (ADR-0026).
       -->
       <Border Grid.Row="0" Padding="24,12,24,10" Background="{DynamicResource Rayzer.Surface}"
               BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1" DataContext="{Binding Painel}">
@@ -149,6 +148,14 @@
                          Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
               <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Caption}" Text="Horário de Brasília" />
             </StackPanel>
+            <!-- Quem está logado (ADR-0026). -->
+            <StackPanel VerticalAlignment="Center" Margin="20,0,0,0"
+                        Visibility="{Binding DataContext.Sessao.LoginLigado, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolParaVisibilidade}, FallbackValue=Collapsed}">
+              <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Label}" Margin="0"
+                         Text="{Binding DataContext.Sessao.Nome, RelativeSource={RelativeSource AncestorType=Window}}" AutomationProperties.Name="Usuário" />
+              <Button HorizontalAlignment="Right" Style="{StaticResource Rayzer.Button.Ghost}" Padding="0" Content="_Sair"
+                      Command="{Binding DataContext.Sessao.Sair, RelativeSource={RelativeSource AncestorType=Window}}" AutomationProperties.Name="Sair" />
+            </StackPanel>
             <!-- O produto com o endosso da empresa: XAcess by RAYZER X. -->
             <Border Width="1" Height="36" Margin="20,0,20,0" Background="{DynamicResource Rayzer.Border}" />
             <rz:XAcessLogo Variante="ComAssinatura" Height="38" VerticalAlignment="Center" />
@@ -165,6 +172,52 @@
       <rz:RayzerFlowBar Grid.Row="1" Ativa="{Binding TelaAtual.Ocupada}" />
 
       <ContentControl Grid.Row="2" Margin="{DynamicResource Rayzer.Padding.Page}" Content="{Binding TelaAtual}" Focusable="False" />
+    </Grid>
+
+    <!--
+      Login (ADR-0026): cobre o painel até o usuário entrar. No primeiro acesso do administrador
+      padrão, pede o nome e o login reais e a senha nova; nada mais funciona antes disso.
+    -->
+    <Grid x:Name="Login" Grid.ColumnSpan="2" Background="{DynamicResource Rayzer.Background}" DataContext="{Binding Sessao}"
+          Visibility="{Binding ForaDoSistema, Converter={StaticResource BoolParaVisibilidade}, FallbackValue=Collapsed}">
+      <Border Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Rayzer.Card}" Padding="32,28">
+        <StackPanel>
+          <rz:XAcessLogo Variante="ComAssinatura" Height="44" HorizontalAlignment="Left" Margin="0,0,0,20" />
+
+          <StackPanel Visibility="{Binding PedindoLogin, Converter={StaticResource BoolParaVisibilidade}}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,0,0,12" Text="Entrar" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Usuário" />
+            <TextBox x:Name="CampoLogin" Margin="0,4,0,12" Text="{Binding Login, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Usuário" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha" />
+            <PasswordBox x:Name="SenhaDoLogin" Margin="0,4,0,16" PasswordChanged="SenhaDoLoginMudou" AutomationProperties.Name="Senha" />
+            <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Stretch" Content="_Entrar" IsDefault="True" Command="{Binding Entrar}" />
+          </StackPanel>
+
+          <StackPanel Visibility="{Binding PedindoTroca, Converter={StaticResource BoolParaVisibilidade}}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,0,0,4" Text="Troque a senha" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="Primeiro acesso ou senha redefinida: escolha uma senha só sua, com pelo menos 8 caracteres." />
+            <StackPanel Visibility="{Binding PrimeiroAcessoDoAdministrador, Converter={StaticResource BoolParaVisibilidade}}">
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,8"
+                         Text="Este é o administrador que veio instalado. Informe quem vai administrar o sistema." />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nome do administrador" />
+              <TextBox Margin="0,4,0,12" Text="{Binding NovoNome, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Nome do administrador" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Login do administrador" />
+              <TextBox Margin="0,4,0,12" Text="{Binding NovoLogin, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Login do administrador" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha atual" />
+            <PasswordBox x:Name="SenhaAtual" Margin="0,4,0,12" PasswordChanged="SenhaAtualMudou" AutomationProperties.Name="Senha atual" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha nova" />
+            <PasswordBox x:Name="SenhaNova" Margin="0,4,0,12" PasswordChanged="SenhaNovaMudou" AutomationProperties.Name="Senha nova" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Confirme a senha nova" />
+            <PasswordBox x:Name="ConfirmacaoDaSenha" Margin="0,4,0,16" PasswordChanged="ConfirmacaoMudou" AutomationProperties.Name="Confirme a senha nova" />
+            <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Stretch" Content="_Trocar a senha e entrar" IsDefault="True" Command="{Binding TrocarSenha}" />
+          </StackPanel>
+
+          <rz:RayzerAlert Margin="0,16,0,0" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                          Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" AutomationProperties.LiveSetting="Assertive" />
+        </StackPanel>
+      </Border>
     </Grid>
 
     <!-- Abertura (brand board, seção 08): toca uma vez, some sozinha e nunca bloqueia clique. -->

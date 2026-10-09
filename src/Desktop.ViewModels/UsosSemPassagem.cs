@@ -174,7 +174,7 @@ public sealed class PainelDeUsosSemPassagem : Notificavel
         }
         catch (RpcException erro)
         {
-            Mensagem = MensagemDeFalha.Para(erro.StatusCode);
+            Mensagem = MensagemDeFalha.Para(erro);
         }
     }
 
@@ -199,7 +199,7 @@ public sealed class PainelDeUsosSemPassagem : Notificavel
         }
         catch (RpcException erro)
         {
-            Mensagem = MensagemDeFalha.Para(erro.StatusCode);
+            Mensagem = MensagemDeFalha.Para(erro);
         }
 
         Confirmando = false;

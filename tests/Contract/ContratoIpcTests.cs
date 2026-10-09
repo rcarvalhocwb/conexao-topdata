@@ -19,13 +19,46 @@ public sealed partial class ContratoIpcTests
     [InlineData("cartao")]
     [InlineData("card")]
     [InlineData("credencial =")]
-    [InlineData("senha")]
     [InlineData("password")]
     [InlineData("template")]
     [InlineData("foto")]
     [InlineData("image")]
     public void O_contrato_nao_tem_campo_para_dado_sensivel(string proibido) =>
         Assert.DoesNotContain(proibido, Proto(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Senha só existe no sentido painel → serviço, nos pedidos de login e de gestão de usuários
+    /// (ADR-0026). Nenhuma resposta tem campo de senha: o serviço nunca devolve senha nem hash. O único
+    /// campo de resposta com a palavra é o aviso <c>trocar_senha</c>, que é um sim/não.
+    /// </summary>
+    [Fact]
+    public void Senha_so_vai_do_painel_ao_servico_nos_pedidos_de_login()
+    {
+        string[] pedidosPermitidos = ["EntrarRequest", "TrocarSenhaRequest", "GravarUsuarioRequest", "RedefinirSenhaRequest"];
+        var problemas = new List<string>();
+
+        foreach (System.Text.RegularExpressions.Match mensagem in System.Text.RegularExpressions.Regex.Matches(
+            Proto(), @"message\s+(\w+)\s*\{(.*?)\n\}", System.Text.RegularExpressions.RegexOptions.Singleline))
+        {
+            var nome = mensagem.Groups[1].Value;
+            foreach (System.Text.RegularExpressions.Match campo in System.Text.RegularExpressions.Regex.Matches(
+                mensagem.Groups[2].Value, @"^\s*(?:repeated\s+)?[\w.]+\s+(\w+)\s*=\s*\d+", System.Text.RegularExpressions.RegexOptions.Multiline))
+            {
+                var nomeDoCampo = campo.Groups[1].Value;
+                if (!nomeDoCampo.Contains("senha", StringComparison.OrdinalIgnoreCase) || nomeDoCampo == "trocar_senha")
+                {
+                    continue;
+                }
+
+                if (!pedidosPermitidos.Contains(nome))
+                {
+                    problemas.Add($"{nome}.{nomeDoCampo}");
+                }
+            }
+        }
+
+        Assert.Empty(problemas);
+    }
 
     [Fact]
     public void A_credencial_so_aparece_mascarada()

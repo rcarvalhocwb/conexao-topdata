@@ -47,7 +47,10 @@ internal static class CapturaDeTela
 
         var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO") ?? TransporteLocal.EnderecoPadrao();
         var token = InstalacaoLocal.LerToken();
-        var janela = new JanelaViewModel(new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(endereco, token)));
+        var sessaoDoCanal = new SessaoDoPainel();
+        var cliente = new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(endereco, token, sessaoDoCanal));
+        var sessao = new SessaoDoUsuarioViewModel(cliente, sessaoDoCanal);
+        var janela = new JanelaViewModel(cliente, sessao: sessao);
 
         var gravados = new List<Captura>();
         var numero = 1;
@@ -65,6 +68,19 @@ internal static class CapturaDeTela
         }
 
         var falhas = new List<string>();
+        var tema = Rayzer.Design.TemaRayzer.Aplicado.ToLowerInvariant();
+
+        // Login (ADR-0026): a tela de entrar e, no primeiro acesso, a de trocar a senha; depois entra.
+        await sessao.IniciarAsync().ConfigureAwait(true);
+        if (sessao.PedindoLogin)
+        {
+            gravados.Add(await GravarAsync(Path.Combine(pasta, $"00-login-{tema}.png"), janela).ConfigureAwait(true));
+        }
+
+        await LoginDeAutomacao.EntrarAsync(
+            sessao,
+            async () => gravados.Add(await GravarAsync(Path.Combine(pasta, $"00-primeiro-acesso-{tema}.png"), janela).ConfigureAwait(true)))
+            .ConfigureAwait(true);
 
         foreach (var tela in janela.Telas)
         {

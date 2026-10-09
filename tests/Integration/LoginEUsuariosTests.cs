@@ -92,9 +92,10 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
     {
         var (painel, sessao) = Painel();
 
-        // Sem sessão: só o estado geral (bandeja) e entrar.
+        // Sem sessão: só o estado geral e as catracas (bandeja) e entrar.
         await painel.ObterEstadoAsync(new ObterEstadoRequest());
-        Assert.Equal(StatusCode.Unauthenticated, await Codigo(() => painel.ListarEquipamentosAsync(new ListarEquipamentosRequest()).ResponseAsync));
+        await painel.ListarEquipamentosAsync(new ListarEquipamentosRequest());
+        Assert.Equal(StatusCode.Unauthenticated, await Codigo(() => painel.ListarAcessosAsync(new ListarAcessosRequest()).ResponseAsync));
 
         var entrada = await painel.EntrarAsync(new EntrarRequest { Login = UsuariosDoSistema.LoginPadrao, Senha = UsuariosDoSistema.SenhaPadrao });
         Assert.True(entrada.Aceito, entrada.Mensagem);
@@ -102,7 +103,7 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
         sessao.Token = entrada.Sessao;
 
         // Com a senha padrão, nada além da troca.
-        Assert.Equal(StatusCode.PermissionDenied, await Codigo(() => painel.ListarEquipamentosAsync(new ListarEquipamentosRequest()).ResponseAsync));
+        Assert.Equal(StatusCode.PermissionDenied, await Codigo(() => painel.ListarAcessosAsync(new ListarAcessosRequest()).ResponseAsync));
         Assert.Equal(StatusCode.PermissionDenied, await Codigo(() => painel.ListarUsuariosAsync(new ListarUsuariosRequest()).ResponseAsync));
 
         var troca = await painel.TrocarSenhaAsync(new TrocarSenhaRequest
@@ -118,7 +119,7 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
         Assert.False(depois.TrocarSenha);
         Assert.Equal("rodrigo", depois.Login);
         Assert.Contains(Permissoes.UsuariosGerenciar, depois.Permissoes);
-        await painel.ListarEquipamentosAsync(new ListarEquipamentosRequest());
+        await painel.ListarAcessosAsync(new ListarAcessosRequest());
 
         // A senha padrão não entra mais.
         var (outro, _) = Painel();
@@ -143,7 +144,7 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
         sessaoDoPorteiro.Token = entradaDoPorteiro.Sessao;
         Assert.True((await porteiro.TrocarSenhaAsync(new TrocarSenhaRequest { SenhaAtual = "provisoria-123", SenhaNova = "senha-da-ana-1" })).Trocada);
 
-        await porteiro.ListarEquipamentosAsync(new ListarEquipamentosRequest());
+        await porteiro.ListarAcessosAsync(new ListarAcessosRequest());
         await porteiro.ConsultarCodigoAsync(new ConsultarCodigoRequest { Codigo = "1234" });
         Assert.Equal(StatusCode.PermissionDenied, await Codigo(() => porteiro.GravarConfiguracaoAsync(new GravarConfiguracaoRequest()).ResponseAsync));
         Assert.Equal(StatusCode.PermissionDenied, await Codigo(() => porteiro.ListarUsuariosAsync(new ListarUsuariosRequest()).ResponseAsync));
@@ -155,11 +156,11 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
             Id = criado.Id, Login = "porteiro.ana", Nome = "Ana da portaria", Ativo = false, Papeis = { "portaria" },
         });
         Assert.True(desativado.Gravado, string.Join(" ", desativado.Problemas));
-        Assert.Equal(StatusCode.Unauthenticated, await Codigo(() => porteiro.ListarEquipamentosAsync(new ListarEquipamentosRequest()).ResponseAsync));
+        Assert.Equal(StatusCode.Unauthenticated, await Codigo(() => porteiro.ListarAcessosAsync(new ListarAcessosRequest()).ResponseAsync));
 
         // Sair encerra a sessão.
         await painel.SairAsync(new SairRequest());
-        Assert.Equal(StatusCode.Unauthenticated, await Codigo(() => painel.ListarEquipamentosAsync(new ListarEquipamentosRequest()).ResponseAsync));
+        Assert.Equal(StatusCode.Unauthenticated, await Codigo(() => painel.ListarAcessosAsync(new ListarAcessosRequest()).ResponseAsync));
     }
 
     [Fact]
@@ -287,5 +288,93 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
             Assert.DoesNotContain("uma-senha-secreta", linha, StringComparison.Ordinal);
             Assert.DoesNotContain("xacess", linha, StringComparison.Ordinal);
         }
+    }
+
+    // ------------------------------------------------------------------ painel (ViewModels)
+
+    [Fact]
+    public void Os_codigos_de_permissao_do_painel_sao_os_do_catalogo()
+    {
+        var doPainel = typeof(Desktop.ViewModels.CodigosDePermissao)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Select(f => (string)f.GetValue(null)!)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(Permissoes.Todas.Select(p => p.Codigo).Order(StringComparer.Ordinal), doPainel);
+    }
+
+    [Fact]
+    public async Task Painel_pede_login_troca_a_senha_no_primeiro_acesso_e_o_menu_segue_o_papel()
+    {
+        var (cliente, canal) = Painel();
+        var sessao = new Desktop.ViewModels.SessaoDoUsuarioViewModel(cliente, canal);
+        var janela = new Desktop.ViewModels.JanelaViewModel(cliente, sessao: sessao);
+
+        await sessao.IniciarAsync();
+        Assert.True(sessao.PedindoLogin);
+        Assert.Empty(janela.TelasDoMenu);
+
+        sessao.Login = "admin";
+        sessao.Senha = "errada";
+        await sessao.Entrar.ExecutarAsync();
+        Assert.True(sessao.PedindoLogin);
+        Assert.Equal("Usuário ou senha não conferem.", sessao.Mensagem);
+        Assert.Equal(string.Empty, sessao.Senha);
+
+        sessao.Login = "admin";
+        sessao.Senha = "xacess";
+        await sessao.Entrar.ExecutarAsync();
+        Assert.True(sessao.PedindoTroca);
+        Assert.True(sessao.PrimeiroAcessoDoAdministrador);
+        Assert.Empty(janela.TelasDoMenu);
+
+        sessao.Senha = "xacess";
+        sessao.SenhaNova = "senha-forte-1";
+        sessao.Confirmacao = "senha-diferente";
+        await sessao.TrocarSenha.ExecutarAsync();
+        Assert.Contains("confirmação", sessao.Mensagem, StringComparison.Ordinal);
+
+        sessao.Confirmacao = "senha-forte-1";
+        sessao.NovoLogin = "dono";
+        sessao.NovoNome = "Dono do sistema";
+        await sessao.TrocarSenha.ExecutarAsync();
+        Assert.True(sessao.Logado, sessao.Mensagem);
+        Assert.Equal("Dono do sistema", sessao.Nome);
+        Assert.Contains(janela.TelasDoMenu, t => t is Desktop.ViewModels.UsuariosViewModel);
+
+        // O administrador cria um porteiro pela tela de usuários.
+        var usuarios = janela.Telas.OfType<Desktop.ViewModels.UsuariosViewModel>().Single();
+        await usuarios.AtualizarAsync();
+        await usuarios.NovoUsuario.ExecutarAsync();
+        usuarios.Nome = "Ana da portaria";
+        usuarios.Login = "ana";
+        usuarios.SenhaInicial = "provisoria-1";
+        usuarios.PapeisDoUsuario.Single(p => p.Codigo == "portaria").Marcado = true;
+        await usuarios.GravarUsuario.ExecutarAsync();
+        Assert.Contains("criado", usuarios.Mensagem, StringComparison.Ordinal);
+        Assert.Contains(usuarios.Usuarios, u => u.Login == "ana" && u.Situacao.StartsWith("Troca", StringComparison.Ordinal));
+
+        // O porteiro entra, troca a senha e o menu dele não tem Usuários, Contas nem Diagnóstico.
+        var (clienteDaAna, canalDaAna) = Painel();
+        var ana = new Desktop.ViewModels.SessaoDoUsuarioViewModel(clienteDaAna, canalDaAna);
+        var janelaDaAna = new Desktop.ViewModels.JanelaViewModel(clienteDaAna, sessao: ana);
+        ana.Login = "ana";
+        ana.Senha = "provisoria-1";
+        await ana.Entrar.ExecutarAsync();
+        Assert.True(ana.PedindoTroca);
+        Assert.False(ana.PrimeiroAcessoDoAdministrador);
+        ana.Senha = "provisoria-1";
+        ana.SenhaNova = ana.Confirmacao = "senha-da-ana-9";
+        await ana.TrocarSenha.ExecutarAsync();
+        Assert.True(ana.Logado, ana.Mensagem);
+
+        Assert.DoesNotContain(janelaDaAna.TelasDoMenu, t => t is Desktop.ViewModels.UsuariosViewModel
+            or Desktop.ViewModels.ContasViewModel or Desktop.ViewModels.DiagnosticoViewModel);
+        Assert.Contains(janelaDaAna.TelasDoMenu, t => t is Desktop.ViewModels.ConsultaViewModel);
+
+        // Sair volta para o login, sem tela nenhuma.
+        await ana.Sair.ExecutarAsync();
+        Assert.True(ana.PedindoLogin);
+        Assert.Empty(janelaDaAna.TelasDoMenu);
     }
 }

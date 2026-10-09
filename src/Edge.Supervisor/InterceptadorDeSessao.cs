@@ -40,7 +40,7 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["ObterSessao"] = null,
 
         // Operação.
-        ["ListarEquipamentos"] = Permissoes.OperacaoVer,
+        ["ListarEquipamentos"] = null,
         ["AcompanharEventos"] = Permissoes.OperacaoVer,
         ["ListarAcessos"] = Permissoes.OperacaoVer,
         ["ObterConfiguracao"] = Permissoes.OperacaoVer,
@@ -81,10 +81,11 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
     };
 
     /// <summary>
-    /// RPCs que atendem sem sessão: entrar, e o estado geral que o ícone da bandeja mostra antes de
-    /// alguém entrar (contagens e situação, sem dado pessoal nem código).
+    /// RPCs que atendem sem sessão: entrar, e o estado geral e a situação das catracas que o ícone da
+    /// bandeja mostra antes de alguém entrar (contagens, nomes e situação das catracas; nenhum dado
+    /// pessoal nem código de acesso).
     /// </summary>
-    public static readonly IReadOnlySet<string> Anonimas = new HashSet<string>(StringComparer.Ordinal) { "Entrar", "ObterEstado" };
+    public static readonly IReadOnlySet<string> Anonimas = new HashSet<string>(StringComparer.Ordinal) { "Entrar", "ObterEstado", "ListarEquipamentos" };
 
     /// <summary>O que passa com a senha padrão ou redefinida.</summary>
     public static readonly IReadOnlySet<string> DuranteATroca = new HashSet<string>(StringComparer.Ordinal) { "TrocarSenha", "ObterSessao", "Sair" };

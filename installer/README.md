@@ -244,9 +244,30 @@ mesmo sem ninguém entrar, e continua com o painel fechado.
 
 ### Usar — Painel do evento
 
-Abre pelo menu Iniciar, sem senha: o token é lido de `%ProgramData%`. Recém-instalado e
+Abre pelo menu Iniciar e pede usuário e senha (ver abaixo); o token da instalação é lido de `%ProgramData%`. Recém-instalado e
 sem configuração, o cabeçalho diz "Instalação ainda não configurada — abra o Assistente de
 configuração".
+
+
+### Login: usuário e senha (ADR-0026)
+
+O painel pede usuário e senha. Na instalação nova, existe um único usuário:
+
+| Usuário | Senha |
+|---|---|
+| `admin` | `xacess` |
+
+- **Primeiro acesso:** o painel pede, na hora, o **nome e o login de quem vai administrar** e uma **senha nova** (mínimo de 8 caracteres). Até isso, nada mais funciona, e a senha padrão deixa de valer depois da troca.
+- **Usuários e papéis:** o administrador cria os demais usuários em **Usuários** e escolhe o papel de cada um. Os papéis prontos são:
+  - Administrador;
+  - Supervisor;
+  - Portaria;
+  - Somente leitura.
+
+  O administrador também pode criar papéis e marcar o que cada um pode fazer. O serviço confere a permissão em cada ação, não só a tela.
+- **Senha esquecida:** o administrador define uma senha provisória em **Usuários**, e a pessoa troca no próximo acesso.
+- **Bloqueio:** 5 senhas erradas seguidas bloqueiam o usuário por 5 minutos.
+- **Antes de entrar:** o ícone perto do relógio continua mostrando a situação das catracas. As telas só abrem depois do login.
 
 ## Imagens das telas
 

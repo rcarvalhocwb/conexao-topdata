@@ -55,7 +55,7 @@ public abstract class TelaBase : Notificavel, ITela
         }
         catch (RpcException erro)
         {
-            Mensagem = MensagemDeFalha.Para(erro.StatusCode);
+            Mensagem = MensagemDeFalha.Para(erro);
             return false;
         }
         finally
@@ -212,11 +212,18 @@ public sealed class PainelAoVivoViewModel : TelaBase
 
             // Lista vazia com acesso já contado: completa pelo que está gravado, sem esperar o
             // fluxo ao vivo conectar (ou sem ele, como na captura das telas).
+            // Antes do login (bandeja), a lista não vem: o estado e as catracas bastam.
             if (UltimosAcessos.Count == 0 && estado.Liberados + estado.Negados > 0)
             {
-                var recentes = await Cliente.ListarAcessosAsync(
-                    new ListarAcessosRequest { Limite = AcessosNaTela }, cancellationToken: cancelamento);
-                Completar([.. recentes.Acessos.Select(LinhaDeAcesso.De)]);
+                try
+                {
+                    var recentes = await Cliente.ListarAcessosAsync(
+                        new ListarAcessosRequest { Limite = AcessosNaTela }, cancellationToken: cancelamento);
+                    Completar([.. recentes.Acessos.Select(LinhaDeAcesso.De)]);
+                }
+                catch (RpcException erro) when (erro.StatusCode is StatusCode.Unauthenticated or StatusCode.PermissionDenied)
+                {
+                }
             }
         }).ConfigureAwait(true);
 
@@ -1301,10 +1308,34 @@ public sealed class JanelaViewModel : Notificavel
 {
     private ITela _telaAtual;
 
-    public JanelaViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
+    /// <summary>A tela que cada permissão abre no menu (ADR-0026). Tela fora do mapa: basta estar logado.</summary>
+    private static readonly Dictionary<System.Type, string> PermissaoDaTela = new()
+    {
+        [typeof(PainelAoVivoViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(CatracasViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(AcessosViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(ConsultaViewModel)] = CodigosDePermissao.CodigosConsultar,
+        [typeof(SincronizacaoViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(ContasViewModel)] = CodigosDePermissao.RelatoriosVer,
+        [typeof(GerenciarCatracaViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(GemeoDigitalViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(ConfiguracoesViewModel)] = CodigosDePermissao.OperacaoVer,
+        [typeof(DiagnosticoViewModel)] = CodigosDePermissao.DiagnosticoVer,
+        [typeof(SimuladorViewModel)] = CodigosDePermissao.SimuladorUsar,
+        [typeof(UsuariosViewModel)] = CodigosDePermissao.UsuariosGerenciar,
+    };
+
+    /// <param name="cliente">O cliente do serviço.</param>
+    /// <param name="relogio">Relógio.</param>
+    /// <param name="sessao">
+    /// A sessão do login (ADR-0026). Sem ela (testes e ferramentas), o painel funciona como antes do
+    /// login: todas as telas, sem pedir usuário.
+    /// </param>
+    public JanelaViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null, SessaoDoUsuarioViewModel? sessao = null)
     {
         ArgumentNullException.ThrowIfNull(cliente);
 
+        Sessao = sessao;
         Painel = new PainelAoVivoViewModel(cliente, relogio);
         Telas =
         [
@@ -1319,8 +1350,21 @@ public sealed class JanelaViewModel : Notificavel
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
             new SimuladorViewModel(cliente, relogio),
+            new UsuariosViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
+
+        if (Sessao is not null)
+        {
+            Sessao.SessaoMudou += (_, _) =>
+            {
+                Avisar(nameof(TelasDoMenu));
+                if (!TelasDoMenu.Contains(TelaAtual) && TelasDoMenu.Count > 0)
+                {
+                    TelaAtual = TelasDoMenu[0];
+                }
+            };
+        }
 
         // U07: o Simulador só aparece com o modo simulação ligado no serviço. Numa instalação real,
         // a tela que passa QR de teste não fica ao alcance do operador do evento.
@@ -1464,9 +1508,20 @@ public sealed class JanelaViewModel : Notificavel
 
     public IReadOnlyList<ITela> Telas { get; }
 
-    /// <summary>As telas do menu: o Simulador só entra com o modo simulação ligado (U07).</summary>
+    /// <summary>O login do painel; nulo sem login (testes e ferramentas).</summary>
+    public SessaoDoUsuarioViewModel? Sessao { get; }
+
+    /// <summary>
+    /// As telas do menu: o Simulador só entra com o modo simulação ligado (U07), e cada tela só aparece
+    /// para quem tem a permissão dela (ADR-0026).
+    /// </summary>
     public IReadOnlyList<ITela> TelasDoMenu =>
-        [.. Telas.Where(t => t is not SimuladorViewModel || Painel.Estado.Simulacao)];
+        [.. Telas.Where(t => (t is not SimuladorViewModel || Painel.Estado.Simulacao) && Permitida(t))];
+
+    private bool Permitida(ITela tela) =>
+        Sessao is null
+            ? tela is not UsuariosViewModel
+            : Sessao.Logado && (!PermissaoDaTela.TryGetValue(tela.GetType(), out var permissao) || Sessao.Pode(permissao));
 
     public ITela TelaAtual
     {
@@ -1486,7 +1541,18 @@ public sealed class JanelaViewModel : Notificavel
     /// </summary>
     public async Task AtualizarAsync(CancellationToken cancelamento = default)
     {
+        // Antes do login, só o estado e as catracas (bandeja); as telas esperam o usuário entrar.
+        if (Sessao is not null)
+        {
+            await Sessao.ConferirAsync(cancelamento).ConfigureAwait(true);
+        }
+
         await Painel.AtualizarAsync(cancelamento).ConfigureAwait(true);
+
+        if (Sessao is { Logado: false })
+        {
+            return;
+        }
 
         if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GerenciarCatracaViewModel
             or GemeoDigitalViewModel)

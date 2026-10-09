@@ -29,6 +29,21 @@ public static class MensagemDeFalha
         "Sem resposta do serviço local. Sem ele, as catracas não recebem comandos deste computador. " +
         "O Windows tenta reiniciá-lo sozinho; se não voltar em um minuto, chame o suporte.";
 
+    /// <summary>
+    /// A frase para uma falha de chamada ao serviço, com o texto do serviço quando ele recusou por
+    /// permissão (login, ADR-0026): esse texto diz o que faltou ("Seu papel não permite: …").
+    /// </summary>
+    public static string Para(RpcException erro)
+    {
+        ArgumentNullException.ThrowIfNull(erro);
+        return erro.StatusCode switch
+        {
+            StatusCode.PermissionDenied when !string.IsNullOrWhiteSpace(erro.Status.Detail) => erro.Status.Detail,
+            StatusCode.Unauthenticated when !TokenSemPermissao => "Sessão encerrada. Entre de novo com usuário e senha.",
+            _ => Para(erro.StatusCode),
+        };
+    }
+
     /// <summary>A frase para uma falha de chamada ao serviço.</summary>
     public static string Para(StatusCode codigo) =>
         TokenSemPermissao

@@ -141,6 +141,8 @@
             <Button x:Name="BotaoGravar" Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left"
                     Content="_Gravar e (re)iniciar o serviço" Click="Gravar" />
             <TextBlock x:Name="TextoResultado" Style="{StaticResource Rayzer.Type.Body}" Margin="0,16,0,0" AutomationProperties.LiveSetting="Assertive" />
+            <rz:RayzerAlert Margin="0,16,0,0" Tom="Info" Titulo="Primeiro acesso ao painel"
+                            Texto="Entre com o usuário admin e a senha xacess. O painel pede, na hora, o nome e o login de quem vai administrar e uma senha nova; a senha padrão deixa de valer. Depois, o administrador cria os demais usuários em Usuários." />
           </StackPanel>
         </ScrollViewer>
       </TabItem>

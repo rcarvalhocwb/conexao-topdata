@@ -176,6 +176,11 @@ jobs:
           } | ConvertTo-Json -Depth 5
           Set-Content -Path dados\workers.json -Value $config -Encoding utf8
           $env:EDGE_CONFIG = "$PWD\dados\workers.json"
+          # Login (ADR-0026): a automação entra com o administrador padrão e, no primeiro acesso,
+          # troca para uma senha aleatória desta execução (nunca gravada em lugar nenhum).
+          $env:EDGE_AUTOMACAO_LOGIN = 'admin'
+          $env:EDGE_AUTOMACAO_SENHA = 'xacess'
+          $env:EDGE_AUTOMACAO_SENHA_NOVA = 'ci-' + [guid]::NewGuid().ToString('N')
           $servico = Start-Process -FilePath publicado\Servico\Edge.Supervisor.exe -PassThru `
             -RedirectStandardOutput dados\servico.log -RedirectStandardError dados\servico-erro.log
           Start-Sleep -Seconds 10

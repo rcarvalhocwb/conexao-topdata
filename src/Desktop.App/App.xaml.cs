@@ -166,6 +166,13 @@ public partial class App : Application
             janela.Show();
             Passo("janela aberta");
 
+            // Login (ADR-0026): sem usuário, as telas só recebem "entre com usuário e senha".
+            if (janela.Janela.Sessao is { } sessao)
+            {
+                await LoginDeAutomacao.EntrarAsync(sessao).ConfigureAwait(true);
+                Passo($"entrou como {sessao.Nome}");
+            }
+
             // Nos dois temas: recurso de tema com nome errado ou template quebrado só aparece
             // quando a tela é desenhada com aquele dicionário.
             foreach (var tema in new[] { Rayzer.Design.Tema.Claro, Rayzer.Design.Tema.Escuro })

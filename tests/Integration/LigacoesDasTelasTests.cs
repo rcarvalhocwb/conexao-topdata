@@ -52,7 +52,8 @@ public sealed partial class LigacoesDasTelasTests
         ],
         ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker), typeof(ParDeTexto)],
         ["Telas/Simulador.xaml"] = [typeof(SimuladorViewModel), typeof(LinhaDeAcesso), typeof(ParDeTexto)],
-        ["JanelaPrincipal.xaml"] = [typeof(JanelaViewModel), typeof(PainelAoVivoViewModel), typeof(EstadoDoPainel), typeof(ITela)],
+        ["Telas/Usuarios.xaml"] = [typeof(UsuariosViewModel), typeof(LinhaDeUsuario), typeof(LinhaDePapel), typeof(OpcaoMarcavel)],
+        ["JanelaPrincipal.xaml"] = [typeof(JanelaViewModel), typeof(PainelAoVivoViewModel), typeof(EstadoDoPainel), typeof(ITela), typeof(SessaoDoUsuarioViewModel)],
     };
 
     [GeneratedRegex(@"\{Binding(?:\s+Path=)?\s*([A-Za-z_][A-Za-z0-9_.]*)?")]

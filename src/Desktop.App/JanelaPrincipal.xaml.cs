@@ -95,8 +95,25 @@ public partial class JanelaPrincipal : Window
         _relogio.Tick += async (_, _) => await AtualizarAsync().ConfigureAwait(true);
         Loaded += (_, _) => Menu.Focus();
 
+        if (Janela.Sessao is { } sessao)
+        {
+            sessao.SessaoMudou += (_, _) => LimparSenhas();
+            sessao.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SessaoDoUsuarioViewModel.PedindoLogin) && sessao.PedindoLogin)
+                {
+                    CampoLogin.Focus();
+                }
+            };
+        }
+
         Dispatcher.BeginInvoke(async () =>
         {
+            if (Janela.Sessao is { } sessaoInicial)
+            {
+                await sessaoInicial.IniciarAsync().ConfigureAwait(true);
+            }
+
             await AtualizarAsync().ConfigureAwait(true);
             _relogio.Start();
 
@@ -234,6 +251,28 @@ public partial class JanelaPrincipal : Window
         // as mensagens de falha dizem que falta o grupo dos operadores (MensagemDeFalha).
         Desktop.ViewModels.MensagemDeFalha.TokenSemPermissao = InstalacaoLocal.TokenIlegivel();
         var token = InstalacaoLocal.LerToken();
-        return new JanelaViewModel(new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(endereco, token)));
+
+        // A sessão do login (ADR-0026) vai em toda chamada, depois que o usuário entra.
+        var sessao = new SessaoDoPainel();
+        var cliente = new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(endereco, token, sessao));
+        return new JanelaViewModel(cliente, sessao: new SessaoDoUsuarioViewModel(cliente, sessao));
+    }
+
+    // A caixa de senha não liga dados (de propósito, no WPF): o texto vai à ViewModel por aqui.
+    private void SenhaDoLoginMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.Senha = SenhaDoLogin.Password;
+
+    private void SenhaAtualMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.Senha = SenhaAtual.Password;
+
+    private void SenhaNovaMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.SenhaNova = SenhaNova.Password;
+
+    private void ConfirmacaoMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.Confirmacao = ConfirmacaoDaSenha.Password;
+
+    /// <summary>Depois de entrar, trocar ou sair, as caixas de senha ficam vazias.</summary>
+    private void LimparSenhas()
+    {
+        SenhaDoLogin.Clear();
+        SenhaAtual.Clear();
+        SenhaNova.Clear();
+        ConfirmacaoDaSenha.Clear();
     }
 }
