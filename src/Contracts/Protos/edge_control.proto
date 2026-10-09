@@ -16,6 +16,18 @@ import "google/protobuf/timestamp.proto";
 // Versionamento: números de campo nunca são reaproveitados. Campo removido vira
 // 'reserved', e um teste de contrato confere isso.
 service EdgeControl {
+  // Login e usuários do sistema (ADR-0026). Entrar devolve a sessão que o painel manda em toda
+  // chamada (cabeçalho x-sessao). Com a senha padrão, só TrocarSenha, ObterSessao e Sair funcionam.
+  rpc Entrar(EntrarRequest) returns (EntrarResponse);
+  rpc TrocarSenha(TrocarSenhaRequest) returns (TrocarSenhaResponse);
+  rpc Sair(SairRequest) returns (SairResponse);
+  rpc ObterSessao(ObterSessaoRequest) returns (UsuarioDaSessao);
+  rpc ListarUsuarios(ListarUsuariosRequest) returns (ListarUsuariosResponse);
+  rpc GravarUsuario(GravarUsuarioRequest) returns (GravarUsuarioResponse);
+  rpc RedefinirSenha(RedefinirSenhaRequest) returns (RedefinirSenhaResponse);
+  rpc ListarPapeis(ListarPapeisRequest) returns (ListarPapeisResponse);
+  rpc GravarPapel(GravarPapelRequest) returns (GravarPapelResponse);
+
   // Estado geral do serviço, para o painel.
   rpc ObterEstado(ObterEstadoRequest) returns (ObterEstadoResponse);
 
@@ -1051,4 +1063,116 @@ message MarcarAlertaComoCienteRequest {
 message MarcarAlertaComoCienteResponse {
   bool marcado = 1;
   repeated string problemas = 2;              // ex.: "alerta não existe" ou "já estava marcado"
+}
+
+// ---------------------------------------------------------------- login e usuários (ADR-0026)
+
+message EntrarRequest {
+  string login = 1;
+  string senha = 2;
+}
+
+message EntrarResponse {
+  bool aceito = 1;
+  string sessao = 2;             // vai no cabeçalho x-sessao das chamadas seguintes
+  string mensagem = 3;           // quando recusado: o que dizer (não diz se o login existe)
+  UsuarioDaSessao usuario = 4;
+}
+
+message UsuarioDaSessao {
+  string id = 1;
+  string login = 2;
+  string nome = 3;
+  bool trocar_senha = 4;         // primeiro acesso ou senha redefinida: só a troca funciona
+  repeated string permissoes = 5;
+  bool login_ligado = 6;         // falso só em ferramentas e testes sem base de usuários
+}
+
+message TrocarSenhaRequest {
+  string senha_atual = 1;
+  string senha_nova = 2;
+  string novo_login = 3;         // opcional; no primeiro acesso, o login do administrador real
+  string novo_nome = 4;          // opcional
+}
+
+message TrocarSenhaResponse {
+  bool trocada = 1;
+  repeated string problemas = 2;
+}
+
+message SairRequest {}
+message SairResponse {}
+message ObterSessaoRequest {}
+
+message Usuario {
+  string id = 1;
+  string login = 2;
+  string nome = 3;
+  bool ativo = 4;
+  bool trocar_senha = 5;
+  repeated string papeis = 6;
+  google.protobuf.Timestamp ultimo_acesso = 7;
+}
+
+message ListarUsuariosRequest {}
+message ListarUsuariosResponse {
+  repeated Usuario usuarios = 1;
+}
+
+message GravarUsuarioRequest {
+  string id = 1;                 // vazio cria
+  string login = 2;
+  string nome = 3;
+  bool ativo = 4;
+  repeated string papeis = 5;
+  string senha_inicial = 6;      // só na criação; o usuário troca no primeiro acesso
+}
+
+message GravarUsuarioResponse {
+  bool gravado = 1;
+  string id = 2;
+  repeated string problemas = 3;
+}
+
+message RedefinirSenhaRequest {
+  string usuario_id = 1;
+  string senha_provisoria = 2;
+}
+
+message RedefinirSenhaResponse {
+  bool redefinida = 1;
+  repeated string problemas = 2;
+}
+
+message PermissaoDoCatalogo {
+  string codigo = 1;
+  string grupo = 2;
+  string nome = 3;
+}
+
+message Papel {
+  string id = 1;
+  string nome = 2;
+  string descricao = 3;
+  bool do_sistema = 4;
+  repeated string permissoes = 5;
+}
+
+message ListarPapeisRequest {}
+message ListarPapeisResponse {
+  repeated Papel papeis = 1;
+  repeated PermissaoDoCatalogo catalogo = 2;
+}
+
+message GravarPapelRequest {
+  string id = 1;                 // vazio cria
+  string nome = 2;
+  string descricao = 3;
+  repeated string permissoes = 4;
+}
+
+message GravarPapelResponse {
+  bool gravado = 1;
+  string id = 2;
+  repeated string problemas = 3;
 }

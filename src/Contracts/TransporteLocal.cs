@@ -31,6 +31,9 @@ public static class TransporteLocal
     /// <summary>Cabeçalho que carrega o token de sessão.</summary>
     public const string CabecalhoDoToken = "x-edge-token";
 
+    /// <summary>Cabeçalho que carrega a sessão do usuário logado (ADR-0026).</summary>
+    public const string CabecalhoDaSessao = "x-sessao";
+
     /// <summary>Espera máxima para estabelecer a conexão local.</summary>
     /// <remarks>
     /// <para>
@@ -125,8 +128,14 @@ public static class TransporteLocal
     /// O invocador que o painel usa: o canal local com o prazo padrão por chamada
     /// (<see cref="PrazoDasChamadas"/>, achado E6-2 do docs/41).
     /// </summary>
-    public static Grpc.Core.CallInvoker CriarInvocadorDoPainel(string endereco, string? token = null) =>
-        Grpc.Core.Interceptors.CallInvokerExtensions.Intercept(CriarCanal(endereco, token).CreateCallInvoker(), new PrazoDasChamadas());
+    /// <param name="endereco">Endereço do serviço.</param>
+    /// <param name="token">Token da instalação.</param>
+    /// <param name="sessao">A sessão do usuário logado (ADR-0026); nula onde não há login.</param>
+    public static Grpc.Core.CallInvoker CriarInvocadorDoPainel(string endereco, string? token = null, SessaoDoPainel? sessao = null)
+    {
+        var invocador = Grpc.Core.Interceptors.CallInvokerExtensions.Intercept(CriarCanal(endereco, token).CreateCallInvoker(), new PrazoDasChamadas());
+        return sessao is null ? invocador : Grpc.Core.Interceptors.CallInvokerExtensions.Intercept(invocador, sessao);
+    }
 
     /// <summary>
     /// Conecta com espera limitada.

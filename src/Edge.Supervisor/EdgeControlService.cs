@@ -89,6 +89,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// </param>
     /// <param name="filaDeSaida">A outbox, para reenviar as cartas mortas a pedido do operador (E5-2).</param>
     /// <param name="estornos">Usos sem passagem e o estorno pelo operador (E1-05).</param>
+    /// <param name="usuarios">Usuários do sistema (ADR-0026). Sem eles, o login fica desligado (ferramentas e testes).</param>
+    /// <param name="sessoes">Sessões abertas pelo login.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -109,7 +111,9 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.MapasDeGiro? mapasDeGiro = null,
         AnalisadorDaOperacao? analisador = null,
         Access.Infrastructure.SQLite.FilaDeSaidaSqlite? filaDeSaida = null,
-        Access.Infrastructure.SQLite.EstornosDeUso? estornos = null)
+        Access.Infrastructure.SQLite.EstornosDeUso? estornos = null,
+        Access.Infrastructure.SQLite.UsuariosDoSistema? usuarios = null,
+        SessoesDoPainel? sessoes = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -132,6 +136,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _analisador = analisador;
         _filaDeSaida = filaDeSaida;
         _estornos = estornos;
+        _usuarios = usuarios;
+        _sessoes = sessoes ?? new SessoesDoPainel();
     }
 
     private readonly Access.Infrastructure.SQLite.FilaDeSaidaSqlite? _filaDeSaida;

@@ -296,6 +296,15 @@ if (OperatingSystem.IsWindows())
     }
 }
 
+// Login do painel (ADR-0026): na primeira partida, cria o administrador padrão com troca obrigatória.
+var usuariosDoSistema = new UsuariosDoSistema(fabrica);
+if (usuariosDoSistema.GarantirAdministradorPadrao(DateTimeOffset.UtcNow))
+{
+    Registrar($"login: administrador padrão criado ('{UsuariosDoSistema.LoginPadrao}'); a senha deve ser trocada no primeiro acesso.");
+}
+
+var sessoesDoPainel = new SessoesDoPainel();
+
 SincronizacaoComANuvem? sincronizacao = null;
 if (configuracao.Nuvem is { } configuracaoDaNuvem)
 {
@@ -382,8 +391,16 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     mapasDeGiro: new MapasDeGiro(fabrica),
     analisador: analisador,
     filaDeSaida: new FilaDeSaidaSqlite(fabrica),
-    estornos: new EstornosDeUso(fabrica)));
-construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
+    estornos: new EstornosDeUso(fabrica),
+    usuarios: usuariosDoSistema,
+    sessoes: sessoesDoPainel));
+
+// Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
+construtor.Services.AddGrpc(o =>
+{
+    o.Interceptors.Add<InterceptadorDeToken>(token);
+    o.Interceptors.Add<InterceptadorDeSessao>(usuariosDoSistema, sessoesDoPainel, (Func<DateTimeOffset>)(() => DateTimeOffset.UtcNow));
+});
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
