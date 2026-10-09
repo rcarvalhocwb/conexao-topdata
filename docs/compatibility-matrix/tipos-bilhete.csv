@@ -1,0 +1,18 @@
+tipo;significado;categoria;selo;fonte
+0-9;Funcoes registradas pelo cartao;acesso;FONTE_PRIMARIA;Manual 5.2.2
+10;Entrada pelo cartao;acesso;FONTE_PRIMARIA;Manual 5.2.2
+11;Saida pelo cartao;acesso;FONTE_PRIMARIA;Manual 5.2.2
+12;Tentativa de entrada negada pelo cartao;negacao;FONTE_PRIMARIA;Manual 5.2.2
+13;Tentativa de saida negada pelo cartao;negacao;FONTE_PRIMARIA;Manual 5.2.2
+100-109;Funcoes registradas pelo teclado;acesso;FONTE_PRIMARIA;Manual 5.2.2
+110;Entrada pelo teclado;acesso;FONTE_PRIMARIA;Manual 5.2.2
+111;Saida pelo teclado;acesso;FONTE_PRIMARIA;Manual 5.2.2
+112;Tentativa de entrada negada pelo teclado;negacao;FONTE_PRIMARIA;Manual 5.2.2
+113;Tentativa de saida negada pelo teclado;negacao;FONTE_PRIMARIA;Manual 5.2.2
+003;Mecanismo com cartoes;sinalizacao expedidora;FONTE_PRIMARIA_AMBIGUA - colide com faixa 0-9;Manual 5.2.2
+004;Mecanismo com poucos cartoes;sinalizacao expedidora;FONTE_PRIMARIA_AMBIGUA - colide com faixa 0-9;Manual 5.2.2
+005;Mecanismo sem cartoes;sinalizacao expedidora;FONTE_PRIMARIA_AMBIGUA - colide com faixa 0-9;Manual 5.2.2
+010;Entrada depois que a catraca foi liberada (cartao);acesso expedidora;FONTE_PRIMARIA_AMBIGUA - colide com tipo 10;Manual 5.2.2
+012;Timeout - usuario pegou cartao mas nao entrou;excecao expedidora;FONTE_PRIMARIA_AMBIGUA - colide com tipo 12;Manual 5.2.2
+013;Cartao retirado nao validado - catraca nao liberada;excecao expedidora;FONTE_PRIMARIA_AMBIGUA - colide com tipo 13;Manual 5.2.2
+128;Bilhete repetido recebido do Inner - ja retornado em coleta anterior;deduplicacao;FONTE_PRIMARIA;Manual 5.2.2

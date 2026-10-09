@@ -1,0 +1,5 @@
+﻿codigo;tipo;titular;situacao;validade_inicio;validade_fim;usos_maximos;observacao
+999900000001;SOCIAL;;ATIVO;;;;
+999900000002;INTEIRA;;ATIVO;;;;cartão da bilheteria, reutilizável
+999900000003;MEIA;;ATIVO;05/12/2026 18:00;05/12/2026 23:59;1;
+00999900000004;SOLIDARIO;;BLOQUEADO;;;;zeros à esquerda fazem parte do número

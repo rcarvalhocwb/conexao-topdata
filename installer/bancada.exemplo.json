@@ -1,0 +1,29 @@
+// Arquivo de bancada — ingressos e cartões DE TESTE para o ensaio com a TopFit 4.
+// Ver docs/21-roteiro-da-bancada.md. Comentários são aceitos.
+//
+// NUNCA coloque aqui ingresso ou cartão de cliente real: o modo bancada mostra o código
+// inteiro na tela.
+{
+  "provedores": [
+    { "id": "zet", "nome": "Zet (teste)" },
+
+    // somenteNaUrna começa DESLIGADO. O primeiro objetivo do ensaio é descobrir de qual
+    // leitor (origem) cada tecnologia chega. Só depois de confirmar que o Mifare chega
+    // pela urna (origem Leitor2), ligue para true e repita.
+    { "id": "bilheteria-local", "nome": "Bilheteria local (teste)",
+      "reutilizavel": true, "intervaloDeReusoSegundos": 240, "somenteNaUrna": false }
+  ],
+
+  "ingressos": [
+    { "provedor": "zet", "referencia": "BANCADA-01", "qr": "1000000001", "categoria": "inteira" },
+    { "provedor": "zet", "referencia": "BANCADA-02", "qr": "1000000002", "categoria": "meia" },
+    { "provedor": "zet", "referencia": "BANCADA-03", "qr": "1234567890123456", "categoria": "inteira" },
+    { "provedor": "zet", "referencia": "BANCADA-04", "qr": "ABC1234567", "categoria": "solidaria" },
+    { "provedor": "zet", "referencia": "BANCADA-05", "qr": "2000000005", "categoria": "inteira", "usos": 2 }
+  ],
+
+  // O código de cada cartão é o que A CATRACA entrega — anotado no passo 3 do roteiro.
+  "cartoes": [
+    { "provedor": "bilheteria-local", "codigo": "0000000000", "categoria": "inteira" }
+  ]
+}

@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Instalador MSI do Rayzer XAcess (Rayzer Serviços e Tecnologia).
+
+  Instala o serviço, o painel, o programa das catracas e o assistente de configuração.
+  O serviço inicia com o Windows. Recém-instalado, ele sobe sem catracas e o painel pede
+  o assistente; o assistente grava a configuração e reinicia o serviço.
+
+  O serviço NÃO é iniciado durante a instalação: se faltar um runtime do .NET, a partida
+  falharia e o Windows Installer desfaria a instalação inteira. O assistente confere o
+  ambiente e inicia o serviço. Ver installer/README.md.
+-->
+<!--
+  Canal do instalador (achado E10-2 do docs/41). O de teste, publicado por este repositório a cada
+  commit, tem nome e UpgradeCode próprios: assim ele nunca é tratado como atualização do instalador
+  de produção (montado no repositório privado, com a EasyInner.dll), nem o contrário. Antes os dois
+  usavam o mesmo UpgradeCode e versões de contadores independentes: o de teste podia remover a
+  EasyInner.dll de uma máquina de evento, e o de produção era recusado como "versão mais antiga".
+  O CI público passa -d CanalDeTeste=1; o workflow privado não passa nada.
+-->
+<?ifdef CanalDeTeste ?>
+<?define NomeDoProduto = "Rayzer XAcess (teste)" ?>
+<?define CodigoDeAtualizacao = "ef261c80-49ab-456d-a3a3-b8c91a9b2501" ?>
+<?else?>
+<?define NomeDoProduto = "Rayzer XAcess" ?>
+<?define CodigoDeAtualizacao = "5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5" ?>
+<?endif?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
+
+  <Package Name="$(var.NomeDoProduto)"
+           Manufacturer="Rayzer Serviços e Tecnologia"
+           Version="$(var.Versao)"
+           UpgradeCode="$(var.CodigoDeAtualizacao)"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="Gerenciamento de catracas, controladores e coletores da linha Inner" />
+
+    <!-- Ícone em "Aplicativos instalados" do Windows. -->
+    <Icon Id="IconeRayzer" SourceFile="$(sys.SOURCEFILEDIR)..\..\src\Rayzer.Design\Marca\rayzer-xacess.ico" />
+    <Property Id="ARPPRODUCTICON" Value="IconeRayzer" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/rcarvalhocwb/conexao-topdata" />
+
+    <MajorUpgrade DowngradeErrorMessage="Já existe uma versão mais nova do Rayzer XAcess instalada." />
+
+    <!--
+      .NET Framework 3.5: a EasyInner.dll falha com retorno 8 sem ele. É recurso do Windows,
+      não arquivo, então a instalação o habilita pelo DISM do próprio Windows — só se ainda
+      não estiver habilitado. Pode precisar de internet (Windows Update) e levar alguns
+      minutos. Falhar NÃO desfaz a instalação (Return="ignore"): o assistente mostra o item
+      em vermelho e tem o botão para tentar de novo.
+
+      Sysnative, e não System32: a ação (Wix4UtilCA_X86) roda num processo de 32 bits, e um
+      processo de 32 bits que abre System32 cai em SysWOW64 — e o DISM de 32 bits se recusa a
+      mexer num Windows de 64. O MSI em si é de 64 bits (wix build -arch x64): sem isso,
+      ProgramFiles64Folder virava "Program Files (x86)".
+    -->
+    <Property Id="NETFX35INSTALADO">
+      <RegistrySearch Id="BuscaNetFx35" Root="HKLM" Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5"
+                      Name="Install" Type="raw" Bitness="always64" />
+    </Property>
+
+    <SetProperty Id="HabilitarNetFx35" Sequence="execute" Before="HabilitarNetFx35"
+                 Value="&quot;[WindowsFolder]Sysnative\dism.exe&quot; /Online /Enable-Feature /FeatureName:NetFx3 /All /NoRestart /Quiet" />
+
+    <CustomAction Id="HabilitarNetFx35" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <!--
+      Atualização (achado E10-1 do docs/41): o MajorUpgrade remove a versão anterior, o que para e
+      apaga o serviço, e instala a nova sem iniciá-lo. Sem isto, depois de toda atualização nenhuma
+      catraca atendia até alguém iniciar o serviço ou reiniciar o PC.
+
+      Só numa atualização de uma instalação já configurada (workers.json existe). Na instalação
+      nova quem inicia o serviço é o assistente, depois de configurar. Falhar NÃO desfaz a
+      atualização (Return="ignore"): o painel mostra o serviço fora e o RB-01 cobre o caso.
+    -->
+    <Property Id="JA_CONFIGURADO">
+      <DirectorySearch Id="BuscaPastaDeDados" Path="[CommonAppDataFolder]ConexaoTopdata" Depth="0">
+        <FileSearch Id="BuscaWorkersJson" Name="workers.json" />
+      </DirectorySearch>
+    </Property>
+
+    <SetProperty Id="IniciarServicoAtualizado" Sequence="execute" Before="IniciarServicoAtualizado"
+                 Value="&quot;[WindowsFolder]Sysnative\sc.exe&quot; start ConexaoTopdataEdge" />
+
+    <CustomAction Id="IniciarServicoAtualizado" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="HabilitarNetFx35" Before="InstallFinalize"
+              Condition="NOT Installed AND NETFX35INSTALADO &lt;&gt; &quot;#1&quot; AND NOT PULAR_NETFX35" />
+      <Custom Action="IniciarServicoAtualizado" After="HabilitarNetFx35"
+              Condition="WIX_UPGRADE_DETECTED AND JA_CONFIGURADO AND NOT (REMOVE ~= &quot;ALL&quot;)" />
+    </InstallExecuteSequence>
+
+    <!--
+      Painel e assistente abertos durante a atualização ou a desinstalação: o instalador
+      os fecha sozinho (pede para fechar e, se não fecharem em 10 s, encerra), em vez de
+      mostrar a tela "arquivos em uso" e pedir reinício. O assistente roda como
+      administrador, por isso a mensagem de fechar também sai elevada.
+
+      O serviço não entra aqui: ele é parado pelo ServiceControl e, ao parar, encerra o
+      programa das catracas (WorkerSupervisor.Encerrar). Com o Restart Manager desligado, o
+      Windows Installer não lista o serviço como "programa aberto" antes de pará-lo.
+
+      PULAR_NETFX35=1 existe só para o teste do instalador no CI, que não pode esperar o
+      Windows Update.
+    -->
+    <util:CloseApplication Id="FecharPainel" Target="Desktop.App.exe" CloseMessage="yes"
+                           RebootPrompt="no" TerminateProcess="1" Timeout="10"
+                           Description="Fechando o Painel do evento" />
+    <util:CloseApplication Id="FecharAssistente" Target="Edge.Configurador.exe" CloseMessage="yes"
+                           ElevatedCloseMessage="yes" RebootPrompt="no" TerminateProcess="1" Timeout="10"
+                           Description="Fechando o Assistente de configuração" />
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ProgramFiles64Folder: o serviço e o painel são de 64 bits. O worker x86 mora
+         dentro da mesma pasta, e isso é correto — o que importa é o processo ser de 32
+         bits, não o diretório. -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <!-- C:\Program Files\Rayzer\XAcess: a pasta da empresa, com um produto por subpasta. -->
+      <Directory Id="DIR_RAYZER" Name="Rayzer">
+        <Directory Id="INSTALLFOLDER" Name="XAcess">
+          <Directory Id="DIR_SUPERVISOR" Name="Servico" />
+          <Directory Id="DIR_PAINEL" Name="Painel" />
+          <Directory Id="DIR_WORKER" Name="Worker" />
+          <Directory Id="DIR_CONFIGURADOR" Name="Configurador" />
+          <Directory Id="DIR_MODELOS" Name="Modelos" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="DIR_ATALHOS" Name="Rayzer XAcess" />
+    </StandardDirectory>
+
+    <Feature Id="Principal" Title="Rayzer XAcess" Level="1">
+      <ComponentGroupRef Id="Grupo_Servico" />
+      <ComponentGroupRef Id="Grupo_Painel" />
+      <ComponentGroupRef Id="Grupo_Worker" />
+      <ComponentGroupRef Id="Grupo_Configurador" />
+      <ComponentGroupRef Id="Grupo_Modelos" />
+      <ComponentGroupRef Id="Grupo_ScriptsDoOperador" />
+      <ComponentGroupRef Id="Grupo_Atalhos" />
+      <ComponentGroupRef Id="Grupo_Firewall" />
+      <ComponentGroupRef Id="Grupo_Bandeja" />
+    </Feature>
+
+    <ComponentGroup Id="Grupo_Servico" Directory="DIR_SUPERVISOR">
+      <!--
+        Por extensao, e nao "**", porque o Edge.Supervisor.exe pertence ao componente do
+        servico logo abaixo e nao pode entrar duas vezes. O elemento Files nao aceita
+        Exclude (WIX0004), entao a separacao e feita aqui.
+
+        Os .pdb entram de proposito: sem simbolos, um travamento em campo vira um endereco
+        hexadecimal. Os .xml de documentacao ficam de fora, que sao ruido em maquina de
+        operacao.
+      -->
+      <Files Include="$(var.PastaSupervisor)\*.dll" />
+      <Files Include="$(var.PastaSupervisor)\*.json" />
+      <Files Include="$(var.PastaSupervisor)\*.pdb" />
+
+      <Component Id="ServicoLocal" Guid="d5418902-3ddf-4abf-a2a6-f34f04765695">
+        <File Id="ServicoExe" Source="$(var.PastaSupervisor)\Edge.Supervisor.exe" KeyPath="yes" />
+
+        <ServiceInstall Id="InstalarServico"
+                        Name="ConexaoTopdataEdge"
+                        DisplayName="Rayzer XAcess — Serviço local"
+                        Description="Supervisiona os workers das catracas e atende o painel do operador."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Vital="yes">
+          <!--
+            Se o serviço cair, o Windows o sobe de novo: 5 s na primeira e na segunda falha,
+            e continua tentando depois. Sem isto, um travamento parava as catracas até
+            alguém reiniciar o PC. A contagem zera depois de um dia sem falhas.
+          -->
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              RestartServiceDelayInSeconds="5"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
+
+        <ServiceControl Id="ControlarServico"
+                        Name="ConexaoTopdataEdge"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Painel" Directory="DIR_PAINEL">
+      <Files Include="$(var.PastaPainel)\*.exe" />
+      <Files Include="$(var.PastaPainel)\*.dll" />
+      <Files Include="$(var.PastaPainel)\*.json" />
+      <Files Include="$(var.PastaPainel)\*.pdb" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Worker" Directory="DIR_WORKER">
+      <Files Include="$(var.PastaWorker)\*.exe" />
+      <Files Include="$(var.PastaWorker)\*.dll" />
+      <Files Include="$(var.PastaWorker)\*.json" />
+      <Files Include="$(var.PastaWorker)\*.pdb" />
+    </ComponentGroup>
+
+    <!--
+      Firewall do Windows: a catraca é o cliente TCP e o programa das catracas é quem escuta
+      (docs/03). Sem esta regra de entrada, o Windows descarta a conexão e a catraca fica
+      presa em "Conectar".
+
+      A regra é por programa (Edge.Worker.X86.exe), e não por porta: vale para a porta que o
+      assistente escolher, sem reinstalar. Escopo "sub-rede local": só equipamentos da
+      mesma rede do PC conseguem conectar — nunca a internet. Catracas numa VLAN roteada,
+      em outra sub-rede, pedem ampliar o endereço remoto da regra (RB-02).
+      Sai junto na desinstalação.
+    -->
+    <ComponentGroup Id="Grupo_Firewall" Directory="DIR_WORKER">
+      <Component Id="RegraDeFirewall" Guid="4b7f2e61-9c3d-4a58-b0e2-7d1c5f8a3e94">
+        <fw:FirewallException Id="EntradaDasCatracas"
+                              Name="Rayzer XAcess — catracas (entrada TCP)"
+                              Description="Deixa as catracas da rede local conectarem ao programa das catracas do Rayzer XAcess."
+                              Program="[DIR_WORKER]Edge.Worker.X86.exe"
+                              Protocol="tcp"
+                              Scope="localSubnet"
+                              Profile="all" />
+        <RegistryValue Root="HKLM" Key="Software\Rayzer\XAcess" Name="RegraDeFirewall" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      O painel abre na bandeja (perto do relógio) quando alguém entra no Windows: o ícone
+      mostra se as catracas estão atendendo sem ninguém abrir nada. As catracas não dependem
+      disso — quem as atende é o serviço, que sobe com o Windows mesmo sem ninguém entrar.
+      INICIAR_NA_BANDEJA=0 na linha de comando desliga.
+    -->
+    <Property Id="INICIAR_NA_BANDEJA" Value="1" />
+    <ComponentGroup Id="Grupo_Bandeja" Directory="DIR_PAINEL">
+      <Component Id="PainelNaBandeja" Guid="8e2c9a47-1b6d-4f30-a5c8-3d9e7b0f1a26" Condition="INICIAR_NA_BANDEJA = 1">
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                       Name="RayzerXAcess" Type="string"
+                       Value="&quot;[DIR_PAINEL]Desktop.App.exe&quot; --bandeja" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Configurador" Directory="DIR_CONFIGURADOR">
+      <Files Include="$(var.PastaConfigurador)\*.exe" />
+      <Files Include="$(var.PastaConfigurador)\*.dll" />
+      <Files Include="$(var.PastaConfigurador)\*.json" />
+    </ComponentGroup>
+
+    <!-- Modelos de planilha de cartões e tipos (docs/26). Só exemplos fictícios. -->
+    <ComponentGroup Id="Grupo_Modelos" Directory="DIR_MODELOS">
+      <Files Include="$(var.PastaModelos)\*.xlsx" />
+      <Files Include="$(var.PastaModelos)\*.csv" />
+    </ComponentGroup>
+
+    <!-- Scripts que o operador roda depois da instalação (runbooks RB-01 e o README do instalador).
+         Só estes dois: os de desenvolvimento (publicar, instalar-dev) não vão ao cliente. -->
+    <ComponentGroup Id="Grupo_ScriptsDoOperador" Directory="INSTALLFOLDER">
+      <Component Id="ScriptVerificarAmbiente" Guid="*">
+        <File Id="ArqVerificarAmbiente" Source="$(var.PastaInstalador)\verificar-ambiente.ps1" KeyPath="yes" />
+      </Component>
+      <Component Id="ScriptConfigurarOperador" Guid="*">
+        <File Id="ArqConfigurarOperador" Source="$(var.PastaInstalador)\configurar-operador.ps1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="Grupo_Atalhos" Directory="DIR_ATALHOS">
+      <Component Id="AtalhoDoPainel">
+        <Shortcut Id="AtalhoPainel"
+                  Name="Rayzer XAcess — Painel do evento"
+                  Description="Painel do operador do Rayzer XAcess"
+                  Icon="IconeRayzer"
+                  Target="[DIR_PAINEL]Desktop.App.exe"
+                  WorkingDirectory="DIR_PAINEL" />
+
+        <Shortcut Id="AtalhoConfigurador"
+                  Name="Rayzer XAcess — Assistente de configuração"
+                  Icon="IconeRayzer"
+                  Description="Catracas, nuvem e segredo de acesso (pede permissão de administrador)"
+                  Target="[DIR_CONFIGURADOR]Edge.Configurador.exe"
+                  WorkingDirectory="DIR_CONFIGURADOR" />
+
+        <Shortcut Id="AtalhoModeloDeCartoes"
+                  Name="Rayzer XAcess — Modelo de planilha de cartões"
+                  Description="Planilha para cadastrar tipos e cartões e importar no painel"
+                  Target="[DIR_MODELOS]modelo-cadastro-de-cartoes.xlsx"
+                  WorkingDirectory="DIR_MODELOS" />
+
+        <RemoveFolder Id="RemoverPastaAtalhos" Directory="DIR_ATALHOS" On="uninstall" />
+
+        <RegistryValue Root="HKCU"
+                       Key="Software\Rayzer\XAcess"
+                       Name="Instalado"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+  </Package>
+</Wix>

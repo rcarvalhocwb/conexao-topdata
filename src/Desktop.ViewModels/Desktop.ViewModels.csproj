@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    ViewModels sem dependência de WPF: rodam e são testadas em qualquer plataforma.
+    É o que permite validar o comportamento do painel na CI Linux, mesmo que a tela só
+    exista no Windows. Ver docs/ADR/ADR-0012-wpf-versus-winui.md
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Contracts/Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- A planta da TopFit 4 que o gêmeo digital desenha. Ver docs/33-gemeo-digital.md. -->
+    <EmbeddedResource Include="GemeoDigital\fit4.json" />
+  </ItemGroup>
+
+</Project>

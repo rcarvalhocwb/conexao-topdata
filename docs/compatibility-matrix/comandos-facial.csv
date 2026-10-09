@@ -1,0 +1,50 @@
+id;api;comando;direcao;proposito;campos_chave;destrutivo;risco;teste;selo;fonte
+FW-001;WebSocket;reg;recebido do leitor;Registro inicial na conexao. Traz devinfo completo;sn / modelname / usersize / facesize / cardsize / logsize / useduser / usedface / usedlog / firmware / time / mac;nao;CRITICO - resposta OBRIGATORIA senao a comunicacao e perdida;HIL-FAC-01;FONTE_PRIMARIA;Manual WebSocket Facial 4.1
+FW-002;WebSocket;sendlog;recebido do leitor;Evento assincrono a cada rosto detectado - cadastrado ou nao;enrollid / name / time / mode (2 senha 3 cartao 8 face) / inout / event / image base64 quando desconhecido;nao;CRITICO - resposta com access true-false decide o acesso. Foto de desconhecido e dado sensivel;HIL-FAC-02 / SEC-BIO-02;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-003;WebSocket;senduser;recebido do leitor;Cadastro de usuario feito diretamente no equipamento;enrollid / name / backupnum / admin / record;nao;medio - cadastro fora do nosso fluxo entra por aqui;HIL-FAC-03;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-004;WebSocket;enabledevice;enviado;Retoma a validacao de acesso no leitor;-;nao;alto;HIL-FAC-04;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-005;WebSocket;disabledevice;enviado;Suspende o tratamento de acessos. Comandos seguem funcionando;-;nao;alto - bloqueia o portao;HIL-FAC-04;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-006;WebSocket;getuserlist;enviado;Lista paginada de usuarios;stn true inicia / stn false proxima pagina / count / from / to / record;nao;baixo - repetir ate to == count;HIL-FAC-05;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-007;WebSocket;getuserinfo;enviado;Dados de um usuario;enrollid / backupnum (0 todos, 10 senha, 13 todos exceto foto, 50 foto);nao;medio - foto e dado sensivel;HIL-FAC-06;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-008;WebSocket;setuserinfo;enviado;Cadastra ou atualiza usuario;enrollid / name / admin / card / pwd / enable / backupnum (0 sem foto, 50 com foto Base64) / record;nao;alto - foto ate 150KB, ideal 480x640;HIL-FAC-07;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-009;WebSocket;setuserlock;enviado;Restricoes de acesso por usuario;count / verifymode / record[enrollid, weekzone, starttime, endtime];nao;alto - define quem entra e quando;HIL-FAC-08;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-010;WebSocket;deleteuser;enviado;Remove usuario ou parte dos dados;enrollid / backupnum (0 tudo, 10 senha, 11 cartao, 50 foto);SIM;alto - direito de eliminacao LGPD;HIL-FAC-09;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-011;WebSocket;setdevinfo;enviado;Parametros do dispositivo;door_opentime / door_password / verifymode / access_denied_nolog / volume / stranger_lock / server_verify (0 offline 1 online 2 auto);nao;CRITICO - server_verify muda quem decide o acesso;HIL-FAC-10;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-012;WebSocket;setdevlock;enviado;Formato de cartao e tabelas de horario;cardformat (0 decimal 1 wiegand 2 hex) / dayzone ate 8 com 5 secoes / weekzone ate 8;nao;alto - teto de granularidade das regras locais;HIL-FAC-11;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-013;WebSocket;cleanuser;enviado;Apaga TODOS os usuarios;-;SIM;CRITICO - exige aprovacao em duas pessoas;HIL-FAC-12;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-014;WebSocket;getalllog;enviado;Todos os logs com paginacao e filtro por data;stn / from / to / count / record;nao;medio;HIL-FAC-13;FONTE_PRIMARIA;Comandos do Leitor Facial
+FW-015;WebSocket;cleanlog;enviado;Apaga TODOS os logs;-;SIM;CRITICO - so apos coleta confirmada localmente;HIL-FAC-14;FONTE_PRIMARIA;Comandos do Leitor Facial
+FA-001;WebAPI;getlang;POST /api;Idioma do dispositivo. Unico comando que dispensa password;lang;nao;baixo;HIL-FAPI-01;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-002;WebAPI;getdevinfo;POST /api;Informacoes e capacidades do dispositivo;modelname / manufacturer / deviceid / usersize / facesize / fpsize / palmsize / cardsize / pwdsize;nao;baixo - capability discovery;HIL-FAPI-02;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-003;WebAPI;getdevcap;POST /api;Capacidades suportadas pelo dispositivo;LACUNA;nao;baixo;HIL-FAPI-03;FONTE_PRIMARIA_PARCIAL;Protocolo Facial API WebService
+FA-004;WebAPI;setdevinfo;POST /api;Configura parametros;idem WebSocket;nao;alto;HIL-FAPI-04;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-005;WebAPI;getdevlock;POST /api;Le bloqueios e horarios do dispositivo;dayzone / weekzone / cardformat;nao;baixo - base do diff de configuracao;HIL-FAPI-05;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-006;WebAPI;setdevlock;POST /api;Configura bloqueios e horarios;idem WebSocket;nao;alto;HIL-FAPI-05;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-007;WebAPI;gettime;POST /api;Le o relogio do dispositivo;-;nao;alto - deteccao de drift;HIL-FAPI-06;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-008;WebAPI;settime;POST /api;Ajusta o relogio;-;nao;alto - afeta ordem de eventos;HIL-FAPI-06;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-009;WebAPI;adduser;POST /api;Adiciona usuario;-;nao;alto;HIL-FAPI-07;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-010;WebAPI;setuserinfo;POST /api;Cadastra ou atualiza usuario;idem WebSocket;nao;alto;HIL-FAPI-07;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-011;WebAPI;getuserinfo;POST /api;Dados de um usuario;-;nao;medio;HIL-FAPI-08;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-012;WebAPI;getuserlist;POST /api;Lista paginada de usuarios;-;nao;baixo;HIL-FAPI-08;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-013;WebAPI;checkuserid;POST /api;Verifica existencia de um ID;-;nao;baixo - deduplicacao na importacao;HIL-FAPI-09;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-014;WebAPI;enableuser;POST /api;Habilita ou desabilita usuario;-;nao;alto - bloqueio sem apagar cadastro;HIL-FAPI-10;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-015;WebAPI;deleteuser;POST /api;Remove um usuario;-;SIM;alto;HIL-FAPI-11;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-016;WebAPI;deleteusers;POST /api;Remove varios usuarios;-;SIM;alto;HIL-FAPI-11;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-017;WebAPI;deleteuserface;POST /api;Remove apenas o dado facial;-;SIM;alto - eliminacao seletiva de biometria (LGPD);HIL-FAPI-12;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-018;WebAPI;cleanuser;POST /api;Apaga todos os usuarios;-;SIM;CRITICO - aprovacao em duas pessoas;HIL-FAPI-13;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-019;WebAPI;cleanadmin;POST /api;Remove administradores;-;SIM;CRITICO;HIL-FAPI-13;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-020;WebAPI;cleandatebase;POST /api;Limpa a base do dispositivo;-;SIM;CRITICO - aprovacao em duas pessoas;HIL-FAPI-13;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-021;WebAPI;checkregstatus;POST /api;Status do cadastro biometrico em andamento;-;nao;baixo;HIL-FAPI-14;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-022;WebAPI;setuserlock;POST /api;Restricoes por usuario;-;nao;alto;HIL-FAPI-15;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-023;WebAPI;getuserlock;POST /api;Le restricoes por usuario;-;nao;baixo;HIL-FAPI-15;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-024;WebAPI;deleteuserlock;POST /api;Remove restricao de um usuario;-;SIM;alto;HIL-FAPI-15;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-025;WebAPI;cleanuserlock;POST /api;Remove todas as restricoes;-;SIM;CRITICO - libera geral;HIL-FAPI-15;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-026;WebAPI;getlog;POST /api;Logs armazenados;-;nao;medio;HIL-FAPI-16;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-027;WebAPI;getrtlog;POST /api;Logs em tempo real;-;nao;medio;HIL-FAPI-16;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-028;WebAPI;setlogs;POST /api;Configura politica de logs;-;nao;medio;HIL-FAPI-16;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-029;WebAPI;cleanlog;POST /api;Apaga todos os logs;-;SIM;CRITICO - so apos coleta confirmada;HIL-FAPI-16;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-030;WebAPI;opendoor;POST /api;ABRE A PORTA diretamente;-;nao;CRITICO - liberacao manual. Exige RBAC forte e auditoria;HIL-FAPI-17 / SEC-DOOR-01;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-031;WebAPI;reboot;POST /api;Reinicia o dispositivo;-;SIM;alto - tira o portao de operacao;HIL-FAPI-18;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-032;WebAPI;initsys;POST /api;Restauracao de sistema;-;SIM;CRITICO - aprovacao em duas pessoas;HIL-FAPI-18;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-033;WebAPI;initmenu;POST /api;Restaura o menu;-;SIM;alto;HIL-FAPI-18;FONTE_PRIMARIA;Protocolo Facial API WebService
+FA-034;WebAPI;reg;POST /api;Registro via Web API;-;nao;baixo;HIL-FAPI-19;FONTE_PRIMARIA;Protocolo Facial API WebService

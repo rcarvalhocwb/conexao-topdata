@@ -1,0 +1,381 @@
+<UserControl x:Class="Desktop.App.Telas.Gemeo"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             xmlns:gd="clr-namespace:Desktop.ViewModels.GemeoDigital;assembly=Desktop.ViewModels"
+             xmlns:vm="clr-namespace:Desktop.ViewModels;assembly=Desktop.ViewModels"
+             AutomationProperties.Name="Configuração da catraca">
+  <!--
+    Gêmeo digital da TopFit 4 (docs/33). O desenho 3D é montado no código por trás, a partir
+    da geometria da ViewModel; aqui ficam a moldura e os painéis. Tudo o que se faz com o
+    mouse no desenho também dá para fazer pelo teclado, na lista de peças à direita.
+    É também a porta principal da configuração da catraca (docs/33 §9): clicar numa peça abre,
+    ao lado do desenho, os parâmetros dela; um só "o que muda", um Salvar e um Aplicar valem
+    para a catraca inteira. O selo DEMONSTRAÇÃO fala só dos cenários: a configuração é real.
+  -->
+  <!--
+    A página inteira rola: em 1366 x 768 o desenho mantém uma altura útil em vez de encolher. A
+    coluna da direita rola sozinha, na altura do desenho: o painel da peça fica ao lado do 3D, e o
+    "o que muda" com Salvar e Aplicar, embaixo do desenho, não sai do lugar ao navegar entre peças.
+  -->
+  <ScrollViewer x:Name="Pagina" VerticalScrollBarVisibility="Auto">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <rz:RayzerPageHeader Titulo="Configuração da catraca"
+                         Descricao="O desenho da catraca e a configuração dela. Clique numa peça para ver o que ela faz e mudar os ajustes dela; salve e aplique a catraca inteira de uma vez. Os cenários da demonstração ficam só no desenho." />
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" MinWidth="380" />
+        <ColumnDefinition Width="12" />
+        <ColumnDefinition Width="360" />
+      </Grid.ColumnDefinitions>
+
+      <StackPanel VerticalAlignment="Top">
+      <!-- O desenho. -->
+      <!-- Alinhado em cima e com o desenho em altura fixa: esticado até a altura dos painéis
+           à direita, o desenho ficava alto e estreito, e a câmera cortava a catraca. -->
+      <Border x:Name="CartaoDoDesenho" Style="{StaticResource Rayzer.Card}" Padding="0" ClipToBounds="True" VerticalAlignment="Top">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <!-- De onde vem o que se vê (sempre visível: demonstração e ao vivo nunca se confundem) e,
+               ao lado, a situação da configuração desta catraca, que é real nos dois modos. -->
+          <Border Padding="14,10,14,4" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1">
+            <WrapPanel>
+              <rz:RayzerStatusPill Margin="0,0,10,6" Tom="{Binding SeloDoModoSinal, Converter={StaticResource SinalParaTom}}"
+                                   Texto="{Binding SeloDoModo}" AutomationProperties.Name="Modo da tela (ao vivo ou demonstração)" />
+              <StackPanel Margin="0,0,10,6" Orientation="Horizontal">
+                <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Label}" Text="Configuração:" />
+                <rz:RayzerStatusPill Tom="{Binding Central.SinalDaSituacao, Converter={StaticResource SinalParaTom}}"
+                                     Texto="{Binding Central.SituacaoNaCatraca}" AutomationProperties.Name="Situação da configuração desta catraca" />
+              </StackPanel>
+              <TextBlock Margin="0,0,0,6" VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Rayzer.Warning}" Text="{Binding Central.AlteracoesPendentes}"
+                         Visibility="{Binding Central.AlteracoesPendentes, Converter={StaticResource VazioSome}}" />
+            </WrapPanel>
+          </Border>
+
+          <!-- Vistas prontas e opções do desenho: numa faixa própria, fora do 3D, para não cobrir a catraca. -->
+          <Border Grid.Row="1" Padding="10,8,10,2" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1">
+            <WrapPanel>
+              <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,12,6" Content="_Testar giro" Command="{Binding TestarGiro}"
+                      ToolTip="Libera e gira um terço de volta, só no desenho." />
+              <TextBlock Margin="0,0,6,6" VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Label}" Text="Vista" />
+              <ComboBox Margin="0,0,14,6" Width="120" SelectedValuePath="Tag" SelectedValue="{Binding Vista}" AutomationProperties.Name="Vista da câmera">
+                <ComboBoxItem Content="Inicial" Tag="{x:Static gd:VistaDaCamera.Inicial}" />
+                <ComboBoxItem Content="Frente" Tag="{x:Static gd:VistaDaCamera.Frente}" />
+                <ComboBoxItem Content="Painel" Tag="{x:Static gd:VistaDaCamera.Painel}" />
+                <ComboBoxItem Content="Braços" Tag="{x:Static gd:VistaDaCamera.Bracos}" />
+                <ComboBoxItem Content="Trás" Tag="{x:Static gd:VistaDaCamera.Tras}" />
+                <ComboBoxItem Content="Cima" Tag="{x:Static gd:VistaDaCamera.Cima}" />
+              </ComboBox>
+              <CheckBox Margin="0,0,14,6" VerticalAlignment="Center" Content="Peças _separadas" IsChecked="{Binding PecasSeparadas}" />
+              <CheckBox Margin="0,0,0,6" VerticalAlignment="Center" Content="Leitor _facial (variante)" IsChecked="{Binding MostrarLeitorFacial}"
+                        ToolTip="A variante Facial tem um leitor sobre uma haste. Fora do escopo do sistema hoje (fase 5)." />
+            </WrapPanel>
+          </Border>
+
+          <Grid Grid.Row="2" x:Name="Palco" Background="{DynamicResource Rayzer.Surface.Sunken}" Height="460"
+                Focusable="True" AutomationProperties.Name="Desenho 3D da catraca"
+                AutomationProperties.HelpText="Arraste para girar, roda do mouse para aproximar, clique numa peça para escolher. Pelo teclado, use a lista de peças.">
+            <Viewport3D x:Name="Vista3D" ClipToBounds="True" IsHitTestVisible="True" />
+
+            <!-- Nome da peça sob o mouse. -->
+            <Border x:Name="Etiqueta" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False"
+                    Padding="8,4" CornerRadius="{StaticResource Rayzer.Radius.Sm}" Background="{DynamicResource Rayzer.Surface.Elevated}"
+                    BorderBrush="{DynamicResource Rayzer.Border.Strong}" BorderThickness="1"
+                    Visibility="{Binding PecaApontada, Converter={StaticResource VazioSome}}">
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" Text="{Binding PecaApontada.Nome}" />
+            </Border>
+          </Grid>
+
+          <!-- O que a catraca desenhada está fazendo. Em linhas separadas: lado a lado, os dois textos se cobriam em 1366 px. -->
+          <Border Grid.Row="3" Padding="14,10" BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,1,0,0">
+            <StackPanel>
+              <rz:RayzerStatus HorizontalAlignment="Left" Tom="{Binding EstadoSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding EstadoTexto}"
+                               AutomationProperties.LiveSetting="Polite" />
+              <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Mono}" TextWrapping="Wrap" Text="{Binding Contadores}" />
+
+              <!-- Legenda das marcações das peças (configuração desta catraca): forma e cor, e a lista em palavras. -->
+              <WrapPanel Margin="0,8,0,0" AutomationProperties.Name="Legenda das marcações das peças">
+                <TextBlock Margin="0,0,16,0" Style="{StaticResource Rayzer.Type.Body}">
+                  <Run Foreground="{DynamicResource Rayzer.Warning}" FontWeight="SemiBold" Text="● " /><Run Text="alteração não salva" />
+                </TextBlock>
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}">
+                  <Run Foreground="{DynamicResource Rayzer.Info}" FontWeight="SemiBold" Text="■ " /><Run Text="diferente do padrão do evento" />
+                </TextBlock>
+              </WrapPanel>
+              <ItemsControl ItemsSource="{Binding Central.Marcas}" AutomationProperties.Name="Peças marcadas">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="0,2,0,0">
+                      <TextBlock x:Name="Simbolo" DockPanel.Dock="Left" Margin="0,0,6,0" Style="{StaticResource Rayzer.Type.Secondary}"
+                                 FontWeight="SemiBold" Foreground="{DynamicResource Rayzer.Info}" Text="{Binding Simbolo}" />
+                      <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Texto}" />
+                    </DockPanel>
+                    <DataTemplate.Triggers>
+                      <DataTrigger Binding="{Binding NaoSalva}" Value="True">
+                        <Setter TargetName="Simbolo" Property="Foreground" Value="{DynamicResource Rayzer.Warning}" />
+                      </DataTrigger>
+                    </DataTemplate.Triggers>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding AvisoDasMedidas}" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- A configuração da catraca inteira (docs/33 §9): um só "o que muda", Salvar e Aplicar. -->
+      <Border x:Name="CartaoDaConfiguracao" Style="{StaticResource Rayzer.Card}" Margin="0,12,0,0">
+        <StackPanel>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" MinWidth="0" Padding="10,0" Content="Ver em lista"
+                    Command="{Binding DataContext.Parametrizar, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Central.Catraca}" AutomationProperties.Name="Ver esta configuração em lista (Parametrização)"
+                    ToolTip="A mesma configuração, em abas (Parametrização)." />
+            <rz:RayzerSectionHeader Titulo="Configuração desta catraca" />
+          </DockPanel>
+          <!-- Duas colunas: quem e onde, à esquerda; o que muda e os botões, à direita. -->
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" TextWrapping="Wrap"
+                         Text="{x:Static vm:CentralDaCatracaViewModel.AvisoDaConfiguracao}" />
+
+              <rz:RayzerStatusPill Margin="0,8,0,0" HorizontalAlignment="Left" Tom="{Binding Central.SinalDaSituacao, Converter={StaticResource SinalParaTom}}"
+                                   Texto="{Binding Central.SituacaoCurta}" ToolTip="{Binding Central.SituacaoNaCatraca}"
+                                   AutomationProperties.Name="{Binding Central.SituacaoNaCatraca}" />
+              <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding Central.DetalheDaSituacao}" />
+
+              <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Central.Mensagem}" Margin="0,8,0,0"
+                              Visibility="{Binding Central.Mensagem, Converter={StaticResource VazioSome}}" />
+              <ItemsControl ItemsSource="{Binding Central.AvisosDoSalvo}" AutomationProperties.Name="Avisos do que está salvo">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <rz:RayzerAlert Margin="0,8,0,0" Tom="Atencao" Titulo="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Margin="0,10,0,0" Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado)" />
+              <TextBox Text="{Binding Central.Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador" />
+              <CheckBox Margin="0,8,0,0" IsChecked="{Binding Central.ModoTecnico}" Content="Modo técnico"
+                        ToolTip="Mostra todos os parâmetros, com os nomes técnicos. É uma conveniência, não uma proteção: o que não está confirmado continua bloqueado." />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <!-- Um só "o que muda", de todas as peças. -->
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que muda (atual → novo)" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Central.ResumoDasMudancas}" />
+              <ItemsControl ItemsSource="{Binding Central.Mudancas}" AutomationProperties.Name="O que muda na catraca">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="0,8,0,0">
+                      <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Campo}" />
+                      <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap">
+                        <Run Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{Binding Atual, Mode=OneWay}" /><Run Text=" → " /><Run FontWeight="SemiBold" Text="{Binding Novo, Mode=OneWay}" />
+                      </TextBlock>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding Central.Problemas}" AutomationProperties.Name="Problemas">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <rz:RayzerAlert Margin="0,8,0,0" Tom="Perigo" Titulo="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <WrapPanel Margin="0,12,0,0">
+                <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,8,6" Content="Salvar" Command="{Binding Central.Salvar}"
+                        ToolTip="Grava as alterações de todas as peças. A catraca só passa a usar depois de aplicar." />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,6" Content="Desfazer" Command="{Binding Central.Desfazer}"
+                        ToolTip="Volta todas as peças ao que está salvo para esta catraca." />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,0,6" Content="Aplicar nesta catraca…" Command="{Binding Central.PedirAplicacao}" />
+              </WrapPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Central.MotivoParaNaoAplicar}"
+                         Visibility="{Binding Central.MotivoParaNaoAplicar, Converter={StaticResource VazioSome}}" />
+              <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}" BorderThickness="1"
+                      BorderBrush="{DynamicResource Rayzer.Warning}" Background="{DynamicResource Rayzer.Surface}"
+                      Visibility="{Binding Central.ConfirmandoAplicacao, Converter={StaticResource BoolParaVisibilidade}}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding Central.TextoDaConfirmacao}" />
+                  <WrapPanel Margin="0,10,0,0">
+                    <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,8,0" Content="Aplicar agora" Command="{Binding Central.ConfirmarAplicacao}" />
+                    <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Cancelar" Command="{Binding Central.CancelarAplicacao}" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      </StackPanel>
+
+      <!-- Painéis: rolam sozinhos, na altura do desenho. -->
+      <ScrollViewer x:Name="ColunaDireita" Grid.Column="2" VerticalAlignment="Top" VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled" MaxHeight="{Binding ActualHeight, ElementName=CartaoDoDesenho}">
+      <StackPanel>
+          <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}" Margin="0,0,0,12"
+                          Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+          <!-- Qual catraca e qual modo. -->
+          <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
+            <StackPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
+              <ComboBox ItemsSource="{Binding Catracas}" DisplayMemberPath="Nome" SelectedValuePath="Inner"
+                        SelectedValue="{Binding Catraca}" AutomationProperties.Name="Catraca" />
+              <!--
+                Sem GroupName, de propósito: o grupo fica sendo o painel. Com GroupName, telas
+                desenhadas fora de janela (a captura) viravam um grupo só, e os botões de uma
+                desmarcavam os da outra sem parar, até estourar a pilha.
+              -->
+              <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <RadioButton Margin="0,0,16,0" Content="_Demonstração" IsChecked="{Binding ModoDemonstracao}" />
+                <RadioButton Content="_Ao vivo" IsChecked="{Binding ModoAoVivo}" />
+              </StackPanel>
+              <TextBlock Margin="0,8,0,0" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap"
+                         Visibility="{Binding ModoAoVivo, Converter={StaticResource BoolParaVisibilidade}}">
+                <Run Text="Último evento: " /><Run Text="{Binding UltimoEventoAoVivo, Mode=OneWay}" />
+              </TextBlock>
+              <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                         Visibility="{Binding ModoAoVivo, Converter={StaticResource BoolParaVisibilidade}}"
+                         Text="Ao vivo o desenho mostra cada acesso quando ele é gravado, com a configuração que a catraca confirmou." />
+            </StackPanel>
+          </Border>
+
+          <!-- O painel da peça clicada (docs/33 §9). -->
+          <ContentControl Content="{Binding Central}" Focusable="False" />
+
+          <!-- As peças, para quem usa o teclado: escolher aqui é o mesmo que clicar no desenho. -->
+          <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="Peças" />
+              <ListBox ItemsSource="{Binding Pecas}" SelectedItem="{Binding PecaSelecionada}" DisplayMemberPath="Nome"
+                       MaxHeight="180" AutomationProperties.Name="Peças da catraca" />
+            </StackPanel>
+          </Border>
+
+          <!-- Cenários. -->
+          <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12"
+                  Visibility="{Binding ModoDemonstracao, Converter={StaticResource BoolParaVisibilidade}}">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="Cenários" />
+              <ItemsControl ItemsSource="{Binding Roteiros}" AutomationProperties.Name="Cenários de demonstração">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="0,0,0,6">
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Margin="6,0,0,0" Content="Na simulada"
+                              ToolTip="Passa o código de teste na catraca simulada do serviço e acompanha ao vivo o que o sistema decidir."
+                              Command="{Binding DataContext.RodarNaCatracaSimulada, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}"
+                              Visibility="{Binding DataContext.ServicoEmSimulacao, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolParaVisibilidade}}"
+                              IsEnabled="{Binding TemCodigoDeTeste}" />
+                      <Button Style="{StaticResource Rayzer.Button.Ghost}" HorizontalContentAlignment="Left" Padding="10,6"
+                              Command="{Binding DataContext.RodarRoteiro, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}" AutomationProperties.Name="{Binding Nome}">
+                        <StackPanel>
+                          <TextBlock Style="{StaticResource Rayzer.Type.Body}" Text="{Binding Nome}" />
+                          <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding Descricao}" />
+                        </StackPanel>
+                      </Button>
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <StackPanel Margin="0,8,0,0" Visibility="{Binding RoteiroEmAndamento, Converter={StaticResource VazioSome}}">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Content="_Parar" Command="{Binding PararRoteiro}" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Section}" VerticalAlignment="Center" Text="{Binding RoteiroEmAndamento.Nome}" />
+                </DockPanel>
+                <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Narracao}" AutomationProperties.Name="Passo a passo"
+                              AutomationProperties.LiveSetting="Polite">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel Margin="0,3">
+                        <TextBlock x:Name="Quando" DockPanel.Dock="Left" Width="46" Style="{StaticResource Rayzer.Type.Mono}" Text="{Binding Quando}" />
+                        <TextBlock x:Name="Frase" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Texto}" Opacity="0.55" />
+                      </DockPanel>
+                      <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Aconteceu}" Value="True">
+                          <Setter TargetName="Frase" Property="Opacity" Value="1" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Atual}" Value="True">
+                          <Setter TargetName="Frase" Property="Foreground" Value="{DynamicResource Rayzer.Text.Primary}" />
+                          <Setter TargetName="Frase" Property="FontWeight" Value="SemiBold" />
+                          <Setter TargetName="Quando" Property="Foreground" Value="{DynamicResource Rayzer.Brand.Primary.Foreground}" />
+                        </DataTrigger>
+                      </DataTemplate.Triggers>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- Display: ver antes de gravar. -->
+          <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="Como a mensagem aparece no display" />
+              <TextBox MaxLength="40" Text="{Binding TextoDaPrevia, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Texto para ver no display" />
+              <Border Margin="0,10,0,0" Padding="10,8" HorizontalAlignment="Left" Background="{DynamicResource Rayzer.Brand.Primary}" CornerRadius="{StaticResource Rayzer.Radius.Sm}"
+                      AutomationProperties.Name="Prévia do display, duas linhas de 16 caracteres">
+                <StackPanel>
+                  <TextBlock FontFamily="{StaticResource Rayzer.Font.Mono}" FontSize="16" Foreground="{DynamicResource Rayzer.Text.OnBrand}" Text="{Binding PreviaLinha1}" />
+                  <TextBlock FontFamily="{StaticResource Rayzer.Font.Mono}" FontSize="16" Foreground="{DynamicResource Rayzer.Text.OnBrand}" Text="{Binding PreviaLinha2}" />
+                </StackPanel>
+              </Border>
+              <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding AvisosDaPrevia}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Margin="0,2" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap" Text="{Binding}" Foreground="{DynamicResource Rayzer.Warning}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Margin="0,8,0,0" HorizontalAlignment="Left" Style="{StaticResource Rayzer.Button.Ghost}" Content="_Ver no display 3D" Command="{Binding MostrarPrevia}" />
+              <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                         Text="Só no desenho. Para gravar nesta catraca, clique no display: mensagem padrão (salvar e aplicar) e mensagem temporária (na hora)." />
+            </StackPanel>
+          </Border>
+
+          <!-- A configuração que o desenho segue. -->
+          <Border Style="{StaticResource Rayzer.Card}">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="{Binding TituloDaConfiguracao}" />
+              <TextBlock Margin="0,0,0,6" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding TextoDaConfiguracao}" />
+              <ItemsControl ItemsSource="{Binding ResumoDaConfiguracao}" AutomationProperties.Name="Configuração que o desenho segue">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="0,2">
+                      <TextBlock DockPanel.Dock="Left" Width="150" Style="{StaticResource Rayzer.Type.Secondary}" Text="{Binding Rotulo}" />
+                      <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding Valor}" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+      </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+  </ScrollViewer>
+</UserControl>

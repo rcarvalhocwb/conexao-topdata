@@ -1,0 +1,28 @@
+valor;enum_oficial;significado;confirma_passagem_fisica;usado_no_fluxo_urna;acao_padrao;selo;fonte
+1;ORIGEM_TECLADO;Dados digitados no teclado. Cartao contem a sequencia digitada;nao;nao;tratar como credencial PIN;FONTE_PRIMARIA;Manual 4.3.2
+2;ORIGEM_LEITOR1;Leitura pelo Leitor 1. Cartao contem o numero lido;nao;sim - inicia o ciclo;tratar como leitura de credencial;FONTE_PRIMARIA;Manual 4.3.2
+3;ORIGEM_LEITOR2;Leitura pelo Leitor 2 (fenda da urna);nao;sim - inicia o ciclo;tratar como leitura de credencial;FONTE_PRIMARIA;Manual 4.3.2
+4;ORIGEM_SENSOR_CATRACA;Sensor de giro legado. OBSOLETO nos modelos recentes;nao;nao;registrar. NUNCA usar para confirmar passagem;FONTE_PRIMARIA;Manual 4.3.2
+5;ORIGEM_FIM_TEMPO_ACIONAMENTO;Tempo de acionamento de um rele expirou;nao;sim - timeout de urna E de giro;encerrar janela e avaliar timeout;FONTE_PRIMARIA;Manual 4.3.2 e 5.3.1
+6;ORIGEM_GIRO_CATRACA_TOPDATA;Giro concluido. Gerado pelo SENSOR OPTICO apos liberacao;SIM;sim - passo final;registrar passagem fisica e consumir ingresso;FONTE_PRIMARIA;Manual 4.3.2
+7;ORIGEM_CARTAO_RECOLHIDO_URNA;Cartao detectado e recolhido pela urna;nao;sim - pre-condicao para liberar giro;confirmar recolhimento e liberar sentido;FONTE_PRIMARIA;Manual 4.3.2 e 5.3.1
+8;ORIGEM_EVENTO_SENSORI;Evento no Sensor 1 (botoes ou sensores externos);nao;nao;configuravel por instalacao;FONTE_PRIMARIA;Manual 4.3.2
+9;ORIGEM_EVENTO_SENSOR2;Evento no Sensor 2;nao;nao;configuravel por instalacao;FONTE_PRIMARIA;Manual 4.3.2
+10;ORIGEM_EVENTO_SENSOR3;Evento no Sensor 3;nao;nao;configuravel por instalacao;FONTE_PRIMARIA;Manual 4.3.2
+11;LACUNA;NAO consta na tabela oficial do manual;desconhecido;nao;preservar como raw_event e alertar;A_CONFIRMAR_COM_TOPDATA;ausente no Manual 4.3.2 E no enum Origem do SDK 6.0.2.0
+12;ORIGEM_SENSOR_BIOMETRICO;Leitura pelo sensor biometrico. Cartao pode conter o ID do usuario;nao;nao;tratar como credencial biometrica;FONTE_PRIMARIA;Manual 4.3.2
+13;ORIGEM_RESPOSTA_REQUISICAO_BIO;Resposta a requisicao interna da catraca ao modulo biometrico. NAO e resposta ao envio pelo software;nao;nao;telemetria interna;FONTE_PRIMARIA;Manual 4.3.2
+14;LACUNA;NAO consta na tabela oficial do manual;desconhecido;nao;preservar como raw_event e alertar;A_CONFIRMAR_COM_TOPDATA;ausente no Manual 4.3.2 E no enum Origem do SDK 6.0.2.0
+15;LACUNA;NAO consta na tabela oficial do manual;desconhecido;nao;preservar como raw_event e alertar;A_CONFIRMAR_COM_TOPDATA;ausente no Manual 4.3.2 E no enum Origem do SDK 6.0.2.0
+16;LACUNA;NAO consta na tabela oficial do manual;desconhecido;nao;preservar como raw_event e alertar;A_CONFIRMAR_COM_TOPDATA;ausente no Manual 4.3.2 E no enum Origem do SDK 6.0.2.0
+17;LACUNA;NAO consta na tabela oficial do manual;desconhecido;nao;preservar como raw_event e alertar;A_CONFIRMAR_COM_TOPDATA;ausente no Manual 4.3.2 E no enum Origem do SDK 6.0.2.0
+18;ORIGEM_TEMPLATE;Recebimento ou envio de template biometrico;nao;nao;fluxo de cadastro-transferencia de digital;FONTE_PRIMARIA;Manual 4.3.2
+19;LACUNA;NAO consta na tabela oficial do manual;desconhecido;nao;preservar como raw_event e alertar;A_CONFIRMAR_COM_TOPDATA;ausente no Manual 4.3.2 E no enum Origem do SDK 6.0.2.0
+20;ORIGEM_URNA_CHEIA;Urna coletora esta cheia;nao;sim - bloqueia o fluxo;bloquear workflow / orientar outro portao / alertar;FONTE_PRIMARIA;Manual 4.3.2 e 5.3.1
+21;ORIGEM_QRCODE;Leitura por leitor de QR Code. Cartao contem a sequencia lida;nao;sim - conforme perfil do gate;tratar como leitura de credencial;FONTE_PRIMARIA;Manual 4.3.2
+35;TECLA_CONFIRMA;Tecla confirma do teclado (ASCII '#');nao;nao;tratar como tecla de funcao;FONTE_PRIMARIA;SDK 6.0.2.0 Enumeradores.cs
+37;PRESENCA_DEDO;Presenca de dedo no sensor biometrico (ASCII '%');nao;nao;telemetria do modulo bio;FONTE_PRIMARIA;SDK 6.0.2.0 Enumeradores.cs
+42;TECLA_ANULA;Tecla anula do teclado (ASCII '*');nao;nao;cancelar a digitacao em curso;FONTE_PRIMARIA;SDK 6.0.2.0 Enumeradores.cs
+65;TECLA_FUNCAO;Tecla de funcao do teclado (ASCII 'A');nao;nao;tratar como tecla de funcao;FONTE_PRIMARIA;SDK 6.0.2.0 Enumeradores.cs
+66;TECLA_ENTRADA;Tecla de entrada do teclado (ASCII 'B');nao;nao;registro marcado como entrada;FONTE_PRIMARIA;SDK 6.0.2.0 Enumeradores.cs
+67;TECLA_SAIDA;Tecla de saida do teclado (ASCII 'C');nao;nao;registro marcado como saida;FONTE_PRIMARIA;SDK 6.0.2.0 Enumeradores.cs

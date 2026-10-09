@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A perna de ENTRADA: puxar ingressos do provedor até a base local.
+    Ver docs/16-multiplos-provedores-de-ingresso.md, seção 2.
+  -->
+
+  <ItemGroup>
+    <!-- Só o domínio. Nada de SQLite e nada de HTTP: quem tem banco e rede
+         implementa as portas daqui. -->
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

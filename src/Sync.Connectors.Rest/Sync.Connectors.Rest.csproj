@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A perna de SAÍDA sobre HTTP: leva o aviso de uso até o provedor.
+    Ver docs/15-integracao-e-sincronizacao.md, seção 7.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Sync.Core/Sync.Core.csproj" />
+    <ProjectReference Include="../Sync.Ingestao/Sync.Ingestao.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Unit.Tests" />
+  </ItemGroup>
+
+</Project>

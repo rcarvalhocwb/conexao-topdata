@@ -1,0 +1,26 @@
+<UserControl x:Class="Desktop.App.Telas.Catracas"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Catracas">
+  <DockPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Catracas"
+                         Descricao="Cada catraca com a sua situação, o último evento e a linha técnica. Para incluir ou tirar catracas, use o Assistente de configuração (passo 2)." />
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <Grid>
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding Catracas}" ItemTemplate="{StaticResource Cartao.Catraca}" AutomationProperties.Name="Catracas">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2" VerticalAlignment="Top" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+        </ItemsControl>
+      </ScrollViewer>
+      <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="{Binding TituloSemCatracas}"
+                           Texto="{Binding TextoSemCatracas}"
+                           Visibility="{Binding Catracas, Converter={StaticResource ZeroParaVisivel}}" />
+    </Grid>
+  </DockPanel>
+</UserControl>

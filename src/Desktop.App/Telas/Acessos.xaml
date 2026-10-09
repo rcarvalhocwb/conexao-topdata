@@ -1,0 +1,135 @@
+<UserControl x:Class="Desktop.App.Telas.Acessos"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Acessos">
+  <DockPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Acessos"
+                         Descricao="Toda tentativa fica registrada, autorizada ou negada. Datas e horas no horário de Brasília; sem hora, vale o dia inteiro." />
+
+    <!-- Filtros: todos os campos com a mesma altura, alinhados pela base. -->
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
+      <WrapPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
+          <TextBox Width="96" Text="{Binding Catraca, UpdateSourceTrigger=PropertyChanged}" ToolTip="Vazio = todas" AutomationProperties.Name="Catraca" />
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Resultado" />
+          <ComboBox Width="140" ItemsSource="{Binding OpcoesDeResultado}" SelectedIndex="{Binding Resultado}" AutomationProperties.Name="Resultado" />
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Categoria" />
+          <TextBox Width="140" Text="{Binding Categoria, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Categoria" />
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="De (data · hora)" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
+            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Até (data · hora)" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
+            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
+          </StackPanel>
+        </StackPanel>
+        <Button Style="{StaticResource Rayzer.Button.Primary}" VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}"
+                Content="_Buscar" IsDefault="True" Command="{Binding Buscar}" />
+      </WrapPanel>
+    </Border>
+
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <!-- Usos sem passagem e estorno (achado E1-05 do docs/41): só aparece quando há algum. -->
+    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Style="{StaticResource Rayzer.Card}" AutomationProperties.Name="Usos sem passagem"
+            Visibility="{Binding UsosSemPassagem.TemUsos, Converter={StaticResource BoolParaVisibilidade}}">
+      <StackPanel>
+        <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,0,0,4" Text="{Binding UsosSemPassagem.Titulo}" />
+        <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Ingresso consumido cuja liberação falhou, ou que liberou e não girou. Confira com a pessoa antes de estornar." />
+        <DataGrid ItemsSource="{Binding UsosSemPassagem.Linhas}" SelectedItem="{Binding UsosSemPassagem.Selecionada}" MaxHeight="220"
+                  AutomationProperties.Name="Usos sem passagem encontrados">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="DIA E HORA" Binding="{Binding Hora}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+            <DataGridTextColumn Header="CATRACA" Binding="{Binding Catraca}" Width="110" />
+            <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
+            <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="110" />
+            <DataGridTextColumn Header="O QUE ACONTECEU" Binding="{Binding Causa}" Width="*" />
+          </DataGrid.Columns>
+        </DataGrid>
+        <WrapPanel Margin="0,8,0,0">
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Quem estorna" />
+            <TextBox Width="160" Text="{Binding UsosSemPassagem.Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Quem estorna" />
+          </StackPanel>
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Motivo" />
+            <TextBox Width="260" Text="{Binding UsosSemPassagem.Motivo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Motivo do estorno" />
+          </StackPanel>
+          <Button VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}"
+                  Content="Estornar o selecionado…" Command="{Binding UsosSemPassagem.PrepararEstorno}" />
+        </WrapPanel>
+        <Border Style="{StaticResource Rayzer.Card}" Margin="0,8,0,0"
+                Visibility="{Binding UsosSemPassagem.Confirmando, Converter={StaticResource BoolParaVisibilidade}}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding UsosSemPassagem.TextoDaConfirmacao}" />
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Style="{StaticResource Rayzer.Button.Primary}" Content="Estornar" Command="{Binding UsosSemPassagem.ConfirmarEstorno}" />
+              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="8,0,0,0" Content="Cancelar" Command="{Binding UsosSemPassagem.CancelarEstorno}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <TextBlock Style="{StaticResource Rayzer.Type.Caption}" Margin="0,8,0,0" TextWrapping="Wrap" Text="{Binding UsosSemPassagem.Mensagem}"
+                   Visibility="{Binding UsosSemPassagem.Mensagem, Converter={StaticResource VazioSome}}" />
+      </StackPanel>
+    </Border>
+
+    <!-- "Por quê?" (Etapa I.2 do docs/36): 360 px que empurram a lista, nunca a cobrem (docs/36-anexos/03 §2.1, item 7). -->
+    <Border DockPanel.Dock="Right" Width="360" Margin="12,0,0,0" Style="{StaticResource Rayzer.Card}"
+            Visibility="{Binding PorQue.Aberto, Converter={StaticResource BoolParaVisibilidade}}" AutomationProperties.Name="Por quê?">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Content="Fechar" Command="{Binding PorQue.Fechar}"
+                    AutomationProperties.Name="Fechar a explicação" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" VerticalAlignment="Center" Text="Por quê?" />
+          </DockPanel>
+          <rz:RayzerStatus Margin="0,8,0,12" HorizontalAlignment="Left" Tom="{Binding PorQue.Sinal, Converter={StaticResource SinalParaTom}}"
+                           Texto="{Binding PorQue.Cabecalho}" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que aconteceu" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueAconteceu}" />
+          <StackPanel Visibility="{Binding PorQue.OQueDizer, Converter={StaticResource VazioSome}}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que dizer à pessoa" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueDizer}" />
+          </StackPanel>
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="O que fazer" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,2,0,12" TextWrapping="Wrap" Text="{Binding PorQue.OQueFazer}" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                     Text="Explicação para o operador. O display da catraca continua com a mensagem de sempre." />
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <Grid>
+      <DataGrid ItemsSource="{Binding Linhas}" AutomationProperties.Name="Acessos encontrados">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+          <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
+          <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.AcessoComPorQue}" />
+          <DataGridTextColumn Header="CATEGORIA" Binding="{Binding Categoria}" Width="128" />
+          <DataGridTextColumn Header="GIROU" Binding="{Binding Girou, Converter={StaticResource SimOuTraco}}" Width="76" />
+          <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Search}" Titulo="Nenhum acesso para mostrar"
+                           Texto="Ajuste os filtros e clique em Buscar. Sem filtro, aparecem os 500 mais recentes."
+                           Visibility="{Binding Linhas, Converter={StaticResource ZeroParaVisivel}}" />
+    </Grid>
+  </DockPanel>
+</UserControl>

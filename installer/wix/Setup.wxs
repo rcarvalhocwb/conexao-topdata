@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Setup.exe do Rayzer XAcess (Rayzer Serviços e Tecnologia): um arquivo só, que instala tudo.
+
+  É um "bundle" do WiX (Burn) em volta do MSI. O MSI já traz o .NET embutido em cada
+  componente (publicação self-contained), então não há pré-requisito de runtime para
+  baixar nem versão para casar. Ao terminar, o botão "Abrir o painel" abre o Painel; sem
+  configuração, ele oferece o Assistente, que confere o SDK da Topdata e grava catracas e
+  nuvem.
+
+  O que continua fora, de propósito:
+  - a EasyInner.dll e o SDK da Topdata: são da Topdata e este repositório é público. O
+    assistente localiza a DLL no computador (ou num pendrive) e a copia para o lugar certo;
+  - o .NET Framework 3.5: é um recurso do Windows; o assistente o habilita com um clique.
+-->
+<!-- Canal do Setup: o mesmo do MSI (ver ConexaoTopdata.wxs, achado E10-2 do docs/41). -->
+<?ifdef CanalDeTeste ?>
+<?define NomeDoProduto = "Rayzer XAcess (teste)" ?>
+<?define CodigoDeAtualizacao = "a9017496-addf-4876-837d-3bab21c44bf6" ?>
+<?else?>
+<?define NomeDoProduto = "Rayzer XAcess" ?>
+<?define CodigoDeAtualizacao = "8b0c64a6-2f6b-4a3e-9d0a-6d2f3c1a9e41" ?>
+<?endif?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="$(var.NomeDoProduto)"
+          IconSourceFile="$(sys.SOURCEFILEDIR)..\..\src\Rayzer.Design\Marca\rayzer-xacess.ico"
+          Manufacturer="Rayzer Serviços e Tecnologia"
+          Version="$(var.Versao)"
+          UpgradeCode="$(var.CodigoDeAtualizacao)">
+
+    <BootstrapperApplication>
+      <!-- Sem licença a aceitar: é um sistema do próprio evento. -->
+      <!-- Textos em português (tema-pt-BR.wxl): sem ele, o Setup inteiro fala inglês. -->
+      <!--
+        Tema próprio (tema-rayzer.xml): a arte da marca de fundo, com os textos e botões na
+        faixa escura da direita. Os nomes dos controles são os do tema padrão do WiX.
+      -->
+      <!--
+        Theme="hyperlinkLicense", e NÃO "none": com "none" o WiX não grava a configuração do
+        WixStdBA no Setup, e ele fecha sem abrir janela ("manifest is missing wixstdba
+        information", visto no registro do Burn). O ThemeFile substitui só o desenho.
+      -->
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense"
+                                              ThemeFile="$(sys.SOURCEFILEDIR)tema-rayzer.xml"
+                                              LocalizationFile="$(sys.SOURCEFILEDIR)tema-pt-BR.wxl"
+                                              ShowVersion="yes" />
+      <Payload SourceFile="$(sys.SOURCEFILEDIR)fundo-setup.png" Name="fundo-setup.png" />
+    </BootstrapperApplication>
+
+    <!--
+      O botão "Abrir o painel" da última tela abre o Painel, que não pede administrador.
+      Antes abria o assistente, que exige administrador, e o Setup (sem elevação) não
+      conseguia abri-lo: o botão não fazia nada. Com a instalação ainda sem configuração, o
+      painel mostra o botão "Abrir assistente de configuração", que pede a permissão.
+    -->
+    <Variable Name="LaunchTarget" Type="formatted" Value="[ProgramFiles64Folder]Rayzer\XAcess\Painel\Desktop.App.exe" />
+    <Variable Name="LaunchWorkingFolder" Type="formatted" Value="[ProgramFiles64Folder]Rayzer\XAcess\Painel" />
+
+    <Chain>
+      <MsiPackage SourceFile="$(var.Msi)" Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

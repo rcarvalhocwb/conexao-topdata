@@ -1,0 +1,60 @@
+<Window x:Class="Desktop.App.JanelaDeNovidades"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+        Title="Novidades desta versão · Rayzer XAcess"
+        Width="580" SizeToContent="Height"
+        MinWidth="580" MaxWidth="580"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Icon="pack://application:,,,/Rayzer.Design;component/Marca/rayzer-xacess.ico"
+        Style="{StaticResource Rayzer.Janela}">
+
+  <!--
+    Aviso mostrado uma vez quando o sistema é atualizado por cima de uma instalação (observação
+    do teste de 10/2026). Texto em português de portaria; a decisão de abrir mora na
+    NovidadesViewModel, testada sem WPF.
+  -->
+
+  <Border Padding="28,24,28,20">
+    <StackPanel>
+
+      <!-- Cabeçalho: ícone do produto, título e a versão instalada. -->
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+        <rz:RayzerAppIcon Width="40" VerticalAlignment="Top" />
+        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+          <TextBlock Style="{StaticResource Rayzer.Type.Title}" Text="{Binding Titulo}" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Caption}" Margin="0,2,0,0">
+            <Run Text="Versão" /><Run Text=" " /><Run Text="{Binding Versao, Mode=OneWay}" />
+          </TextBlock>
+        </StackPanel>
+      </StackPanel>
+
+      <TextBlock Style="{StaticResource Rayzer.Type.Body}" Margin="0,0,0,14" Text="{Binding Abertura}" />
+
+      <!-- A lista do que mudou para o operador. -->
+      <ItemsControl ItemsSource="{Binding Itens}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,0,0,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Border Grid.Column="0" Width="6" Height="6" CornerRadius="3" Margin="2,7,12,0"
+                      VerticalAlignment="Top" Background="{DynamicResource Rayzer.Brand.Accent}" />
+              <TextBlock Grid.Column="1" Style="{StaticResource Rayzer.Type.Body}" Text="{Binding}" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Border Style="{StaticResource Rayzer.Divider}" Margin="0,8,0,16" />
+
+      <Button x:Name="BotaoEntendi" Style="{StaticResource Rayzer.Button.Primary}"
+              HorizontalAlignment="Right" MinWidth="120" Click="Entendi"
+              Content="Entendi"
+              AutomationProperties.Name="Fechar as novidades desta versão" />
+    </StackPanel>
+  </Border>
+</Window>

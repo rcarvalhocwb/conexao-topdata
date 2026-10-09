@@ -1,0 +1,1472 @@
+syntax = "proto3";
+
+package conexaotopdata.edge.v1;
+
+option csharp_namespace = "Contracts.Edge.V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Contrato entre o aplicativo de operação e o serviço local.
+//
+// Regra que o contrato carrega por construção: NÃO existe campo para o número de
+// cartão em texto claro. A interface gráfica nunca precisa dele — ela mostra a pessoa,
+// o portão e o motivo. Um contrato sem o campo é mais forte que uma convenção de não
+// preenchê-lo. Ver docs/ADR/ADR-0008 e docs/ADR/ADR-0014.
+//
+// Versionamento: números de campo nunca são reaproveitados. Campo removido vira
+// 'reserved', e um teste de contrato confere isso.
+service EdgeControl {
+  // Login e usuários do sistema (ADR-0026). Entrar devolve a sessão que o painel manda em toda
+  // chamada (cabeçalho x-sessao). Com a senha padrão, só TrocarSenha, ObterSessao e Sair funcionam.
+  rpc Entrar(EntrarRequest) returns (EntrarResponse);
+  rpc TrocarSenha(TrocarSenhaRequest) returns (TrocarSenhaResponse);
+  rpc Sair(SairRequest) returns (SairResponse);
+  rpc ObterSessao(ObterSessaoRequest) returns (UsuarioDaSessao);
+  rpc ListarUsuarios(ListarUsuariosRequest) returns (ListarUsuariosResponse);
+  rpc GravarUsuario(GravarUsuarioRequest) returns (GravarUsuarioResponse);
+  rpc RedefinirSenha(RedefinirSenhaRequest) returns (RedefinirSenhaResponse);
+  rpc ListarPapeis(ListarPapeisRequest) returns (ListarPapeisResponse);
+  rpc GravarPapel(GravarPapelRequest) returns (GravarPapelResponse);
+
+  // Cadastro local de pessoas (docs/43, ADR-0026). Só local, nada vai para a nuvem. O código de uma
+  // credencial só vai do painel ao serviço (AdicionarCredencialRequest.codigo); as respostas trazem o
+  // código mascarado. Documento e contato vêm mascarados para quem não tem "pessoas.ver_dados".
+  rpc BuscarPessoas(BuscarPessoasRequest) returns (BuscarPessoasResponse);
+  rpc ObterPessoa(ObterPessoaRequest) returns (FichaDaPessoa);
+  rpc GravarPessoa(GravarPessoaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc MudarSituacaoDaPessoa(MudarSituacaoDaPessoaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc AdicionarCredencial(AdicionarCredencialRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc MudarSituacaoDaCredencial(MudarSituacaoDaCredencialRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ObterParametrosDoCadastro(ObterParametrosDoCadastroRequest) returns (ParametrosDoCadastroDePessoas);
+  rpc GravarEmpresa(GravarEmpresaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarSala(GravarSalaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarHorario(GravarHorarioRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ExcluirHorario(ExcluirHorarioRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarFeriado(GravarFeriadoRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ExcluirFeriado(ExcluirFeriadoRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarPerfil(GravarPerfilRequest) returns (ResultadoDoCadastroDePessoas);
+
+  // Importação de pessoas por planilha (docs/43 P5): prévia sem gravar, aplicar tudo ou nada, desfazer.
+  rpc PreverImportacaoDePessoas(ImportacaoDePessoasRequest) returns (ResultadoDaImportacaoDePessoas);
+  rpc ImportarPessoas(ImportacaoDePessoasRequest) returns (ResultadoDaImportacaoDePessoas);
+  rpc ListarImportacoesDePessoas(ListarImportacoesDePessoasRequest) returns (ListarImportacoesDePessoasResponse);
+  rpc DesfazerImportacaoDePessoas(DesfazerImportacaoDePessoasRequest) returns (ResultadoDoCadastroDePessoas);
+
+  // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
+  rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
+  rpc FecharCatraca(FecharCatracaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc AbrirCatraca(AbrirCatracaRequest) returns (ResultadoDoCadastroDePessoas);
+
+  // Estado geral do serviço, para o painel.
+  rpc ObterEstado(ObterEstadoRequest) returns (ObterEstadoResponse);
+
+  // Equipamentos e sua saúde.
+  rpc ListarEquipamentos(ListarEquipamentosRequest) returns (ListarEquipamentosResponse);
+
+  // Fluxo de eventos ao vivo. A interface nunca faz polling.
+  rpc AcompanharEventos(AcompanharEventosRequest) returns (stream EventoDeAcesso);
+
+  // Telas do operador. Tudo o que volta com código vem mascarado.
+  rpc ListarAcessos(ListarAcessosRequest) returns (ListarAcessosResponse);
+  rpc ObterConfiguracao(ObterConfiguracaoRequest) returns (ConfiguracaoDoEvento);
+  rpc GravarConfiguracao(GravarConfiguracaoRequest) returns (GravarConfiguracaoResponse);
+  rpc ObterSincronizacao(ObterSincronizacaoRequest) returns (SituacaoDaSincronizacao);
+  rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
+  rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
+  rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
+
+  // A7 (levantamento): pacote de diagnóstico para o suporte. Montado pelo serviço, que é quem lê a pasta
+  // de dados; o painel só salva o arquivo. Sem banco, sem token e sem segredo.
+  rpc ObterPacoteDeDiagnostico(ObterPacoteDeDiagnosticoRequest) returns (PacoteDeDiagnostico);
+
+  // Achado E5-2 (docs/41): devolve à fila as tentativas que a nuvem recusou (cartas mortas), depois
+  // de corrigida a causa. Fica anotado quem pediu. Reenviar é seguro: a nuvem reconhece repetição.
+  rpc ReenviarCartasMortas(ReenviarCartasMortasRequest) returns (ReenviarCartasMortasResponse);
+
+  // Achado E1-05 (docs/41), decisão do dono do produto: ingresso consumido cuja liberação falhou (ou
+  // que liberou e não girou) continua consumido; o operador vê a lista e estorna, com nome e motivo.
+  // O estorno vale nesta borda: o uso já enviado à nuvem e ao provedor fica como foi.
+  rpc ListarUsosSemPassagem(ListarUsosSemPassagemRequest) returns (ListarUsosSemPassagemResponse);
+  rpc EstornarUso(EstornarUsoRequest) returns (EstornarUsoResponse);
+
+  // Modo simulação: "passa" um código numa catraca simulada. Recusado fora da simulação.
+  rpc SimularLeitura(SimularLeituraRequest) returns (SimularLeituraResponse);
+
+  // Gerenciar catraca (fase 4b). Cada pedido vira auditoria na base local
+  // (operator_command) e é executado pelo worker quando a catraca estiver livre.
+  rpc EnviarComando(EnviarComandoRequest) returns (EnviarComandoResponse);
+  rpc ListarComandos(ListarComandosRequest) returns (ListarComandosResponse);
+
+  // Parametrização por catraca (Etapa A.6 do docs/35). O que uma catraca sobrepõe ao evento,
+  // campo a campo, com o valor que vale, de onde ele vem e se chega à catraca. Gravar troca a
+  // camada inteira da catraca e não aplica: a aplicação é o comando APLICAR_CONFIGURACAO dela.
+  // Erro volta em "problemas", nunca como exceção.
+  rpc ObterConfiguracaoDaCatraca(ObterConfiguracaoDaCatracaRequest) returns (ConfiguracaoDaCatraca);
+  rpc GravarConfiguracaoDaCatraca(GravarConfiguracaoDaCatracaRequest) returns (GravarConfiguracaoDaCatracaResponse);
+
+  // Mapa de giro (decisão D9 do docs/34 §9: a nomenclatura de sentido é do sistema). Para cada
+  // origem que libera a catraca, qual função da DLL liberar (EI-041 a EI-044) e como o giro é
+  // contado. Gravar não aplica: a aplicação é o APLICAR_CONFIGURACAO da catraca, como na
+  // Parametrização. A conferência registra, com nome e hora, para que lado o braço girou com uma
+  // função nesta instalação. Erro volta em "problemas", nunca como exceção.
+  rpc ObterMapaDeGiro(ObterMapaDeGiroRequest) returns (MapaDeGiroDaCatraca);
+  rpc GravarMapaDeGiro(GravarMapaDeGiroRequest) returns (GravarMapaDeGiroResponse);
+  rpc RegistrarConferenciaDoGiro(RegistrarConferenciaDoGiroRequest) returns (RegistrarConferenciaDoGiroResponse);
+  // "Por que negou" (Etapa I.2 do docs/36, IN-06): a explicação de uma tentativa negada, para o
+  // operador. Só leitura; funciona com a camada inteligente desligada (texto determinístico sobre
+  // o que a decisão já gravou). Não devolve código, máscara nem identificador de ingresso.
+  rpc ExplicarNegativa(ExplicarNegativaRequest) returns (ExplicacaoDaNegativa);
+
+  // NÃO IMPLEMENTADAS (achado E7-1 do docs/41): as RPCs abaixo, de ObterSugestoes a
+  // ObterRelatorioPosEvento, respondem vazias com o campo "desligada" preenchido (as de gravar,
+  // recusadas com o mesmo texto em "problemas"). Os comentários descrevem o que cada uma fará
+  // quando a etapa correspondente do docs/36 for feita.
+  //
+  // Sugestões de parametrização (Etapa I.9 do docs/36, IN-07): recomendações de mudança nos
+  // campos de tempo do relé, leitor e display. Só leitura; as sugestões nunca são aplicadas
+  // automaticamente — o operador escolhe usar ou descartar, e o registro fica para pós-evento.
+  rpc ObterSugestoes(ObterSugestoesRequest) returns (SugestoesDaCatraca);
+  rpc RegistrarDestinoDaSugestao(RegistrarDestinoDaSugestaoRequest) returns (RegistrarDestinoDaSugestaoResponse);
+
+  // Saúde das catracas (Etapa I.3 do docs/36, IN-01): sete sinais por catraca com nível,
+  // conta e recomendação. Só leitura; os sinais são comparados com as vizinhas na mesma janela.
+  // Índice de 0–100 no modo técnico (pior sinal visto primeiro).
+  rpc ObterSaudeDasCatracas(ObterSaudeDasCatracasRequest) returns (SaudeDasCatracas);
+
+  // Ritmo, ocupação e fluxo por sentido (Etapa I.5 do docs/36, IN-04 e IN-05): chegadas,
+  // capacidade, ocupação estimada, entradas e saídas. Só leitura; dados agregados sem código.
+  rpc ObterRitmo(ObterRitmoRequest) returns (DadosDoRitmo);
+
+  // Alertas da camada inteligente (Etapa I.4 do docs/36, IN-02): regras por janela e por
+  // comparação entre catracas, com ciclo de vida (Aberto → Ciente → Fechado) e correlação.
+  rpc ListarAlertas(ListarAlertasRequest) returns (ListarAlertasResponse);
+  rpc MarcarAlertaComoCiente(MarcarAlertaComoCienteRequest) returns (MarcarAlertaComoCienteResponse);
+
+  // Relatório pós-evento (Etapa I.10 do docs/36, IN-09 e IN-08): achados determinísticos
+  // e replay com linha do tempo. Só leitura; retorna agregados sem código de ingresso.
+  rpc ObterRelatorioPosEvento(ObterRelatorioPosEventoRequest) returns (RelatorioPosEvento);
+}
+
+message ObterEstadoRequest {}
+
+message ObterEstadoResponse {
+  string versao = 1;
+  int32 workers_ativos = 2;
+  int32 equipamentos_conectados = 3;
+  int64 outbox_pendente = 4;
+
+  // Idade do item mais antigo ainda não sincronizado. É o sinal de que a
+  // sincronização parou — e não de que a internet caiu.
+  int64 outbox_idade_mais_antigo_segundos = 5;
+
+  // Nível de degradação em que a operação está. Ver ADR-0017.
+  NivelDeDegradacao nivel = 6;
+
+  bool internet_disponivel = 7;
+
+  // Contagens do evento, lidas da base local (ADR-0024).
+  int64 liberados = 8;
+  int64 negados = 9;
+  int64 giros = 10;
+  int64 liberados_ultimos_5_minutos = 11;
+  int64 cartas_mortas = 12;
+  int32 equipamentos_cadastrados = 13;
+
+  // Quando a nuvem respondeu com sucesso pela última vez; vazio se nunca.
+  google.protobuf.Timestamp ultima_sincronizacao = 14;
+
+  // Verdadeiro quando o serviço subiu sem arquivo de configuração: falta rodar o
+  // assistente de configuração. Falso (o padrão) em serviço configurado ou antigo.
+  bool sem_configuracao = 15;
+
+  // Catracas simuladas: nenhuma catraca física é acionada.
+  bool simulacao = 16;
+
+  // Giros confirmados pelo rótulo do mapa de giro (D9). Sem regra no mapa, conta como entrada.
+  int64 entradas = 17;
+  int64 saidas = 18;
+}
+
+message ListarEquipamentosRequest {}
+
+message ListarEquipamentosResponse {
+  repeated Equipamento equipamentos = 1;
+}
+
+message Equipamento {
+  int32 inner = 1;
+  string nome_do_gate = 2;
+  string worker = 3;
+  int32 porta = 4;
+  string estado = 5;
+  bool saudavel = 6;
+  google.protobuf.Timestamp ultimo_evento = 7;
+  string firmware = 8;
+  bool homologado = 9;
+
+  // Preenchido só em equipamento com urna.
+  int32 capacidade_da_urna_usada_por_cento = 10;
+
+  // Em operação: atendendo público. Falso também quando o worker parou de dar notícia.
+  bool em_operacao = 11;
+  int32 tentativas_de_reconexao = 12;
+  // "liberado" ou "negado"; vazio se ainda não decidiu nada.
+  string ultima_decisao = 13;
+  // Quando o worker deu notícia desta catraca pela última vez.
+  google.protobuf.Timestamp noticia_em = 14;
+
+  // Relógio da catraca (fase 4a). Acertado a cada conexão, conferido a cada hora.
+  google.protobuf.Timestamp relogio_acertado_em = 15;
+  google.protobuf.Timestamp relogio_conferido_em = 16;
+  // Catraca menos borda, em segundos. Ausente se nunca conferido ou se a data era inválida.
+  optional int32 divergencia_do_relogio_segundos = 17;
+  // Acima de 30 s, ou a catraca devolveu uma data impossível.
+  bool relogio_divergente = 18;
+
+  // Configuração salva × aplicada (Etapa A.5 do docs/35). O que a catraca ACEITOU: a última vez
+  // que o envio completo da configuração devolveu 0. Ausente até o primeiro envio aceito do
+  // worker que a atende. Não muda quando a configuração é salva, só quando chega à catraca.
+  google.protobuf.Timestamp configuracao_aplicada_em = 19;
+  // SHA-256 (64 hexadecimais minúsculos) da forma canônica do que foi enviado
+  // (VersaoDaConfiguracao). Vazio até o primeiro envio aceito. Igual à versão calculada do que
+  // está salvo = a catraca está com o salvo.
+  string configuracao_versao = 20;
+
+  // A situação veio de uma catraca simulada (modo simulação; migração 016). O painel mostra o
+  // selo "Simulação" no cartão da catraca, coerente com o aviso geral do modo simulação.
+  // Falso também quando não há situação desta partida do serviço: situação de outra partida
+  // não é usada (docs/29, defeito de 01/10).
+  bool simulacao = 21;
+}
+
+message AcompanharEventosRequest {
+  // Vazio acompanha todos.
+  repeated int32 inners = 1;
+}
+
+message EventoDeAcesso {
+  string evento_id = 1;
+  int32 inner = 2;
+  google.protobuf.Timestamp recebido_em = 3;
+
+  int32 origem_bruta = 4;
+  string origem_conhecida = 5;
+  bool origem_desconhecida = 6;
+
+  // Credencial SEMPRE mascarada. Não existe campo para o valor real.
+  string credencial_mascarada = 7;
+
+  string pessoa = 8;
+  ResultadoDoAcesso resultado = 9;
+  string motivo = 10;
+  string mensagem_ao_operador = 11;
+
+  // Verdadeiro só com prova física de giro (origem 6). Ver ADR-0007.
+  bool passagem_confirmada = 12;
+
+  string correlation_id = 13;
+
+  // Categoria do ingresso no instante da tentativa (meia, inteira, social...).
+  string categoria = 14;
+  string portao = 15;
+
+  // Como o giro desta leitura é contado pelo mapa de giro: "entrada", "saida", ou vazio quando
+  // a catraca não tem regra para a origem (conta como entrada, como sempre).
+  string conta_como = 16;
+}
+
+enum ResultadoDoAcesso {
+  RESULTADO_DO_ACESSO_NAO_ESPECIFICADO = 0;
+  RESULTADO_DO_ACESSO_PERMITIDO = 1;
+  RESULTADO_DO_ACESSO_NEGADO = 2;
+  RESULTADO_DO_ACESSO_EM_REVISAO = 3;
+  RESULTADO_DO_ACESSO_CONTINGENCIA = 4;
+}
+
+enum NivelDeDegradacao {
+  NIVEL_DE_DEGRADACAO_NAO_ESPECIFICADO = 0;
+  NIVEL_DE_DEGRADACAO_T0_NORMAL = 1;
+  NIVEL_DE_DEGRADACAO_T1_SEM_INTERNET = 2;
+  NIVEL_DE_DEGRADACAO_T2_LISTA_LOCAL = 3;
+  NIVEL_DE_DEGRADACAO_T3_ISOLADO = 4;
+}
+
+enum FiltroDeResultado {
+  FILTRO_DE_RESULTADO_NAO_ESPECIFICADO = 0;  // todos
+  FILTRO_DE_RESULTADO_LIBERADOS = 1;
+  FILTRO_DE_RESULTADO_NEGADOS = 2;
+}
+
+message ListarAcessosRequest {
+  int32 inner = 1;                         // 0 = todas as catracas
+  FiltroDeResultado resultado = 2;
+  google.protobuf.Timestamp desde = 3;
+  google.protobuf.Timestamp ate = 4;
+  int32 limite = 5;                        // 0 = padrão do serviço
+  string categoria = 6;                    // vazio = todas
+}
+
+message ListarAcessosResponse {
+  repeated EventoDeAcesso acessos = 1;     // do mais recente ao mais antigo
+  bool ha_mais = 2;
+}
+
+message ObterConfiguracaoRequest {}
+
+message ConfiguracaoDoEvento {
+  int32 tipo_de_leitor = 1;
+  bool leitor_da_urna = 2;
+  int32 tempo_de_acionamento_segundos = 3;
+  string mensagem_padrao = 4;
+  bool nuvem_ligada = 5;                   // só leitura: vem da instalação
+  int32 espera_pelo_giro_segundos = 6;
+}
+
+message GravarConfiguracaoRequest {
+  ConfiguracaoDoEvento configuracao = 1;
+  string operador = 2;
+}
+
+message GravarConfiguracaoResponse {
+  bool gravada = 1;
+  repeated string problemas = 2;
+  // Verdadeiro quando a configuração gravada difere da anterior: há o que aplicar.
+  // Leitor, urna, tempo e mensagem passam às catracas pelo "Aplicar agora nas catracas"
+  // (comando APLICAR_CONFIGURACAO: cada catraca reconecta), SEM reiniciar o serviço
+  // (docs/32). Só a espera pelo giro vale a partir do próximo início do serviço.
+  // O nome é anterior ao "Aplicar agora" e fica, com o número, para não quebrar clientes.
+  bool exige_reinicio = 3;
+}
+
+message ObterSincronizacaoRequest {}
+
+message SituacaoDaSincronizacao {
+  bool configurada = 1;
+  google.protobuf.Timestamp ultimo_sucesso = 2;
+  string ultima_falha = 3;
+  int64 pendentes = 4;
+  int64 idade_do_mais_antigo_segundos = 5;
+  int64 cartas_mortas = 6;
+  repeated ProvedorCadastrado provedores = 7;
+}
+
+message ProvedorCadastrado {
+  string id = 1;
+  string nome = 2;
+  int64 codigos = 3;
+  bool reutilizavel = 4;
+  int32 intervalo_de_reuso_segundos = 5;
+  bool somente_na_urna = 6;
+  bool habilitado = 7;
+}
+
+message ObterPrestacaoDeContasRequest {
+  google.protobuf.Timestamp desde = 1;
+  google.protobuf.Timestamp ate = 2;
+}
+
+message PrestacaoDeContas {
+  repeated LinhaPorCategoria por_categoria = 1;
+  repeated LinhaPorCatraca por_catraca = 2;
+  repeated LinhaPorHora por_hora = 3;
+  repeated LinhaDeNegativa negativas = 4;
+  int64 liberados = 5;
+  int64 giros = 6;
+  int64 negados = 7;
+  google.protobuf.Timestamp gerada_em = 8;
+
+  // O período que os números cobrem, como o serviço aplicou (inclusive nas pontas). Vai no CSV
+  // e na tela: um número de prestação de contas sem o período não é conferível (docs/25 §4).
+  google.protobuf.Timestamp periodo_desde = 9;
+  google.protobuf.Timestamp periodo_ate = 10;
+
+  // Giros pelo rótulo do mapa de giro (D9); sem rótulo, entrada.
+  int64 entradas = 11;
+  int64 saidas = 12;
+}
+
+message LinhaPorCategoria {
+  string categoria = 1;
+  int64 liberados = 2;
+  int64 giros = 3;
+}
+
+message LinhaPorCatraca {
+  int32 inner = 1;
+  int64 liberados = 2;
+  int64 giros = 3;
+  int64 negados = 4;
+  int64 entradas = 5;
+  int64 saidas = 6;
+}
+
+message LinhaPorHora {
+  google.protobuf.Timestamp hora = 1;
+  int64 liberados = 2;
+  int64 negados = 3;
+}
+
+message LinhaDeNegativa {
+  string motivo = 1;
+  string mensagem = 2;
+  int64 quantidade = 3;
+
+  // Etapa I.2 (docs/36): "principais motivos de negação" — o que fazer diante deste motivo e a
+  // parte dos negados do período que ele representa (0 a 100, arredondado).
+  string o_que_fazer = 4;
+  int32 percentual_dos_negados = 5;
+}
+
+// O operador digita o código para consultar; a resposta nunca o devolve inteiro.
+message ConsultarCodigoRequest {
+  string codigo = 1;
+}
+
+message ConsultarCodigoResponse {
+  bool encontrado = 1;
+  string codigo_mascarado = 2;
+  string provedor = 3;
+  string categoria = 4;
+  string situacao = 5;
+  int64 usos_feitos = 6;
+  int64 usos_maximos = 7;                  // 0 = sem limite
+  google.protobuf.Timestamp ultimo_uso = 8;
+  repeated EventoDeAcesso historico = 9;   // do mais recente ao mais antigo
+}
+
+message ObterDiagnosticoRequest {}
+
+message ObterPacoteDeDiagnosticoRequest {}
+
+message ReenviarCartasMortasRequest {
+  // Nome de quem pediu (2 a 80 caracteres), para a auditoria.
+  string operador = 1;
+}
+
+message ReenviarCartasMortasResponse {
+  bool aceito = 1;
+  int32 reenviadas = 2;
+  string mensagem = 3;
+}
+
+message ListarUsosSemPassagemRequest {
+  bool somente_com_falha = 1;   // só os que a liberação falhou
+  int32 limite = 2;             // 0 = 100
+}
+
+message UsoSemPassagem {
+  string tentativa_id = 1;
+  google.protobuf.Timestamp em = 2;
+  string catraca = 3;               // device_id
+  string portao = 4;
+  string provedor = 5;
+  string categoria = 6;
+  string codigo_mascarado = 7;      // nunca o código inteiro
+  string falha_da_liberacao = 8;    // vazio: liberou e não veio o giro
+}
+
+message ListarUsosSemPassagemResponse {
+  repeated UsoSemPassagem usos = 1;
+  string alcance_do_estorno = 2;    // o que o estorno faz e não faz, para o operador ler
+}
+
+message EstornarUsoRequest {
+  string tentativa_id = 1;
+  string operador = 2;
+  string motivo = 3;
+}
+
+message EstornarUsoResponse {
+  bool estornado = 1;
+  repeated string problemas = 2;
+}
+
+message PacoteDeDiagnostico {
+  bool gerado = 1;                            // falso: o zip não pôde ser montado (ver mensagem)
+  bytes zip = 2;                              // o arquivo .zip, pronto para salvar
+  string nome_do_arquivo = 3;                 // sugestão de nome, com a data de Brasília
+  string mensagem = 4;                        // o que aconteceu, em português de suporte
+}
+
+message Diagnostico {
+  string versao = 1;
+  string pasta_de_dados = 2;
+  repeated DiagnosticoDeWorker workers = 3;
+
+  // Etapa I.0 (docs/36): a saúde do Analisador da camada inteligente, que roda no serviço,
+  // desligado por padrão (chave inteligencia.ligada, sem tela).
+  SaudeDoAnalisador analisador = 4;
+}
+
+// O Analisador só lê a base da operação e grava a telemetria dele; nada aqui comanda catraca.
+// O erro vai só pelo tipo, nunca com mensagem livre (docs/36-anexos/02 §3.1, I6).
+message SaudeDoAnalisador {
+  bool ligado = 1;                                  // a chave estava ligada na partida
+  bool rodando = 2;                                 // o laço existe neste serviço
+  google.protobuf.Timestamp ultimo_ciclo = 3;       // ausente: nenhum ciclo ainda
+  int64 duracao_do_ultimo_ciclo_ms = 4;
+  int64 ciclos = 5;                                 // ciclos que terminaram bem
+  int64 estouros = 6;                               // acima do orçamento (o seguinte é pulado)
+  int64 pulados = 7;
+  int64 falhas = 8;
+  string ultimo_erro = 9;                           // tipo do erro; vazio se nenhum
+  google.protobuf.Timestamp ultimo_erro_em = 10;
+  int64 orcamento_ms = 11;
+  int64 tentativas_lidas = 12;
+}
+
+message DiagnosticoDeWorker {
+  string nome = 1;
+  string situacao = 2;
+  string detalhe = 3;
+  int32 reinicios = 4;
+  repeated string ultimas_linhas = 5;
+}
+
+message SimularLeituraRequest {
+  int32 inner = 1;
+  string codigo = 2;
+  bool na_urna = 3;       // fenda da urna (leitor 2) em vez do leitor da frente
+  bool girar = 4;         // se liberada, a pessoa gira
+}
+
+message SimularLeituraResponse {
+  bool aceita = 1;
+  string mensagem = 2;
+}
+
+// De 1 a 5: função documentada e já exercitada (fase 4b). De 6 em diante (Etapa A.8 do
+// docs/35): função com linha na matriz, cada uma atrás da sua chave técnica desligada; com a
+// chave desligada o serviço recusa em `problemas`, sem enfileirar. Relés, urna e troca de
+// sentido continuam de fora até a bancada (docs/32). Número nunca reaproveitado.
+enum TipoDeComando {
+  TIPO_DE_COMANDO_NAO_ESPECIFICADO = 0;
+  TIPO_DE_COMANDO_ACERTAR_RELOGIO = 1;
+  TIPO_DE_COMANDO_MENSAGEM_TEMPORARIA = 2;
+  TIPO_DE_COMANDO_LIBERACAO_MANUAL = 3;
+  TIPO_DE_COMANDO_REINICIAR_CONEXAO = 4;
+  TIPO_DE_COMANDO_APLICAR_CONFIGURACAO = 5;
+  // Manual, nunca acoplado à decisão (EI-048 e EI-049; ensaio INT-UX-03).
+  TIPO_DE_COMANDO_BIP_CURTO = 6;
+  TIPO_DE_COMANDO_BIP_LONGO = 7;
+  // Um giro no sentido de saída, com motivo (EI-042/EI-044 pelo perfil; HIL-DIR-04).
+  TIPO_DE_COMANDO_LIBERAR_SAIDA = 8;
+  // Só evacuação: permite carona. Motivo e confirmação digitada; recusado enquanto a
+  // decisão D5 do dono do produto não for tomada (EI-045; HIL-DIR-07; docs/34 §9).
+  TIPO_DE_COMANDO_LIBERAR_DOIS_SENTIDOS = 9;
+  // Coleta os bilhetes da memória da catraca, gravando cada um antes do próximo (EI-039,
+  // R-68; Etapa A.9). Só por catraca (inner 1 a 99). Recusado enquanto a chave técnica
+  // catraca.coletar_bilhetes estiver desligada (INT-REC-03 e CHAOS-REC-01).
+  TIPO_DE_COMANDO_COLETAR_BILHETES = 10;
+}
+
+enum SituacaoDoComando {
+  SITUACAO_DO_COMANDO_NAO_ESPECIFICADO = 0;
+  SITUACAO_DO_COMANDO_PENDENTE = 1;
+  SITUACAO_DO_COMANDO_RECEBIDO = 2;
+  SITUACAO_DO_COMANDO_CONCLUIDO = 3;
+  SITUACAO_DO_COMANDO_FALHOU = 4;
+  SITUACAO_DO_COMANDO_EXPIRADO = 5;
+}
+
+message EnviarComandoRequest {
+  // 0 só em APLICAR_CONFIGURACAO: vale para todas as catracas cadastradas.
+  int32 inner = 1;
+  TipoDeComando tipo = 2;
+  // Nome de quem pede. Não há login: é o que a pessoa digitou.
+  string operador = 3;
+  // Mensagem temporária (até 32 caracteres) e quanto tempo fica no display (1 a 60 s).
+  string texto = 4;
+  int32 duracao_segundos = 5;
+  // Obrigatório na liberação manual, na de saída e na dos dois sentidos (5 a 200 caracteres).
+  string motivo = 6;
+  // Só em LIBERAR_DOIS_SENTIDOS: o operador digita "EVACUAR <numero da catraca>". Não é gravado.
+  string confirmacao = 7;
+}
+
+message EnviarComandoResponse {
+  bool aceito = 1;
+  repeated string problemas = 2;
+  // Um por catraca: APLICAR_CONFIGURACAO com inner 0 gera um pedido para cada.
+  repeated string ids = 3;
+}
+
+message ListarComandosRequest {
+  int32 inner = 1;   // 0 = todas as catracas
+  int32 limite = 2;  // 0 = 100
+}
+
+message ComandoRegistrado {
+  string id = 1;
+  int32 inner = 2;
+  TipoDeComando tipo = 3;
+  string operador = 4;
+  string texto = 5;
+  string motivo = 6;
+  google.protobuf.Timestamp pedido_em = 7;
+  SituacaoDoComando situacao = 8;
+  google.protobuf.Timestamp concluido_em = 9;
+  string resultado = 10;
+}
+
+message ListarComandosResponse {
+  repeated ComandoRegistrado comandos = 1;
+}
+
+// Os campos que uma catraca pode sobrepor ao evento: os que dependem do equipamento físico
+// (docs/34 §4.1, "Para a A.3"; tabela device_config, migração 012). As chaves técnicas
+// continuam do evento e não aparecem aqui.
+//
+// Os valores viajam como texto, sempre no mesmo formato (cultura invariante):
+//   TIPO_DE_LEITOR, OPERACAO_DO_LEITOR_1, OPERACAO_DO_LEITOR_2, TEMPO_DO_ACIONAMENTO_1:
+//     número decimal;
+//   FUNCAO_DE_LIBERACAO_DA_ENTRADA: "Entrada", "EntradaInvertida", "Saida" ou "SaidaInvertida";
+//   MENSAGEM_PADRAO: o próprio texto;
+//   WIEGAND_DOIS_LEITORES: "habilita,exibe_mensagem", cada um 0 ou 1;
+//   FORMAS_DE_ENTRADA_ON_LINE: os cinco números do rearme do leitor, separados por vírgula.
+enum CampoDaCatraca {
+  CAMPO_DA_CATRACA_NAO_ESPECIFICADO = 0;
+  CAMPO_DA_CATRACA_TIPO_DE_LEITOR = 1;
+  CAMPO_DA_CATRACA_OPERACAO_DO_LEITOR_1 = 2;
+  CAMPO_DA_CATRACA_OPERACAO_DO_LEITOR_2 = 3;
+  CAMPO_DA_CATRACA_TEMPO_DO_ACIONAMENTO_1 = 4;
+  CAMPO_DA_CATRACA_FUNCAO_DE_LIBERACAO_DA_ENTRADA = 5;
+  CAMPO_DA_CATRACA_MENSAGEM_PADRAO = 6;
+  CAMPO_DA_CATRACA_WIEGAND_DOIS_LEITORES = 7;
+  CAMPO_DA_CATRACA_FORMAS_DE_ENTRADA_ON_LINE = 8;
+}
+
+// A camada mais alta que define o valor efetivo: fábrica, depois evento, depois catraca.
+enum OrigemDoValor {
+  ORIGEM_DO_VALOR_NAO_ESPECIFICADO = 0;
+  ORIGEM_DO_VALOR_FABRICA = 1;
+  ORIGEM_DO_VALOR_EVENTO = 2;
+  ORIGEM_DO_VALOR_CATRACA = 3;
+}
+
+// Se o valor do campo chega à catraca.
+enum SituacaoDoCampo {
+  SITUACAO_DO_CAMPO_NAO_ESPECIFICADO = 0;
+  // Enviado à catraca (ou decide a chamada que é feita), como está.
+  SITUACAO_DO_CAMPO_ENVIADO = 1;
+  // Fica no modelo, mas não chega à catraca: a chave técnica do evento está desligada até o
+  // ensaio do docs/21. A tela mostra desabilitado, com o selo e o motivo.
+  SITUACAO_DO_CAMPO_CHAVE_TECNICA_DESLIGADA = 2;
+  // Comportamento não confirmado (A_CONFIRMAR_COM_TOPDATA): a tela mostra desabilitado.
+  SITUACAO_DO_CAMPO_A_CONFIRMAR = 3;
+}
+
+message ObterConfiguracaoDaCatracaRequest {
+  int32 inner = 1;
+}
+
+message CampoConfiguradoDaCatraca {
+  CampoDaCatraca campo = 1;
+  // O que a catraca grava para si. Ausente = herda do evento.
+  optional string valor_da_catraca = 2;
+  // O que vale quando a catraca não define: fábrica + evento.
+  string valor_herdado = 3;
+  // O que vale com as três camadas: fábrica + evento + catraca.
+  string valor_efetivo = 4;
+  OrigemDoValor origem = 5;
+  SituacaoDoCampo situacao = 6;
+  // Por que não chega à catraca, ou o que está por confirmar, com o ensaio do docs/21.
+  string motivo = 7;
+  // Valores que existem mas não podem ser escolhidos (aguardando confirmação). Gravar
+  // recusa passar a um deles; um já gravado continua.
+  repeated string valores_aguardando = 8;
+  string motivo_dos_valores_aguardando = 9;
+  // Aviso que não impede a escolha (ex.: tipo 5 ou 8 para o QR, NOVO-HIL-QR-02).
+  string aviso = 10;
+}
+
+message ConfiguracaoDaCatraca {
+  int32 inner = 1;
+  repeated CampoConfiguradoDaCatraca campos = 2;
+  // Versão (VersaoDaConfiguracao, SHA-256) do que o "Aplicar agora" desta catraca enviaria.
+  // Vazia quando o salvo não pode ser aplicado (os motivos vão em problemas).
+  string versao_salva = 3;
+  // A versão que a catraca aceitou (o mesmo que Equipamento.configuracao_versao). Vazia até o
+  // primeiro envio aceito. Igual à salva = a catraca está com o salvo.
+  string versao_aplicada = 4;
+  google.protobuf.Timestamp aplicada_em = 5;
+  // Quem gravou a camada desta catraca por último, e quando. Vazio se nunca gravada.
+  string alterada_por = 6;
+  google.protobuf.Timestamp alterada_em = 7;
+  repeated string problemas = 8;
+}
+
+message ValorDaCatraca {
+  CampoDaCatraca campo = 1;
+  // Ausente = herda do evento.
+  optional string valor = 2;
+}
+
+message GravarConfiguracaoDaCatracaRequest {
+  int32 inner = 1;
+  // A camada inteira: campo que não vier herda do evento.
+  repeated ValorDaCatraca valores = 2;
+  // Nome de quem grava. Não há login: é o que a pessoa digitou.
+  string operador = 3;
+}
+
+message GravarConfiguracaoDaCatracaResponse {
+  bool gravada = 1;
+  repeated string problemas = 2;
+  // A versão do salvo depois da gravação, para comparar com a aplicada.
+  string versao_salva = 3;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mapa de giro (D9). "Entrada" e "saída" na DLL são o nome do sentido FÍSICO do braço, do ponto
+// de vista da catraca; o que o evento conta é decisão do sistema.
+
+// De onde vem o pedido de liberar. O leitor 1 cobre a frente e o QR da tampa (origens 2 e 21);
+// o leitor 2 é a fenda da urna (origem 3); o teclado é a origem 1.
+enum OrigemDoGiro {
+  ORIGEM_DO_GIRO_NAO_ESPECIFICADO = 0;
+  ORIGEM_DO_GIRO_LEITOR_1 = 1;
+  ORIGEM_DO_GIRO_LEITOR_2 = 2;
+  ORIGEM_DO_GIRO_TECLADO = 3;
+  ORIGEM_DO_GIRO_LIBERACAO_MANUAL = 4;
+}
+
+// A função da DLL que libera o braço. Os dois sentidos (EI-045) não entram: evacuação, D5.
+enum FuncaoDoGiro {
+  FUNCAO_DO_GIRO_NAO_ESPECIFICADO = 0;
+  FUNCAO_DO_GIRO_ENTRADA = 1;            // LiberarCatracaEntrada, EI-041
+  FUNCAO_DO_GIRO_SAIDA = 2;              // LiberarCatracaSaida, EI-042
+  FUNCAO_DO_GIRO_ENTRADA_INVERTIDA = 3;  // LiberarCatracaEntradaInvertida, EI-043
+  FUNCAO_DO_GIRO_SAIDA_INVERTIDA = 4;    // LiberarCatracaSaidaInvertida, EI-044
+}
+
+// Como o giro é contado no painel, nos acessos, nos totais e na prestação de contas.
+enum ContagemDoGiro {
+  CONTAGEM_DO_GIRO_NAO_ESPECIFICADO = 0;
+  CONTAGEM_DO_GIRO_ENTRADA = 1;
+  CONTAGEM_DO_GIRO_SAIDA = 2;
+}
+
+// Se a função já foi conferida girando uma vez nesta instalação (comissionamento, NOVO-HIL-DIR-11).
+enum SituacaoDaConferencia {
+  SITUACAO_DA_CONFERENCIA_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_CONFERENCIA_NAO_CONFERIDA = 1;
+  SITUACAO_DA_CONFERENCIA_COMO_ESPERADO = 2;
+  SITUACAO_DA_CONFERENCIA_AO_CONTRARIO = 3;
+}
+
+message ObterMapaDeGiroRequest {
+  int32 inner = 1;
+}
+
+message RegraDoMapaDeGiro {
+  OrigemDoGiro origem = 1;
+  // Falso: a origem segue o padrão (a função do perfil da catraca, conta como entrada).
+  bool definida = 2;
+  // O que vale: a regra gravada, ou o padrão.
+  FuncaoDoGiro funcao = 3;
+  ContagemDoGiro conta_como = 4;
+  // O texto curto do giro que vale (até 32 caracteres).
+  string texto = 5;
+  // Verdadeiro quando o texto foi escrito pelo operador; falso = o padrão do rótulo.
+  bool texto_personalizado = 6;
+  // A função gravada segue a do perfil (não escolhida no mapa).
+  bool funcao_do_perfil = 7;
+  // A última conferência da função desta regra nesta catraca.
+  SituacaoDaConferencia conferencia = 8;
+  string conferida_por = 9;
+  google.protobuf.Timestamp conferida_em = 10;
+  // Aviso que não impede (ex.: teclado desligado nesta catraca).
+  string aviso = 11;
+}
+
+message MapaDeGiroDaCatraca {
+  int32 inner = 1;
+  // Sempre as quatro origens, na ordem da tela.
+  repeated RegraDoMapaDeGiro regras = 2;
+  // A função do perfil da catraca (Parametrização), que a origem sem função própria segue.
+  FuncaoDoGiro funcao_do_perfil = 3;
+  string alterado_por = 4;
+  google.protobuf.Timestamp alterado_em = 5;
+  // As mesmas versões da Parametrização: o mapa entra na versão do salvo.
+  string versao_salva = 6;
+  string versao_aplicada = 7;
+  repeated string problemas = 8;
+}
+
+message RegraDeGiroPedida {
+  OrigemDoGiro origem = 1;
+  // Verdadeiro: volta ao padrão; os outros campos são ignorados.
+  bool herdar = 2;
+  // NAO_ESPECIFICADO = a função do perfil da catraca.
+  FuncaoDoGiro funcao = 3;
+  ContagemDoGiro conta_como = 4;
+  // Vazio = o texto padrão do rótulo.
+  string texto = 5;
+}
+
+message GravarMapaDeGiroRequest {
+  int32 inner = 1;
+  // O mapa inteiro: origem que não vier volta ao padrão.
+  repeated RegraDeGiroPedida regras = 2;
+  // Nome de quem grava. Não há login: é o que a pessoa digitou.
+  string operador = 3;
+}
+
+message GravarMapaDeGiroResponse {
+  bool gravado = 1;
+  repeated string problemas = 2;
+  string versao_salva = 3;
+}
+
+message RegistrarConferenciaDoGiroRequest {
+  int32 inner = 1;
+  FuncaoDoGiro funcao = 2;
+  // Verdadeiro: o braço girou para o lado da seta do gêmeo.
+  bool como_esperado = 3;
+  string operador = 4;
+}
+
+message RegistrarConferenciaDoGiroResponse {
+  bool registrada = 1;
+  repeated string problemas = 2;
+}
+
+// Etapa I.2 (docs/36, IN-06): "Por quê?" de uma tentativa da lista de acessos.
+message ExplicarNegativaRequest {
+  string evento_id = 1;                       // o evento_id do EventoDeAcesso
+}
+
+message ExplicacaoDaNegativa {
+  bool encontrada = 1;                        // falso: a tentativa não existe nesta base
+  bool negada = 2;                            // falso: liberada sem giro confirmado
+  int32 inner = 3;
+  google.protobuf.Timestamp em = 4;
+  string onde_foi_lido = 5;                   // "leitor da frente", "fenda da urna", "leitor de QR"; vazio se não gravado
+  string o_que_aconteceu = 6;
+  string o_que_dizer = 7;                     // a frase para dizer a quem está na catraca
+  string o_que_fazer = 8;                     // o que o operador confere ou faz
+  string nome_da_catraca = 9;                 // o nome configurado; sem nome, "Catraca NN" (mesma regra das telas)
+}
+
+// Etapa I.9 (docs/36, IN-07): sugestões de parametrização.
+message ObterSugestoesRequest {
+  int32 inner = 1;                            // número da catraca
+}
+
+message SugestoesDaCatraca {
+  repeated SugestaoDeParametrizacao abertas = 1;
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 2;
+}
+
+message SugestaoDeParametrizacao {
+  string id = 1;                              // UUIDv7, para RegistrarDestinoDaSugestao
+  CampoDaCatraca campo = 2;
+  string valor_atual = 3;
+  string valor_sugerido = 4;
+  string evidencia_json = 5;                  // {"motivo": "...", "valorMedido": "...", "amostra": N, "referencia": "..."}
+  google.protobuf.Timestamp criada_em = 6;
+}
+
+message RegistrarDestinoDaSugestaoRequest {
+  string sugestao_id = 1;                     // o id da sugestão
+  string situacao = 2;                        // "usada" ou "descartada"
+  string operador = 3;                        // quem registrou
+}
+
+message RegistrarDestinoDaSugestaoResponse {
+  bool registrada = 1;
+  repeated string problemas = 2;
+}
+
+// Etapa I.5 (docs/36, IN-04 e IN-05): ritmo, ocupação e fluxo por sentido.
+message ObterRitmoRequest {
+  int32 inner = 1;                            // número da catraca
+}
+
+message DadosDoRitmo {
+  int32 inner = 1;
+  google.protobuf.Timestamp no_minuto = 2;   // início do minuto agregado
+  
+  // Fluxo por sentido lógico (migração 017)
+  int64 entradas = 3;                         // giros contados como entrada
+  int64 saidas = 4;                           // giros contados como saída
+  int64 giros_sem_sentido = 5;                // giros sem sentido conhecido (origem 6 órfã ou sem mapa)
+  
+  // Lotação estimada = entradas − saídas desde a abertura do evento.
+  // Mostrada só se houver catraca mapeada para saída.
+  // SEMPRE com aviso "giros sem sentido: N" ao lado (docs/36-anexos/02 §5.2, IN-05).
+  int64 lotacao_estimada = 6;
+  
+  // Ritmo medido (IN-04)
+  double chegadas_por_minuto = 7;             // λ = leituras/min
+  double capacidade_estimada = 8;             // μ = giros/min quando ocupada
+  double ocupacao_fracao = 9;                 // ρ = fração da janela em ciclo ocupado
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 10;
+}
+
+// Saúde das catracas (I.3 do docs/36, IN-01)
+message ObterSaudeDasCatracasRequest {
+  // Vazio; retorna a saúde de todas as catracas do evento.
+}
+
+message SaudeDasCatracas {
+  repeated SaudeDaCatraca por_catraca = 1;
+  string versao_dos_parametros = 2;           // hash dos limiares (invariante I5)
+  google.protobuf.Timestamp calculada_em = 3;
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 4;
+}
+
+message SaudeDaCatraca {
+  int32 inner = 1;
+  NivelDeSaude nivel_geral = 2;              // pior nível entre os sinais
+  int32 indice_0_100 = 3;                    // 100 − Σ(peso × penalidade); modo técnico
+  repeated SinalDeSaude sinais = 4;
+  string recomendacao = 5;                   // "o que fazer" do pior sinal
+}
+
+message SinalDeSaude {
+  TipoDeSinal tipo = 1;
+  NivelDeSinal nivel = 2;
+  string resumo = 3;                         // descrição legível
+  double valor = 4;                          // valor observado
+  double referencia = 5;                     // valor esperado ou limite
+  int64 amostras = 6;                        // número de dados
+  google.protobuf.Timestamp desde = 7;
+  google.protobuf.Timestamp ate = 8;
+  string o_que_fazer = 9;
+}
+
+enum TipoDeSinal {
+  TIPO_NAO_ESPECIFICADO = 0;
+  COMUNICACAO = 1;
+  GIRO = 2;
+  LEITURA = 3;
+  RELOGIO = 4;
+  CONFIGURACAO = 5;
+  GIRO_SEM_PEDIDO = 6;
+  LACO = 7;
+}
+
+enum NivelDeSinal {
+  NIVEL_NAO_ESPECIFICADO = 0;
+  NORMAL = 1;
+  ATENCAO = 2;
+  ACAO = 3;
+  SEM_DADOS = 4;
+  APRENDENDO = 5;
+}
+
+enum NivelDeSaude {
+  NIVEL_SAUDE_NAO_ESPECIFICADO = 0;
+  SAUDE_SAUDAVEL = 1;
+  SAUDE_COM_ATENCAO = 2;
+  SAUDE_COM_ACAO_NECESSARIA = 3;
+  SAUDE_SEM_DADOS = 4;
+  SAUDE_APRENDENDO = 5;
+}
+
+// Etapa I.10 (docs/36, IN-09 e IN-08): relatório pós-evento com achados determinísticos.
+message ObterRelatorioPosEventoRequest {
+  // Vazio; retorna os achados do evento que terminou (corte por hash).
+}
+
+message RelatorioPosEvento {
+  // Achados determinísticos (R1–R8)
+  string maior_pico_portao = 1;               // portão com maior pico de 15 min
+  int64 maior_pico_leituras = 2;              // número de leituras no pico
+  google.protobuf.Timestamp maior_pico_momento = 3;  // quando aconteceu o pico
+
+  int32 catraca_mais_lenta = 4;               // número da catraca (inner)
+  int32 catraca_mais_lenta_delta_ms = 5;      // mediana de Δ liberação→giro em ms
+
+  int32 catraca_mais_ociosa = 6;              // número da catraca (inner)
+  double catraca_mais_ociosa_ocupacao = 7;    // ρ (0.0 a 1.0)
+
+  double desperdicio_segundos = 8;            // Σ liberações sem giro × tempo do relé
+
+  double disponibilidade_media = 9;           // (0.0 a 1.0) tempo online / tempo total
+
+  int64 total_alertas = 10;                   // alertas disparados no evento
+  int64 alertas_com_ciencia = 11;             // marcados ciente por operador
+
+  double dimensionamento_catracas = 12;       // pico de chegadas / μ medido
+
+  string versao_dos_parametros = 13;          // hash dos parâmetros (I5)
+  google.protobuf.Timestamp calculado_em = 14;
+
+  // Replay da linha do tempo (IN-08): marcas de tentativas, sinais, transições, comandos.
+  // INVARIANTE: replay ⊆ gravado (todo marco aponta para uma linha em telemetria.db)
+  repeated MarcoDaLinhaDoTempo marcos = 15;
+
+  // Perguntas prontas determinísticas (IN-11 parcial)
+  repeated PerguntaPronta perguntas_prontas = 16;
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+
+  string desligada = 17;
+}
+
+message MarcoDaLinhaDoTempo {
+  google.protobuf.Timestamp momento = 1;     // ISO-8601 UTC
+  string tipo = 2;                            // "tentativa", "sinal", "comando", "transicao"
+  string descricao = 3;                       // narração gerada a partir do tipo
+  int32 catraca = 4;                          // número da catraca (inner), se aplicável
+  int64 quantidade = 5;                       // para agregados (ex: 5 leituras vazias)
+}
+
+message PerguntaPronta {
+  string pergunta = 1;                        // Ex.: "Por que a catraca 3 está em Atenção?"
+  string resposta = 2;                        // Resposta em modelo de texto fixo
+  google.protobuf.Timestamp respondida_em = 3;
+}
+
+// Alertas da camada inteligente (Etapa I.4 do docs/36, IN-02)
+message ListarAlertasRequest {
+  // Vazio: retorna todos os alertas ativos (abertos e pendentes de fechar).
+  // Preenchido: retorna alertas deste período.
+  google.protobuf.Timestamp desde = 1;
+  google.protobuf.Timestamp ate = 2;
+}
+
+message ListarAlertasResponse {
+  repeated Alerta alertas = 1;
+  google.protobuf.Timestamp consultada_em = 2;
+  string versao_dos_parametros = 3;           // hash dos limiares (invariante I5)
+  // Achado E7-1 do docs/41: a camada que calcula isto ainda não existe (docs/29: só I.0 e I.2).
+  // Preenchido, a resposta está vazia de propósito e este texto diz por quê.
+  string desligada = 4;
+}
+
+message Alerta {
+  string id = 1;                              // UUIDv7
+  TipoDeAlerta regra = 2;
+  int32 inner = 3;                            // número da catraca
+  string portao = 4;                          // nome do portão/guichê
+  NivelDeAlerta nivel = 5;                    // severidade: atencao, acao
+  string titulo = 6;                          // "Catraca 05 sem leituras há 4 min"
+  string descricao = 7;                       // "as vizinhas leram 63 no mesmo período"
+  string o_que_fazer = 8;                     // recomendação do operador
+
+  google.protobuf.Timestamp aberto_em = 9;
+  google.protobuf.Timestamp atualizado_em = 10;
+  google.protobuf.Timestamp fechado_em = 11;  // nulo enquanto aberto
+
+  // Ciclo de vida: Aberto → Ciente → Fechado
+  bool ciente = 12;                           // false: operador ainda não viu
+  string ciente_por = 13;                     // nome do operador que marcou como ciente
+  google.protobuf.Timestamp ciente_em = 14;
+
+  string conta_json = 15;                     // dados brutos que dispararam a regra
+}
+
+enum TipoDeAlerta {
+  TIPO_ALERTA_NAO_ESPECIFICADO = 0;
+  LEITOR_CALADO = 1;                          // 0 leituras por ≥ 3 min
+  COMUNICACAO_INSTAVEL = 2;                   // ≥ 3 reconexões em 15 min
+  RELOGIO_DERIVANDO = 3;                      // divergência > 30 s
+  CONFIGURACAO_NAO_APLICADA = 4;              // salva ≠ aplicada por > 2 min
+  MUITOS_DESCONHECIDOS = 5;                   // ≥ 10 "Desconhecido" em 5 min
+  COMPARTILHAMENTO_POSSIVEL = 6;              // mesma impressão negada em múltiplas catracas
+  URNA_CHEIA = 7;                             // origem 20 detectada
+  GIRO_SEM_LIBERACAO = 8;                     // origem 6 sem pedido
+}
+
+enum NivelDeAlerta {
+  NIVEL_ALERTA_NAO_ESPECIFICADO = 0;
+  ALERTA_ATENCAO = 1;                         // operador precisa verificar
+  ALERTA_ACAO_NECESSARIA = 2;                 // operador deve agir (ex.: esvazie urna)
+}
+
+message MarcarAlertaComoCienteRequest {
+  string alerta_id = 1;
+  string operador = 2;                        // nome de quem marcou (não há login)
+}
+
+message MarcarAlertaComoCienteResponse {
+  bool marcado = 1;
+  repeated string problemas = 2;              // ex.: "alerta não existe" ou "já estava marcado"
+}
+
+// ---------------------------------------------------------------- login e usuários (ADR-0026)
+
+message EntrarRequest {
+  string login = 1;
+  string senha = 2;
+}
+
+message EntrarResponse {
+  bool aceito = 1;
+  string sessao = 2;             // vai no cabeçalho x-sessao das chamadas seguintes
+  string mensagem = 3;           // quando recusado: o que dizer (não diz se o login existe)
+  UsuarioDaSessao usuario = 4;
+}
+
+message UsuarioDaSessao {
+  string id = 1;
+  string login = 2;
+  string nome = 3;
+  bool trocar_senha = 4;         // primeiro acesso ou senha redefinida: só a troca funciona
+  repeated string permissoes = 5;
+  bool login_ligado = 6;         // falso só em ferramentas e testes sem base de usuários
+}
+
+message TrocarSenhaRequest {
+  string senha_atual = 1;
+  string senha_nova = 2;
+  string novo_login = 3;         // opcional; no primeiro acesso, o login do administrador real
+  string novo_nome = 4;          // opcional
+}
+
+message TrocarSenhaResponse {
+  bool trocada = 1;
+  repeated string problemas = 2;
+}
+
+message SairRequest {}
+message SairResponse {}
+message ObterSessaoRequest {}
+
+message Usuario {
+  string id = 1;
+  string login = 2;
+  string nome = 3;
+  bool ativo = 4;
+  bool trocar_senha = 5;
+  repeated string papeis = 6;
+  google.protobuf.Timestamp ultimo_acesso = 7;
+}
+
+message ListarUsuariosRequest {}
+message ListarUsuariosResponse {
+  repeated Usuario usuarios = 1;
+}
+
+message GravarUsuarioRequest {
+  string id = 1;                 // vazio cria
+  string login = 2;
+  string nome = 3;
+  bool ativo = 4;
+  repeated string papeis = 5;
+  string senha_inicial = 6;      // só na criação; o usuário troca no primeiro acesso
+}
+
+message GravarUsuarioResponse {
+  bool gravado = 1;
+  string id = 2;
+  repeated string problemas = 3;
+}
+
+message RedefinirSenhaRequest {
+  string usuario_id = 1;
+  string senha_provisoria = 2;
+}
+
+message RedefinirSenhaResponse {
+  bool redefinida = 1;
+  repeated string problemas = 2;
+}
+
+message PermissaoDoCatalogo {
+  string codigo = 1;
+  string grupo = 2;
+  string nome = 3;
+}
+
+message Papel {
+  string id = 1;
+  string nome = 2;
+  string descricao = 3;
+  bool do_sistema = 4;
+  repeated string permissoes = 5;
+}
+
+message ListarPapeisRequest {}
+message ListarPapeisResponse {
+  repeated Papel papeis = 1;
+  repeated PermissaoDoCatalogo catalogo = 2;
+}
+
+message GravarPapelRequest {
+  string id = 1;                 // vazio cria
+  string nome = 2;
+  string descricao = 3;
+  repeated string permissoes = 4;
+}
+
+message GravarPapelResponse {
+  bool gravado = 1;
+  string id = 2;
+  repeated string problemas = 3;
+}
+
+// --- Cadastro local de pessoas (docs/43, ADR-0026) ---
+
+message PessoaDoCadastro {
+  string id = 1;                       // vazio: pessoa nova
+  string perfil_id = 2;
+  string nome_completo = 3;
+  string nome_social = 4;
+  string tipo_do_documento = 5;        // cpf, rg, cnh, passaporte, rne, outro
+  string documento = 6;                // mascarado na resposta sem pessoas.ver_dados
+  string nascimento = 7;               // AAAA-MM-DD; vazio na resposta sem pessoas.ver_dados
+  string telefone = 8;                 // mascarado na resposta sem pessoas.ver_dados
+  string email = 9;                    // mascarado na resposta sem pessoas.ver_dados
+  string veiculo = 10;                 // mascarado na resposta sem pessoas.ver_dados
+  string responsavel = 11;             // vazio na resposta sem pessoas.ver_dados
+  string empresa_id = 12;
+  string sala_id = 13;
+  string anfitriao_id = 14;
+  string departamento = 15;
+  string cargo = 16;
+  string matricula = 17;
+  string observacao = 18;
+  google.protobuf.Timestamp valido_de = 19;
+  google.protobuf.Timestamp valido_ate = 20;
+  int32 tabela_de_horario = 21;        // 0: a do perfil
+  int32 limite_diario = 22;            // 0: o do perfil
+  bool atendimento_prioritario = 23;
+  repeated int32 catracas = 24;        // vazia: as do perfil
+}
+
+message CredencialDaPessoa {
+  string id = 1;
+  string tipo = 2;                     // crachá de proximidade, qr ou senha de teclado
+  string codigo_mascarado = 3;
+  string situacao = 4;                 // ativa, bloqueada, perdida, devolvida
+  string motivo = 5;
+  google.protobuf.Timestamp valido_de = 6;
+  google.protobuf.Timestamp valido_ate = 7;
+  google.protobuf.Timestamp criada_em = 8;
+}
+
+message FichaDaPessoa {
+  PessoaDoCadastro pessoa = 1;
+  string situacao = 2;                 // ativo, bloqueado, inativo
+  string motivo_da_situacao = 3;
+  google.protobuf.Timestamp criada_em = 4;
+  google.protobuf.Timestamp atualizada_em = 5;
+  repeated CredencialDaPessoa credenciais = 6;
+  bool dados_completos = 7;            // falso: documento e contato vieram mascarados
+}
+
+message LinhaDePessoa {
+  string id = 1;
+  string nome = 2;
+  string perfil = 3;
+  string empresa = 4;
+  string sala = 5;
+  string situacao = 6;
+  google.protobuf.Timestamp valido_ate = 7;
+  int32 credenciais = 8;
+}
+
+message BuscarPessoasRequest {
+  string texto = 1;                    // nome (partes de 3 letras ou mais), documento ou código
+  string perfil_id = 2;
+  string empresa_id = 3;
+  string situacao = 4;
+  int32 limite = 5;
+}
+
+message BuscarPessoasResponse {
+  repeated LinhaDePessoa pessoas = 1;
+}
+
+message ObterPessoaRequest {
+  string id = 1;
+}
+
+message GravarPessoaRequest {
+  PessoaDoCadastro pessoa = 1;
+}
+
+message MudarSituacaoDaPessoaRequest {
+  string id = 1;
+  string situacao = 2;
+  string motivo = 3;
+}
+
+message AdicionarCredencialRequest {
+  string pessoa_id = 1;
+  string tipo = 2;
+  string codigo = 3;                   // único lugar em que o código vai em claro: do painel ao serviço
+  google.protobuf.Timestamp valido_de = 4;
+  google.protobuf.Timestamp valido_ate = 5;
+}
+
+message MudarSituacaoDaCredencialRequest {
+  string id = 1;
+  string situacao = 2;
+  string motivo = 3;
+}
+
+message ResultadoDoCadastroDePessoas {
+  bool gravado = 1;
+  string id = 2;
+  repeated string problemas = 3;
+  repeated string avisos = 4;
+}
+
+message EmpresaDoCadastro {
+  string id = 1;
+  string nome = 2;
+  string cnpj = 3;
+  bool ativa = 4;
+}
+
+message SalaDoCadastro {
+  string id = 1;
+  string nome = 2;
+  string empresa_id = 3;
+  string andar = 4;
+  string bloco = 5;
+  bool ativa = 6;
+}
+
+message FaixaDoHorario {
+  int32 dia = 1;                       // 0 domingo ... 6 sábado, 7 feriado
+  int32 inicio = 2;                    // minutos desde a meia-noite (Brasília)
+  int32 fim = 3;                       // exclusivo
+}
+
+message HorarioDoCadastro {
+  int32 id = 1;                        // 0: o primeiro número livre
+  string nome = 2;
+  repeated FaixaDoHorario faixas = 3;
+}
+
+message FeriadoDoCadastro {
+  string dia = 1;                      // AAAA-MM-DD
+  string nome = 2;
+}
+
+message PerfilDoCadastro {
+  string id = 1;
+  string nome = 2;
+  bool pronto = 3;
+  repeated string campos_obrigatorios = 4;
+  bool exige_anfitriao = 5;
+  int32 dias_de_validade = 6;          // -1: sem validade padrão
+  int32 tabela_de_horario = 7;         // 0: sem restrição
+  int32 limite_diario = 8;             // 0: sem limite
+  int32 dias_de_retencao = 9;
+  bool ativo = 10;
+  repeated int32 catracas = 11;        // vazia: todas
+}
+
+message CampoDoFormulario {
+  string codigo = 1;
+  string rotulo = 2;
+}
+
+message ObterParametrosDoCadastroRequest {}
+
+message ParametrosDoCadastroDePessoas {
+  repeated PerfilDoCadastro perfis = 1;
+  repeated EmpresaDoCadastro empresas = 2;
+  repeated SalaDoCadastro salas = 3;
+  repeated HorarioDoCadastro horarios = 4;
+  repeated FeriadoDoCadastro feriados = 5;
+  repeated CampoDoFormulario campos = 6;
+  repeated string tipos_de_documento = 7;
+  repeated string tipos_de_codigo = 8;
+}
+
+message GravarEmpresaRequest {
+  EmpresaDoCadastro empresa = 1;
+}
+
+message GravarSalaRequest {
+  SalaDoCadastro sala = 1;
+}
+
+message GravarHorarioRequest {
+  HorarioDoCadastro horario = 1;
+}
+
+message ExcluirHorarioRequest {
+  int32 id = 1;
+}
+
+message GravarFeriadoRequest {
+  FeriadoDoCadastro feriado = 1;
+}
+
+message ExcluirFeriadoRequest {
+  string dia = 1;
+}
+
+message GravarPerfilRequest {
+  PerfilDoCadastro perfil = 1;
+}
+
+message CatracaFechadaNoCadastro {
+  int32 inner = 1;
+  google.protobuf.Timestamp em = 2;
+  string por = 3;
+  string motivo = 4;
+}
+
+message ListarCatracasFechadasRequest {}
+
+message ListarCatracasFechadasResponse {
+  repeated CatracaFechadaNoCadastro catracas = 1;
+}
+
+message FecharCatracaRequest {
+  int32 inner = 1;
+  string motivo = 2;
+}
+
+message AbrirCatracaRequest {
+  int32 inner = 1;
+  string motivo = 2;
+}
+
+message ImportacaoDePessoasRequest {
+  string nome_do_arquivo = 1;          // .csv ou .xlsx
+  bytes conteudo = 2;                  // até 20 MB
+}
+
+message ProblemaDaLinha {
+  int32 linha = 1;                     // 0: o arquivo inteiro
+  string problema = 2;
+}
+
+message ResultadoDaImportacaoDePessoas {
+  bool aplicavel = 1;                  // sem problema: pode aplicar
+  bool aplicada = 2;
+  string lote_id = 3;
+  int32 pessoas = 4;
+  int32 credenciais = 5;
+  int32 empresas_novas = 6;
+  int32 salas_novas = 7;
+  repeated ProblemaDaLinha problemas = 8;
+  repeated string avisos = 9;
+}
+
+message LoteDeImportacaoDePessoas {
+  string id = 1;
+  google.protobuf.Timestamp em = 2;
+  string por = 3;
+  int32 pessoas = 4;
+  int32 credenciais = 5;
+  google.protobuf.Timestamp desfeito_em = 6;
+}
+
+message ListarImportacoesDePessoasRequest {}
+
+message ListarImportacoesDePessoasResponse {
+  repeated LoteDeImportacaoDePessoas lotes = 1;
+}
+
+message DesfazerImportacaoDePessoasRequest {
+  string lote_id = 1;
+}

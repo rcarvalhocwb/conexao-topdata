@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Aplicativo de operação. Fala SÓ com o serviço local, pelo IPC: nunca carrega a
+    EasyInner.dll, nunca abre o banco, nunca fala com um equipamento. É isso que o
+    mantém de pé quando um worker morre. Ver docs/ADR/ADR-0001 e ADR-0004.
+
+    EnableWindowsTargeting permite compilar na CI Linux. Executar, só no Windows.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Só pelo ícone da bandeja (NotifyIcon): o WPF não tem um. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>Desktop.App</AssemblyName>
+    <RootNamespace>Desktop.App</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\Rayzer.Design\Marca\rayzer-xacess.ico</ApplicationIcon>
+    <!--
+      Telas NÃO podem rodar em globalização invariante (ligada para o resto da solução em
+      Directory.Build.props). No modo invariante o WPF lança "Cannot find non-neutral
+      culture related to 'en-us'" na primeira ligação que converte número em texto: o
+      painel caía ao abrir e o assistente, no Avançar para as catracas. Achado pelo
+      autoteste da CI.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- Os nomes do WinForms (Application, MessageBox, Color…) não podem disputar com os do WPF. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Contracts/Contracts.csproj" />
+    <ProjectReference Include="../Desktop.ViewModels/Desktop.ViewModels.csproj" />
+    <ProjectReference Include="../Rayzer.Design/Rayzer.Design.csproj" />
+  </ItemGroup>
+
+</Project>

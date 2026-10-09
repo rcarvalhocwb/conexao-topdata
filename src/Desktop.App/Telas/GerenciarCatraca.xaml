@@ -1,0 +1,191 @@
+<UserControl x:Class="Desktop.App.Telas.GerenciarCatraca"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Gerenciar catraca">
+  <!--
+    Gerenciar catraca (fase 4). Só aparece habilitado o que o sistema faz de verdade; o
+    que depende da Topdata ou da bancada fica desabilitado, com o selo e o motivo.
+  -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel>
+      <rz:RayzerPageHeader Titulo="Gerenciar catraca"
+                           Descricao="Cada pedido fica registrado com o seu nome e é executado quando a catraca estiver livre — nunca no meio de uma passagem. O resultado aparece no histórico abaixo." />
+
+      <!-- Qual catraca, e como ela está agora. -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="16,12,16,12" Margin="0,0,0,12">
+        <WrapPanel>
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
+            <ComboBox Width="220" ItemsSource="{Binding Catracas}" DisplayMemberPath="Nome" SelectedValuePath="Inner"
+                      SelectedValue="{Binding Catraca}" AutomationProperties.Name="Catraca" />
+          </StackPanel>
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado em cada pedido)" />
+            <TextBox Width="260" Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador" />
+          </StackPanel>
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}" VerticalAlignment="Bottom"
+                      Visibility="{Binding Selecionada, Converter={StaticResource VazioSome}}">
+            <rz:RayzerStatusPill Tom="{Binding Selecionada.Sinal, Converter={StaticResource SinalParaTom}}"
+                                 Glifo="{Binding Selecionada.Sinal, Converter={StaticResource SinalParaGlifoDeDispositivo}}"
+                                 Texto="{Binding Selecionada.Situacao}" />
+            <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Secondary}">
+              <Run Text="Relógio: " /><Run Text="{Binding Selecionada.Relogio, Mode=OneWay}" />
+            </TextBlock>
+          </StackPanel>
+          <!-- O detalhe da catraca: o que ela usa de diferente do evento. O gêmeo é a porta
+               principal (peça por peça, docs/33 §9); a Parametrização é a mesma, em lista (Etapa A.6). -->
+          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}" VerticalAlignment="Bottom">
+            <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,0,6" Content="_Configurar a catraca"
+                    Command="{Binding DataContext.AbrirNoGemeo, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Catraca}" AutomationProperties.Name="Abrir a configuração desta catraca"
+                    ToolTip="Abre o desenho da catraca. Clique numa peça para ver e mudar a configuração dela; salve e aplique a catraca inteira de uma vez." />
+            <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="_Parametrização (em lista)"
+                    Command="{Binding DataContext.Parametrizar, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Catraca}" AutomationProperties.Name="Parametrização desta catraca"
+                    ToolTip="Tipo de leitor, urna, tempo de liberação e mensagem desta catraca: salvar, ver o que muda e aplicar." />
+          </StackPanel>
+        </WrapPanel>
+      </Border>
+
+      <rz:RayzerAlert Style="{StaticResource Pagina.Mensagem}" Tom="Marca" Titulo="{Binding Mensagem}" Margin="0,0,0,12"
+                      Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="12" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Liberação manual: o único pedido que abre a catraca sem ingresso. -->
+        <Border Style="{StaticResource Rayzer.Card}" Padding="16,14">
+          <StackPanel>
+            <rz:RayzerSectionHeader Titulo="Liberação manual" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Margin="0,0,0,10"
+                       Text="Libera um giro sem ingresso, no sentido que o mapa de giro desta catraca define para a liberação manual (entrada, no padrão). Não entra na contagem de ingressos: aparece só aqui, com o motivo. Se a catraca estiver ocupada por mais de 15 segundos, o pedido não é executado." />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Motivo (obrigatório)" />
+            <TextBox MaxLength="200" Text="{Binding Motivo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Motivo da liberação" />
+            <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                    Content="_Liberar um giro…" Command="{Binding PrepararLiberacao}"
+                    AutomationProperties.Name="Liberar um giro sem ingresso, com confirmação" />
+
+            <!-- Segundo passo: o operador confirma a catraca e o motivo antes de o pedido sair. -->
+            <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                    Background="{DynamicResource Rayzer.Warning.Subtle}"
+                    Visibility="{Binding ConfirmandoLiberacao, Converter={StaticResource BoolParaVisibilidade}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" Text="{Binding TextoDaConfirmacaoDaLiberacao}" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Style="{StaticResource Rayzer.Button.Primary}" Content="_Confirmar a liberação"
+                          Command="{Binding LiberarManualmente}" />
+                  <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="_Cancelar" Margin="10,0,0,0"
+                          Command="{Binding CancelarLiberacao}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- Display e manutenção. -->
+        <Border Grid.Column="2" Style="{StaticResource Rayzer.Card}" Padding="16,14">
+          <StackPanel>
+            <rz:RayzerSectionHeader Titulo="Mensagem no display" />
+            <WrapPanel>
+              <StackPanel Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Texto (até 32 letras)" />
+                <TextBox Width="260" MaxLength="32" Text="{Binding MensagemTemporaria, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Mensagem temporária" />
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Segundos" />
+                <TextBox Width="72" Text="{Binding DuracaoDaMensagem, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Segundos da mensagem" />
+              </StackPanel>
+            </WrapPanel>
+            <Button Style="{StaticResource Rayzer.Button.Ghost}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                    Content="_Mostrar no display" Command="{Binding EnviarMensagem}" />
+
+            <Border Style="{StaticResource Rayzer.Divider}" Margin="0,14,0,12" />
+            <rz:RayzerSectionHeader Titulo="Manutenção" />
+            <WrapPanel>
+              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Acertar o _relógio agora" Command="{Binding AcertarRelogio}" />
+              <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Refazer a _conexão…" Command="{Binding RefazerConexao}"
+                      ToolTip="A catraca reconecta e recebe a configuração completa de novo. Fica alguns segundos sem atender." />
+            </WrapPanel>
+            <Border Margin="0,10,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                    Background="{DynamicResource Rayzer.Warning.Subtle}"
+                    Visibility="{Binding ConfirmandoRefazerConexao, Converter={StaticResource BoolParaVisibilidade}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding TextoDaConfirmacaoDeRefazerConexao}" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Style="{StaticResource Rayzer.Button.Primary}" Content="Confirmar e refazer" Command="{Binding ConfirmarRefazerConexao}" />
+                  <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Cancelar" Margin="10,0,0,0" Command="{Binding CancelarRefazerConexao}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Catraca fechada pelo operador (docs/43 §6.6): a decisão nega tudo, sem depender de função da DLL. -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0">
+        <StackPanel>
+          <rz:RayzerSectionHeader Titulo="Fechar a catraca" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding SituacaoDoFechamento}"
+                     AutomationProperties.Name="Situação do fechamento" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,10,0,0" Text="Motivo (fica registrado com o seu usuário)" />
+          <WrapPanel Margin="0,4,0,0">
+            <TextBox Width="360" MaxLength="200" Text="{Binding MotivoDoFechamento, UpdateSourceTrigger=PropertyChanged}"
+                     AutomationProperties.Name="Motivo do fechamento" />
+            <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="8,0,0,0" Content="_Fechar: ninguém passa" Command="{Binding FecharCatraca}" />
+            <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="8,0,0,0" Content="Re_abrir" Command="{Binding AbrirCatraca}" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- O que ainda não existe aparece desabilitado, com o motivo: nada de fingir. -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0">
+        <StackPanel>
+          <rz:RayzerSectionHeader Titulo="Ainda não disponível" />
+          <ItemsControl ItemsSource="{Binding AguardandoConfirmacao}" AutomationProperties.Name="Funções aguardando confirmação">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <DockPanel Margin="0,4,0,4">
+                  <Button DockPanel.Dock="Left" Style="{StaticResource Rayzer.Button.Ghost}" MinWidth="220" IsEnabled="False"
+                          Content="{Binding Rotulo}" />
+                  <rz:RayzerStatusPill DockPanel.Dock="Left" Margin="12,0,12,0" VerticalAlignment="Center" Tom="Atencao"
+                                       Texto="Aguardando confirmação" />
+                  <TextBlock VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Valor}" />
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Histórico: a auditoria de tudo o que foi pedido a esta catraca. -->
+      <rz:RayzerSectionHeader Margin="0,16,0,0" Titulo="Histórico de pedidos desta catraca" />
+      <Grid MinHeight="160">
+        <DataGrid ItemsSource="{Binding Historico}" AutomationProperties.Name="Histórico de pedidos">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="PEDIDO EM" Binding="{Binding Hora}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+            <DataGridTextColumn Header="O QUÊ" Binding="{Binding Comando}" Width="150" />
+            <DataGridTextColumn Header="DETALHE" Binding="{Binding Detalhe}" Width="*" />
+            <DataGridTextColumn Header="QUEM" Binding="{Binding Operador}" Width="140" />
+            <DataGridTemplateColumn Header="SITUAÇÃO" Width="170">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <rz:RayzerStatus Tom="{Binding Sinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding Situacao}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="RESULTADO" Binding="{Binding Resultado}" Width="*" />
+          </DataGrid.Columns>
+        </DataGrid>
+        <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.History}" Titulo="Nenhum pedido para esta catraca"
+                             Texto="O que for pedido aqui aparece nesta lista, com quem pediu e o que a catraca respondeu."
+                             Visibility="{Binding Historico, Converter={StaticResource ZeroParaVisivel}}" />
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

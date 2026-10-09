@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    O relé de webhook. Roda na NUVEM, não na máquina das catracas.
+    Ver docs/ADR/ADR-0022-rele-de-webhook.md
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Relay.Ingressos</AssemblyName>
+    <RootNamespace>Relay.Ingressos</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Integration.Tests" />
+  </ItemGroup>
+
+</Project>

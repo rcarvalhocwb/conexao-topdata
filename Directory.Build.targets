@@ -1,0 +1,16 @@
+<Project>
+
+  <!--
+    Importado DEPOIS do corpo do .csproj, portanto aqui $(IsTestProject) já está
+    definido — ao contrário do Directory.Build.props, que é importado antes.
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <IsPackable>false</IsPackable>
+
+    <!-- CA1707: nomes de teste em snake_case são intencionais. Um teste chamado
+         `Somente_a_origem_6_confirma_passagem_fisica` diz o que quebrou sem que
+         ninguém precise abrir o arquivo. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+</Project>

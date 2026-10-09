@@ -1,0 +1,203 @@
+/*
+ * Rayzer XAcess — tokens do Rayzer Design System (brand board).
+ * Os mesmos valores de src/Rayzer.Design/Temas/*.xaml (desktop): uma paleta, dois stacks.
+ * Escuro é o padrão (a expressão principal da marca); claro em [data-theme="light"].
+ * Todo par texto/fundo passa em WCAG 2.2 AA — conferido em tests/tokens.test.ts.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Marca */
+  --rayzer-brand-blue: #0066ff;          /* Azul Principal */
+  --rayzer-brand-blue-hover: #0058e0;
+  --rayzer-brand-blue-pressed: #0052cc;
+  --rayzer-brand-blue-fg: #5a9bff;       /* azul como texto/ícone sobre superfície */
+  --rayzer-brand-blue-subtle: #0d2a57;
+  --rayzer-brand-cyan: #00d5ff;          /* Ciano: brilho, energia, indicador */
+  --rayzer-brand-navy: #0b1a33;          /* Fundo principal dark */
+  --rayzer-graphite: #111827;            /* Superfície elevada (paleta do board) */
+  --rayzer-gray: #8a9bb0;                /* Cinza */
+  --rayzer-white: #f4f7fb;               /* Branco */
+
+  /* Superfícies */
+  --rayzer-bg: #0b1a33;
+  --rayzer-bg-elevated: #172235;
+  --rayzer-sidebar-bg: #07101f;
+  --rayzer-card-bg: #111827;
+  --rayzer-surface-sunken: #0d1526;
+  --rayzer-surface-hover: #172236;
+  --rayzer-surface-selected: #10336b;
+  --rayzer-border: #22304a;
+  --rayzer-border-strong: #314262;
+  --rayzer-divider: #1a2640;
+  --rayzer-overlay: rgb(7 16 31 / 0.7);
+
+  /* Texto */
+  --rayzer-text-primary: #f4f7fb;
+  --rayzer-text-secondary: #8a9bb0;
+  --rayzer-text-tertiary: #74879f;
+  --rayzer-text-disabled: #4e607a;
+  --rayzer-text-on-brand: #ffffff;
+
+  /* Situação */
+  --rayzer-success: #32d583;
+  --rayzer-success-subtle: #0d2b24;
+  --rayzer-danger: #f05252;
+  --rayzer-danger-subtle: #33131c;
+  --rayzer-warning: #f5a524;
+  --rayzer-warning-subtle: #33260c;
+  --rayzer-info: #4db8ff;
+  --rayzer-info-subtle: #0d2b47;
+  --rayzer-neutral: #8a9bb0;
+  --rayzer-neutral-subtle: #1a2436;
+
+  /* Campos, foco, navegação */
+  --rayzer-input-bg: #0d1526;
+  --rayzer-input-border: #5a6d8f;
+  --rayzer-focus: #33a0ff;
+  --rayzer-nav-text: #b7c4d8;
+  --rayzer-nav-text-active: #ffffff;
+  --rayzer-nav-text-muted: #7f90a8;
+  --rayzer-nav-hover: #0f1c33;
+  --rayzer-nav-active: #112a4f;
+  --rayzer-nav-indicator: #00d5ff;
+
+  /* Brilho e energia */
+  --rayzer-glow-blue: 0 0 18px rgb(0 102 255 / 0.45);
+  --rayzer-glow-blue-sm: 0 0 10px rgb(0 102 255 / 0.35);
+  --rayzer-energy: linear-gradient(90deg, #0066ff, #00d5ff);
+  --rayzer-shadow-sm: 0 1px 4px rgb(0 0 0 / 0.25);
+  --rayzer-shadow-md: 0 4px 16px rgb(0 0 0 / 0.35);
+  --rayzer-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --rayzer-brand-blue: #0066ff;
+  --rayzer-brand-blue-hover: #0057db;
+  --rayzer-brand-blue-pressed: #0047b3;
+  --rayzer-brand-blue-fg: #0060f0;
+  --rayzer-brand-blue-subtle: #e6f0ff;
+  --rayzer-brand-cyan: #00d5ff;
+  --rayzer-brand-navy: #0b1a33;
+  --rayzer-graphite: #111827;
+  --rayzer-gray: #8a9bb0;
+  --rayzer-white: #f4f7fb;
+
+  --rayzer-bg: #f4f7fb;
+  --rayzer-bg-elevated: #ffffff;
+  --rayzer-sidebar-bg: #0b1a33;
+  --rayzer-card-bg: #ffffff;
+  --rayzer-surface-sunken: #eef2f8;
+  --rayzer-surface-hover: #eaf1fb;
+  --rayzer-surface-selected: #dce9ff;
+  --rayzer-border: #d6dfeb;
+  --rayzer-border-strong: #b5c3d6;
+  --rayzer-divider: #e3e9f2;
+  --rayzer-overlay: rgb(11 26 51 / 0.6);
+
+  --rayzer-text-primary: #0b1a33;
+  --rayzer-text-secondary: #4a5a72;
+  --rayzer-text-tertiary: #6a7a90;
+  --rayzer-text-disabled: #9aa8ba;
+  --rayzer-text-on-brand: #ffffff;
+
+  --rayzer-success: #0f7a45;
+  --rayzer-success-subtle: #e3f5ec;
+  --rayzer-danger: #c8283a;
+  --rayzer-danger-subtle: #fce8eb;
+  --rayzer-warning: #8a5300;
+  --rayzer-warning-subtle: #fff2dc;
+  --rayzer-info: #0b63ce;
+  --rayzer-info-subtle: #e4effc;
+  --rayzer-neutral: #5b6a80;
+  --rayzer-neutral-subtle: #edf1f6;
+
+  --rayzer-input-bg: #ffffff;
+  --rayzer-input-border: #7f90a8;
+  --rayzer-focus: #0066ff;
+  --rayzer-nav-text: #c3cedf;
+  --rayzer-nav-text-active: #ffffff;
+  --rayzer-nav-text-muted: #8a9bb0;
+  --rayzer-nav-hover: #12264a;
+  --rayzer-nav-active: #16305c;
+  --rayzer-nav-indicator: #00d5ff;
+
+  --rayzer-glow-blue: 0 0 18px rgb(0 102 255 / 0.25);
+  --rayzer-glow-blue-sm: 0 0 10px rgb(0 102 255 / 0.18);
+  --rayzer-energy: linear-gradient(90deg, #0066ff, #00d5ff);
+  --rayzer-shadow-sm: 0 1px 4px rgb(11 26 51 / 0.08);
+  --rayzer-shadow-md: 0 4px 16px rgb(11 26 51 / 0.12);
+  --rayzer-shadow-lg: 0 12px 32px rgb(11 26 51 / 0.18);
+}
+
+/* Movimento: fluxo, curto, sem quique; some quando o sistema pede menos animação. */
+:root {
+  --rayzer-motion-fast: 120ms;
+  --rayzer-motion-normal: 200ms;
+  --rayzer-motion-flow: 1400ms;
+  --rayzer-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes rayzer-flow {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --rayzer-motion-fast: 0ms; --rayzer-motion-normal: 0ms; }
+  .rayzer-flow-bar > span { animation: none !important; width: 100% !important; transform: none !important; }
+}
+
+/*
+ * Abertura (brand board, seção 08) — tempos em marca/animacao-abertura.json (2900 ms):
+ * fluxos 0–600 · interseção e pulso 600–1400 · símbolo 1400–1800 · marca e produto
+ * 1800–2200 · saída 2600–2900. Com movimento reduzido, a abertura não aparece.
+ */
+.rayzer-splash {
+  --rz-ease: cubic-bezier(0.33, 1, 0.68, 1);
+  animation: rz-fade-out 300ms linear 2600ms forwards;
+}
+.rz-splash-flow {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: rz-draw 600ms var(--rz-ease) 0ms forwards;
+}
+.rz-splash-flows { animation: rz-fade-out 350ms linear 1100ms forwards; }
+.rz-splash-pulse {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rz-pulse 850ms linear 550ms forwards;
+}
+.rz-splash-mark {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rz-mark 600ms var(--rz-ease) 1400ms forwards;
+}
+.rz-splash-brands { opacity: 0; animation: rz-fade-in 350ms var(--rz-ease) 1850ms forwards; }
+.rz-splash-line { transform: scaleX(0); transform-origin: left; animation: rz-grow 700ms var(--rz-ease) 1900ms forwards; }
+
+@keyframes rz-draw { to { stroke-dashoffset: 0; } }
+@keyframes rz-fade-out { to { opacity: 0; } }
+@keyframes rz-fade-in { to { opacity: 1; } }
+@keyframes rz-grow { to { transform: scaleX(1); } }
+@keyframes rz-pulse {
+  0% { opacity: 0; transform: scale(0.3); }
+  35% { opacity: 0.95; }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes rz-mark {
+  0% { opacity: 0; transform: scale(0.82); }
+  41.7% { opacity: 1; }
+  66.7% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rayzer-splash { display: none; }
+}

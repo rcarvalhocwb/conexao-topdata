@@ -1,0 +1,88 @@
+<UserControl x:Class="Desktop.App.Telas.Diagnostico"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Diagnóstico">
+  <DockPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Diagnóstico"
+                         Descricao="Para o suporte: versão, pasta de dados e as últimas linhas de cada programa das catracas. Nenhum número de cartão aparece aqui." />
+
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <Button DockPanel.Dock="Top" Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left" Margin="0,0,0,12"
+            Content="_Exportar pacote de diagnóstico" Command="{Binding PedirPacote}" Click="SalvarPacote"
+            AutomationProperties.Name="Exportar pacote de diagnóstico para o suporte" />
+
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" DataContext="{Binding Diagnostico}">
+      <UniformGrid Columns="2">
+        <StackPanel Margin="0,0,16,0">
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="Versão do serviço" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Mono}" Text="{Binding Versao}" />
+        </StackPanel>
+        <StackPanel>
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="Pasta de dados e registros" />
+          <TextBlock Style="{StaticResource Rayzer.Type.Mono}" Text="{Binding PastaDeDados}" TextWrapping="Wrap" />
+        </StackPanel>
+      </UniformGrid>
+    </Border>
+
+    <!-- Etapa I.0 (docs/36): a saúde do Analisador da camada inteligente. Desligada é o normal. -->
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" AutomationProperties.Name="Camada inteligente">
+      <StackPanel>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" Text="Camada inteligente (Analisador)" />
+          <rz:RayzerStatus Grid.Column="1" VerticalAlignment="Center"
+                           Tom="{Binding AnalisadorSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding AnalisadorResumo}" />
+        </Grid>
+        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Analisador}" AutomationProperties.Name="Saúde do Analisador">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,2,0,0" TextWrapping="Wrap">
+                <Run Text="{Binding Rotulo, Mode=OneWay}" /><Run Text=": " /><Run FontWeight="SemiBold" Text="{Binding Valor, Mode=OneWay}" />
+              </TextBlock>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Diagnostico.Workers}" AutomationProperties.Name="Programas das catracas">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12">
+              <StackPanel>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" Text="{Binding Nome}" />
+                  <TextBlock Grid.Column="1" Style="{StaticResource Rayzer.Type.Caption}" VerticalAlignment="Center">
+                    <Run Text="Situação: " /><Run FontWeight="SemiBold" Text="{Binding Situacao, Mode=OneWay}" /><Run Text="  ·  reinícios: " /><Run FontWeight="SemiBold" Text="{Binding Reinicios, Mode=OneWay}" />
+                  </TextBlock>
+                </Grid>
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,4,0,8" Text="{Binding Detalhe}" />
+                <Border Padding="12,8" CornerRadius="{DynamicResource Rayzer.Radius.Md}" Background="{DynamicResource Rayzer.Surface.Sunken}">
+                  <ItemsControl ItemsSource="{Binding UltimasLinhas}" AutomationProperties.Name="Últimas linhas do programa">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Style="{StaticResource Rayzer.Type.Mono}" FontSize="{DynamicResource Rayzer.FontSize.Caption}"
+                                   Text="{Binding}" TextWrapping="Wrap" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Border>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

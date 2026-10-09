@@ -1,0 +1,5 @@
+@import "../src/tokens/fonts.css";
+@import "../src/tokens/rayzer.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

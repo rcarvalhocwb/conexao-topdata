@@ -1,0 +1,226 @@
+<Window x:Class="Desktop.App.JanelaPrincipal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+        Title="XAcess — Painel do evento · Rayzer"
+        Height="800" Width="1366"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Rayzer.Design;component/Marca/rayzer-xacess.ico"
+        Style="{StaticResource Rayzer.Janela}">
+
+  <!--
+    Rayzer XAcess — a janela do operador.
+    Barra lateral: Azul Noite nos dois temas (a âncora da marca), menu com ícone + nome e a
+    linha do fluxo no item ativo; recolhe para só ícones (botão ou janela estreita).
+    Barra superior: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO, em qualquer tela.
+    1366 × 768 é a resolução mínima suportada (docs/10); navegável por teclado.
+  -->
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- ===== Barra lateral ===== -->
+    <Border x:Name="BarraLateral" Grid.Column="0" Width="248" Background="{DynamicResource Rayzer.Nav.Background}">
+      <DockPanel>
+        <!--
+          Arquitetura de marca (brand board, seção 09): a empresa no alto — RAYZER X —, o
+          produto em uso logo abaixo — XAcess, controle de acesso. Um bloco de contexto, não
+          um seletor: hoje há um produto só.
+        -->
+        <StackPanel x:Name="Cabecalho" DockPanel.Dock="Top" Margin="18,14,12,8">
+          <rz:RayzerLogo x:Name="Logo" Height="30" Descritor="False" Brilho="True" HorizontalAlignment="Left" />
+          <Border x:Name="Produto" Margin="0,12,0,0" Padding="10,6" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                  Background="{DynamicResource Rayzer.Nav.Item.Hover}" BorderBrush="{DynamicResource Rayzer.Nav.Divider}" BorderThickness="1"
+                  ToolTip="XAcess — Controle de acesso inteligente">
+            <StackPanel Orientation="Horizontal">
+              <rz:RayzerAppIcon Width="32" />
+              <StackPanel x:Name="ProdutoTexto" Margin="10,0,0,0" VerticalAlignment="Center">
+                <TextBlock FontFamily="{DynamicResource Rayzer.Font.Display}" FontSize="15" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Rayzer.Nav.Text.Active}" Text="XAcess" />
+                <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" Foreground="{DynamicResource Rayzer.Nav.Text.Muted}"
+                           Text="Controle de acesso" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="8,4,8,10">
+          <Border Style="{StaticResource Rayzer.Divider}" Background="{DynamicResource Rayzer.Nav.Divider}" Margin="8,0,8,8" />
+
+          <!-- Selo permanente do modo simulação. -->
+          <Border x:Name="SeloSimulacao" Margin="8,0,8,8" Padding="10,6" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                  Background="{DynamicResource Rayzer.Warning.Subtle}" DataContext="{Binding Painel.Estado}"
+                  Visibility="{Binding Simulacao, Converter={StaticResource BoolParaVisibilidade}}">
+            <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Rayzer.Warning}" TextWrapping="Wrap"
+                       Text="! MODO SIMULAÇÃO — sem catraca física" />
+          </Border>
+
+          <Button x:Name="BotaoTema" Style="{StaticResource Rayzer.Button.Nav}" Click="AlternarTema"
+                  AutomationProperties.Name="Alternar tema claro e escuro">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="IconeTema" Style="{StaticResource Rayzer.Icon}" Width="20" Text="{DynamicResource Rayzer.Icon.Moon}" />
+              <TextBlock x:Name="TextoTema" Margin="12,0,0,0" VerticalAlignment="Center" Text="Tema escuro" />
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="BotaoRecolher" Style="{StaticResource Rayzer.Button.Nav}" Click="AlternarBarra"
+                  AutomationProperties.Name="Recolher ou expandir o menu">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Rayzer.Icon}" Width="20" Text="{DynamicResource Rayzer.Icon.Collapse}" />
+              <TextBlock x:Name="TextoRecolher" Margin="12,0,0,0" VerticalAlignment="Center" Text="Recolher menu" />
+            </StackPanel>
+          </Button>
+
+          <StackPanel x:Name="Autoria" Margin="12,6,8,0">
+            <TextBlock FontSize="{DynamicResource Rayzer.FontSize.Caption}" Foreground="{DynamicResource Rayzer.Nav.Text.Muted}"
+                       TextWrapping="Wrap" Text="Rayzer Serviços e Tecnologia" />
+            <TextBlock x:Name="TextoVersao" FontSize="{DynamicResource Rayzer.FontSize.Caption}"
+                       Foreground="{DynamicResource Rayzer.Nav.Text.Muted}" />
+          </StackPanel>
+        </StackPanel>
+
+        <ListBox x:Name="Menu" Style="{StaticResource Rayzer.Nav.List}" ItemContainerStyle="{StaticResource Rayzer.Nav.Item}"
+                 ItemsSource="{Binding TelasDoMenu}" SelectedItem="{Binding TelaAtual}" Tag="aberto" AutomationProperties.Name="Menu">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" ToolTip="{Binding Titulo}">
+                <TextBlock Style="{StaticResource Rayzer.Icon}" Width="20" Text="{Binding Converter={StaticResource TelaParaIcone}}" />
+                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding Titulo}"
+                           Visibility="{Binding Tag, ElementName=Menu, Converter={StaticResource VazioSome}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- ===== Conteúdo ===== -->
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <!--
+        TopOperationalBar: STATUS → EXCEÇÃO → CONTEXTO → AÇÃO, em qualquer tela.
+        Blocos modulares (StatusCard) com o que existe hoje: serviço local, catracas, nuvem
+        e o modo simulação; relógio de Brasília à direita e quem está logado (ADR-0026).
+      -->
+      <Border Grid.Row="0" Padding="24,12,24,10" Background="{DynamicResource Rayzer.Surface}"
+              BorderBrush="{DynamicResource Rayzer.Border}" BorderThickness="0,0,0,1" DataContext="{Binding Painel}">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+
+          <WrapPanel VerticalAlignment="Center">
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Diagnostic}" Titulo="Serviço local"
+                                 Descricao="{Binding ServicoResumo}" Tom="{Binding ServicoSinal, Converter={StaticResource SinalParaTom}}"
+                                 AutomationProperties.Name="Serviço local" />
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="Catracas"
+                                 Descricao="{Binding CatracasResumo}" Tom="{Binding CatracasSinal, Converter={StaticResource SinalParaTom}}"
+                                 AutomationProperties.Name="Catracas" />
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Cloud}" Titulo="Nuvem"
+                                 Descricao="{Binding NuvemResumo}" Tom="{Binding NuvemSinal, Converter={StaticResource SinalParaTom}}"
+                                 AutomationProperties.Name="Nuvem" />
+            <rz:RayzerStatusCard Margin="0,0,10,0" Icone="{DynamicResource Rayzer.Icon.Play}" Titulo="Modo simulação"
+                                 Descricao="sem catraca física" Tom="Atencao"
+                                 Visibility="{Binding Estado.Simulacao, Converter={StaticResource BoolParaVisibilidade}}" />
+          </WrapPanel>
+
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Style="{StaticResource Rayzer.Button.Primary}" Margin="0,0,16,0" Content="Abrir _assistente de configuração"
+                    Click="AbrirAssistente" AutomationProperties.Name="Abrir assistente de configuração"
+                    Visibility="{Binding Estado.SugerirAssistente, Converter={StaticResource BoolParaVisibilidade}}" />
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Mono}" FontSize="18" FontWeight="SemiBold"
+                         Text="{Binding HoraDoEvento}" AutomationProperties.Name="Hora do evento" />
+              <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Caption}" Text="Horário de Brasília" />
+            </StackPanel>
+            <!-- Quem está logado (ADR-0026). -->
+            <StackPanel VerticalAlignment="Center" Margin="20,0,0,0"
+                        Visibility="{Binding DataContext.Sessao.LoginLigado, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolParaVisibilidade}, FallbackValue=Collapsed}">
+              <TextBlock HorizontalAlignment="Right" Style="{StaticResource Rayzer.Type.Label}" Margin="0"
+                         Text="{Binding DataContext.Sessao.Nome, RelativeSource={RelativeSource AncestorType=Window}}" AutomationProperties.Name="Usuário" />
+              <Button HorizontalAlignment="Right" Style="{StaticResource Rayzer.Button.Ghost}" Padding="0" Content="_Sair"
+                      Command="{Binding DataContext.Sessao.Sair, RelativeSource={RelativeSource AncestorType=Window}}" AutomationProperties.Name="Sair" />
+            </StackPanel>
+            <!-- O produto com o endosso da empresa: XAcess by RAYZER X. -->
+            <Border Width="1" Height="36" Margin="20,0,20,0" Background="{DynamicResource Rayzer.Border}" />
+            <rz:XAcessLogo Variante="ComAssinatura" Height="38" VerticalAlignment="Center" />
+          </StackPanel>
+
+          <!-- A frase da situação: o que aconteceu, desde quando, o que fazer. -->
+          <rz:RayzerStatus Grid.Row="1" Grid.ColumnSpan="2" Margin="2,8,0,0" FontSize="13"
+                           Tom="{Binding Estado.Saude, Converter={StaticResource SaudeParaTom}}" Texto="{Binding Estado.Mensagem}"
+                           AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="Estado da operação" />
+        </Grid>
+      </Border>
+
+      <!-- Carregando: o traço atravessa a linha enquanto a tela busca dados. -->
+      <rz:RayzerFlowBar Grid.Row="1" Ativa="{Binding TelaAtual.Ocupada}" />
+
+      <ContentControl Grid.Row="2" Margin="{DynamicResource Rayzer.Padding.Page}" Content="{Binding TelaAtual}" Focusable="False" />
+    </Grid>
+
+    <!--
+      Login (ADR-0026): cobre o painel até o usuário entrar. No primeiro acesso do administrador
+      padrão, pede o nome e o login reais e a senha nova; nada mais funciona antes disso.
+    -->
+    <Grid x:Name="Login" Grid.ColumnSpan="2" Background="{DynamicResource Rayzer.Background}" DataContext="{Binding Sessao}"
+          Visibility="{Binding ForaDoSistema, Converter={StaticResource BoolParaVisibilidade}, FallbackValue=Collapsed}">
+      <Border Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Rayzer.Card}" Padding="32,28">
+        <StackPanel>
+          <rz:XAcessLogo Variante="ComAssinatura" Height="44" HorizontalAlignment="Left" Margin="0,0,0,20" />
+
+          <StackPanel Visibility="{Binding PedindoLogin, Converter={StaticResource BoolParaVisibilidade}}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,0,0,12" Text="Entrar" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Usuário" />
+            <TextBox x:Name="CampoLogin" Margin="0,4,0,12" Text="{Binding Login, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Usuário" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha" />
+            <PasswordBox x:Name="SenhaDoLogin" Margin="0,4,0,16" PasswordChanged="SenhaDoLoginMudou" AutomationProperties.Name="Senha" />
+            <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Stretch" Content="_Entrar" IsDefault="True" Command="{Binding Entrar}" />
+          </StackPanel>
+
+          <StackPanel Visibility="{Binding PedindoTroca, Converter={StaticResource BoolParaVisibilidade}}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0,0,0,4" Text="Troque a senha" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="Primeiro acesso ou senha redefinida: escolha uma senha só sua, com pelo menos 8 caracteres." />
+            <StackPanel Visibility="{Binding PrimeiroAcessoDoAdministrador, Converter={StaticResource BoolParaVisibilidade}}">
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,8"
+                         Text="Este é o administrador que veio instalado. Informe quem vai administrar o sistema." />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nome do administrador" />
+              <TextBox Margin="0,4,0,12" Text="{Binding NovoNome, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Nome do administrador" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Login do administrador" />
+              <TextBox Margin="0,4,0,12" Text="{Binding NovoLogin, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Login do administrador" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha atual" />
+            <PasswordBox x:Name="SenhaAtual" Margin="0,4,0,12" PasswordChanged="SenhaAtualMudou" AutomationProperties.Name="Senha atual" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha nova" />
+            <PasswordBox x:Name="SenhaNova" Margin="0,4,0,12" PasswordChanged="SenhaNovaMudou" AutomationProperties.Name="Senha nova" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Confirme a senha nova" />
+            <PasswordBox x:Name="ConfirmacaoDaSenha" Margin="0,4,0,16" PasswordChanged="ConfirmacaoMudou" AutomationProperties.Name="Confirme a senha nova" />
+            <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Stretch" Content="_Trocar a senha e entrar" IsDefault="True" Command="{Binding TrocarSenha}" />
+          </StackPanel>
+
+          <rz:RayzerAlert Margin="0,16,0,0" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                          Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" AutomationProperties.LiveSetting="Assertive" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Abertura (brand board, seção 08): toca uma vez, some sozinha e nunca bloqueia clique. -->
+    <rz:RayzerAbertura Grid.ColumnSpan="2" />
+  </Grid>
+</Window>

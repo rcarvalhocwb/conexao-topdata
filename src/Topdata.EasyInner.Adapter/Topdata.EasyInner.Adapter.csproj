@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Traduz ITopdataInnerAdapter (o que o sistema usa) para IEasyInnerNative (o que a DLL
+    oferece). Só o worker x86 e os testes de hardware podem referenciar este projeto —
+    regra verificada por ARCH-01.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Access.Application/Access.Application.csproj" />
+    <ProjectReference Include="../Access.Domain/Access.Domain.csproj" />
+    <ProjectReference Include="../Topdata.EasyInner.Interop/Topdata.EasyInner.Interop.csproj" />
+  </ItemGroup>
+
+</Project>
