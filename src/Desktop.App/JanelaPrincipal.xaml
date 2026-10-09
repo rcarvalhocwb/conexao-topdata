@@ -88,11 +88,16 @@
                  ItemsSource="{Binding TelasDoMenu}" SelectedItem="{Binding TelaAtual}" Tag="aberto" AutomationProperties.Name="Menu">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Orientation="Horizontal" ToolTip="{Binding Titulo}">
-                <TextBlock Style="{StaticResource Rayzer.Icon}" Width="20" Text="{Binding Converter={StaticResource TelaParaIcone}}" />
-                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding Titulo}"
+              <Grid ToolTip="{Binding Titulo}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="20" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Rayzer.Icon}" VerticalAlignment="Center" Text="{Binding Converter={StaticResource TelaParaIcone}}" />
+                <TextBlock x:Name="TituloDoMenu" Grid.Column="1" Margin="12,4,0,4" VerticalAlignment="Center"
+                           TextWrapping="Wrap" Text="{Binding Titulo}"
                            Visibility="{Binding Tag, ElementName=Menu, Converter={StaticResource VazioSome}}" />
-              </StackPanel>
+              </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

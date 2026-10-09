@@ -43,7 +43,7 @@ public partial class App : Application
 
             var pasta = indice + 1 < e.Args.Length ? e.Args[indice + 1] : "capturas";
 
-            // --tema escuro | claro: a captura de cada tema, sem mexer na preferência gravada.
+            // --tema escuro | claro | altocontraste: captura sem mexer na preferência gravada.
             var indiceDoTema = Array.IndexOf(e.Args, "--tema");
             if (indiceDoTema >= 0 && indiceDoTema + 1 < e.Args.Length
                 && Enum.TryParse<Rayzer.Design.Tema>(e.Args[indiceDoTema + 1], ignoreCase: true, out var tema))

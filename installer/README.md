@@ -292,6 +292,11 @@ Fotografa todas as telas do painel com os dados reais do serviço e grava
 Renderiza o **conteúdo** da janela, sem a barra de título. O CI roda o mesmo modo no job
 do instalador e fotografa também a primeira tela do Setup (`00-setup.png`).
 
+Use `--tema claro`, `--tema escuro` ou `--tema altocontraste` para escolher o tema da
+captura sem mudar a preferência salva. O CI captura os três temas em **1366×768** e
+reprova título de menu que ultrapasse a largura disponível ou fique sem altura para
+mostrar o texto inteiro. Os nomes longos quebram linha na barra lateral.
+
 ## A arte do Setup
 
 O Setup tem tema próprio (`installer/wix/tema-rayzer.xml`): a arte da marca

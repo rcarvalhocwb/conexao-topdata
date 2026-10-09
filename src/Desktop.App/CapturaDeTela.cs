@@ -232,6 +232,7 @@ internal static class CapturaDeTela
             // 1. Como a tela abre: a catraca livre, a câmera na vista inicial.
             await EsperarAsync(moldura, TimeSpan.FromSeconds(3)).ConfigureAwait(true);
             ConferirTamanho(moldura);
+            await ConferirNomesDoMenuAsync(moldura).ConfigureAwait(true);
             gravados.Add(FotografarJanela(fonte, Path.Combine(pasta, nome + ".png")));
 
             // 2. No meio de um cenário, de frente: o QR lido, braço solto.
@@ -418,14 +419,14 @@ internal static class CapturaDeTela
     }
 
     /// <summary>O primeiro elemento de um tipo na árvore visual, em largura.</summary>
-    private static T? Descendente<T>(DependencyObject raiz)
+    private static T? Descendente<T>(DependencyObject raiz, string? nome = null)
         where T : DependencyObject
     {
         var fila = new Queue<DependencyObject>([raiz]);
         while (fila.Count > 0)
         {
             var atual = fila.Dequeue();
-            if (atual is T achado)
+            if (atual is T achado && (nome is null || achado is FrameworkElement elemento && elemento.Name == nome))
             {
                 return achado;
             }
@@ -567,6 +568,8 @@ internal static class CapturaDeTela
         await moldura.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
         moldura.UpdateLayout();
 
+        await ConferirNomesDoMenuAsync(moldura).ConfigureAwait(true);
+
         var escala = Resolucao / 96.0;
         var bitmap = new RenderTargetBitmap(
             (int)(Largura * escala),
@@ -586,6 +589,60 @@ internal static class CapturaDeTela
         }
 
         return new Captura(caminho, bitmap.PixelWidth, bitmap.PixelHeight, Resolucao);
+    }
+
+    // Tarefa #9: mede o texto real na janela de 1366×768, com a fonte e o peso do tema.
+    // Conferir só o XAML não detectaria um título novo que ultrapassasse a largura do item.
+    private static async Task ConferirNomesDoMenuAsync(FrameworkElement raiz)
+    {
+        var menu = Descendente<ListBox>(raiz, "Menu");
+        if (menu is null || menu.Name != "Menu" || menu.Items.Count == 0)
+        {
+            return;
+        }
+
+        var rolagem = Descendente<ScrollViewer>(menu);
+        var deslocamento = rolagem?.VerticalOffset ?? 0;
+        try
+        {
+            foreach (var item in menu.Items)
+            {
+                // Também confere os itens fora da área visível, sem depender da virtualização.
+                menu.ScrollIntoView(item);
+                await menu.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+                raiz.UpdateLayout();
+                var recipiente = menu.ItemContainerGenerator.ContainerFromItem(item) as ListBoxItem
+                    ?? throw new InvalidOperationException("O item do menu não foi renderizado.");
+                var titulo = Descendente<TextBlock>(recipiente, "TituloDoMenu")
+                    ?? throw new InvalidOperationException("O título do menu não foi renderizado.");
+
+                var limites = titulo.TransformToAncestor(recipiente).TransformBounds(new Rect(titulo.RenderSize));
+                if (titulo.ActualWidth <= 0 || limites.Left < -0.5 || limites.Right > recipiente.ActualWidth + 0.5)
+                {
+                    throw new InvalidOperationException($"Menu: '{titulo.Text}' ultrapassa a largura disponível.");
+                }
+
+                var texto = new FormattedText(titulo.Text, CultureInfo.InvariantCulture, titulo.FlowDirection,
+                    new Typeface(titulo.FontFamily, titulo.FontStyle, titulo.FontWeight, titulo.FontStretch),
+                    titulo.FontSize, titulo.Foreground, VisualTreeHelper.GetDpi(titulo).PixelsPerDip)
+                {
+                    MaxTextWidth = titulo.ActualWidth,
+                    Trimming = TextTrimming.None,
+                };
+                if (texto.WidthIncludingTrailingWhitespace > titulo.ActualWidth + 0.5
+                    || texto.Height > titulo.ActualHeight + 0.5
+                    || limites.Top < -0.5 || limites.Bottom > recipiente.ActualHeight + 0.5)
+                {
+                    throw new InvalidOperationException($"Menu: '{titulo.Text}' está cortado ou precisa de mais altura.");
+                }
+            }
+        }
+        finally
+        {
+            rolagem?.ScrollToVerticalOffset(deslocamento);
+            await menu.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+            raiz.UpdateLayout();
+        }
     }
 
     private static string Arquivo(string titulo) =>
