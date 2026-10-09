@@ -103,8 +103,8 @@ public enum SituacaoDoComando
 /// e <see cref="TipoDeComando.LiberarDoisSentidos"/>.
 /// </param>
 /// <param name="Operador">
-/// Nome informado por quem pediu. Não há login (docs/27 §11): é o que a pessoa digitou,
-/// não uma identidade verificada.
+/// Identificação de quem pediu: no painel, nome e login conferidos pelo serviço (ADR-0026);
+/// nas ferramentas sem login, "painel".
 /// </param>
 /// <param name="PedidoEm">Quando foi pedido.</param>
 /// <param name="ExpiraEm">Depois disto, não executa mais.</param>
@@ -121,6 +121,9 @@ public sealed record ComandoDeCatraca(
 {
     /// <summary>Tamanho do display (manual 4.6.3).</summary>
     public const int LimiteDaMensagem = 32;
+
+    /// <summary>Nome (até 80), espaço e parênteses (3), login (até 40), sem cortar a autoria.</summary>
+    public const int LimiteDoOperador = 123;
 
     /// <summary>
     /// O texto que o operador digita para confirmar a liberação nos dois sentidos, com o número
@@ -228,9 +231,9 @@ public sealed record ComandoDeCatraca(
             problemas.Add("Comando desconhecido.");
         }
 
-        if (quem.Length is < 2 or > 80)
+        if (quem.Length is < 2 or > LimiteDoOperador)
         {
-            problemas.Add("Informe o nome de quem está pedindo (2 a 80 caracteres).");
+            problemas.Add($"Informe a identificação de quem está pedindo (2 a {LimiteDoOperador} caracteres).");
         }
 
         if (tipo is TipoDeComando.MensagemTemporaria)

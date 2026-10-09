@@ -108,7 +108,7 @@ public sealed class EstornosDeUso
     /// <c>Problemas</c>.
     /// </summary>
     /// <param name="tentativa">A tentativa consumida.</param>
-    /// <param name="operador">Quem pede (nome digitado).</param>
+    /// <param name="operador">Identificação de quem pede, conferida pelo serviço.</param>
     /// <param name="motivo">Por quê.</param>
     /// <param name="agora">Agora.</param>
     public (bool Estornado, IReadOnlyList<string> Problemas) Estornar(Guid tentativa, string? operador, string? motivo, DateTimeOffset agora)
@@ -201,7 +201,8 @@ public sealed class EstornosDeUso
             ("$id", tentativa.ToString()),
             ("$ingresso", ingresso),
             ("$em", Iso(agora)),
-            ("$quem", quem.Length > 80 ? quem[..80] : quem),
+            ("$quem", quem.Length > Access.Application.Devices.ComandoDeCatraca.LimiteDoOperador
+                ? quem[..Access.Application.Devices.ComandoDeCatraca.LimiteDoOperador] : quem),
             ("$motivo", porque.Length > 300 ? porque[..300] : porque));
 
         transacao.Commit();

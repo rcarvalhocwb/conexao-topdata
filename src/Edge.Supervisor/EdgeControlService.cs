@@ -197,7 +197,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             return Task.FromResult(resposta);
         }
 
-        var (estornado, problemas) = _estornos.Estornar(tentativa, request.Operador, request.Motivo, _relogio());
+        var (estornado, problemas) = _estornos.Estornar(tentativa, QuemNome(context), request.Motivo, _relogio());
         resposta.Estornado = estornado;
         resposta.Problemas.AddRange(problemas);
         return Task.FromResult(resposta);
@@ -865,6 +865,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         }
 
         var agora = _relogio();
+        var operador = QuemNome(context);
         var pedidos = new List<Access.Application.Devices.ComandoDeCatraca>();
 
         foreach (var inner in alvos)
@@ -872,7 +873,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             var (comando, problemas) = Access.Application.Devices.ComandoDeCatraca.Criar(
                 inner,
                 tipo,
-                request.Operador,
+                operador,
                 agora,
                 request.Texto,
                 request.DuracaoSegundos == 0 ? 10 : request.DuracaoSegundos,

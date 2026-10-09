@@ -273,7 +273,7 @@ public sealed class ComandosDaCatracaTests : IDisposable
     {
         Assert.Contains("A liberação manual exige o motivo (5 a 200 caracteres).",
             ComandoDeCatraca.Criar(1, TipoDeComando.LiberacaoManual, "Ana", _agora, motivo: "ok").Problemas);
-        Assert.Contains("Informe o nome de quem está pedindo (2 a 80 caracteres).",
+        Assert.Contains("Informe a identificação de quem está pedindo (2 a 123 caracteres).",
             ComandoDeCatraca.Criar(1, TipoDeComando.AcertarRelogio, " ", _agora).Problemas);
         Assert.Contains("A mensagem precisa ter de 1 a 32 caracteres.",
             ComandoDeCatraca.Criar(1, TipoDeComando.MensagemTemporaria, "Ana", _agora, texto: new string('x', 33)).Problemas);
@@ -282,5 +282,16 @@ public sealed class ComandosDaCatracaTests : IDisposable
 
         var (liberacao, _) = ComandoDeCatraca.Criar(1, TipoDeComando.LiberacaoManual, "Ana", _agora, motivo: "Criança de colo");
         Assert.Equal(_agora + TimeSpan.FromSeconds(15), liberacao!.ExpiraEm);
+    }
+
+    [Fact]
+    public void Autoria_cabe_com_nome_e_login_completos_e_recusa_acima_do_limite()
+    {
+        var autoria = $"{new string('N', 80)} ({new string('u', 40)})";
+        Assert.Equal(ComandoDeCatraca.LimiteDoOperador, autoria.Length);
+        var (comando, problemas) = ComandoDeCatraca.Criar(1, TipoDeComando.AcertarRelogio, autoria, _agora);
+        Assert.Empty(problemas);
+        Assert.Equal(autoria, comando!.Operador);
+        Assert.Null(ComandoDeCatraca.Criar(1, TipoDeComando.AcertarRelogio, autoria + "x", _agora).Comando);
     }
 }

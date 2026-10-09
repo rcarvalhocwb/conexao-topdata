@@ -121,10 +121,10 @@ public sealed class GerenciarCatracaTests : IDisposable
         var registro = Assert.Single(Historico(1));
         Assert.Equal(SituacaoIpc.Concluido, registro.Situacao);
         Assert.Equal("liberada; girou", registro.Resultado);
-        Assert.Equal("Ana (portaria)", registro.Operador);
+        Assert.Equal("painel", registro.Operador);
         Assert.Equal("Criança de colo sem ingresso", registro.Motivo);
 
-        // Nome e motivo digitados ficam na auditoria, não no registro do worker.
+        // Autoria e motivo ficam na auditoria, não no registro do worker.
         Assert.DoesNotContain(_registro, l => l.Contains("Criança", StringComparison.Ordinal) || l.Contains("Ana", StringComparison.Ordinal));
     }
 
@@ -213,9 +213,9 @@ public sealed class GerenciarCatracaTests : IDisposable
         Assert.Contains("A catraca 7 não está cadastrada.", Pedir(7, TipoDeComandoIpc.AcertarRelogio).Problemas);
         Assert.Contains("A catraca 0 não está cadastrada.", Pedir(0, TipoDeComandoIpc.LiberacaoManual, motivo: "Criança de colo").Problemas);
         Assert.Contains("Comando desconhecido.", Pedir(1, TipoDeComandoIpc.NaoEspecificado).Problemas);
-        Assert.Contains("Informe o nome de quem está pedindo (2 a 80 caracteres).", Pedir(1, TipoDeComandoIpc.AcertarRelogio, operador: "").Problemas);
-
         Assert.Empty(Historico());
+        Assert.True(Pedir(1, TipoDeComandoIpc.AcertarRelogio, operador: "").Aceito);
+        Assert.Equal("painel", Assert.Single(Historico()).Operador);
     }
 
     [Fact]

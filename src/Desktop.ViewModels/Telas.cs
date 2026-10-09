@@ -1396,12 +1396,11 @@ public sealed class JanelaViewModel : Notificavel
                 return;
             }
 
-            // Quem já digitou o nome no Gerenciar ou no gêmeo não precisa digitar de novo.
-            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+            // A configuração e o mapa ainda compartilham o nome informado no gêmeo.
             var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (Parametrizacao.Operador.Length == 0)
             {
-                Parametrizacao.Operador = gemeo.Central.Operador.Length > 0 ? gemeo.Central.Operador : gerenciar.Operador;
+                Parametrizacao.Operador = gemeo.Central.Operador;
             }
 
             var mesmaTela = ReferenceEquals(TelaAtual, Parametrizacao);
@@ -1429,8 +1428,7 @@ public sealed class JanelaViewModel : Notificavel
             var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (gemeo.Central.Operador.Length == 0)
             {
-                var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
-                gemeo.Central.Operador = Parametrizacao.Operador.Length > 0 ? Parametrizacao.Operador : gerenciar.Operador;
+                gemeo.Central.Operador = Parametrizacao.Operador;
             }
 
             gemeo.Catraca = inner;

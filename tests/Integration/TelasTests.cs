@@ -663,7 +663,6 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     {
         var tela = new GerenciarCatracaViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
         await tela.AtualizarAsync();
-        tela.Operador = "Ana";
         tela.Motivo = "Criança de colo sem ingresso";
         await tela.PrepararLiberacao.ExecutarAsync();
         Assert.True(tela.ConfirmandoLiberacao);
@@ -680,11 +679,11 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
-    /// Gerenciar catraca: a liberação manual só fica disponível com nome e motivo, o pedido
+    /// Gerenciar catraca: a liberação manual só fica disponível com motivo e confirmação, o pedido
     /// vira linha no histórico, e o motivo não fica preenchido para a próxima.
     /// </summary>
     [Fact]
-    public async Task Gerenciar_catraca_so_libera_com_nome_e_motivo_e_mostra_o_pedido_no_historico()
+    public async Task Gerenciar_catraca_so_libera_com_motivo_e_confirmacao_e_mostra_a_autoria_do_servico()
     {
         var tela = new GerenciarCatracaViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
         await tela.AtualizarAsync();
@@ -693,7 +692,6 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal(("Atendendo", Sinal.Bom), (tela.Selecionada!.Situacao, tela.Selecionada.Sinal));
         Assert.False(tela.LiberarManualmente.CanExecute(null));
 
-        tela.Operador = "Ana";
         tela.Motivo = "ok";
         Assert.False(tela.LiberarManualmente.CanExecute(null));
 
@@ -710,7 +708,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.False(tela.ConfirmandoLiberacao);
 
         var linha = Assert.Single(tela.Historico);
-        Assert.Equal(("Liberação manual", "Criança de colo sem ingresso", "Ana"), (linha.Comando, linha.Detalhe, linha.Operador));
+        Assert.Equal(("Liberação manual", "Criança de colo sem ingresso", "painel"), (linha.Comando, linha.Detalhe, linha.Operador));
         Assert.Equal(("Aguardando a catraca", Sinal.Neutro), (linha.Situacao, linha.Sinal));
         Assert.Equal(string.Empty, tela.Motivo);
         Assert.StartsWith("Liberação manual: pedido à catraca 1.", tela.Mensagem, StringComparison.Ordinal);
@@ -728,7 +726,6 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     {
         var tela = new GerenciarCatracaViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
         await tela.AtualizarAsync();
-        tela.Operador = "Ana";
 
         Assert.False(tela.ConfirmarRefazerConexao.CanExecute(null));
         await tela.RefazerConexao.ExecutarAsync();
@@ -775,7 +772,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task Aplicar_agora_pede_a_todas_as_catracas_e_exige_o_nome()
+    public async Task Aplicar_agora_pede_a_todas_as_catracas_e_o_servico_identifica_quem_pediu()
     {
         var tela = new ConfiguracoesViewModel(Cliente());
 
@@ -785,14 +782,11 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.True(tela.ConfirmandoAplicacao);
 
         await tela.AplicarAgora.ExecutarAsync();
-        Assert.Equal("Não foi pedido. Corrija os itens abaixo.", tela.Mensagem);
-        Assert.Contains("Informe o nome de quem está pedindo (2 a 80 caracteres).", tela.Problemas);
-        Assert.True(tela.ConfirmandoAplicacao, "um pedido recusado mantém a confirmação");
-
-        tela.Operador = "Ana";
-        await tela.AplicarAgora.ExecutarAsync();
         Assert.StartsWith("Pedido a 2 catraca(s).", tela.Mensagem, StringComparison.Ordinal);
         Assert.False(tela.ConfirmandoAplicacao);
+        var historico = await Cliente().ListarComandosAsync(new ListarComandosRequest());
+        Assert.Equal(2, historico.Comandos.Count);
+        Assert.All(historico.Comandos, c => Assert.Equal("painel", c.Operador));
     }
 
     /// <summary>
@@ -827,7 +821,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     /// Sincronização, com o nome de quem pede, volta para a fila e fica anotado na base.
     /// </summary>
     [Fact]
-    public async Task Estorno_pela_tela_de_acessos_pede_nome_motivo_e_confirmacao_e_devolve_o_ingresso()
+    public async Task Estorno_pela_tela_de_acessos_pede_motivo_e_confirmacao_e_devolve_o_ingresso()
     {
         // Achado E1-05 do docs/41: consumido há 3 min, liberação que falhou.
         var (uso, tentativa) = _repositorio.TentarUsar(Qr, "portao-1", "inner-1", DateTimeOffset.UtcNow.AddMinutes(-3));
@@ -843,10 +837,9 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.DoesNotContain(Qr, linha.Codigo, StringComparison.Ordinal);
         Assert.False(string.IsNullOrWhiteSpace(painel.Alcance));
 
-        // Sem seleção, nome e motivo, não abre a confirmação.
+        // Sem seleção e motivo, não abre a confirmação.
         Assert.False(painel.PrepararEstorno.CanExecute(null));
         painel.Selecionada = linha;
-        painel.Operador = "Ana";
         Assert.False(painel.PrepararEstorno.CanExecute(null));
         painel.Motivo = "não passou, conferido";
         Assert.True(painel.PrepararEstorno.CanExecute(null));
@@ -862,6 +855,12 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.False(painel.Confirmando);
         Assert.Contains("estornado", painel.Mensagem, StringComparison.Ordinal);
         Assert.Empty(painel.Linhas);
+        using (var conexao = _banco.Fabrica.Abrir())
+        using (var consulta = conexao.CreateCommand())
+        {
+            consulta.CommandText = "SELECT refunded_by FROM ticket_use_refund;";
+            Assert.Equal("painel", consulta.ExecuteScalar());
+        }
         Assert.True(_repositorio.TentarUsar(Qr, "portao-1", "inner-1", DateTimeOffset.UtcNow).Resultado.Liberou);
     }
 
@@ -1043,7 +1042,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         await tela.ConfirmarAplicacao.ExecutarAsync();
         Assert.False(tela.ConfirmandoAplicacao);
         var pedido = Assert.Single(tela.Aplicacoes);
-        Assert.Equal(("Aplicar configuração", "Ana", 1), (pedido.Comando, pedido.Operador, pedido.Inner));
+        Assert.Equal(("Aplicar configuração", "painel", 1), (pedido.Comando, pedido.Operador, pedido.Inner));
         Assert.Equal(("Aplicando: aguardando a catraca", Sinal.Atencao), (tela.SituacaoNaCatraca, tela.SinalDaSituacao));
         Assert.False(tela.PedirAplicacao.CanExecute(null));
     }
@@ -1284,13 +1283,12 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     {
         var janela = new JanelaViewModel(Cliente());
         await janela.Gerenciar.ExecutarAsync(2);
-        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana";
 
         await janela.Parametrizar.ExecutarAsync(2);
 
         var tela = Assert.IsType<ParametrizacaoViewModel>(janela.TelaAtual);
         await tela.AtualizarAsync();
-        Assert.Equal((2, "Ana"), (tela.Catraca, tela.Operador));
+        Assert.Equal((2, string.Empty), (tela.Catraca, tela.Operador));
         Assert.Equal(8, tela.Campos.Count);
         Assert.DoesNotContain(janela.Telas, t => t is ParametrizacaoViewModel);
 
@@ -1373,7 +1371,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.True(tela.Giro.ConfirmandoAplicacao);
         await tela.Giro.ConfirmarAplicacao.ExecutarAsync();
         var comandos = await Cliente().ListarComandosAsync(new ListarComandosRequest { Inner = 1, Limite = 10 });
-        Assert.Contains(comandos.Comandos, c => c.Tipo is TipoDeComando.AplicarConfiguracao && c.Operador == "Ana Sintética");
+        Assert.Contains(comandos.Comandos, c => c.Tipo is TipoDeComando.AplicarConfiguracao && c.Operador == "painel");
 
         // Conferência: girou para o lado da seta.
         await tela.Giro.ConferirComoEsperado.ExecutarAsync(salva);
@@ -1609,7 +1607,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         central.Operador = "Ana Sintética";
         Assert.True(central.Salvar.CanExecute(null));
         Assert.Equal("Ana Sintética", tela.Giro.Operador);
-        Assert.Equal("Ana Sintética", central.Comandos.Operador);
+        Assert.True(central.Comandos.AcertarRelogio.CanExecute(null));
 
         await central.Salvar.ExecutarAsync();
         Assert.Empty(central.Problemas);
@@ -1690,7 +1688,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         await central.PedirAplicacao.ExecutarAsync();
         await central.ConfirmarAplicacao.ExecutarAsync();
         var pedido = Assert.Single(fila.Listar(1)).Comando;
-        Assert.Equal((1, "Ana Sintética"), (pedido.Inner, pedido.Operador));
+        Assert.Equal((1, "painel"), (pedido.Inner, pedido.Operador));
         Assert.Equal(Access.Application.Devices.TipoDeComando.AplicarConfiguracao, pedido.Tipo);
         Assert.Equal(("Aplicando: aguardando a catraca", Sinal.Atencao), (central.SituacaoNaCatraca, central.SinalDaSituacao));
         Assert.False(central.PedirAplicacao.CanExecute(null));
@@ -1848,19 +1846,19 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
     /// <summary>
     /// O gêmeo é a porta principal: "Abrir no gêmeo" (Gerenciar e Parametrização) leva à mesma
-    /// catraca, com o nome já digitado; "Ver em lista" leva de volta à Parametrização. Nada some.
+    /// catraca; o nome informado na configuração continua entre o gêmeo e a lista.
     /// </summary>
     [Fact]
-    public async Task Abrir_no_gemeo_e_ver_em_lista_levam_a_mesma_catraca_com_o_nome()
+    public async Task Abrir_no_gemeo_e_ver_em_lista_levam_a_mesma_catraca_e_preservam_o_nome_da_configuracao()
     {
         var janela = new JanelaViewModel(Cliente());
         await janela.Gerenciar.ExecutarAsync(2);
-        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana Sintética";
 
         await janela.AbrirNoGemeo.ExecutarAsync(2);
         var gemeo = Assert.IsType<GemeoDigitalViewModel>(janela.TelaAtual);
         await gemeo.AtualizarAsync();
-        Assert.Equal((2, 2, "Ana Sintética"), (gemeo.Catraca, gemeo.Central.Catraca, gemeo.Central.Operador));
+        Assert.Equal((2, 2, string.Empty), (gemeo.Catraca, gemeo.Central.Catraca, gemeo.Central.Operador));
+        gemeo.Central.Operador = "Ana Sintética";
 
         await janela.Parametrizar.ExecutarAsync(gemeo.Central.Catraca);
         var lista = Assert.IsType<ParametrizacaoViewModel>(janela.TelaAtual);

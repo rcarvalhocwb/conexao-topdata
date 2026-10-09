@@ -130,4 +130,25 @@ public sealed class EstornoDeUsoTests : IDisposable
         Assert.Null(uso.FalhaDaLiberacao);
         Assert.Empty(_estornos.Listar(Leitura.AddHours(1), somenteComFalha: true));
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Outra pessoa (outro.login)")]
+    public async Task Servico_sem_login_estorna_com_autoria_painel(string operadorLegado)
+    {
+        LeituraComLiberacaoQueFalha();
+        var agora = Leitura.AddHours(1);
+        var tentativa = Assert.Single(_estornos.Listar(agora)).Tentativa;
+        var servico = new Edge.Supervisor.EdgeControlService(new Edge.Supervisor.WorkerSupervisor([]),
+            relogio: () => agora, estornos: _estornos);
+        var resposta = await servico.EstornarUso(new Contracts.Edge.V1.EstornarUsoRequest
+        {
+            TentativaId = tentativa.ToString(), Operador = operadorLegado, Motivo = "Pessoa não passou, conferido",
+        }, null!);
+        Assert.True(resposta.Estornado, string.Join(" ", resposta.Problemas));
+        using var conexao = _banco.Fabrica.Abrir();
+        using var sql = conexao.CreateCommand();
+        sql.CommandText = "SELECT refunded_by FROM ticket_use_refund;";
+        Assert.Equal("painel", sql.ExecuteScalar());
+    }
 }

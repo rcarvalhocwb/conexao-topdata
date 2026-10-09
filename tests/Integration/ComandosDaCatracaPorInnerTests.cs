@@ -172,6 +172,17 @@ public sealed class ComandosDaCatracaPorInnerTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData(0, 2)]
+    [InlineData(1, 1)]
+    public void Sem_login_a_autoria_de_cada_comando_e_painel(int inner, int quantidade)
+    {
+        Assert.Equal(quantidade, Aplicar(inner).Ids.Count);
+        var registros = Comandos(inner);
+        Assert.Equal(quantidade, registros.Count);
+        Assert.All(registros, r => Assert.Equal("painel", r.Operador));
+    }
+
     private void Gravar(int inner, SobreposicoesDaCatraca camada) =>
         Assert.Empty(_camadas.Gravar(inner, camada, _agora, "Bia (técnica)"));
 
