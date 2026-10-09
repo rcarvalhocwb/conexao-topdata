@@ -36,6 +36,9 @@
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
     <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+    <!-- NU1900 é só "não consegui baixar a base de vulnerabilidades" (rede do runner): fica aviso, para
+         uma falha de rede não derrubar o build. Vulnerabilidade de verdade (NU1901 a NU1904) continua erro. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900</WarningsNotAsErrors>
 
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
