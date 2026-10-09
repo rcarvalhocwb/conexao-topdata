@@ -373,6 +373,17 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
 
         using var conexao = _fabrica.Abrir();
         using var transacao = conexao.BeginTransaction();
+        var inner = DecisaoDePessoas.NumeroDoInner(deviceId);
+
+        // Catraca fechada pelo operador (docs/43 §6.6): ninguém passa, ingresso ou pessoa, e nada se
+        // consome. A transação é imediata (pega a trava no BEGIN), então ler antes de escrever aqui não
+        // abre a porta ao SQLITE_BUSY do comentário abaixo.
+        if (DecisaoDePessoas.CatracaFechada(conexao, transacao, inner))
+        {
+            var fechada = NegarNaCatracaFechada(conexao, transacao, qrNormalizado, gateId, deviceId, agora, decisionId, origemBruta);
+            transacao.Commit();
+            return fechada;
+        }
 
         // A escrita vem primeiro, de propósito: é ela que pega a trava. Ler antes e
         // escrever depois, numa transação adiada, é a receita do SQLITE_BUSY que não
@@ -412,6 +423,18 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             // fila, ou nada aconteceu. Não existe "consumiu e esqueceu de avisar".
             EnfileirarAvisoDeUso(conexao, transacao, e, tentativaId, gateId, agora);
         }
+        else if (estado is null && DecisaoDePessoas.Credencial(conexao, transacao, qrNormalizado) is { } pessoa)
+        {
+            // Não é ingresso: é credencial do cadastro local de pessoas (docs/43 §6.1). Nada vai para a
+            // nuvem: a tentativa fica só aqui, com a pessoa e sem ingresso.
+            var motivo = DecisaoDePessoas.Decidir(conexao, transacao, pessoa, inner, agora);
+            var liberou = motivo is MotivoDoUso.Consumido;
+            resultado = new ResultadoDoUso(motivo, Categoria: pessoa.Perfil, PessoaId: pessoa.PessoaId);
+
+            RegistrarTentativa(conexao, transacao, tentativaId, null, null, qrNormalizado, gateId, deviceId,
+                liberou ? "consumido" : "negado", motivo, decisionId, agora, pessoa.Perfil, origemBruta,
+                liberou ? giro : null, pessoa.PessoaId);
+        }
         else
         {
             var motivo = Diagnosticar(estado, agora, naUrna);
@@ -427,6 +450,36 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
 
         transacao.Commit();
         return (resultado, tentativaId);
+    }
+
+    // Nega na catraca fechada. Ingresso e código desconhecido seguem para a nuvem como qualquer negativa;
+    // credencial de pessoa não (só local).
+    private (ResultadoDoUso Resultado, Guid TentativaId) NegarNaCatracaFechada(
+        SqliteConnection conexao,
+        SqliteTransaction transacao,
+        string qr,
+        string gateId,
+        string deviceId,
+        DateTimeOffset agora,
+        Guid? decisionId,
+        int? origemBruta)
+    {
+        var tentativaId = Guid.CreateVersion7(agora);
+        var estado = Estado(conexao, transacao, qr);
+        var pessoa = estado is null ? DecisaoDePessoas.Credencial(conexao, transacao, qr) : null;
+        var categoria = estado?.Categoria ?? pessoa?.Perfil;
+
+        RegistrarTentativa(conexao, transacao, tentativaId, estado?.Id, estado?.Provedor, qr, gateId, deviceId,
+            "negado", MotivoDoUso.CatracaFechada, decisionId, agora, categoria, origemBruta, pessoaId: pessoa?.PessoaId);
+
+        if (pessoa is null)
+        {
+            Espelhar(conexao, transacao, tentativaId, qr, deviceId, gateId, agora,
+                liberado: false, MotivoDoUso.CatracaFechada, estado?.Provedor, estado?.Categoria);
+        }
+
+        return (new ResultadoDoUso(MotivoDoUso.CatracaFechada, estado?.Id, estado?.Provedor, estado?.Setor,
+            Categoria: categoria, PessoaId: pessoa?.PessoaId), tentativaId);
     }
 
     /// <inheritdoc />
@@ -619,7 +672,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             """
             SELECT COUNT(*), COUNT(DISTINCT qr_normalized)
             FROM ticket_use_attempt
-            WHERE ticket_id IS NULL AND at <= $ate;
+            WHERE ticket_id IS NULL AND person_id IS NULL AND at <= $ate;
             """;
         comando.Parameters.AddWithValue("$ate", Iso(corte));
 
@@ -1324,7 +1377,8 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         DateTimeOffset agora,
         string? categoria,
         int? origemBruta,
-        GiroResolvido? giro = null)
+        GiroResolvido? giro = null,
+        string? pessoaId = null)
     {
         using var comando = conexao.CreateCommand();
         comando.Transaction = transacao;
@@ -1333,12 +1387,13 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             INSERT INTO ticket_use_attempt
                 (id, ticket_id, provider_id, qr_normalized, gate_id, device_id,
                  outcome, reason, decision_id, at, category, reader_origin,
-                 counted_as, release_function)
+                 counted_as, release_function, person_id)
             VALUES
                 ($id, $ingresso, $provedor, $qr, $gate, $dispositivo,
                  $desfecho, $motivo, $decisao, $em, $categoria, $origem,
-                 $contaComo, $funcao);
+                 $contaComo, $funcao, $pessoa);
             """;
+        comando.Parameters.AddWithValue("$pessoa", (object?)pessoaId ?? DBNull.Value);
 
         // Mapa de giro (D9, migração 017): a função que vai liberar e, se a regra é do mapa, o
         // rótulo. Sem regra no mapa o rótulo fica nulo: conta como entrada, como sempre.

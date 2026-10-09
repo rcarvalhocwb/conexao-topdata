@@ -82,6 +82,14 @@ public static class PorQueNegou
         [nameof(MotivoDoUso.VendaAnteriorNaoUsada)] = ReasonCodes.VendaAnteriorNaoUsada,
         [nameof(MotivoDoUso.ForaDaUrna)] = ReasonCodes.ForaDaUrna,
         [nameof(MotivoDoUso.TipoInativo)] = ReasonCodes.TipoInativo,
+        [nameof(MotivoDoUso.PessoaBloqueada)] = ReasonCodes.PessoaBloqueada,
+        [nameof(MotivoDoUso.PessoaInativa)] = ReasonCodes.PessoaInativa,
+        [nameof(MotivoDoUso.ForaDoHorario)] = ReasonCodes.ForaDoHorario,
+        [nameof(MotivoDoUso.PortaoNaoPermitido)] = ReasonCodes.PortaoNaoPermitido,
+        [nameof(MotivoDoUso.CredencialInativa)] = ReasonCodes.CredencialInativa,
+        [nameof(MotivoDoUso.ForaDaValidade)] = ReasonCodes.PessoaForaDaValidade,
+        [nameof(MotivoDoUso.LimiteDiario)] = ReasonCodes.LimiteDiario,
+        [nameof(MotivoDoUso.CatracaFechada)] = ReasonCodes.CatracaFechada,
     };
 
     private const string ProcureOAtendimento = "Procure o atendimento, por favor.";
@@ -91,6 +99,38 @@ public static class PorQueNegou
     // Textos fixos dos motivos que não dependem de contexto: (o que aconteceu, o que dizer, o que fazer).
     private static readonly Dictionary<string, (string Aconteceu, string Dizer, string Fazer)> Fixos = new(StringComparer.Ordinal)
     {
+        [ReasonCodes.PessoaBloqueada] = (
+            "A pessoa está bloqueada no cadastro deste local.",
+            ProcureOAtendimento,
+            "Confira o motivo do bloqueio na ficha da pessoa (Pessoas) antes de qualquer liberação manual."),
+        [ReasonCodes.PessoaInativa] = (
+            "O cadastro desta pessoa está inativo.",
+            ProcureOAtendimento,
+            "Confira na ficha da pessoa se o cadastro deve ser reativado."),
+        [ReasonCodes.ForaDoHorario] = (
+            "A pessoa está fora dos horários permitidos para ela.",
+            "Seu acesso não vale neste horário. " + ProcureOAtendimento,
+            "Confira a tabela de horário do perfil ou da pessoa (Horários) e o relógio desta catraca."),
+        [ReasonCodes.LimiteDiario] = (
+            "A pessoa já usou as entradas permitidas hoje.",
+            "Suas entradas de hoje já foram usadas. " + ProcureOAtendimento,
+            "Confira o limite diário do perfil ou da pessoa."),
+        [ReasonCodes.PortaoNaoPermitido] = (
+            "A pessoa não tem permissão nesta catraca.",
+            "Seu acesso não vale nesta entrada. " + ProcureOAtendimento,
+            "Confira as catracas permitidas no perfil ou na ficha da pessoa."),
+        [ReasonCodes.CredencialInativa] = (
+            "O cartão, QR ou senha desta pessoa está bloqueado, perdido ou devolvido.",
+            ProcureOAtendimento,
+            "Confira a credencial na ficha da pessoa; se ela foi perdida, cadastre uma nova."),
+        [ReasonCodes.PessoaForaDaValidade] = (
+            "O cadastro ou a credencial desta pessoa está fora da validade (visita encerrada ou ainda não começou).",
+            "Seu acesso não vale nesta data. " + ProcureOAtendimento,
+            "Confira as datas de validade na ficha da pessoa e o relógio desta catraca."),
+        [ReasonCodes.CatracaFechada] = (
+            "Esta catraca está fechada pelo operador: ninguém passa até reabrir.",
+            UseOutraCatraca,
+            "Reabra a catraca em Gerenciar catraca quando for o caso."),
         [ReasonCodes.CredencialBloqueada] = (
             "Este ingresso foi bloqueado pela operação do evento.",
             ProcureOAtendimento,

@@ -86,6 +86,30 @@ public enum MotivoDoUso
     /// (docs/19 §5.4). Etapa B.2 do docs/35.
     /// </remarks>
     TipoInativo,
+
+    /// <summary>A pessoa do cadastro local está bloqueada pela operação (docs/43, ADR-0026).</summary>
+    PessoaBloqueada,
+
+    /// <summary>A pessoa do cadastro local está inativa (desligada, mudou-se, cadastro encerrado).</summary>
+    PessoaInativa,
+
+    /// <summary>Fora dos horários permitidos para a pessoa (tabela de horário do perfil ou dela).</summary>
+    ForaDoHorario,
+
+    /// <summary>A pessoa não tem permissão nesta catraca.</summary>
+    PortaoNaoPermitido,
+
+    /// <summary>A pessoa já usou as entradas permitidas no dia.</summary>
+    LimiteDiario,
+
+    /// <summary>A catraca está fechada pelo operador: ninguém passa até reabrir.</summary>
+    CatracaFechada,
+
+    /// <summary>A credencial da pessoa (cartão, QR, senha) está bloqueada, perdida ou devolvida.</summary>
+    CredencialInativa,
+
+    /// <summary>Fora da validade da pessoa ou da credencial (visita encerrada ou ainda não começou).</summary>
+    ForaDaValidade,
 }
 
 /// <summary>
@@ -158,14 +182,16 @@ public sealed record IngressoRecebido(
 /// <param name="ProvedorId">De quem é o ingresso, quando reconhecido.</param>
 /// <param name="Setor">Setor do ingresso, para conferir contra o portão.</param>
 /// <param name="UsosRestantes">Quantos usos sobraram depois desta tentativa.</param>
-/// <param name="Categoria">Categoria da venda que foi (ou seria) consumida.</param>
+/// <param name="Categoria">Categoria da venda que foi (ou seria) consumida; para pessoa, o perfil.</param>
+/// <param name="PessoaId">A pessoa do cadastro local, quando o código é credencial de pessoa (docs/43).</param>
 public sealed record ResultadoDoUso(
     MotivoDoUso Motivo,
     Guid? IngressoId = null,
     string? ProvedorId = null,
     string? Setor = null,
     int UsosRestantes = 0,
-    string? Categoria = null)
+    string? Categoria = null,
+    string? PessoaId = null)
 {
     /// <summary>Verdadeiro quando o giro deve ser liberado.</summary>
     public bool Liberou => Motivo is MotivoDoUso.Consumido;

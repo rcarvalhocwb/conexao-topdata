@@ -53,6 +53,16 @@ public static class ReasonCodes
     /// <summary>O tipo de entrada do ingresso está desativado (docs/26 §1; docs/35 B.2).</summary>
     public static readonly ReasonCode TipoInativo = new("TIPO_INATIVO");
 
+    // --- Cadastro local de pessoas (docs/43, ADR-0026) ---
+    public static readonly ReasonCode PessoaBloqueada = new("PESSOA_BLOQUEADA");
+    public static readonly ReasonCode PessoaInativa = new("PESSOA_INATIVA");
+    public static readonly ReasonCode ForaDoHorario = new("FORA_DO_HORARIO");
+    public static readonly ReasonCode LimiteDiario = new("LIMITE_DIARIO");
+    public static readonly ReasonCode CatracaFechada = new("CATRACA_FECHADA");
+    public static readonly ReasonCode PortaoNaoPermitido = new("PORTAO_NAO_PERMITIDO");
+    public static readonly ReasonCode CredencialInativa = new("CREDENCIAL_INATIVA");
+    public static readonly ReasonCode PessoaForaDaValidade = new("PESSOA_FORA_DA_VALIDADE");
+
     // --- Operação ---
     public static readonly ReasonCode LiberacaoManual = new("LIBERACAO_MANUAL");
     public static readonly ReasonCode TempoDeDecisaoEsgotado = new("TEMPO_DE_DECISAO_ESGOTADO");

@@ -141,12 +141,14 @@ Já vêm prontos: **Colaborador, Prestador, Visitante, Morador, Aluno, Staff, Im
    - o horário está fora da tabela permitida;
    - o limite de usos do dia acabou;
    - é visitante cuja visita terminou ou ainda não começou.
-3. Cada negação tem um motivo próprio no "Por quê?", que já existe na tela. Os motivos novos são:
-   - `PessoaBloqueada`;
-   - `ForaDoHorario`;
-   - `PortaoNaoPermitido`;
-   - `VisitaEncerrada`;
-   - `CredencialPerdida`.
+3. Cada negação tem um motivo próprio no "Por quê?", que já existe na tela. Os motivos novos (implementados na P2, nesta ordem de conferência) são:
+   - `PessoaInativa` e `PessoaBloqueada`;
+   - `CredencialInativa` (bloqueada, perdida ou devolvida);
+   - `ForaDaValidade` (da pessoa ou da credencial; é a visita encerrada ou ainda não começada);
+   - `PortaoNaoPermitido` (catracas da pessoa; sem elas, as do perfil; sem nenhuma, todas);
+   - `ForaDoHorario` (horário de Brasília; em feriado vale a linha 7 da tabela);
+   - `LimiteDiario` (conta passagens com giro e liberações dos últimos 2 minutos ainda sem giro);
+   - `CatracaFechada`, conferido antes de tudo, para ingresso e pessoa.
 4. O "liberado sem giro" e o estorno continuam como hoje. Uma credencial de pessoa não consome ingresso, então não há uso para estornar.
 
 ### 6.2 Bloquear e desbloquear na hora
@@ -244,8 +246,8 @@ Cada etapa tem teste. Nada liga em produção sem passar.
 | **P0** | Decisões da §10 registradas na [ADR-0026](ADR/ADR-0026-cadastro-de-pessoas-e-usuarios.md) | Documento (feito) |
 | **L1** | Usuários e login no serviço: administrador padrão com troca obrigatória, senhas PBKDF2, bloqueio por tentativas, papéis com permissões por função, sessão, cada RPC conferida | Sem sessão nada funciona; com a senha padrão só a troca funciona; papel sem a permissão é recusado no serviço |
 | **L2** | Janela de login, troca de senha no primeiro acesso, telas Usuários e Papéis, menu conforme as permissões | Ligações das telas; capturas |
-| **P1** | Migração: `company`, `place`, `person_profile` (perfis prontos), `person` (campos cifrados), `credential`, `person_credential`, `time_schedule(+slot)`, `holiday`, `access_grant`, `person_event`; chave de cifra no cofre | Gatilhos só-INSERT na trilha; nenhum nome ou documento em claro em nenhuma coluna (varredura no teste); cifra e decifra com dado associado |
-| **P2** | Decisão: depois do ingresso, a credencial de pessoa, com situação, validade, portões, horários e limite diário; motivos novos no "Por quê?"; "catraca fechada pelo operador" | Unidade por regra (fora do horário, feriado, portão, bloqueada, expirada, visita); corrida de duas catracas; decisão abaixo de 150 ms com 5 mil pessoas |
+| **P1** (feito) | Migração 021: `company`, `place`, `person_profile` (perfis prontos), `person` (campos cifrados), `credential`, `person_credential`, `time_schedule(+slot)`, `holiday`, `access_grant`, `person_event`; chave de cifra no cofre | Gatilhos só-INSERT na trilha; nenhum nome ou documento em claro em nenhuma coluna (varredura no teste); cifra e decifra com dado associado |
+| **P2** (feito) | Decisão: depois do ingresso, a credencial de pessoa, com situação, validade, portões, horários e limite diário; motivos novos no "Por quê?"; "catraca fechada pelo operador" | Unidade por regra (fora do horário, feriado, portão, bloqueada, expirada, visita); corrida de duas catracas; decisão abaixo de 150 ms com 5 mil pessoas |
 | **P3** | Serviço: comandos de pessoa, credencial, empresa, sala, perfil, horário e feriado, bloquear e desbloquear, com conferência do grupo do Windows e resposta só com dado mascarado | Contrato sem dado em claro; ação recusada fora do grupo |
 | **P4** | Telas: **Pessoas** (lista, busca, ficha com foto, credenciais, permissões, histórico), **Empresas e salas**, **Horários e feriados**, **Perfis** e, em Gerenciar catraca, **Fechar e abrir a catraca** | Ligações da tela; capturas novas; tela sem permissão não mostra documento |
 | **P5** | Importação de pessoas por planilha (modelo novo no `installer/modelos`), com a prévia da B.3, aplicar e desfazer, e foto por arquivo ZIP opcional | 5 mil linhas; tudo ou nada; desfazer; recusa de CPF inválido e de campo de saúde |

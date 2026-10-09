@@ -75,7 +75,7 @@ public sealed class EstornosDeUso
             """
             SELECT id, at, device_id, gate_id, provider_id, category, qr_normalized, release_failure
             FROM ticket_use_attempt
-            WHERE outcome = 'consumido' AND passage_confirmed_at IS NULL AND at <= $ate
+            WHERE outcome = 'consumido' AND passage_confirmed_at IS NULL AND ticket_id IS NOT NULL AND at <= $ate
               AND ($falha = 0 OR release_failed_at IS NOT NULL)
             ORDER BY at DESC
             LIMIT $limite;

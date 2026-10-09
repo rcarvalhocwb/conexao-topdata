@@ -127,6 +127,14 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             "VendaAnteriorNaoUsada" => "Negado · venda anterior não usada",
             "ForaDaUrna" => "Negado · use a fenda da urna",
             "TipoInativo" => "Negado · tipo de entrada desativado",
+            "PessoaBloqueada" => "Negado · pessoa bloqueada",
+            "PessoaInativa" => "Negado · cadastro inativo",
+            "ForaDoHorario" => "Negado · fora do horário permitido",
+            "PortaoNaoPermitido" => "Negado · catraca não permitida",
+            "LimiteDiario" => "Negado · entradas do dia esgotadas",
+            "CatracaFechada" => "Negado · catraca fechada pelo operador",
+            "CredencialInativa" => "Negado · credencial bloqueada ou perdida",
+            "ForaDaValidade" => "Negado · fora da validade do cadastro",
             _ => $"Negado · {t.Motivo}",
         };
     }

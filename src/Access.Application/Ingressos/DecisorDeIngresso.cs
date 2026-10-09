@@ -234,7 +234,9 @@ public sealed class DecisorDeIngresso
             ReasonCodes.Autorizado,
             DegradationTier.T1SemInternet,
             Stopwatch.GetElapsedTime(inicio),
-            [new RuleTrace("ingresso", true, $"{resultado.ProvedorId}/{resultado.Categoria ?? "-"}")]);
+            [resultado.PessoaId is null
+                ? new RuleTrace("ingresso", true, $"{resultado.ProvedorId}/{resultado.Categoria ?? "-"}")
+                : new RuleTrace("pessoa", true, resultado.Categoria ?? "-")]);
     }
 
     /// <summary>
@@ -370,6 +372,14 @@ public sealed class DecisorDeIngresso
         MotivoDoUso.VendaAnteriorNaoUsada => ReasonCodes.VendaAnteriorNaoUsada,
         MotivoDoUso.ForaDaUrna => ReasonCodes.ForaDaUrna,
         MotivoDoUso.TipoInativo => ReasonCodes.TipoInativo,
+        MotivoDoUso.PessoaBloqueada => ReasonCodes.PessoaBloqueada,
+        MotivoDoUso.PessoaInativa => ReasonCodes.PessoaInativa,
+        MotivoDoUso.ForaDoHorario => ReasonCodes.ForaDoHorario,
+        MotivoDoUso.PortaoNaoPermitido => ReasonCodes.PortaoNaoPermitido,
+        MotivoDoUso.CredencialInativa => ReasonCodes.CredencialInativa,
+        MotivoDoUso.ForaDaValidade => ReasonCodes.PessoaForaDaValidade,
+        MotivoDoUso.LimiteDiario => ReasonCodes.LimiteDiario,
+        MotivoDoUso.CatracaFechada => ReasonCodes.CatracaFechada,
         _ => ReasonCodes.MotivoNaoMapeado,
     };
 

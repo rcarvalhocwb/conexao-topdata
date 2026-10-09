@@ -59,7 +59,7 @@ public sealed class ConsultorDeReuso
                 CAST(a.device_id AS INTEGER) AS inner_number,
                 a.at
             FROM ticket_use_attempt a
-            WHERE a.at > $corte
+            WHERE a.at > $corte AND a.person_id IS NULL
             ORDER BY a.at ASC;
             """;
 
