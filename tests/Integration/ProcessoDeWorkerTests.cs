@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Edge.Supervisor;
 
 namespace Integration.Tests;
@@ -120,6 +121,38 @@ public sealed class ProcessoDeWorkerTests
             agora += TimeSpan.FromMinutes(10);
 
             Assert.True(worker.EstaSaudavel);
+        }
+        finally
+        {
+            worker.Matar();
+        }
+    }
+
+    /// <summary>
+    /// O aviso de saída de um worker antigo chega depois de o novo já ter subido (Matar + Iniciar na
+    /// mesma ronda). Antes, o aviso lia o ExitCode do processo novo, ainda vivo, e a
+    /// InvalidOperationException numa thread do pool derrubava o serviço (visto no CI Linux, 09/10).
+    /// </summary>
+    [Fact]
+    public void Aviso_de_saida_do_worker_antigo_nao_derruba_nem_sobrescreve_o_novo()
+    {
+        using var worker = new ProcessoDeWorker("reinicio", 3572, [3], ExecutavelDaCobaia(), argumentosExtras: ["--esperar"]);
+        using var antigo = Process.Start(new ProcessStartInfo(ExecutavelDaCobaia(), "--esperar") { UseShellExecute = false })!;
+
+        try
+        {
+            worker.Iniciar();
+
+            // O antigo ainda está vivo: ler o código dele lançaria; o aviso não pode lançar.
+            var registro = Record.Exception(() =>
+            {
+                antigo.Kill();
+                worker.RegistrarSaida(antigo);
+            });
+
+            Assert.Null(registro);
+            Assert.True(worker.EstaVivo);
+            Assert.DoesNotContain("encerrou", worker.Diagnostico, StringComparison.Ordinal);
         }
         finally
         {

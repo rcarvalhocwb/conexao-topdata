@@ -192,7 +192,11 @@ public sealed class ProcessoDeWorker : IWorkerHost
         // a explicação de por que ele não subiu ou morreu.
         _processo.OutputDataReceived += (_, e) => Guardar(e.Data);
         _processo.ErrorDataReceived += (_, e) => Guardar(e.Data, erro: true);
-        _processo.Exited += (_, _) => RegistrarSaida();
+        // O processo vai na closure: o campo pode já apontar para o worker seguinte quando o aviso de
+        // saída deste chega (Matar + Iniciar na mesma ronda). Ler o ExitCode do novo, ainda vivo,
+        // lançava InvalidOperationException numa thread do pool e derrubava o serviço inteiro.
+        var processo = _processo;
+        _processo.Exited += (_, _) => RegistrarSaida(processo);
         _processo.EnableRaisingEvents = true;
         _processo.BeginOutputReadLine();
         _processo.BeginErrorReadLine();
@@ -243,22 +247,33 @@ public sealed class ProcessoDeWorker : IWorkerHost
         _processo = null;
     }
 
-    private void RegistrarSaida()
+    /// <summary>Anota como o worker saiu. Roda numa thread do pool: nunca lança.</summary>
+    internal void RegistrarSaida(Process processo)
     {
-        if (_processo is null)
+        int codigo;
+        try
+        {
+            // Espera a leitura assíncrona terminar, senão a última linha de erro — a que
+            // explica a saída — ainda não chegou.
+            processo.WaitForExit();
+            codigo = processo.ExitCode;
+        }
+        catch (Exception erro) when (erro is InvalidOperationException or ObjectDisposedException or System.ComponentModel.Win32Exception)
+        {
+            // Descartado pelo Dispose, ou sem código disponível: não há o que anotar.
+            return;
+        }
+
+        // A saída de um worker anterior não sobrescreve a situação do atual.
+        if (!ReferenceEquals(processo, _processo))
         {
             return;
         }
 
-        // Espera a leitura assíncrona terminar, senão a última linha de erro — a que
-        // explica a saída — ainda não chegou.
-        _processo.WaitForExit();
-        var codigo = _processo.ExitCode;
-        var erro = _ultimoErro;
-
-        _ultimaSaida = string.IsNullOrWhiteSpace(erro)
+        var ultimoErro = _ultimoErro;
+        _ultimaSaida = string.IsNullOrWhiteSpace(ultimoErro)
             ? $"encerrou com código {codigo}"
-            : $"encerrou com código {codigo}: {erro}";
+            : $"encerrou com código {codigo}: {ultimoErro}";
     }
 
     /// <summary>As últimas linhas que o worker escreveu, da mais antiga à mais nova.</summary>
