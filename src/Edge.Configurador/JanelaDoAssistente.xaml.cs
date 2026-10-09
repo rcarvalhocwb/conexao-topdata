@@ -159,17 +159,46 @@ public partial class JanelaDoAssistente : Window
 
     // DISM é a ferramenta do próprio Windows para ligar recursos. Pode precisar de internet
     // (Windows Update) e de alguns minutos; roda em segundo plano para a janela não travar.
-    private async void HabilitarNet35(object sender, RoutedEventArgs e)
+    private void HabilitarNet35(object sender, RoutedEventArgs e) =>
+        _ = RodarDism(null, e);
+
+    // Sem internet (achado E10-8 do docs/41): a pasta sources\sxs da mídia do Windows.
+    private void HabilitarNet35SemInternet(object sender, RoutedEventArgs e)
+    {
+        var escolha = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Pasta sources\\sxs da mídia de instalação do Windows",
+        };
+
+        if (escolha.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        var problema = NetFx35.ProblemaNaPasta(escolha.FolderName);
+        if (problema.Length > 0)
+        {
+            TextoDoAmbiente.Text = problema;
+            return;
+        }
+
+        _ = RodarDism(escolha.FolderName, e);
+    }
+
+    private async Task RodarDism(string? pastaDaMidia, RoutedEventArgs e)
     {
         BotaoNet35.IsEnabled = false;
-        TextoDoAmbiente.Text = "Habilitando o .NET Framework 3.5… pode levar alguns minutos.";
+        BotaoNet35SemInternet.IsEnabled = false;
+        TextoDoAmbiente.Text = pastaDaMidia is null
+            ? "Habilitando o .NET Framework 3.5… pode levar alguns minutos."
+            : "Habilitando o .NET Framework 3.5 pela mídia do Windows, sem internet… pode levar alguns minutos.";
 
         try
         {
             var inicio = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = Path.Combine(Environment.SystemDirectory, "dism.exe"),
-                Arguments = "/Online /Enable-Feature /FeatureName:NetFx3 /All /NoRestart",
+                Arguments = NetFx35.ArgumentosDoDism(pastaDaMidia),
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
@@ -181,17 +210,20 @@ public partial class JanelaDoAssistente : Window
             {
                 0 => ".NET Framework 3.5 habilitado.",
                 3010 => ".NET Framework 3.5 habilitado. Reinicie o computador para concluir.",
-                _ => $"O Windows não conseguiu habilitar (código {processo.ExitCode}). Verifique a internet ou habilite em " +
-                     "'Ativar ou desativar recursos do Windows'.",
+                _ when pastaDaMidia is null => $"O Windows não conseguiu habilitar (código {processo.ExitCode}). Sem internet, use " +
+                     "\"Habilitar sem internet\" com a mídia do Windows, ou habilite em 'Ativar ou desativar recursos do Windows'.",
+                _ => $"O Windows não conseguiu habilitar pela mídia (código {processo.ExitCode}). Confira se a mídia é da mesma " +
+                     "versão do Windows deste PC.",
             };
         }
-        catch (Exception erro) when (erro is System.ComponentModel.Win32Exception or InvalidOperationException)
+        catch (Exception erro) when (erro is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
             TextoDoAmbiente.Text = $"Não foi possível executar o DISM: {erro.Message}";
         }
         finally
         {
             BotaoNet35.IsEnabled = true;
+            BotaoNet35SemInternet.IsEnabled = true;
             VerificarAmbiente(this, e);
         }
     }

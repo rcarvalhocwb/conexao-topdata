@@ -65,6 +65,8 @@
               <Button Content="Verificar de _novo" Click="VerificarAmbiente" Margin="0,0,8,8" />
               <Button Content="_Localizar EasyInner.dll…" Click="LocalizarEasyInner" Margin="0,0,8,8" />
               <Button x:Name="BotaoNet35" Content="Habilitar .NET _Framework 3.5" Click="HabilitarNet35" Margin="0,0,8,8" />
+              <Button x:Name="BotaoNet35SemInternet" Content="Habilitar sem internet (mídia do Windows)…" Click="HabilitarNet35SemInternet" Margin="0,0,8,8"
+                      ToolTip="Sem internet: escolha a pasta sources\sxs do ISO ou do pendrive de instalação do Windows, da mesma versão deste PC." />
               <Button Content="Liberar no _firewall" Click="LiberarFirewall" Margin="0,0,8,8"
                       ToolTip="Deixa as catracas da rede local conectarem a este PC (entrada TCP). Nunca abre para a internet." />
             </WrapPanel>

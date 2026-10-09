@@ -126,7 +126,19 @@ Execute como administrador. Ele:
 | Item | Por que não vem | Como resolver |
 |---|---|---|
 | SDK da Topdata (`EasyInner.dll`) | É da Topdata, e **este repositório é público** — o SDK proprietário nunca é versionado aqui | **No instalador de produção** o SDK já vem embarcado (ver abaixo). **No instalador de teste** (CI público, sem SDK): instale o SDK Inner Acesso, **ou** no assistente clique em **Localizar EasyInner.dll…**. Ele recusa a DLL de 64 bits |
-| .NET Framework 3.5 | É recurso do Windows, não arquivo | O Setup **habilita sozinho** durante a instalação (DISM; pode precisar de internet). Se falhar, a instalação segue e o assistente tem o botão **Habilitar .NET Framework 3.5** |
+| .NET Framework 3.5 | É recurso do Windows, não arquivo | O Setup **habilita sozinho** durante a instalação (DISM; pode precisar de internet). Se falhar, a instalação segue e o assistente tem o botão **Habilitar .NET Framework 3.5**. **Sem internet:** botão **Habilitar sem internet (mídia do Windows)…**, escolhendo a pasta `sources\sxs` do ISO montado ou do pendrive de instalação **da mesma versão do Windows do PC** (ver abaixo) |
+
+**.NET Framework 3.5 sem internet** (docs/41, achado E10-8). Com a mídia do Windows à mão (ISO
+montado ou pendrive, da mesma versão e edição do Windows do PC), use o botão do assistente, ou rode
+num prompt de administrador, trocando `D:` pela letra da mídia:
+
+```
+dism /Online /Enable-Feature /FeatureName:NetFx3 /All /NoRestart /Source:D:\sources\sxs /LimitAccess
+```
+
+`/LimitAccess` impede o DISM de ir ao Windows Update. A pasta precisa ter o arquivo
+`microsoft-windows-netfx3-ondemand-package…cab`; sem ele, o assistente recusa a pasta e diz qual escolher.
+Ainda não ensaiado numa VM sem rede (docs/41, Fase 2).
 
 **Sem catraca física?** Marque **Modo simulação** no passo 2 do assistente: o SDK não é
 necessário e o painel ganha a tela **Simulador**. Ver [docs/23](../docs/23-modo-simulacao.md).
