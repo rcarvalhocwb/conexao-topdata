@@ -124,10 +124,9 @@ public sealed class ArquiteturaTests
     public void A_interface_grafica_so_conhece_os_contratos()
     {
         var projeto = Projetos().FirstOrDefault(p => p.Nome == "Desktop.App");
-        if (projeto.Caminho is null)
-        {
-            return; // Ainda não criado nesta fase.
-        }
+
+        // Projeto renomeado ou removido não pode desligar a trava em silêncio (achado E9-8).
+        Assert.NotNull(projeto.Caminho);
 
         // Rayzer.Design é só apresentação (tokens, estilos, componentes) e não referencia
         // nada — ver o teste seguinte.
@@ -164,10 +163,7 @@ public sealed class ArquiteturaTests
     public void As_viewmodels_so_conhecem_o_contrato()
     {
         var projeto = Projetos().FirstOrDefault(p => p.Nome == "Desktop.ViewModels");
-        if (projeto.Caminho is null)
-        {
-            return;
-        }
+        Assert.NotNull(projeto.Caminho);
 
         var permitidas = new[] { "Contracts", "Shared.Observability" };
 

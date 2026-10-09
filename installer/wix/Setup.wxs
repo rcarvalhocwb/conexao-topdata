@@ -13,14 +13,22 @@
     assistente localiza a DLL no computador (ou num pendrive) e a copia para o lugar certo;
   - o .NET Framework 3.5: é um recurso do Windows; o assistente o habilita com um clique.
 -->
+<!-- Canal do Setup: o mesmo do MSI (ver ConexaoTopdata.wxs, achado E10-2 do docs/41). -->
+<?ifdef CanalDeTeste ?>
+<?define NomeDoProduto = "Rayzer XAcess (teste)" ?>
+<?define CodigoDeAtualizacao = "a9017496-addf-4876-837d-3bab21c44bf6" ?>
+<?else?>
+<?define NomeDoProduto = "Rayzer XAcess" ?>
+<?define CodigoDeAtualizacao = "8b0c64a6-2f6b-4a3e-9d0a-6d2f3c1a9e41" ?>
+<?endif?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
 
-  <Bundle Name="Rayzer XAcess"
+  <Bundle Name="$(var.NomeDoProduto)"
           IconSourceFile="$(sys.SOURCEFILEDIR)..\..\src\Rayzer.Design\Marca\rayzer-xacess.ico"
           Manufacturer="Rayzer Serviços e Tecnologia"
           Version="$(var.Versao)"
-          UpgradeCode="8b0c64a6-2f6b-4a3e-9d0a-6d2f3c1a9e41">
+          UpgradeCode="$(var.CodigoDeAtualizacao)">
 
     <BootstrapperApplication>
       <!-- Sem licença a aceitar: é um sistema do próprio evento. -->

@@ -98,6 +98,97 @@ public sealed class QuedaAbruptaTests
     }
 
     /// <summary>
+    /// Achado E9-1 do docs/41: os dois testes acima exercitam o <c>AccessJournal</c>, que a produção
+    /// não usa. Este mata, no meio das gravações, a cobaia que passa ingressos pelo caminho real
+    /// (<c>TentarUsar</c> e <c>ConfirmarPassagemFisica</c>, com o espelho da nuvem ligado), e confere
+    /// que nada confirmado se perdeu e nada ficou pela metade: cada uso consumido tem exatamente uma
+    /// tentativa e um item na outbox, e nenhum ingresso foi usado duas vezes.
+    /// </summary>
+    [Fact]
+    public async Task No_caminho_real_o_kill_no_meio_nao_perde_passagem_confirmada_nem_deixa_uso_pela_metade()
+    {
+        const int Total = 400;
+        using var banco = new BancoTemporario();
+        var cobaia = LocalizarCobaia();
+
+        using var processo = new Process
+        {
+            StartInfo = new ProcessStartInfo("dotnet")
+            {
+                ArgumentList = { cobaia, "--ingressos", banco.Caminho, Total.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            },
+        };
+
+        var erros = new System.Text.StringBuilder();
+        Assert.True(processo.Start(), "não foi possível iniciar o processo-cobaia");
+        LerErros(processo, erros);
+
+        // Mata assim que a cobaia confirmar a 60ª passagem: ela segue gravando enquanto o Kill chega,
+        // então o corte cai no meio de uma gravação qualquer.
+        var confirmadas = await EsperarConfirmacoesAsync(processo, 60, TimeSpan.FromMinutes(2)).ConfigureAwait(true);
+        Assert.True(confirmadas >= 60, $"a cobaia confirmou só {confirmadas}{Situacao(processo, erros)}");
+        processo.Kill(entireProcessTree: true);
+        await processo.WaitForExitAsync().ConfigureAwait(true);
+
+        var fabrica = new SqliteConnectionFactory(banco.Caminho);
+        Assert.Equal("ok", fabrica.VerificarIntegridade());
+
+        using var conexao = fabrica.Abrir();
+        long Contar(string sql) => SqliteConnectionFactory.Escalar<long>(conexao, sql);
+
+        var usados = Contar("SELECT COUNT(*) FROM ticket WHERE used_count > 0;");
+        var tentativas = Contar("SELECT COUNT(*) FROM ticket_use_attempt WHERE outcome = 'consumido';");
+        var comGiro = Contar("SELECT COUNT(*) FROM ticket_use_attempt WHERE outcome = 'consumido' AND passage_confirmed_at IS NOT NULL;");
+        var naOutbox = Contar("SELECT COUNT(*) FROM outbox WHERE connector = 'painel-tentativas';");
+
+        // Tudo o que a cobaia confirmou antes do Kill está na base, com o giro.
+        Assert.True(comGiro >= confirmadas, $"{comGiro} passagens com giro na base, {confirmadas} confirmadas antes do Kill");
+
+        // Nada pela metade: cada uso consumido tem a sua tentativa, e o espelho acompanhou.
+        Assert.Equal(usados, tentativas);
+        Assert.Equal(tentativas, naOutbox);
+        Assert.Equal(0L, Contar("SELECT COUNT(*) FROM ticket WHERE used_count > 1;"));
+        Assert.Equal(0L, Contar(
+            """
+            SELECT COUNT(*) FROM ticket t
+            WHERE t.used_count <> (SELECT COUNT(*) FROM ticket_use_attempt a WHERE a.ticket_id = t.id AND a.outcome = 'consumido');
+            """));
+
+        // E no máximo uma passagem ficou sem o giro gravado: a que estava entre as duas gravações.
+        Assert.InRange(tentativas - comGiro, 0, 1);
+    }
+
+    private static async Task<int> EsperarConfirmacoesAsync(Process processo, int alvo, TimeSpan limite)
+    {
+        using var cancelamento = new CancellationTokenSource(limite);
+        var ultima = 0;
+        try
+        {
+            while (await processo.StandardOutput.ReadLineAsync(cancelamento.Token).ConfigureAwait(false) is { } linha)
+            {
+                if (linha.StartsWith("OK ", StringComparison.Ordinal)
+                    && int.TryParse(linha.AsSpan(3), System.Globalization.CultureInfo.InvariantCulture, out var n))
+                {
+                    ultima = n;
+                    if (n >= alvo)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Estourou o tempo: devolve o que viu e o teste reprova com mensagem própria.
+        }
+
+        return ultima;
+    }
+
+    /// <summary>
     /// Esvazia a saída de erro enquanto o processo roda. Redirecionada e nunca lida, ela
     /// enche o pipe e trava a cobaia antes do "PRONTO" — o teste reprovava por tempo sem
     /// dizer por quê.

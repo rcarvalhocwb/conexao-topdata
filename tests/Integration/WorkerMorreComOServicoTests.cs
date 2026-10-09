@@ -130,7 +130,7 @@ public sealed class WorkerMorreComOServicoTests
     /// O Job Object de verdade: fechar a contenção — o que acontece quando o serviço morre de
     /// qualquer jeito — mata o worker. Só no Windows.
     /// </summary>
-    [Fact]
+    [FactSoNoWindows]
     public void No_windows_fechar_o_job_object_mata_o_worker()
     {
         if (!OperatingSystem.IsWindows())
@@ -166,7 +166,7 @@ public sealed class WorkerMorreComOServicoTests
     /// é encerrado; um filho do próprio teste, com o pai vivo, fica. Só no Windows: no Linux o
     /// órfão é adotado por outro processo e o PID do pai muda.
     /// </summary>
-    [Fact]
+    [FactSoNoWindows]
     public void No_windows_a_faxina_encerra_o_orfao_de_verdade_e_poupa_o_filho_vivo()
     {
         if (!OperatingSystem.IsWindows())

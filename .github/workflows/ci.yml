@@ -77,8 +77,18 @@ jobs:
       - name: Compilar
         run: dotnet build --no-restore --configuration Release
 
+      # Com TRX e o detalhe de cada falha no log: antes, uma falha aqui só dizia "exit code 1",
+      # sem o nome do teste, e o log bruto não era acessível (achado E9-8 do docs/41).
       - name: Testar
-        run: dotnet test --no-build --configuration Release
+        run: dotnet test --no-build --configuration Release --logger "trx" --logger "console;verbosity=normal" --results-directory TestResults
+
+      - name: Guardar os resultados dos testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-dos-testes-windows
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
 
       # Só o PowerShell do Windows sabe dizer se estes scripts sequer analisam.
       # Sem esta etapa, um erro de sintaxe no instalador só apareceria na bancada.
@@ -112,6 +122,9 @@ jobs:
   # testado, ele reprova ate o caso minimo com WIX0389.
   instalador:
     name: Instalador MSI (Windows)
+    # Só monta e publica o instalador de teste depois dos testes: o run 157 publicou uma
+    # pré-release com o teste do Windows falhando (achado E10-4 do docs/41).
+    needs: [linux, windows]
     runs-on: windows-latest
     timeout-minutes: 30
     # Escrita só aqui, e só para publicar o Setup.exe na pré-release de teste.
@@ -299,6 +312,7 @@ jobs:
             -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
             -d PastaModelos=$((Resolve-Path installer/modelos).Path) `
             -d PastaInstalador=$((Resolve-Path installer).Path) `
+            -d CanalDeTeste=1 `
             -o RayzerXAcess-$versao.msi
 
       # O que deixou o erro acima passar foi ninguém olhar dentro do MSI. Agora se olha:
@@ -426,7 +440,7 @@ jobs:
           $msi = (Get-ChildItem RayzerXAcess-*.msi | Select-Object -First 1).FullName
           $versao = "0.1.$env:GITHUB_RUN_NUMBER"
           wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
-            -d Versao=$versao -d Msi=$msi -o RayzerXAcess-Setup.exe
+            -d Versao=$versao -d Msi=$msi -d CanalDeTeste=1 -o RayzerXAcess-Setup.exe
           Write-Host ("Setup.exe: {0:N1} MB" -f ((Get-Item RayzerXAcess-Setup.exe).Length / 1MB))
 
       # O Setup precisa ABRIR: se a janela não aparecer, o Setup publicado está quebrado para

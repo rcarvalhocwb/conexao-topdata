@@ -10,14 +10,29 @@
   falharia e o Windows Installer desfaria a instalação inteira. O assistente confere o
   ambiente e inicia o serviço. Ver installer/README.md.
 -->
+<!--
+  Canal do instalador (achado E10-2 do docs/41). O de teste, publicado por este repositório a cada
+  commit, tem nome e UpgradeCode próprios: assim ele nunca é tratado como atualização do instalador
+  de produção (montado no repositório privado, com a EasyInner.dll), nem o contrário. Antes os dois
+  usavam o mesmo UpgradeCode e versões de contadores independentes: o de teste podia remover a
+  EasyInner.dll de uma máquina de evento, e o de produção era recusado como "versão mais antiga".
+  O CI público passa -d CanalDeTeste=1; o workflow privado não passa nada.
+-->
+<?ifdef CanalDeTeste ?>
+<?define NomeDoProduto = "Rayzer XAcess (teste)" ?>
+<?define CodigoDeAtualizacao = "ef261c80-49ab-456d-a3a3-b8c91a9b2501" ?>
+<?else?>
+<?define NomeDoProduto = "Rayzer XAcess" ?>
+<?define CodigoDeAtualizacao = "5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5" ?>
+<?endif?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
      xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
 
-  <Package Name="Rayzer XAcess"
+  <Package Name="$(var.NomeDoProduto)"
            Manufacturer="Rayzer Serviços e Tecnologia"
            Version="$(var.Versao)"
-           UpgradeCode="5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5"
+           UpgradeCode="$(var.CodigoDeAtualizacao)"
            Scope="perMachine"
            Compressed="yes">
 

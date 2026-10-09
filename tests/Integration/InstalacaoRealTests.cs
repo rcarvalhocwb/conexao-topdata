@@ -25,7 +25,7 @@ public sealed class InstalacaoRealTests : IDisposable
     /// Com PipeSecurity e o CurrentUserOnly padrão do Kestrel, o serviço caía ao abrir o
     /// canal. Achado pelo autoteste do CI com o serviço publicado.
     /// </summary>
-    [Fact]
+    [FactSoNoWindows]
     public void O_canal_com_acl_propria_desliga_o_somente_usuario_atual()
     {
         if (!OperatingSystem.IsWindows())

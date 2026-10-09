@@ -115,6 +115,11 @@ Execute como administrador. Ele:
   `C:\ProgramData\ConexaoTopdata` ficam. Na atualização de uma instalação já configurada, o
   serviço é iniciado de novo ao fim; se não subir, a atualização não é desfeita e o painel
   mostra o serviço fora (RB-01). Esse caminho ainda não foi ensaiado numa VM (docs/41, Fase 2).
+- o instalador de **teste** (pré-release deste repositório) se chama **Rayzer XAcess (teste)** e tem
+  identidade própria, separada do instalador de **produção** (o do repositório privado, com a
+  EasyInner.dll). Um nunca atualiza o outro (docs/41, achado E10-2). Quem tem instalada uma versão de
+  teste anterior a esta mudança precisa desinstalá-la por "Aplicativos instalados" antes de instalar
+  a nova; os dados em `C:\ProgramData\ConexaoTopdata` ficam.
 
 ### O que fica de fora, e como o assistente resolve
 

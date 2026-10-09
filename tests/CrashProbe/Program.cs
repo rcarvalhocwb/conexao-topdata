@@ -18,6 +18,49 @@ if (args.Length > 0 && args[0] == "--bilhetes")
     return await CrashProbe.ColetaDaCobaia.Executar(args[1..]).ConfigureAwait(false);
 }
 
+// Uso: CrashProbe --ingressos <banco> <quantidade>
+// O caminho real de produção (achado E9-1 do docs/41): ingere N ingressos de uso único, e para cada
+// um faz TentarUsar e ConfirmarPassagemFisica, com o espelho da nuvem ligado (outbox), imprimindo
+// "OK n" depois de cada passagem gravada. O teste mata o processo no meio, com SIGKILL.
+if (args.Length > 0 && args[0] == "--ingressos")
+{
+    var banco = args[1];
+    var total = int.Parse(args[2], CultureInfo.InvariantCulture);
+    var fabricaDosIngressos = new SqliteConnectionFactory(banco);
+    new Migrator(fabricaDosIngressos).Aplicar();
+    var repositorio = new RepositorioDeIngressos(
+        fabricaDosIngressos, new EspelhoDeTentativas("painel-tentativas", TimeSpan.Zero));
+    var inicio = DateTimeOffset.UtcNow;
+    repositorio.RegistrarProvedor(new Access.Domain.Ticketing.ProvedorDeIngresso("zet", "Zet", "raw", ""), inicio);
+    repositorio.Ingerir(
+        [.. Enumerable.Range(1, total).Select(i =>
+            new Access.Domain.Ticketing.IngressoRecebido("zet", $"T{i}", $"{i:D10}", $"{i:D10}"))],
+        inicio.AddMinutes(-1));
+
+    Console.WriteLine("INGERIDO");
+    Console.Out.Flush();
+
+    for (var i = 1; i <= total; i++)
+    {
+        var agoraDoGiro = DateTimeOffset.UtcNow;
+        var (resultado, tentativa) = repositorio.TentarUsar($"{i:D10}", "portao-1", "inner-1", agoraDoGiro);
+        if (!resultado.Liberou)
+        {
+            Console.Error.WriteLine($"ingresso {i} negado: {resultado.Motivo}");
+            return 3;
+        }
+
+        repositorio.ConfirmarPassagemFisica(tentativa, agoraDoGiro);
+        Console.WriteLine($"OK {i}");
+        Console.Out.Flush();
+    }
+
+    Console.WriteLine("PRONTO");
+    Console.Out.Flush();
+    await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
+    return 0;
+}
+
 // Uso: CrashProbe --esperar (em qualquer posição: o supervisor põe --porta e --inners antes)
 // Só fica de pé, calado, até ser morto. É o "worker" dos testes de contenção (Job Object) e da
 // faxina de órfãos do supervisor (docs/29, defeito de 01/10).
