@@ -87,6 +87,24 @@ public sealed class ConsultasDaOperacao
     /// </summary>
     public TentativaParaExplicar? ContextoDaTentativa(Guid tentativa) => new ContextoDasNegativas(_fabrica).Ler(tentativa);
 
+    /// <summary>Nome ainda cifrado da pessoa ligada a uma tentativa; ingresso não tem pessoa.</summary>
+    public NomeDaPessoaCifrado? PessoaDaTentativa(Guid tentativa)
+    {
+        using var conexao = _fabrica.Abrir();
+        using var comando = conexao.CreateCommand();
+        comando.CommandText =
+            """
+            SELECT t.person_id, p.full_name_enc
+            FROM ticket_use_attempt t LEFT JOIN person p ON p.id = t.person_id
+            WHERE t.id = $id;
+            """;
+        comando.Parameters.AddWithValue("$id", tentativa.ToString());
+        using var leitor = comando.ExecuteReader();
+        return leitor.Read() && !leitor.IsDBNull(0)
+            ? new NomeDaPessoaCifrado(leitor.GetString(0), leitor.IsDBNull(1) ? null : (byte[])leitor.GetValue(1))
+            : null;
+    }
+
     /// <summary>Tentativas do mais recente para o mais antigo, e se há mais além do limite.</summary>
     public (IReadOnlyList<TentativaParaOPainel> Tentativas, bool HaMais) ListarTentativas(FiltroDeTentativas filtro)
     {
@@ -130,11 +148,11 @@ public sealed class ConsultasDaOperacao
 
         comando.CommandText =
             $"""
-            SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at, reader_origin, counted_as
-            FROM ticket_use_attempt
+            SELECT t.rowid, t.id, device_id, gate_id, at, outcome, reason, category, provider_id,
+                   qr_normalized, passage_confirmed_at, reader_origin, counted_as, t.person_id, p.full_name_enc
+            FROM ticket_use_attempt t LEFT JOIN person p ON p.id = t.person_id
             {onde}
-            ORDER BY rowid DESC
+            ORDER BY t.rowid DESC
             LIMIT $limite;
             """;
         comando.Parameters.AddWithValue("$limite", limite + 1);
@@ -295,11 +313,11 @@ public sealed class ConsultasDaOperacao
         using var historico = conexao.CreateCommand();
         historico.CommandText =
             """
-            SELECT rowid, id, device_id, gate_id, at, outcome, reason, category, provider_id,
-                   qr_normalized, passage_confirmed_at, reader_origin, counted_as
-            FROM ticket_use_attempt
+            SELECT t.rowid, t.id, device_id, gate_id, at, outcome, reason, category, provider_id,
+                   qr_normalized, passage_confirmed_at, reader_origin, counted_as, t.person_id, p.full_name_enc
+            FROM ticket_use_attempt t LEFT JOIN person p ON p.id = t.person_id
             WHERE qr_normalized = $qr
-            ORDER BY rowid DESC
+            ORDER BY t.rowid DESC
             LIMIT 20;
             """;
         historico.Parameters.AddWithValue("$qr", qr);
@@ -407,7 +425,9 @@ public sealed class ConsultasDaOperacao
                 CredentialValue.Mascarar(leitor.GetString(9)),
                 !leitor.IsDBNull(10),
                 leitor.IsDBNull(11) ? null : leitor.GetInt32(11),
-                leitor.IsDBNull(12) ? null : leitor.GetString(12)));
+                leitor.IsDBNull(12) ? null : leitor.GetString(12),
+                leitor.IsDBNull(13) ? null : new NomeDaPessoaCifrado(
+                    leitor.GetString(13), leitor.IsDBNull(14) ? null : (byte[])leitor.GetValue(14))));
         }
 
         return lista;

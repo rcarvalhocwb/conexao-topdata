@@ -89,6 +89,7 @@
             <DataGrid.Columns>
               <DataGridTextColumn Header="HORA" Binding="{Binding Hora}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
               <DataGridTextColumn Header="CATRACA" Binding="{Binding Inner}" Width="96" />
+              <DataGridTextColumn Header="PESSOA" Binding="{Binding NomeDaPessoa}" Width="180" />
               <DataGridTemplateColumn Header="RESULTADO" Width="*" CellTemplate="{StaticResource Celula.AcessoComPorQue}" />
               <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="170" ElementStyle="{StaticResource Celula.Mono}" />
             </DataGrid.Columns>

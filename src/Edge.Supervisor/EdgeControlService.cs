@@ -400,7 +400,13 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
                 continue;
             }
 
-            await responseStream.WriteAsync(evento, context.CancellationToken).ConfigureAwait(false);
+            // O difusor e seu histórico continuam sem nomes. Cada sessão recebe a própria cópia,
+            // enriquecida só quando tem pessoas.ver; nunca muda o evento compartilhado.
+            var paraEstaSessao = evento.Clone();
+            paraEstaSessao.NomeDaPessoa = PodeVerPessoas(context) && Guid.TryParse(evento.EventoId, out var id)
+                ? NomeParaOPainel(_consultas?.PessoaDaTentativa(id), context)
+                : string.Empty;
+            await responseStream.WriteAsync(paraEstaSessao, context.CancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -428,10 +434,18 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             Limite: request.Limite > 0 ? request.Limite : 200);
 
         var (tentativas, haMais) = _consultas.ListarTentativas(filtro);
-        resposta.Acessos.AddRange(tentativas.Select(AcompanhamentoDaOperacao.Converter));
+        resposta.Acessos.AddRange(tentativas.Select(t =>
+            AcompanhamentoDaOperacao.Converter(t, NomeParaOPainel(t.Pessoa, context))));
         resposta.HaMais = haMais;
         return Task.FromResult(resposta);
     }
+
+    private static bool PodeVerPessoas(ServerCallContext? context) =>
+        context is not null && Chamador(context)?.Permissoes.Contains(Access.Domain.Usuarios.Permissoes.PessoasVer) == true;
+
+    private string NomeParaOPainel(Access.Infrastructure.SQLite.NomeDaPessoaCifrado? pessoa, ServerCallContext? context) =>
+        pessoa is null || !PodeVerPessoas(context) ? string.Empty
+        : _pessoas?.NomeParaPassagem(pessoa) ?? "(nome ilegível)";
 
     public override Task<ConfiguracaoDoEvento> ObterConfiguracao(ObterConfiguracaoRequest request, ServerCallContext context)
     {

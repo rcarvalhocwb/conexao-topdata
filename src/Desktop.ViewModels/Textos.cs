@@ -243,7 +243,8 @@ public sealed record LinhaDeAcesso(
     string Categoria,
     string Codigo,
     Sinal Sinal,
-    string EventoId = "")
+    string EventoId = "",
+    string NomeDaPessoa = "")
 {
     /// <summary>A linha mostra "Por quê?": toda negação que o serviço pode explicar.</summary>
     public bool PodeExplicar => !Liberado && EventoId.Length > 0;
@@ -262,6 +263,7 @@ public sealed record LinhaDeAcesso(
             e.Categoria,
             e.CredencialMascarada,
             liberado ? Sinal.Bom : Sinal.Problema,
-            e.EventoId);
+            e.EventoId,
+            e.NomeDaPessoa);
     }
 }

@@ -118,6 +118,16 @@ public sealed partial class LigacoesDasTelasTests
         }
     }
 
+    [Theory]
+    [InlineData("PainelAoVivo.xaml")]
+    [InlineData("Acessos.xaml")]
+    public void Lista_de_passagens_mostra_o_nome_da_pessoa_e_mantem_o_codigo_mascarado(string tela)
+    {
+        var xaml = File.ReadAllText(Path.Combine(PastaDoAplicativo(), "Telas", tela));
+        Assert.Contains("Header=\"PESSOA\" Binding=\"{Binding NomeDaPessoa}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"CÓDIGO\" Binding=\"{Binding Codigo}\"", xaml, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Sem x:Class, o App.xaml vira um segundo aplicativo com Main próprio, que nunca abre
     /// a janela. Foi assim que o painel "não abria" no primeiro Setup.

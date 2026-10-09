@@ -37,6 +37,9 @@ public sealed record SituacaoDoEquipamento(
     string? Sessao = null,
     bool? Simulacao = null);
 
+/// <summary>Nome cifrado ligado à tentativa; só o serviço decifra, depois de conferir a permissão.</summary>
+public sealed record NomeDaPessoaCifrado(string PessoaId, byte[]? Cifrado);
+
 /// <summary>
 /// Uma tentativa, pronta para a tela: o código já vem mascarado. <c>Sequencia</c> é a
 /// ordem de gravação; o painel pede "depois de N".
@@ -61,7 +64,8 @@ public sealed record TentativaParaOPainel(
     string CodigoMascarado,
     bool Girou,
     int? Origem = null,
-    string? ContaComo = null);
+    string? ContaComo = null,
+    NomeDaPessoaCifrado? Pessoa = null);
 
 /// <summary>Contagens do evento até agora, para o topo do painel.</summary>
 public sealed record ResumoDaOperacao(
