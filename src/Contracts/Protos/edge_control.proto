@@ -52,6 +52,13 @@ service EdgeControl {
   rpc ListarImportacoesDePessoas(ListarImportacoesDePessoasRequest) returns (ListarImportacoesDePessoasResponse);
   rpc DesfazerImportacaoDePessoas(DesfazerImportacaoDePessoasRequest) returns (ResultadoDoCadastroDePessoas);
 
+  // Cadastro de cartões na operação (migração 026). Nenhum RPC devolve o código do cartão: só máscara.
+  rpc AbrirSessaoDeCadastro(AbrirSessaoDeCadastroRequest) returns (ResultadoDaSessaoDeCadastroResponse);
+  rpc FecharSessaoDeCadastro(FecharSessaoDeCadastroRequest) returns (ResultadoDaSessaoDeCadastroResponse);
+  rpc ObterSessaoDeCadastro(ObterSessaoDeCadastroRequest) returns (ResultadoDaSessaoDeCadastroResponse);
+  rpc ListarLeiturasDesconhecidas(ListarLeiturasDesconhecidasRequest) returns (ListarLeiturasDesconhecidasResponse);
+  rpc CadastrarLeituraDesconhecida(CadastrarLeituraDesconhecidaRequest) returns (ResultadoDoRegistroResponse);
+
   // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
   rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
   rpc FecharCatraca(FecharCatracaRequest) returns (ResultadoDoCadastroDePessoas);
@@ -1469,4 +1476,84 @@ message ListarImportacoesDePessoasResponse {
 
 message DesfazerImportacaoDePessoasRequest {
   string lote_id = 1;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cadastro de cartões na operação (migração 026).
+// ---------------------------------------------------------------------------------------------
+
+message AbrirSessaoDeCadastroRequest {
+  string provedor_id = 1;
+  string categoria = 2;
+  string lote = 3;
+  int32 usos = 4;
+}
+
+message FecharSessaoDeCadastroRequest {}
+
+message ObterSessaoDeCadastroRequest {}
+
+message SessaoDeCadastro {
+  string id = 1;
+  string provedor_id = 2;
+  string categoria = 3;
+  string lote = 4;
+  int32 usos = 5;
+  string operador = 6;
+  google.protobuf.Timestamp aberta_em = 7;
+  int32 cadastrados = 8;
+}
+
+enum ResultadoDaSessaoDeCadastro {
+  RESULTADO_DA_SESSAO_DE_CADASTRO_NAO_ESPECIFICADO = 0;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_ABERTA = 1;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_JA_ABERTA = 2;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_PROVEDOR_DESCONHECIDO = 3;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_PROVEDOR_NAO_REUTILIZAVEL = 4;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_DADOS_INVALIDOS = 5;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_FECHADA = 6;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_NENHUMA_ABERTA = 7;
+}
+
+message ResultadoDaSessaoDeCadastroResponse {
+  ResultadoDaSessaoDeCadastro resultado = 1;
+  // Presente quando há (ou acabou de haver) uma sessão.
+  SessaoDeCadastro sessao = 2;
+}
+
+message LeituraDesconhecida {
+  string tentativa_id = 1;
+  string codigo_mascarado = 2;
+  int32 vezes = 3;
+  google.protobuf.Timestamp ultima_vez = 4;
+}
+
+message ListarLeiturasDesconhecidasRequest {
+  int32 limite = 1;
+}
+
+message ListarLeiturasDesconhecidasResponse {
+  repeated LeituraDesconhecida cartoes = 1;
+}
+
+message CadastrarLeituraDesconhecidaRequest {
+  string tentativa_id = 1;
+  string provedor_id = 2;
+  string categoria = 3;
+  string lote = 4;
+  int32 usos = 5;
+}
+
+enum ResultadoDoRegistro {
+  RESULTADO_DO_REGISTRO_NAO_ESPECIFICADO = 0;
+  RESULTADO_DO_REGISTRO_CADASTRADO = 1;
+  RESULTADO_DO_REGISTRO_JA_CADASTRADO = 2;
+  RESULTADO_DO_REGISTRO_TENTATIVA_NAO_ENCONTRADA = 3;
+  RESULTADO_DO_REGISTRO_PROVEDOR_DESCONHECIDO = 4;
+  RESULTADO_DO_REGISTRO_PROVEDOR_NAO_REUTILIZAVEL = 5;
+  RESULTADO_DO_REGISTRO_DADOS_INVALIDOS = 6;
+}
+
+message ResultadoDoRegistroResponse {
+  ResultadoDoRegistro resultado = 1;
 }

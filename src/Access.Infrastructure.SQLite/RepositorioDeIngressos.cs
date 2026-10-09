@@ -139,7 +139,7 @@ public sealed record EspelhoDeTentativas(string Conector, TimeSpan EsperaPeloGir
 /// </list>
 /// <para>Ver docs/16-multiplos-provedores-de-ingresso.md.</para>
 /// </remarks>
-public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIngressos
+public sealed partial class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIngressos
 {
     private const string StatusValido = "valido";
     private const string StatusConsumido = "consumido";
@@ -385,10 +385,25 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             return fechada;
         }
 
+        // Sessão de cadastro por leitura (migração 026): na urna, durante a sessão, a leitura não consome
+        // nada. Um cartão do próprio lote só é registrado; um desconhecido entra no lote (ramo abaixo).
+        var naUrna = leitor == KnownEventOrigin.Leitor2;
+        var sessaoDeLeitura = naUrna ? SessaoAberta(conexao, transacao) : null;
+        if (sessaoDeLeitura is { } doLote && CartaoComLote(conexao, transacao, qrNormalizado) is { } doLoteDoCartao
+            && doLoteDoCartao.Provedor == doLote.ProvedorId && doLoteDoCartao.Lote == doLote.Lote)
+        {
+            var registrado = new ResultadoDoUso(MotivoDoUso.CadastradoNoLote, doLoteDoCartao.Id, doLote.ProvedorId,
+                Categoria: doLote.Categoria);
+            RegistrarTentativa(conexao, transacao, Guid.CreateVersion7(agora), doLoteDoCartao.Id, doLote.ProvedorId,
+                qrNormalizado, gateId, deviceId, "negado", MotivoDoUso.CadastradoNoLote, decisionId, agora,
+                doLote.Categoria, origemBruta);
+            transacao.Commit();
+            return (registrado, Guid.CreateVersion7(agora));
+        }
+
         // A escrita vem primeiro, de propósito: é ela que pega a trava. Ler antes e
         // escrever depois, numa transação adiada, é a receita do SQLITE_BUSY que não
         // se recupera.
-        var naUrna = leitor == KnownEventOrigin.Leitor2;
         var consumiu = ConsumirUmUso(conexao, transacao, qrNormalizado, gateId, agora, naUrna) == 1;
 
         var estado = Estado(conexao, transacao, qrNormalizado);
@@ -422,6 +437,19 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             // no microssegundo seguinte, ou o ingresso foi consumido e o aviso está na
             // fila, ou nada aconteceu. Não existe "consumiu e esqueceu de avisar".
             EnfileirarAvisoDeUso(conexao, transacao, e, tentativaId, gateId, agora);
+        }
+        else if (estado is null && naUrna && DecisaoDePessoas.Credencial(conexao, transacao, qrNormalizado) is null
+                 && sessaoDeLeitura is { } sessao)
+        {
+            // Cadastro por leitura (migração 026): o cartão desconhecido da urna entra no lote da sessão e
+            // NÃO libera. A tentativa fica ligada ao cartão novo, então não conta como QR desconhecido.
+            var cadastrado = InserirCartao(conexao, transacao, sessao.ProvedorId, qrNormalizado, sessao.Categoria,
+                sessao.Lote, sessao.Usos, sessao.Operador, agora);
+            ContarCadastroNaSessao(conexao, transacao, sessao.Id);
+
+            resultado = new ResultadoDoUso(MotivoDoUso.CadastradoNoLote, Categoria: sessao.Categoria);
+            RegistrarTentativa(conexao, transacao, tentativaId, cadastrado, sessao.ProvedorId, qrNormalizado, gateId,
+                deviceId, "negado", MotivoDoUso.CadastradoNoLote, decisionId, agora, sessao.Categoria, origemBruta);
         }
         else if (estado is null && DecisaoDePessoas.Credencial(conexao, transacao, qrNormalizado) is { } pessoa)
         {

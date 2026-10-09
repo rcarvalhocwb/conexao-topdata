@@ -32,6 +32,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly string _versao;
     private readonly Access.Infrastructure.SQLite.Operacao? _operacao;
     private readonly EstadoDaNuvem? _nuvem;
+    private readonly Access.Infrastructure.SQLite.RepositorioDeIngressos? _cartoes;
     private readonly Access.Infrastructure.SQLite.ConsultasDaOperacao? _consultas;
     private readonly Access.Infrastructure.SQLite.ConfiguracoesDaBorda? _configuracoes;
     private readonly string _pastaDeDados;
@@ -94,6 +95,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="pessoas">Cadastro local de pessoas (docs/43); nulo sem a chave dos dados pessoais.</param>
     /// <param name="parametrosDoCadastro">Empresas, salas, horários, feriados e perfis do cadastro.</param>
     /// <param name="importacaoDePessoas">Importação de pessoas por planilha; nula sem o cadastro.</param>
+    /// <param name="cartoes">Cadastro de cartões na operação (sessão de lote e cartão recusado); nulo se a instalação não o tem.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -119,7 +121,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         SessoesDoPainel? sessoes = null,
         Access.Infrastructure.SQLite.CadastroDePessoas? pessoas = null,
         Access.Infrastructure.SQLite.ParametrosDoCadastro? parametrosDoCadastro = null,
-        Access.Infrastructure.SQLite.ImportacaoDePessoas? importacaoDePessoas = null)
+        Access.Infrastructure.SQLite.ImportacaoDePessoas? importacaoDePessoas = null,
+        Access.Infrastructure.SQLite.RepositorioDeIngressos? cartoes = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -127,6 +130,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
         _operacao = operacao;
         _nuvem = nuvem;
+        _cartoes = cartoes;
         _consultas = consultas;
         _configuracoes = configuracoes;
         _pastaDeDados = pastaDeDados ?? string.Empty;
