@@ -31,14 +31,13 @@ public sealed record LinhaSemPassagem(string Id, string Hora, string Catraca, st
 
 /// <summary>
 /// Usos sem passagem e o estorno (achado E1-05 do docs/41). O ingresso consumido cuja liberação falhou
-/// continua consumido; o operador confere com a pessoa e estorna, com nome e motivo, em dois passos.
+/// continua consumido; o usuário logado confere com a pessoa e estorna, com motivo, em dois passos.
 /// </summary>
 public sealed class PainelDeUsosSemPassagem : Notificavel
 {
     private readonly EdgeControl.EdgeControlClient _cliente;
     private IReadOnlyList<LinhaSemPassagem> _linhas = [];
     private LinhaSemPassagem? _selecionada;
-    private string _operador = string.Empty;
     private string _motivo = string.Empty;
     private string _alcance = string.Empty;
     private string _mensagem = string.Empty;
@@ -53,7 +52,7 @@ public sealed class PainelDeUsosSemPassagem : Notificavel
         {
             Confirmando = true;
             return Task.CompletedTask;
-        }, () => !Confirmando && Selecionada is not null && Operador.Trim().Length >= 2 && Motivo.Trim().Length >= 3);
+        }, () => !Confirmando && Selecionada is not null && Motivo.Trim().Length >= 3);
         ConfirmarEstorno = new ComandoAssincrono(EstornarAsync, () => Confirmando);
         CancelarEstorno = new ComandoAssincrono(() =>
         {
@@ -99,19 +98,6 @@ public sealed class PainelDeUsosSemPassagem : Notificavel
             if (Definir(ref _selecionada, value))
             {
                 Confirmando = false;
-                Reavaliar();
-            }
-        }
-    }
-
-    /// <summary>Quem estorna (nome digitado; não há login).</summary>
-    public string Operador
-    {
-        get => _operador;
-        set
-        {
-            if (Definir(ref _operador, value ?? string.Empty))
-            {
                 Reavaliar();
             }
         }
@@ -188,7 +174,7 @@ public sealed class PainelDeUsosSemPassagem : Notificavel
 
         try
         {
-            var r = await _cliente.EstornarUsoAsync(new EstornarUsoRequest { TentativaId = linha.Id, Operador = Operador.Trim(), Motivo = Motivo.Trim() });
+            var r = await _cliente.EstornarUsoAsync(new EstornarUsoRequest { TentativaId = linha.Id, Motivo = Motivo.Trim() });
             Mensagem = r.Estornado
                 ? $"Uso de {linha.Codigo} estornado: o ingresso volta a valer nesta borda."
                 : string.Join(" ", r.Problemas);

@@ -118,6 +118,17 @@ public sealed partial class LigacoesDasTelasTests
         }
     }
 
+    [Theory]
+    [InlineData("Telas/GerenciarCatraca.xaml")]
+    [InlineData("Telas/Acessos.xaml")]
+    public void Acoes_com_autoria_da_sessao_nao_oferecem_campo_de_nome(string arquivo)
+    {
+        var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(PastaDoAplicativo(), arquivo));
+        var camposDeNome = xaml.Descendants().Where(e => e.Name.LocalName is "TextBox")
+            .Where(e => e.Attribute("Text")?.Value.Contains("Operador", StringComparison.Ordinal) == true);
+        Assert.Empty(camposDeNome);
+    }
+
     /// <summary>
     /// Sem x:Class, o App.xaml vira um segundo aplicativo com Main próprio, que nunca abre
     /// a janela. Foi assim que o painel "não abria" no primeiro Setup.

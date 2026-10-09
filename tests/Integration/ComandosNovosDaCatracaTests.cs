@@ -282,7 +282,7 @@ public sealed class ComandosNovosDaCatracaTests : IDisposable
         var registro = Assert.Single(Historico());
         Assert.Equal(tipo, registro.Tipo);
         Assert.Equal((SituacaoIpc.Concluido, "bip acionado"), (registro.Situacao, registro.Resultado));
-        Assert.Equal("Ana (portaria)", registro.Operador);
+        Assert.Equal("painel", registro.Operador);
         Assert.Equal(DeviceState.Polling, _sessao.Dispositivos[0].Maquina.Current);
     }
 

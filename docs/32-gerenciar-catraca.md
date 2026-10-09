@@ -80,10 +80,14 @@ manuais: N (girou: M)".
 - **Nome e motivo** ficam só na tabela. O registro em arquivo do worker diz apenas
   "comando LiberacaoManual recebido/Concluido", porque texto livre pode conter qualquer
   coisa (até um número de cartão digitado).
-- **Não há login** (docs/27 §11): o nome é o que a pessoa digitou, não uma identidade
-  verificada. Login e perfis de operador continuam **PROPOSTA FUTURA**; sem eles, qualquer
-  pessoa com acesso ao painel pode pedir uma liberação manual. O acesso ao painel é
-  protegido pelo token local do serviço (outro processo sem o token é recusado).
+- **Autoria da sessão** (ADR-0026, issue #7): `EnviarComando` registra `Nome (login)` do
+  usuário conferido pelo serviço, com a permissão `catraca.comandar`. O campo legado
+  `operador` do pedido é ignorado; o painel não pede nome para essas ações. O estorno de
+  uso segue a mesma regra, com `acessos.estornar`, e guarda a autoria em `ticket_use_refund`.
+  Nome de 80 caracteres mais login de 40 cabem inteiros (123 com espaço e parênteses).
+  Nas ferramentas sem base de usuários, a autoria é `painel`. Com login ligado, uma
+  chamada sem sessão é recusada pelo interceptador; não ganha o fallback. O token local
+  do serviço também continua obrigatório.
 
 ## 5. O que não existe, e por quê
 
@@ -162,9 +166,13 @@ entrada nem saída de ingresso: sem a função usada, o sentido é desconhecido.
   - configuração inválida;
   - auditoria imutável;
   - dois workers disputando o mesmo pedido.
-- **Telas** (`TelasTests`): a liberação só habilita com nome e motivo; "Gerenciar" no
-  cartão abre a catraca certa; "Aplicar agora" exige o nome; "Configurar no gêmeo" abre o
-  gêmeo na mesma catraca, com o nome já digitado, e "Ver em lista" volta à Parametrização.
+- **Telas** (`TelasTests`): liberação manual e estorno exigem motivo e confirmação,
+  sem campo de nome; "Gerenciar" no cartão abre a catraca certa; "Aplicar agora" usa a
+  autoria do serviço. O gêmeo e a Parametrização preservam a seleção da catraca e
+  continuam compartilhando o nome informado para salvar parâmetros e o mapa de giro.
+- **Autoria** (`AutoriaDaSessaoTests`, `ComandosDaCatracaPorInnerTests` e `EstornoDeUsoTests`):
+  login real e IPC, pedidos com nome forjado, pedido sem nome, nome e login máximos,
+  autoria do histórico e do estorno, ferramentas sem login e recusa sem sessão.
 - **Adapter** (`AdapterTests`): horário de Brasília e ano de dois dígitos no acerto, ida e
   volta, recusa fora de 2000–2099.
 

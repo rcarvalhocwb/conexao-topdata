@@ -112,14 +112,13 @@ public sealed class CentralDaCatracaViewModel : TelaBase
     /// <summary>A catraca carregada; 0 antes de carregar.</summary>
     public int Catraca => Parametrizacao.Catraca;
 
-    /// <summary>Quem salva, aplica e pede. Não há login: fica registrado como foi digitado.</summary>
+    /// <summary>Nome informado para salvar os parâmetros e o mapa de giro. Os comandos usam a sessão no serviço.</summary>
     public string Operador
     {
         get => Parametrizacao.Operador;
         set
         {
             Parametrizacao.Operador = value ?? string.Empty;
-            Comandos.Operador = Parametrizacao.Operador;
             Avisar();
             Reavaliar();
         }

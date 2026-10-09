@@ -50,7 +50,6 @@ public sealed class GerenciarCatracaViewModel : TelaBase
     private IReadOnlyList<LinhaDeCatraca> _catracas = [];
     private LinhaDeCatraca? _selecionada;
     private int _catraca;
-    private string _operador = string.Empty;
     private string _mensagemTemporaria = string.Empty;
     private int _duracao = 10;
     private string _motivo = string.Empty;
@@ -61,10 +60,10 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         : base(cliente, relogio)
     {
         EsperaPeloResultado = esperaPeloResultado ?? TimeSpan.FromSeconds(1.5);
-        AcertarRelogio = new ComandoAssincrono(() => PedirAsync(TipoDeComando.AcertarRelogio), TemCatracaEOperador);
+        AcertarRelogio = new ComandoAssincrono(() => PedirAsync(TipoDeComando.AcertarRelogio), TemCatraca);
         EnviarMensagem = new ComandoAssincrono(
             () => PedirAsync(TipoDeComando.MensagemTemporaria),
-            () => TemCatracaEOperador() && MensagemTemporaria.Trim().Length is > 0 and <= 32);
+            () => TemCatraca() && MensagemTemporaria.Trim().Length is > 0 and <= 32);
         // A liberação sem ingresso é de dois passos: o primeiro pede a confirmação com o nome da
         // catraca e o motivo; só o segundo manda o pedido. Um clique só era fácil demais.
         PrepararLiberacao = new ComandoAssincrono(
@@ -96,14 +95,14 @@ public sealed class GerenciarCatracaViewModel : TelaBase
                 ConfirmandoRefazerConexao = true;
                 return Task.CompletedTask;
             },
-            () => !ConfirmandoRefazerConexao && TemCatracaEOperador());
+            () => !ConfirmandoRefazerConexao && TemCatraca());
         ConfirmarRefazerConexao = new ComandoAssincrono(
             () =>
             {
                 ConfirmandoRefazerConexao = false;
                 return PedirAsync(TipoDeComando.ReiniciarConexao);
             },
-            () => ConfirmandoRefazerConexao && TemCatracaEOperador());
+            () => ConfirmandoRefazerConexao && TemCatraca());
         CancelarRefazerConexao = new ComandoAssincrono(
             () =>
             {
@@ -262,7 +261,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         ? $"Confirmar: liberar um giro na {Selecionada?.Nome ?? $"catraca {Catraca}"}, sem ingresso? O motivo \"{Motivo.Trim()}\" e o nome de quem confirma ficam registrados."
         : string.Empty;
 
-    private bool PodePedirLiberacao() => TemCatracaEOperador() && Motivo.Trim().Length >= 5;
+    private bool PodePedirLiberacao() => TemCatraca() && Motivo.Trim().Length >= 5;
 
     public ComandoAssincrono RefazerConexao { get; }
 
@@ -286,19 +285,6 @@ public sealed class GerenciarCatracaViewModel : TelaBase
 
     /// <summary>A situação da catraca escolhida.</summary>
     public LinhaDeCatraca? Selecionada { get => _selecionada; private set => Definir(ref _selecionada, value); }
-
-    /// <summary>Quem está pedindo. Não há login: fica registrado como foi digitado.</summary>
-    public string Operador
-    {
-        get => _operador;
-        set
-        {
-            if (Definir(ref _operador, value ?? string.Empty))
-            {
-                Reavaliar();
-            }
-        }
-    }
 
     public string MensagemTemporaria
     {
@@ -374,7 +360,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
             }
         });
 
-    private bool TemCatracaEOperador() => Catraca > 0 && Operador.Trim().Length >= 2;
+    private bool TemCatraca() => Catraca > 0;
 
     private void Reavaliar()
     {
@@ -400,7 +386,6 @@ public sealed class GerenciarCatracaViewModel : TelaBase
             {
                 Inner = inner,
                 Tipo = tipo,
-                Operador = Operador.Trim(),
                 Texto = tipo is TipoDeComando.MensagemTemporaria ? MensagemTemporaria.Trim() : string.Empty,
                 DuracaoSegundos = tipo is TipoDeComando.MensagemTemporaria ? DuracaoDaMensagem : 0,
                 Motivo = tipo is TipoDeComando.LiberacaoManual ? Motivo.Trim() : string.Empty,

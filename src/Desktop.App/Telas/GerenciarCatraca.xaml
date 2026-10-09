@@ -10,7 +10,7 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
       <rz:RayzerPageHeader Titulo="Gerenciar catraca"
-                           Descricao="Cada pedido fica registrado com o seu nome e é executado quando a catraca estiver livre — nunca no meio de uma passagem. O resultado aparece no histórico abaixo." />
+                           Descricao="Cada pedido fica registrado com o nome e o login do usuário conectado e é executado quando a catraca estiver livre — nunca no meio de uma passagem. O resultado aparece no histórico abaixo." />
 
       <!-- Qual catraca, e como ela está agora. -->
       <Border Style="{StaticResource Rayzer.Card}" Padding="16,12,16,12" Margin="0,0,0,12">
@@ -19,10 +19,6 @@
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Catraca" />
             <ComboBox Width="220" ItemsSource="{Binding Catracas}" DisplayMemberPath="Nome" SelectedValuePath="Inner"
                       SelectedValue="{Binding Catraca}" AutomationProperties.Name="Catraca" />
-          </StackPanel>
-          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Seu nome (fica registrado em cada pedido)" />
-            <TextBox Width="260" Text="{Binding Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Operador" />
           </StackPanel>
           <StackPanel Margin="{StaticResource Rayzer.Margin.Field}" VerticalAlignment="Bottom"
                       Visibility="{Binding Selecionada, Converter={StaticResource VazioSome}}">

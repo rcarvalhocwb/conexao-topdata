@@ -65,10 +65,6 @@
         </DataGrid>
         <WrapPanel Margin="0,8,0,0">
           <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
-            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Quem estorna" />
-            <TextBox Width="160" Text="{Binding UsosSemPassagem.Operador, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Quem estorna" />
-          </StackPanel>
-          <StackPanel Margin="{StaticResource Rayzer.Margin.Field}">
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Motivo" />
             <TextBox Width="260" Text="{Binding UsosSemPassagem.Motivo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Motivo do estorno" />
           </StackPanel>
