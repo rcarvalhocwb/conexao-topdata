@@ -156,6 +156,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         _temSegredo = temSegredo ?? (() => true);
         _corte = corte;
         _estado.Configurada = true;
+        _estado.Intervalo = intervalo;
     }
 
     /// <summary>O que o painel mostra quando falta o segredo da nuvem.</summary>
@@ -247,16 +248,41 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             corte: corte);
     }
 
-    /// <summary>Uma rodada: cartões, depois tentativas. Devolve se as duas deram certo.</summary>
+    /// <summary>
+    /// Uma rodada: cartões, depois tentativas. Devolve se as duas deram certo.
+    /// Sem o segredo, nada é tentado e o estado diz isso (<see cref="EstadoDaNuvem.SegredoAusente"/>).
+    /// </summary>
     public async Task<bool> UmaRodadaAsync(CancellationToken cancelamento)
     {
         if (!_temSegredo())
         {
-            _estado.RegistrarFalha(FaltaOSegredo);
+            _estado.SegredoAusente = true;
+            _estado.RegistrarFalha(FaltaOSegredo, TipoDeFalha.Outra, _relogio.GetUtcNow());
             return false;
         }
 
+        _estado.SegredoAusente = false;
+        _estado.EmAndamento = true;
+        try
+        {
+            return await FazerRodadaAsync(cancelamento).ConfigureAwait(false);
+        }
+        finally
+        {
+            _estado.EmAndamento = false;
+        }
+    }
+
+    private async Task<bool> FazerRodadaAsync(CancellationToken cancelamento)
+    {
         var falhas = new List<string>();
+        var tipo = TipoDeFalha.Nenhuma;
+
+        void Falhar(string texto, TipoDeFalha tipoDaFalha)
+        {
+            falhas.Add(texto);
+            tipo = TipoDeFalhaHttp.MaisGrave(tipo, tipoDaFalha);
+        }
 
         if (_corte is not null)
         {
@@ -266,13 +292,15 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         var cartoes = await _cartoes.PuxarAsync(cancelamento).ConfigureAwait(false);
         if (cartoes.Interrompido)
         {
-            falhas.Add($"cartões: {cartoes.Erro}");
+            Falhar($"cartões: {cartoes.Erro}", cartoes.Causa is { } causa ? TipoDeFalhaHttp.DeExcecao(causa) : TipoDeFalha.Outra);
         }
         else if (_corte?.Recebidos is { } recebidos)
         {
-            falhas.Add(string.Create(
+            // O servidor respondeu, mas cortou a lista: o destino está de pé e a leitura é que falhou.
+            Falhar(string.Create(
                 CultureInfo.InvariantCulture,
-                $"cartões: a lista veio com {recebidos} e pode ter sido cortada pelo servidor; os que faltam não chegaram a este computador"));
+                $"cartões: a lista veio com {recebidos} e pode ter sido cortada pelo servidor; os que faltam não chegaram a este computador"),
+                TipoDeFalha.Servidor);
         }
         else if (cartoes.TeveTrabalho)
         {
@@ -291,9 +319,10 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         var envio = await _tentativas.DrenarUmaVezAsync(cancelamento).ConfigureAwait(false);
         if (envio.Adiados > 0 && envio.Enviados == 0)
         {
-            falhas.Add(envio.UltimoErro is { } erroDoEnvio
+            Falhar(envio.UltimoErro is { } erroDoEnvio
                 ? string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s): {erroDoEnvio}")
-                : string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s)"));
+                : string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s)"),
+                envio.TipoDoUltimoErro);
         }
 
         if (envio.CartasMortas > 0)
@@ -303,14 +332,15 @@ public sealed class SincronizacaoComANuvem : BackgroundService
                 $"nuvem: {envio.CartasMortas} tentativa(s) recusada(s) pelo painel foram para cartas mortas."));
         }
 
+        var agora = _relogio.GetUtcNow();
         if (falhas.Count == 0)
         {
-            _estado.RegistrarSucesso(_relogio.GetUtcNow());
+            _estado.RegistrarSucesso(agora);
             return true;
         }
 
         var motivo = string.Join("; ", falhas);
-        _estado.RegistrarFalha(motivo);
+        _estado.RegistrarFalha(motivo, tipo, agora);
         _registrar($"nuvem: falhou ({motivo}).");
         return false;
     }
@@ -333,7 +363,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             {
                 // Base ocupada ou algo inesperado: a próxima rodada tenta de novo. Nunca
                 // derruba o serviço — ele é quem supervisiona as catracas.
-                _estado.RegistrarFalha(erro.GetType().Name);
+                _estado.RegistrarFalha(erro.GetType().Name, TipoDeFalha.Outra, _relogio.GetUtcNow());
                 _registrar($"nuvem: erro inesperado ({erro.GetType().Name}).");
             }
         }

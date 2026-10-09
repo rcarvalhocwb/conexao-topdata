@@ -254,7 +254,15 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         var agora = _relogio();
         var catracas = CatracasPorInner(agora);
         var ultimaSincronizacao = _nuvem?.UltimoSucesso;
-        var internet = ultimaSincronizacao is { } s && agora - s < EstadoDaNuvem.ConsideradaFora;
+        // Medida pela última tentativa recente, não pelo último sucesso: ver EstadoDaNuvem.
+        var internetMedida = _nuvem?.Internet(agora) ?? InternetMedida.Desconhecida;
+        var internet = internetMedida == InternetMedida.Disponivel;
+        var resumo = _operacao?.Resumir(agora);
+        var configuradas = _supervisor.Workers.SelectMany(w => w.Inners).Distinct().ToList();
+
+        // Uma catraca conta numa única categoria: física ou simulada (P0-01).
+        int Contar(bool simulada) => configuradas.Count(inner =>
+            catracas.TryGetValue(inner, out var c) && c.EmOperacao && (c.Situacao.Simulacao == true) == simulada);
 
         var resposta = new ObterEstadoResponse
         {
@@ -265,8 +273,12 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             // configuração continua na base e não pode contar como conectada.
             EquipamentosConectados = _operacao is null
                 ? _supervisor.Workers.Where(w => situacoes[w.Nome] is SituacaoDoWorker.Saudavel).Sum(w => w.Inners.Count)
-                : _supervisor.Workers.SelectMany(w => w.Inners).Distinct()
-                    .Count(inner => catracas.TryGetValue(inner, out var c) && c.EmOperacao),
+                : Contar(simulada: false),
+            CatracasFisicasConectadas = _operacao is null ? 0 : Contar(simulada: false),
+            CatracasSimuladasAtivas = _operacao is null ? 0 : Contar(simulada: true),
+            SituacaoDaInternet = ParaProto(internetMedida),
+            SituacaoDaNuvem = ParaProto(_nuvem?.Nuvem(agora) ?? NuvemMedida.NaoConfigurada),
+            SituacaoDaFila = ParaProto(_nuvem?.Sincronizacao(resumo?.PendentesDeEnvio ?? 0) ?? SincronizacaoMedida.Desconhecida),
 
             // Sem internet é o regime NORMAL de um evento, não uma anomalia.
             // Ver docs/ADR/ADR-0017.
@@ -281,9 +293,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             resposta.UltimaSincronizacao = Timestamp.FromDateTimeOffset(quando);
         }
 
-        if (_operacao is not null)
+        if (resumo is not null)
         {
-            var resumo = _operacao.Resumir(agora);
             resposta.Liberados = resumo.Liberados;
             resposta.Negados = resumo.Negados;
             resposta.Giros = resumo.Giros;
@@ -483,6 +494,33 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         resposta.ExigeReinicio = nova != atual;
         return Task.FromResult(resposta);
     }
+
+    private static SituacaoDaInternet ParaProto(InternetMedida situacao) => situacao switch
+    {
+        InternetMedida.Disponivel => SituacaoDaInternet.Disponivel,
+        InternetMedida.Indisponivel => SituacaoDaInternet.Indisponivel,
+        _ => SituacaoDaInternet.Desconhecida,
+    };
+
+    private static SituacaoDaNuvem ParaProto(NuvemMedida situacao) => situacao switch
+    {
+        NuvemMedida.NaoConfigurada => SituacaoDaNuvem.NaoConfigurada,
+        NuvemMedida.Conectando => SituacaoDaNuvem.Conectando,
+        NuvemMedida.Conectada => SituacaoDaNuvem.Conectada,
+        NuvemMedida.SegredoAusente => SituacaoDaNuvem.SegredoAusente,
+        NuvemMedida.FalhaDeAutenticacao => SituacaoDaNuvem.FalhaDeAutenticacao,
+        NuvemMedida.Indisponivel => SituacaoDaNuvem.Indisponivel,
+        _ => SituacaoDaNuvem.Desconhecida,
+    };
+
+    private static SituacaoDaFila ParaProto(SincronizacaoMedida situacao) => situacao switch
+    {
+        SincronizacaoMedida.Processando => SituacaoDaFila.Processando,
+        SincronizacaoMedida.Falha => SituacaoDaFila.Falha,
+        SincronizacaoMedida.Pendente => SituacaoDaFila.Pendente,
+        SincronizacaoMedida.Sincronizada => SituacaoDaFila.Sincronizada,
+        _ => SituacaoDaFila.Desconhecida,
+    };
 
     public override Task<SituacaoDaSincronizacao> ObterSincronizacao(ObterSincronizacaoRequest request, ServerCallContext context)
     {
