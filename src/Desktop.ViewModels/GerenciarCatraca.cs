@@ -111,9 +111,94 @@ public sealed class GerenciarCatracaViewModel : TelaBase
                 return Task.CompletedTask;
             },
             () => ConfirmandoRefazerConexao);
+        PrepararFechamento();
     }
 
     private bool _confirmandoRefazerConexao;
+    private IReadOnlyList<CatracaFechadaNoCadastro> _fechadas = [];
+    private string _motivoDoFechamento = string.Empty;
+
+    /// <summary>Fecha a catraca escolhida: ninguém passa (ingresso ou pessoa) até reabrir (docs/43 §6.6).</summary>
+    public ComandoAssincrono FecharCatraca { get; private set; } = null!;
+
+    /// <summary>Reabre a catraca escolhida.</summary>
+    public ComandoAssincrono AbrirCatraca { get; private set; } = null!;
+
+    /// <summary>Por que fechar ou reabrir (5 a 200 letras). Fica registrado com o usuário.</summary>
+    public string MotivoDoFechamento
+    {
+        get => _motivoDoFechamento;
+        set
+        {
+            if (Definir(ref _motivoDoFechamento, value ?? string.Empty))
+            {
+                Reavaliar();
+            }
+        }
+    }
+
+    /// <summary>A catraca escolhida está fechada pelo operador.</summary>
+    public bool EstaFechada => _fechadas.Any(f => f.Inner == Catraca);
+
+    /// <summary>Quem fechou, quando e por quê; vazio com a catraca aberta.</summary>
+    public string SituacaoDoFechamento => _fechadas.FirstOrDefault(f => f.Inner == Catraca) is { } f
+        ? $"Fechada por {f.Por} em {FusoDoEvento.NoEvento(f.Em.ToDateTimeOffset()):dd/MM/yyyy HH:mm}: {f.Motivo}. Ninguém passa até reabrir."
+        : "Aberta: a catraca decide normalmente.";
+
+    private void PrepararFechamento()
+    {
+        FecharCatraca = new ComandoAssincrono(
+            () => FecharOuAbrirAsync(fechar: true),
+            () => Catraca > 0 && !EstaFechada && MotivoDoFechamento.Trim().Length >= 5);
+        AbrirCatraca = new ComandoAssincrono(
+            () => FecharOuAbrirAsync(fechar: false),
+            () => Catraca > 0 && EstaFechada && MotivoDoFechamento.Trim().Length >= 5);
+    }
+
+    private async Task FecharOuAbrirAsync(bool fechar)
+    {
+        var inner = Catraca;
+        var motivo = MotivoDoFechamento.Trim();
+        await Tentar(async () =>
+        {
+            var r = fechar
+                ? await Cliente.FecharCatracaAsync(new FecharCatracaRequest { Inner = inner, Motivo = motivo })
+                : await Cliente.AbrirCatracaAsync(new AbrirCatracaRequest { Inner = inner, Motivo = motivo });
+            if (!r.Gravado)
+            {
+                Mensagem = string.Join(" ", r.Problemas);
+                return;
+            }
+
+            MotivoDoFechamento = string.Empty;
+            Mensagem = fechar
+                ? $"Catraca {inner} fechada: a próxima leitura já é negada com o motivo \"catraca fechada pelo operador\"."
+                : $"Catraca {inner} reaberta: volta a decidir normalmente.";
+            await LerFechadasAsync(CancellationToken.None);
+        }).ConfigureAwait(true);
+    }
+
+    private async Task LerFechadasAsync(CancellationToken cancelamento)
+    {
+        try
+        {
+            _fechadas = [.. (await Cliente.ListarCatracasFechadasAsync(new ListarCatracasFechadasRequest(), cancellationToken: cancelamento)).Catracas];
+        }
+        catch (Grpc.Core.RpcException erro) when (erro.StatusCode is Grpc.Core.StatusCode.Unimplemented or Grpc.Core.StatusCode.PermissionDenied)
+        {
+            // Serviço de versão anterior ou papel sem a permissão: a seção mostra a catraca como aberta.
+            _fechadas = [];
+        }
+
+        AvisarFechamento();
+    }
+
+    private void AvisarFechamento()
+    {
+        Avisar(nameof(EstaFechada));
+        Avisar(nameof(SituacaoDoFechamento));
+        Reavaliar();
+    }
 
     /// <summary>Segundo passo de "Refazer a conexão": manda o pedido já confirmado.</summary>
     public ComandoAssincrono ConfirmarRefazerConexao { get; }
@@ -194,7 +279,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
                 Selecionada = Catracas.FirstOrDefault(c => c.Inner == value);
                 Historico = [];
                 ConfirmandoLiberacao = false;
-                Reavaliar();
+                AvisarFechamento();
             }
         }
     }
@@ -281,6 +366,8 @@ public sealed class GerenciarCatracaViewModel : TelaBase
                 Historico = [.. comandos.Comandos.Select(LinhaDeComando.De)];
             }
 
+            await LerFechadasAsync(cancelamento);
+
             if (Catracas.Count == 0)
             {
                 Mensagem = "Nenhuma catraca cadastrada na instalação.";
@@ -299,6 +386,8 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         RefazerConexao.ReavaliarDisponibilidade();
         ConfirmarRefazerConexao.ReavaliarDisponibilidade();
         CancelarRefazerConexao.ReavaliarDisponibilidade();
+        FecharCatraca?.ReavaliarDisponibilidade();
+        AbrirCatraca?.ReavaliarDisponibilidade();
     }
 
     private async Task PedirAsync(TipoDeComando tipo)

@@ -1322,6 +1322,8 @@ public sealed class JanelaViewModel : Notificavel
         [typeof(ConfiguracoesViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(DiagnosticoViewModel)] = CodigosDePermissao.DiagnosticoVer,
         [typeof(SimuladorViewModel)] = CodigosDePermissao.SimuladorUsar,
+        [typeof(PessoasViewModel)] = CodigosDePermissao.PessoasVer,
+        [typeof(ParametrosDoCadastroViewModel)] = CodigosDePermissao.CadastroParametros,
         [typeof(UsuariosViewModel)] = CodigosDePermissao.UsuariosGerenciar,
     };
 
@@ -1350,6 +1352,8 @@ public sealed class JanelaViewModel : Notificavel
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
             new SimuladorViewModel(cliente, relogio),
+            new PessoasViewModel(cliente, relogio),
+            new ParametrosDoCadastroViewModel(cliente, relogio),
             new UsuariosViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;

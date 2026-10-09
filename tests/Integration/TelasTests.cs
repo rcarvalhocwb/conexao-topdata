@@ -603,7 +603,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     public async Task Janela_troca_de_tela_e_o_cabecalho_continua_atualizando()
     {
         var janela = new JanelaViewModel(Cliente());
-        Assert.Equal(12, janela.Telas.Count);
+        Assert.Equal(14, janela.Telas.Count);
         Assert.Same(janela.Painel, janela.TelaAtual);
 
         janela.TelaAtual = janela.Telas.OfType<SincronizacaoViewModel>().Single();

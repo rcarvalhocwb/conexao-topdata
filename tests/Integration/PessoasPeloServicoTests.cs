@@ -164,4 +164,76 @@ public sealed class PessoasPeloServicoTests : IAsyncLifetime, IDisposable
         Assert.True(horario.Gravado);
         Assert.Single(horario.Avisos);
     }
+
+    [Fact]
+    public async Task Telas_cadastram_bloqueiam_dao_credencial_e_fecham_a_catraca()
+    {
+        var cliente = await Entrar("sup", "supervisor");
+
+        // Parâmetros: tabela de horário pela tela, com faixas em texto.
+        var parametros = new Desktop.ViewModels.ParametrosDoCadastroViewModel(cliente, () => Agora);
+        await parametros.AtualizarAsync();
+        Assert.Equal(9, parametros.Perfis.Count);
+        parametros.HorarioNome = "Comercial";
+        parametros.Dias[1].Faixas = "08:00-12:00, 13:00-18:00";
+        await parametros.GravarHorario.ExecutarAsync();
+        Assert.Contains("gravada", parametros.Mensagem, StringComparison.Ordinal);
+        Assert.Equal("Seg 08:00-12:00, 13:00-18:00", Assert.Single(parametros.Horarios).Resumo);
+        parametros.Dias[2].Faixas = "8h às 12h";
+        await parametros.GravarHorario.ExecutarAsync();
+        Assert.StartsWith("Terça:", parametros.Mensagem, StringComparison.Ordinal);
+
+        // Pessoas: cadastra, dá crachá, bloqueia.
+        var pessoas = new Desktop.ViewModels.PessoasViewModel(cliente, () => Agora);
+        await pessoas.AtualizarAsync();
+        pessoas.PerfilId = "aluno";
+        pessoas.NomeCompleto = "Rafaela Souza";
+        pessoas.Nascimento = "01/02/1995";
+        await pessoas.Gravar.ExecutarAsync();
+        Assert.True(pessoas.TemFicha, pessoas.Mensagem);
+        Assert.Equal("ativo", pessoas.Situacao);
+
+        pessoas.NovoCodigo = "77001234";
+        await pessoas.AdicionarCredencial.ExecutarAsync();
+        Assert.Equal(string.Empty, pessoas.NovoCodigo);
+        var credencial = Assert.Single(pessoas.Credenciais);
+        Assert.DoesNotContain("77001234", credencial.Codigo, StringComparison.Ordinal);
+
+        Assert.False(pessoas.Bloquear.CanExecute(null));
+        pessoas.Motivo = "Mensalidade em atraso";
+        await pessoas.Bloquear.ExecutarAsync();
+        Assert.Equal("bloqueado", pessoas.Situacao);
+        Assert.Contains("bloqueada", pessoas.Mensagem, StringComparison.Ordinal);
+
+        pessoas.Busca = "rafa";
+        await pessoas.Buscar.ExecutarAsync();
+        Assert.Equal("Bloqueada", Assert.Single(pessoas.Pessoas).Situacao);
+
+        // Gerenciar catraca: fechar e reabrir com motivo.
+        var gerenciar = new Desktop.ViewModels.GerenciarCatracaViewModel(cliente, () => Agora);
+        gerenciar.Catraca = 2;
+        Assert.False(gerenciar.FecharCatraca.CanExecute(null));
+        gerenciar.MotivoDoFechamento = "Obra na entrada";
+        await gerenciar.FecharCatraca.ExecutarAsync();
+        Assert.True(gerenciar.EstaFechada, gerenciar.Mensagem);
+        Assert.Contains("Usuária sup (sup)", gerenciar.SituacaoDoFechamento, StringComparison.Ordinal);
+        gerenciar.MotivoDoFechamento = "Obra concluída";
+        await gerenciar.AbrirCatraca.ExecutarAsync();
+        Assert.False(gerenciar.EstaFechada);
+    }
+
+    [Theory]
+    [InlineData("08:00-12:00, 13:00-18:00", true, 2)]
+    [InlineData("", true, 0)]
+    [InlineData("00:00-24:00", true, 1)]
+    [InlineData("18:00-08:00", false, 0)]
+    [InlineData("8h-12h", false, 0)]
+    public void Faixas_de_horario_em_texto(string texto, bool valido, int quantas)
+    {
+        Assert.Equal(valido, Desktop.ViewModels.ParametrosDoCadastroViewModel.LerFaixas(texto, out var faixas));
+        if (valido)
+        {
+            Assert.Equal(quantas, faixas.Count);
+        }
+    }
 }

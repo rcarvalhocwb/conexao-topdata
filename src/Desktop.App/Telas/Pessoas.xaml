@@ -1,0 +1,231 @@
+<UserControl x:Class="Desktop.App.Telas.Pessoas"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
+             AutomationProperties.Name="Pessoas">
+  <DockPanel>
+    <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Pessoas"
+                         Descricao="Cadastro local de quem entra pela catraca: colaboradores, moradores, prestadores, visitantes, alunos e staff. Fica só neste computador, com os dados pessoais cifrados. Bloquear vale na próxima leitura." />
+
+    <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
+                    Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="5*" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="6*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- ===== Busca e lista ===== -->
+      <Border Grid.Column="0" Style="{StaticResource Rayzer.Card}" Padding="16,14">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource Rayzer.Button.Ghost}" Content="_Nova pessoa" Command="{Binding NovaPessoa}" />
+              <rz:RayzerSectionHeader Titulo="Buscar" />
+            </DockPanel>
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nome (3 letras ou mais de cada parte), documento ou código da credencial" />
+            <DockPanel Margin="0,4,0,8">
+              <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Rayzer.Button.Primary}" Content="_Buscar" Command="{Binding Buscar}" IsDefault="True" />
+              <TextBox Text="{Binding Busca, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Texto da busca" />
+            </DockPanel>
+            <WrapPanel Margin="0,0,0,10">
+              <ComboBox Width="170" Margin="0,0,8,0" ItemsSource="{Binding PerfisDoFiltro}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                        SelectedValue="{Binding FiltroPerfil}" AutomationProperties.Name="Filtrar por perfil" />
+              <ComboBox Width="130" ItemsSource="{Binding SituacoesDoFiltro}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                        SelectedValue="{Binding FiltroSituacao}" AutomationProperties.Name="Filtrar por situação" />
+            </WrapPanel>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Pessoas}" SelectedItem="{Binding Selecionada}" AutomationProperties.Name="Pessoas encontradas">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="NOME" Binding="{Binding Nome}" Width="*" />
+              <DataGridTextColumn Header="PERFIL" Binding="{Binding Perfil}" Width="100" />
+              <DataGridTextColumn Header="EMPRESA" Binding="{Binding Empresa}" Width="110" />
+              <DataGridTextColumn Header="SITUAÇÃO" Binding="{Binding Situacao}" Width="100" />
+              <DataGridTextColumn Header="VALE ATÉ" Binding="{Binding ValidoAte}" Width="100" ElementStyle="{StaticResource Celula.Mono}" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+
+      <!-- ===== Ficha ===== -->
+      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <Border Style="{StaticResource Rayzer.Card}" Padding="16,14">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="{Binding TituloDaFicha}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,8" Text="{Binding Obrigatorios}" />
+              <rz:RayzerAlert Margin="0,0,0,8" Titulo="Documento e contato aparecem mascarados: o seu papel não permite vê-los. Gravar a ficha mantém o que está guardado."
+                              Visibility="{Binding DadosMascarados, Converter={StaticResource BoolParaVisibilidade}}" />
+
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="12" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Perfil" />
+                  <ComboBox Margin="0,4,0,10" ItemsSource="{Binding Perfis}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                            SelectedValue="{Binding PerfilId}" AutomationProperties.Name="Perfil" />
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nome completo" />
+                  <TextBox Margin="0,4,0,10" MaxLength="150" Text="{Binding NomeCompleto, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Nome completo" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nome social" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding NomeSocial, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Nome social" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Documento" />
+                  <DockPanel Margin="0,4,0,10">
+                    <ComboBox DockPanel.Dock="Left" Width="110" Margin="0,0,8,0" ItemsSource="{Binding TiposDeDocumento}" DisplayMemberPath="Nome"
+                              SelectedValuePath="Codigo" SelectedValue="{Binding TipoDoDocumento}" AutomationProperties.Name="Tipo de documento" />
+                    <TextBox Text="{Binding Documento, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Número do documento" />
+                  </DockPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nascimento (dd/mm/aaaa)" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding Nascimento, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Data de nascimento" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Responsável legal (menor de 18)" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding Responsavel, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Responsável legal" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Telefone" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding Telefone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Telefone" />
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="E-mail" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="E-mail" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="4" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Empresa" />
+                  <ComboBox Margin="0,4,0,10" ItemsSource="{Binding Empresas}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                            SelectedValue="{Binding EmpresaId}" AutomationProperties.Name="Empresa" />
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Sala ou unidade" />
+                  <ComboBox Margin="0,4,0,10" ItemsSource="{Binding Salas}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                            SelectedValue="{Binding SalaId}" AutomationProperties.Name="Sala" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="5" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Quem recebe (visitante)" />
+                  <ComboBox Margin="0,4,0,10" ItemsSource="{Binding Anfitrioes}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                            SelectedValue="{Binding AnfitriaoId}" AutomationProperties.Name="Anfitrião" />
+                </StackPanel>
+                <StackPanel Grid.Row="5" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Veículo (placa)" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding Veiculo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Veículo" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="6" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Departamento · cargo" />
+                  <DockPanel Margin="0,4,0,10">
+                    <TextBox DockPanel.Dock="Left" Width="120" Margin="0,0,8,0" Text="{Binding Departamento, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Departamento" />
+                    <TextBox Text="{Binding Cargo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cargo" />
+                  </DockPanel>
+                </StackPanel>
+                <StackPanel Grid.Row="6" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Matrícula" />
+                  <TextBox Margin="0,4,0,10" Text="{Binding Matricula, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Matrícula" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="7" Grid.Column="0">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Vale de · até (vazio: a validade do perfil)" />
+                  <StackPanel Orientation="Horizontal" Margin="0,4,0,10">
+                    <DatePicker Width="130" SelectedDate="{Binding ValidoDe}" AutomationProperties.Name="Vale a partir de" />
+                    <DatePicker Width="130" Margin="8,0,0,0" SelectedDate="{Binding ValidoAte}" AutomationProperties.Name="Vale até" />
+                  </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Row="7" Grid.Column="2">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Horário · entradas por dia · catracas (vazio: as do perfil)" />
+                  <StackPanel Orientation="Horizontal" Margin="0,4,0,10">
+                    <ComboBox Width="130" ItemsSource="{Binding Horarios}" DisplayMemberPath="Nome" SelectedValuePath="Codigo"
+                              SelectedValue="{Binding HorarioId}" AutomationProperties.Name="Tabela de horário" />
+                    <TextBox Width="44" Margin="8,0,0,0" Text="{Binding LimiteDiario, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Entradas por dia" />
+                    <TextBox Width="80" Margin="8,0,0,0" Text="{Binding Catracas, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Catracas permitidas" />
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Observação (até 300 letras; não escreva dado de saúde)" />
+              <TextBox Margin="0,4,0,10" MaxLength="300" Text="{Binding Observacao, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Observação" />
+              <CheckBox Margin="0,0,0,12" IsChecked="{Binding AtendimentoPrioritario}" Content="Atendimento prioritário" />
+              <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left" Content="_Gravar a ficha" Command="{Binding Gravar}" />
+            </StackPanel>
+          </Border>
+
+          <!-- Situação: bloquear vale na próxima leitura. -->
+          <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0"
+                  Visibility="{Binding TemFicha, Converter={StaticResource BoolParaVisibilidade}}">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="Situação" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding TextoDaSituacao}" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,10,0,0" Text="Motivo (para bloquear ou inativar; fica registrado)" />
+              <TextBox Margin="0,4,0,8" MaxLength="200" Text="{Binding Motivo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Motivo da situação" />
+              <WrapPanel>
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="_Bloquear" Command="{Binding Bloquear}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="_Desbloquear" Command="{Binding Desbloquear}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="_Inativar" Command="{Binding Inativar}" />
+              </WrapPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- Credenciais: o código vai ao serviço e nunca volta. -->
+          <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0"
+                  Visibility="{Binding TemFicha, Converter={StaticResource BoolParaVisibilidade}}">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="Credenciais" />
+              <DataGrid ItemsSource="{Binding Credenciais}" SelectedItem="{Binding CredencialSelecionada}" MaxHeight="160"
+                        AutomationProperties.Name="Credenciais da pessoa">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="TIPO" Binding="{Binding Tipo}" Width="*" />
+                  <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+                  <DataGridTextColumn Header="SITUAÇÃO" Binding="{Binding Situacao}" Width="*" />
+                  <DataGridTextColumn Header="VALIDADE" Binding="{Binding Validade}" Width="120" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,10,0,0" Text="Motivo (perdida, bloqueada ou devolvida)" />
+              <TextBox Margin="0,4,0,8" MaxLength="200" Text="{Binding MotivoDaCredencial, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Motivo da credencial" />
+              <WrapPanel>
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="_Perdida" Command="{Binding MarcarPerdida}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Bl_oquear" Command="{Binding BloquearCredencial}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="De_volvida" Command="{Binding DevolverCredencial}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="_Reativar" Command="{Binding ReativarCredencial}" />
+              </WrapPanel>
+
+              <Border Style="{StaticResource Rayzer.Divider}" Margin="0,14,0,12" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Nova credencial: o código como a catraca lê (some da tela depois de gravado)" />
+              <DockPanel Margin="0,4,0,0">
+                <ComboBox DockPanel.Dock="Left" Width="220" Margin="0,0,8,0" ItemsSource="{Binding TiposDeCredencial}" DisplayMemberPath="Nome"
+                          SelectedValuePath="Codigo" SelectedValue="{Binding NovoTipo}" AutomationProperties.Name="Tipo de credencial" />
+                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="_Adicionar" Command="{Binding AdicionarCredencial}" />
+                <TextBox Text="{Binding NovoCodigo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Código da nova credencial" />
+              </DockPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </DockPanel>
+</UserControl>
