@@ -1,6 +1,6 @@
 # 43. Cadastro local de pessoas e credenciais (eventos, portaria, academias, condomínios empresariais)
 
-**Situação:** estudo. Nada deste documento está no código, exceto o que a §2 diz que existe.
+**Situação:** estudo **aprovado em 09/10/2026** ([ADR-0026](ADR/ADR-0026-cadastro-de-pessoas-e-usuarios.md)), com uma mudança: no lugar dos grupos do Windows da §7.3, **login próprio** (usuário administrador padrão trocado no primeiro acesso; o administrador cria usuários e define as permissões de cada papel). Nada deste documento está no código, exceto o que a §2 diz que existe.
 
 **Pedido do dono do produto (09/10/2026):**
 
@@ -208,7 +208,7 @@ Bloquear muda a situação na base, e a leitura seguinte já nega. A decisão é
   - O cliente define os prazos. O sistema não inventa prazo legal, porque a lei não fixa um (§11).
 - **Direitos do titular:** exportar e excluir os dados de uma pessoa, com registro. Excluir apaga os campos pessoais e a biometria, e mantém o histórico de passagens só com o identificador interno.
 
-### 7.3 Quem vê o quê, sem login
+### 7.3 Quem vê o quê, sem login (substituído pelo login próprio da ADR-0026)
 
 O sistema não tem login hoje (docs/27 §11). Para dado pessoal isso não basta. Proposta para a primeira versão, sem inventar login, usando grupos locais do Windows:
 
@@ -241,7 +241,9 @@ Cada etapa tem teste. Nada liga em produção sem passar.
 
 | Etapa | Entrega | Prova |
 |---|---|---|
-| **P0** | Decisões da §10 registradas numa ADR (ADR-0026: cadastro de pessoas só local, perfis, cifra por campo, grupos do Windows) | Documento |
+| **P0** | Decisões da §10 registradas na [ADR-0026](ADR/ADR-0026-cadastro-de-pessoas-e-usuarios.md) | Documento (feito) |
+| **L1** | Usuários e login no serviço: administrador padrão com troca obrigatória, senhas PBKDF2, bloqueio por tentativas, papéis com permissões por função, sessão, cada RPC conferida | Sem sessão nada funciona; com a senha padrão só a troca funciona; papel sem a permissão é recusado no serviço |
+| **L2** | Janela de login, troca de senha no primeiro acesso, telas Usuários e Papéis, menu conforme as permissões | Ligações das telas; capturas |
 | **P1** | Migração: `company`, `place`, `person_profile` (perfis prontos), `person` (campos cifrados), `credential`, `person_credential`, `time_schedule(+slot)`, `holiday`, `access_grant`, `person_event`; chave de cifra no cofre | Gatilhos só-INSERT na trilha; nenhum nome ou documento em claro em nenhuma coluna (varredura no teste); cifra e decifra com dado associado |
 | **P2** | Decisão: depois do ingresso, a credencial de pessoa, com situação, validade, portões, horários e limite diário; motivos novos no "Por quê?"; "catraca fechada pelo operador" | Unidade por regra (fora do horário, feriado, portão, bloqueada, expirada, visita); corrida de duas catracas; decisão abaixo de 150 ms com 5 mil pessoas |
 | **P3** | Serviço: comandos de pessoa, credencial, empresa, sala, perfil, horário e feriado, bloquear e desbloquear, com conferência do grupo do Windows e resposta só com dado mascarado | Contrato sem dado em claro; ação recusada fora do grupo |
