@@ -41,12 +41,16 @@ if (args.Contains("--gravar-segredo-da-nuvem"))
 // workers.json indica, então não pode ler esses arquivos com a permissão herdada do ProgramData,
 // em que um usuário comum cria arquivos (achado E8-2 do docs/41). Uma falha aqui não impede a subida:
 // o motivo vai para o registro assim que ele abrir.
+// Como SYSTEM, a restrição também troca o dono: quem criou a pasta ou o workers.json antes da
+// instalação continuaria dono e reabriria a permissão depois.
 var falhasDaRestricao = new List<string>();
+System.Security.Principal.SecurityIdentifier? donoDoServico = null;
 if (OperatingSystem.IsWindows())
 {
+    donoDoServico = SegurancaLocal.DonoQuandoRodaComoSistema();
     Directory.CreateDirectory(InstalacaoLocal.PastaDeDados);
     falhasDaRestricao.AddRange(SegurancaLocal.RestringirPastaDeDados(
-        [new SegurancaLocal.AlvoDaRestricao(InstalacaoLocal.PastaDeDados, Pasta: true)]));
+        [new SegurancaLocal.AlvoDaRestricao(InstalacaoLocal.PastaDeDados, Pasta: true)], donoDoServico));
 }
 
 // Erros da partida, antes do registro do serviço abrir: rodando como serviço não há console, e o
@@ -58,6 +62,27 @@ void FalhaNaPartida(string linha)
 {
     Console.Error.WriteLine(linha);
     registroDaPartida.Escrever("PARTIDA " + linha);
+}
+
+// O que continuar com dono desconhecido depois da troca foi preparado para impedi-la: o serviço não lê
+// esses arquivos nem sobe workers (achado E8-2 do docs/41). Só como SYSTEM, que é como o serviço roda.
+if (OperatingSystem.IsWindows() && donoDoServico is not null)
+{
+    var suspeitos = SegurancaLocal.ComDonoDesconhecido(
+        [InstalacaoLocal.PastaDeDados, InstalacaoLocal.ArquivoDeConfiguracao, InstalacaoLocal.ArquivoDoToken]);
+    if (suspeitos.Count > 0)
+    {
+        FalhaNaPartida(
+            "Arquivos da instalação com dono que não é SYSTEM nem Administradores, e o serviço não conseguiu " +
+            "corrigir. Alguém pode ter preparado a pasta para controlar o serviço. Como administrador, apague " +
+            $"{InstalacaoLocal.PastaDeDados} (guarde antes acesso.db e a pasta copias) e rode o assistente de novo:");
+        foreach (var suspeito in suspeitos)
+        {
+            FalhaNaPartida($"  - {suspeito}");
+        }
+
+        return 1;
+    }
 }
 
 // Configuração: EDGE_CONFIG (desenvolvimento), a da pasta de dados (instalação), ou a
@@ -92,7 +117,8 @@ else
         return 1;
     }
 
-    var problemas = configuracao.Validar();
+    // EDGE_PASTA_DO_PROGRAMA: só para rodar do código-fonte, com o worker em outra pasta de build.
+    var problemas = configuracao.Validar(Environment.GetEnvironmentVariable("EDGE_PASTA_DO_PROGRAMA"));
 
     if (problemas.Count > 0)
     {
@@ -109,7 +135,7 @@ else
 
 // Token de sessão: além da ACL do named pipe, que protege por identidade de usuário e não
 // separa processos da mesma conta. Gerado na primeira subida e reaproveitado depois.
-var token = SegurancaLocal.GarantirToken(InstalacaoLocal.ArquivoDoToken);
+var token = SegurancaLocal.GarantirToken(InstalacaoLocal.ArquivoDoToken, donoDoServico);
 
 var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO")
     ?? configuracao.Endereco
@@ -162,7 +188,7 @@ if (OperatingSystem.IsWindows())
     Directory.CreateDirectory(Path.Combine(configuracao.PastaDeDados, "copias"));
     Directory.CreateDirectory(Path.Combine(configuracao.PastaDeDados, "registros"));
     falhasDaRestricao.AddRange(SegurancaLocal.RestringirPastaDeDados(
-        SegurancaLocal.AlvosDaRestricao(InstalacaoLocal.PastaDeDados, caminhoDoBanco).Skip(1)));
+        SegurancaLocal.AlvosDaRestricao(InstalacaoLocal.PastaDeDados, caminhoDoBanco).Skip(1), donoDoServico));
 }
 
 // A camada inteligente nasce DESLIGADA: sem linha em edge_setting, nada liga (ChavesDaInteligencia).
@@ -273,17 +299,25 @@ if (OperatingSystem.IsWindows())
 SincronizacaoComANuvem? sincronizacao = null;
 if (configuracao.Nuvem is { } configuracaoDaNuvem)
 {
-    ICofreDeSegredos cofre = OperatingSystem.IsWindows()
-        ? new CofreDpapi(InstalacaoLocal.PastaDosSegredos)
-        : new CofreEmMemoria();
+    // Segredo ilegível vale como ausente: a nuvem para e as catracas sobem (achado E2-04 do docs/41).
+    var cofre = new CofreQueNaoDerruba(
+        OperatingSystem.IsWindows() ? new CofreDpapi(InstalacaoLocal.PastaDosSegredos) : new CofreEmMemoria(),
+        Registrar);
 
     // Montar antes de subir os workers: é aqui que o espelho das tentativas é ligado na
-    // configuração que eles leem ao subir.
-    sincronizacao = SincronizacaoComANuvem.Montar(configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar);
-
-    if (cofre.Ler(CabecalhoDeSegredo.NomeDoSegredo) is null)
+    // configuração que eles leem ao subir. Uma falha aqui deixa a borda sem nuvem, não sem catracas.
+    try
     {
-        Registrar("nuvem: nenhum segredo gravado; a sincronização fica parada até ele ser gravado (achado E8-1 do docs/41).");
+        sincronizacao = SincronizacaoComANuvem.Montar(configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar);
+    }
+    catch (Exception erro) when (erro is not OutOfMemoryException)
+    {
+        FalhaNaPartida($"nuvem: não foi possível preparar a sincronização ({erro.GetType().Name}: {erro.Message}); a borda opera sem nuvem até o serviço reiniciar.");
+    }
+
+    if (sincronizacao is not null && cofre.Ler(CabecalhoDeSegredo.NomeDoSegredo) is null)
+    {
+        Registrar("nuvem: nenhum segredo legível; a sincronização fica parada até ele ser gravado (achados E8-1 e E2-04 do docs/41).");
     }
 }
 

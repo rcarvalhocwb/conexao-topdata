@@ -40,7 +40,9 @@ public static class SegurancaLocal
     /// e isso não pode sobreviver a uma atualização.
     /// </para>
     /// </remarks>
-    public static string GarantirToken(string arquivo)
+    /// <param name="arquivo">Caminho do arquivo do token.</param>
+    /// <param name="dono">Dono a gravar no arquivo; nulo mantém o atual. Ver <see cref="DonoQuandoRodaComoSistema"/>.</param>
+    public static string GarantirToken(string arquivo, SecurityIdentifier? dono = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(arquivo);
 
@@ -57,7 +59,7 @@ public static class SegurancaLocal
 
         if (OperatingSystem.IsWindows() && File.Exists(arquivo))
         {
-            Restringir(arquivo);
+            Restringir(arquivo, dono);
         }
 
         return token;
@@ -174,8 +176,13 @@ public static class SegurancaLocal
     /// Pergunta S04 (respondida: permissão de pasta, sem cifragem). Protege o acesso.db, que tem o número
     /// do cartão em claro (ADR-0014 recusa SQLCipher). A permissão real só se confirma numa VM Windows.
     /// </remarks>
+    /// <param name="alvos">O que restringir.</param>
+    /// <param name="dono">
+    /// Dono a gravar em cada alvo; nulo mantém o atual. Trocar só a permissão não basta: o dono de um
+    /// arquivo reabre a permissão quando quiser (achado E8-2 do docs/41). Ver <see cref="DonoQuandoRodaComoSistema"/>.
+    /// </param>
     [SupportedOSPlatform("windows")]
-    public static IReadOnlyList<string> RestringirPastaDeDados(IEnumerable<AlvoDaRestricao> alvos)
+    public static IReadOnlyList<string> RestringirPastaDeDados(IEnumerable<AlvoDaRestricao> alvos, SecurityIdentifier? dono = null)
     {
         ArgumentNullException.ThrowIfNull(alvos);
         var falhas = new List<string>();
@@ -184,19 +191,89 @@ public static class SegurancaLocal
         {
             if (alvo.Pasta)
             {
-                RestringirArvore(alvo.Caminho, falhas);
+                RestringirArvore(alvo.Caminho, dono, falhas);
             }
             else if (File.Exists(alvo.Caminho))
             {
-                Tentar(alvo.Caminho, () => RestringirArquivo(new FileInfo(alvo.Caminho)), falhas);
+                Tentar(alvo.Caminho, () => RestringirArquivo(new FileInfo(alvo.Caminho), dono), falhas);
             }
         }
 
         return falhas;
     }
 
+    /// <summary>
+    /// O SID do SYSTEM quando o processo roda como SYSTEM (o serviço instalado); nulo em qualquer outro
+    /// caso (desenvolvimento, testes, o assistente).
+    /// </summary>
+    /// <remarks>
+    /// Um processo sempre pode se tornar dono de um objeto em que tem permissão de trocar o dono, sem
+    /// privilégio extra. Por isso o serviço grava a si mesmo, e não o grupo Administradores.
+    /// </remarks>
     [SupportedOSPlatform("windows")]
-    private static void RestringirArvore(string pasta, List<string> falhas)
+    public static SecurityIdentifier? DonoQuandoRodaComoSistema()
+    {
+        using var atual = WindowsIdentity.GetCurrent();
+        return atual.User is { } usuario && usuario.IsWellKnown(WellKnownSidType.LocalSystemSid) ? usuario : null;
+    }
+
+    /// <summary>
+    /// Os caminhos (dos que existem) cujo dono não é SYSTEM, Administradores nem TrustedInstaller.
+    /// </summary>
+    /// <remarks>
+    /// Achado E8-2 do docs/41: um usuário comum consegue criar a pasta ou o <c>workers.json</c> antes da
+    /// instalação e continuar dono deles. A partida troca o dono (ver <see cref="RestringirPastaDeDados"/>);
+    /// o que continuar com outro dono depois disso foi preparado para impedir a troca, e o serviço não lê.
+    /// </remarks>
+    [SupportedOSPlatform("windows")]
+    public static IReadOnlyList<string> ComDonoDesconhecido(IEnumerable<string> caminhos)
+    {
+        ArgumentNullException.ThrowIfNull(caminhos);
+        var desconhecidos = new List<string>();
+
+        foreach (var caminho in caminhos)
+        {
+            try
+            {
+                SecurityIdentifier? dono;
+                if (Directory.Exists(caminho))
+                {
+                    dono = new DirectoryInfo(caminho).GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+                }
+                else if (File.Exists(caminho))
+                {
+                    dono = new FileInfo(caminho).GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (!DonoConfiavel(dono))
+                {
+                    desconhecidos.Add($"{caminho} (dono {dono?.Value ?? "ilegível"})");
+                }
+            }
+            catch (Exception erro) when (erro is UnauthorizedAccessException or IOException or PrivilegeNotHeldException)
+            {
+                desconhecidos.Add($"{caminho} (dono ilegível: {erro.Message})");
+            }
+        }
+
+        return desconhecidos;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool DonoConfiavel(SecurityIdentifier? dono) =>
+        dono is not null
+        && (dono.IsWellKnown(WellKnownSidType.LocalSystemSid)
+            || dono.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid)
+            || dono.Value == SidDoTrustedInstaller);
+
+    private const string SidDoTrustedInstaller = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
+
+    [SupportedOSPlatform("windows")]
+    private static void RestringirArvore(string pasta, SecurityIdentifier? dono, List<string> falhas)
     {
         var raiz = new DirectoryInfo(pasta);
         if (!raiz.Exists)
@@ -204,11 +281,11 @@ public static class SegurancaLocal
             return;
         }
 
-        Tentar(raiz.FullName, () => raiz.SetAccessControl(SegurancaDePasta()), falhas);
+        Tentar(raiz.FullName, () => raiz.SetAccessControl(SegurancaDePasta(dono)), falhas);
 
         foreach (var subpasta in raiz.EnumerateDirectories("*", SearchOption.AllDirectories))
         {
-            Tentar(subpasta.FullName, () => subpasta.SetAccessControl(SegurancaDePasta()), falhas);
+            Tentar(subpasta.FullName, () => subpasta.SetAccessControl(SegurancaDePasta(dono)), falhas);
         }
 
         foreach (var arquivo in raiz.EnumerateFiles("*", SearchOption.AllDirectories))
@@ -218,7 +295,7 @@ public static class SegurancaLocal
                 continue;
             }
 
-            Tentar(arquivo.FullName, () => RestringirArquivo(arquivo), falhas);
+            Tentar(arquivo.FullName, () => RestringirArquivo(arquivo, dono), falhas);
         }
     }
 
@@ -239,10 +316,15 @@ public static class SegurancaLocal
     }
 
     [SupportedOSPlatform("windows")]
-    private static DirectorySecurity SegurancaDePasta()
+    private static DirectorySecurity SegurancaDePasta(SecurityIdentifier? dono)
     {
         var herdam = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
         var seguranca = new DirectorySecurity();
+        if (dono is not null)
+        {
+            seguranca.SetOwner(dono);
+        }
+
         seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
         seguranca.AddAccessRule(new FileSystemAccessRule(
             new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, herdam, PropagationFlags.None, AccessControlType.Allow));
@@ -252,9 +334,14 @@ public static class SegurancaLocal
     }
 
     [SupportedOSPlatform("windows")]
-    private static void RestringirArquivo(FileInfo arquivo)
+    private static void RestringirArquivo(FileInfo arquivo, SecurityIdentifier? dono)
     {
         var seguranca = new FileSecurity();
+        if (dono is not null)
+        {
+            seguranca.SetOwner(dono);
+        }
+
         seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
         seguranca.AddAccessRule(new FileSystemAccessRule(
             new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
@@ -268,9 +355,14 @@ public static class SegurancaLocal
     /// usuário comum tem acesso, nem o de leitura.
     /// </summary>
     [SupportedOSPlatform("windows")]
-    private static void Restringir(string arquivo)
+    private static void Restringir(string arquivo, SecurityIdentifier? dono)
     {
         var seguranca = new FileSecurity();
+        if (dono is not null)
+        {
+            seguranca.SetOwner(dono);
+        }
+
         seguranca.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
         seguranca.AddAccessRule(new FileSystemAccessRule(
             new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, AccessControlType.Allow));

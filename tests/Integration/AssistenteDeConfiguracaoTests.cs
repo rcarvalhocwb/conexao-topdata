@@ -62,7 +62,7 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
 
         // O serviço lê e aceita exatamente o que o assistente gravou.
         var lida = ConfiguracaoDoSupervisor.Ler(Arquivo);
-        Assert.Empty(lida.Validar());
+        Assert.Empty(lida.Validar(_pasta));
         Assert.Equal([1, 2, 5], Assert.Single(lida.Grupos).Inners);
         Assert.Equal(3570, lida.Grupos[0].Porta);
         Assert.Equal("Saída", lida.NomesDasCatracas![5]);

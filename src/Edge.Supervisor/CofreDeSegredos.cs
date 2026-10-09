@@ -102,6 +102,54 @@ public sealed class CofreDpapi : ICofreDeSegredos
     }
 }
 
+
+/// <summary>
+/// Cofre que nunca lança na leitura: um segredo ilegível vale como ausente, e o motivo vai para o
+/// registro uma vez.
+/// </summary>
+/// <remarks>
+/// Achado E2-04 do docs/41: com o arquivo cifrado corrompido, ou depois de restaurar ou clonar o disco
+/// em outra máquina (a chave DPAPI é da máquina), a leitura lançava na partida e o serviço não subia;
+/// as catracas ficavam paradas por causa da nuvem. Ausente, a sincronização fica parada e o painel diz
+/// para gravar o segredo de novo, e as catracas operam.
+/// </remarks>
+public sealed class CofreQueNaoDerruba(ICofreDeSegredos interno, Action<string> registrar) : ICofreDeSegredos
+{
+    private readonly ICofreDeSegredos _interno = interno ?? throw new ArgumentNullException(nameof(interno));
+    private readonly Action<string> _registrar = registrar ?? throw new ArgumentNullException(nameof(registrar));
+    private readonly Lock _trava = new();
+    private string? _ultimoMotivo;
+
+    /// <inheritdoc />
+    public string? Ler(string nome)
+    {
+        try
+        {
+            return _interno.Ler(nome);
+        }
+        catch (Exception erro) when (erro is CryptographicException or IOException or UnauthorizedAccessException)
+        {
+            var motivo = $"cofre: o segredo '{nome}' não pode ser lido nesta máquina ({erro.GetType().Name}: {erro.Message}). " +
+                "Arquivo corrompido, ou disco restaurado ou clonado de outro computador. Grave o segredo de novo pelo assistente.";
+            lock (_trava)
+            {
+                if (motivo == _ultimoMotivo)
+                {
+                    return null;
+                }
+
+                _ultimoMotivo = motivo;
+            }
+
+            _registrar(motivo);
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public void Gravar(string nome, string valor) => _interno.Gravar(nome, valor);
+}
+
 /// <summary>Cofre em memória, para teste e desenvolvimento fora do Windows.</summary>
 public sealed class CofreEmMemoria : ICofreDeSegredos
 {

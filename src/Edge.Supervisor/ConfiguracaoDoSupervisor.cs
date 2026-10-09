@@ -40,6 +40,19 @@ public sealed record ConfiguracaoDoSupervisor(
             : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, executavel));
     }
 
+    /// <summary>
+    /// Pasta de onde o serviço aceita iniciar workers: a pasta da instalação, a que contém a pasta do
+    /// serviço (<c>Program Files\Rayzer\XAcess</c>, com <c>Servico</c> e <c>Worker</c> dentro).
+    /// </summary>
+    /// <remarks>
+    /// Achado E8-2 do docs/41: o serviço roda como SYSTEM e inicia o executável que o
+    /// <c>workers.json</c> indica. Fora da pasta do programa (que só administradores alteram),
+    /// qualquer um que conseguisse escrever esse arquivo faria o serviço rodar um programa dele
+    /// como SYSTEM.
+    /// </remarks>
+    public static string PastaDoPrograma() =>
+        Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))!;
+
     /// <summary>Pasta de dados: base, registros e segredos.</summary>
     public string PastaDeDados => Path.GetDirectoryName(Path.GetFullPath(CaminhoDoBanco))!;
 
@@ -81,8 +94,12 @@ public sealed record ConfiguracaoDoSupervisor(
     /// mesmos conflitos são recusados pelo supervisor; a diferença é que aqui a mensagem
     /// diz o que corrigir no arquivo.
     /// </remarks>
-    public IReadOnlyList<string> Validar()
+    /// <param name="pastaPermitida">
+    /// Onde os executáveis dos workers podem ficar. Sem valor, <see cref="PastaDoPrograma"/>.
+    /// </param>
+    public IReadOnlyList<string> Validar(string? pastaPermitida = null)
     {
+        var permitida = string.IsNullOrWhiteSpace(pastaPermitida) ? PastaDoPrograma() : pastaPermitida;
         var problemas = new List<string>();
 
         if (Grupos.Count == 0)
@@ -112,6 +129,13 @@ public sealed record ConfiguracaoDoSupervisor(
         foreach (var grupo in Grupos.Where(g => !File.Exists(ResolverExecutavel(g.Executavel))))
         {
             problemas.Add($"Grupo {grupo.Nome}: executável não encontrado em {grupo.Executavel}.");
+        }
+
+        foreach (var grupo in Grupos.Where(g => !SegurancaLocal.EstaDentro(ResolverExecutavel(g.Executavel), permitida)))
+        {
+            problemas.Add(
+                $"Grupo {grupo.Nome}: o executável {grupo.Executavel} fica fora da pasta do programa ({permitida}). " +
+                "O serviço roda como SYSTEM e só inicia o programa das catracas instalado; rode o assistente de configuração.");
         }
 
         return problemas;
