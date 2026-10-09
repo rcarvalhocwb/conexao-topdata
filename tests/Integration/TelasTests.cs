@@ -718,6 +718,35 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Contains(tela.AguardandoConfirmacao, p => p.Rotulo == "Recolher cartão na urna");
     }
 
+    /// <summary>
+    /// Achado E6-4 do docs/41: "Refazer a conexão" derrubava a catraca alguns segundos com um clique
+    /// só, enquanto "Aplicar" (mesmo efeito) já pedia confirmação. Agora são dois passos.
+    /// </summary>
+    [Fact]
+    public async Task Refazer_a_conexao_pede_confirmacao_antes_de_mandar_o_pedido()
+    {
+        var tela = new GerenciarCatracaViewModel(Cliente(), esperaPeloResultado: TimeSpan.Zero);
+        await tela.AtualizarAsync();
+        tela.Operador = "Ana";
+
+        Assert.False(tela.ConfirmarRefazerConexao.CanExecute(null));
+        await tela.RefazerConexao.ExecutarAsync();
+
+        Assert.True(tela.ConfirmandoRefazerConexao);
+        Assert.Contains("fica alguns segundos sem atender", tela.TextoDaConfirmacaoDeRefazerConexao, StringComparison.Ordinal);
+        Assert.Empty(tela.Historico);
+
+        await tela.CancelarRefazerConexao.ExecutarAsync();
+        Assert.False(tela.ConfirmandoRefazerConexao);
+        Assert.Empty(tela.Historico);
+
+        await tela.RefazerConexao.ExecutarAsync();
+        await tela.ConfirmarRefazerConexao.ExecutarAsync();
+
+        Assert.False(tela.ConfirmandoRefazerConexao);
+        Assert.Single(tela.Historico);
+    }
+
     [Fact]
     public async Task Gerenciar_no_cartao_da_catraca_abre_a_tela_naquela_catraca()
     {
@@ -837,6 +866,40 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         using var consulta = leitura.CreateCommand();
         consulta.CommandText = "SELECT reprocessed_by FROM dead_letter;";
         Assert.Equal("Ana", consulta.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// Achado E6-3 do docs/41: com o serviço fora, os sinais verdes de antes ficavam na tela ("2/2
+    /// online", "Atendendo"), e com o serviço parado desde a abertura a tela dizia "Nenhuma catraca
+    /// configurada" e mandava ao assistente, que não resolve um serviço parado.
+    /// </summary>
+    [Fact]
+    public async Task Servico_sem_resposta_apaga_os_sinais_verdes_e_nao_manda_ao_assistente()
+    {
+        var painel = new PainelAoVivoViewModel(Cliente());
+        await painel.AtualizarAsync();
+        Assert.True(painel.ServicoRespondeu);
+        Assert.Equal("Nenhuma catraca configurada", painel.TituloSemCatracas);
+
+        var verdes = new[] { new LinhaDeCatraca(1, "Entrada 1", "Atendendo", Sinal.Bom, "Liberou", "agora", "4.2.0", "g", 3570, 0) };
+        Assert.All(SemCatracas.SemNoticia(verdes), c =>
+        {
+            Assert.Equal(Sinal.Neutro, c.Sinal);
+            Assert.Contains("não responde", c.Situacao, StringComparison.Ordinal);
+        });
+
+        var semServico = new PainelAoVivoViewModel(Cliente(TransporteLocal.EnderecoPadrao($"inexistente-{Guid.NewGuid():N}")));
+        await semServico.AtualizarAsync();
+
+        Assert.False(semServico.ServicoRespondeu);
+        Assert.Equal("Sem resposta do serviço", semServico.TituloSemCatracas);
+        Assert.DoesNotContain("Assistente", semServico.TextoSemCatracas, StringComparison.Ordinal);
+        Assert.Equal(Sinal.Neutro, semServico.CatracasSinal);
+        Assert.Equal(Sinal.Neutro, semServico.NuvemSinal);
+
+        var catracas = new CatracasViewModel(Cliente(TransporteLocal.EnderecoPadrao($"inexistente-{Guid.NewGuid():N}")));
+        await catracas.AtualizarAsync();
+        Assert.Equal("Sem resposta do serviço", catracas.TituloSemCatracas);
     }
 
     /// <summary>

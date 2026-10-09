@@ -124,7 +124,27 @@ Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(caminhoDoBanco)
 var fabrica = new SqliteConnectionFactory(caminhoDoBanco);
 try
 {
-    new Migrator(fabrica).Aplicar();
+    var migrador = new Migrator(fabrica);
+
+    // Atualização com migração nova: uma cópia da base ANTES, em copias\antes-da-migracao (fora da
+    // retenção das 14), para haver como voltar à versão anterior (achado E10-7 do docs/41). Se a cópia
+    // falhar, o motivo fica no registro e a migração segue: o serviço não pode ficar parado por isso.
+    var pendentes = migrador.PendentesNumaBaseExistente();
+    if (pendentes.Count > 0)
+    {
+        try
+        {
+            var copia = new CopiaDeSeguranca(fabrica, Path.Combine(configuracao.PastaDeDados, "copias", "antes-da-migracao"))
+                .Criar(DateTimeOffset.Now);
+            registroDaPartida.Escrever($"PARTIDA cópia antes de {pendentes.Count} migração(ões) nova(s): {copia}");
+        }
+        catch (Exception erro) when (erro is not OutOfMemoryException)
+        {
+            FalhaNaPartida($"Não foi possível copiar a base antes das migrações ({erro.GetType().Name}: {erro.Message}); seguindo sem cópia.");
+        }
+    }
+
+    migrador.Aplicar();
 }
 catch (Exception erro) when (erro is not OutOfMemoryException)
 {

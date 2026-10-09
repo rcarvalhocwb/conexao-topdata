@@ -37,6 +37,35 @@ public sealed class Migrator
         return Aplicar(conexao, PrefixoDoRecurso);
     }
 
+    /// <summary>
+    /// Migrações que faltam numa base que já existe e já foi migrada antes. Base nova (sem
+    /// <c>schema_version</c>) devolve vazio: não há o que proteger com cópia.
+    /// </summary>
+    /// <remarks>Achado E10-7 do docs/41: o serviço faz uma cópia antes de aplicar, para haver volta.</remarks>
+    public IReadOnlyList<string> PendentesNumaBaseExistente()
+    {
+        using var conexao = _fabrica.Abrir();
+        var existe = SqliteConnectionFactory.Escalar<long>(
+            conexao, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'schema_version';");
+        if (existe == 0)
+        {
+            return [];
+        }
+
+        var jaAplicadas = new HashSet<string>(StringComparer.Ordinal);
+        using (var comando = conexao.CreateCommand())
+        {
+            comando.CommandText = "SELECT nome FROM schema_version;";
+            using var leitor = comando.ExecuteReader();
+            while (leitor.Read())
+            {
+                jaAplicadas.Add(leitor.GetString(0));
+            }
+        }
+
+        return jaAplicadas.Count == 0 ? [] : [.. Disponiveis().Where(n => !jaAplicadas.Contains(n))];
+    }
+
     /// <summary>Os recursos embutidos com o prefixo, sem ele, em ordem.</summary>
     internal static IReadOnlyList<string> Recursos(string prefixo) =>
         typeof(Migrator).Assembly

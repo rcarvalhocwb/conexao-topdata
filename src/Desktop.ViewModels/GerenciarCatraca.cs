@@ -88,8 +88,57 @@ public sealed class GerenciarCatracaViewModel : TelaBase
                 return Task.CompletedTask;
             },
             () => ConfirmandoLiberacao);
-        RefazerConexao = new ComandoAssincrono(() => PedirAsync(TipoDeComando.ReiniciarConexao), TemCatracaEOperador);
+        // Refazer a conexão também é de dois passos (achado E6-4 do docs/41): a catraca fica alguns
+        // segundos sem atender, o mesmo efeito de "Aplicar", que já pedia confirmação.
+        RefazerConexao = new ComandoAssincrono(
+            () =>
+            {
+                ConfirmandoRefazerConexao = true;
+                return Task.CompletedTask;
+            },
+            () => !ConfirmandoRefazerConexao && TemCatracaEOperador());
+        ConfirmarRefazerConexao = new ComandoAssincrono(
+            () =>
+            {
+                ConfirmandoRefazerConexao = false;
+                return PedirAsync(TipoDeComando.ReiniciarConexao);
+            },
+            () => ConfirmandoRefazerConexao && TemCatracaEOperador());
+        CancelarRefazerConexao = new ComandoAssincrono(
+            () =>
+            {
+                ConfirmandoRefazerConexao = false;
+                return Task.CompletedTask;
+            },
+            () => ConfirmandoRefazerConexao);
     }
+
+    private bool _confirmandoRefazerConexao;
+
+    /// <summary>Segundo passo de "Refazer a conexão": manda o pedido já confirmado.</summary>
+    public ComandoAssincrono ConfirmarRefazerConexao { get; }
+
+    /// <summary>Desfaz a confirmação de "Refazer a conexão" sem enviar nada.</summary>
+    public ComandoAssincrono CancelarRefazerConexao { get; }
+
+    /// <summary>"Refazer a conexão" está à espera da confirmação do operador.</summary>
+    public bool ConfirmandoRefazerConexao
+    {
+        get => _confirmandoRefazerConexao;
+        private set
+        {
+            if (Definir(ref _confirmandoRefazerConexao, value))
+            {
+                Avisar(nameof(TextoDaConfirmacaoDeRefazerConexao));
+                Reavaliar();
+            }
+        }
+    }
+
+    /// <summary>O que o operador confirma antes de derrubar a conexão da catraca.</summary>
+    public string TextoDaConfirmacaoDeRefazerConexao => ConfirmandoRefazerConexao
+        ? $"Confirmar: refazer a conexão da {Selecionada?.Nome ?? $"catraca {Catraca}"}? Ela fica alguns segundos sem atender enquanto reconecta e recebe a configuração."
+        : string.Empty;
 
     public override string Titulo => "Gerenciar catraca";
 
@@ -248,6 +297,8 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         LiberarManualmente.ReavaliarDisponibilidade();
         CancelarLiberacao.ReavaliarDisponibilidade();
         RefazerConexao.ReavaliarDisponibilidade();
+        ConfirmarRefazerConexao.ReavaliarDisponibilidade();
+        CancelarRefazerConexao.ReavaliarDisponibilidade();
     }
 
     private async Task PedirAsync(TipoDeComando tipo)

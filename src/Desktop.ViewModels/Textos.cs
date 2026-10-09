@@ -182,6 +182,29 @@ public static class Textos
 /// mostra o selo "Simulação", coerente com o aviso geral do modo simulação — nunca uma catraca
 /// simulada passando por real (docs/29, defeito de 01/10).
 /// </remarks>
+/// <summary>
+/// O que dizer quando não há catraca na lista: sem resposta do serviço não é o mesmo que nenhuma catraca
+/// configurada (achado E6-3 do docs/41: com o serviço parado desde a abertura, a tela mandava o
+/// operador ao assistente, que não resolve um serviço parado).
+/// </summary>
+public static class SemCatracas
+{
+    public static string Titulo(bool servicoRespondeu) =>
+        servicoRespondeu ? "Nenhuma catraca configurada" : "Sem resposta do serviço";
+
+    public static string Texto(bool servicoRespondeu) =>
+        servicoRespondeu
+            ? "Abra o Assistente de configuração e informe o número do Inner de cada catraca."
+            : "As catracas aparecem quando o serviço local responder. Veja o aviso no topo da janela.";
+
+    /// <summary>
+    /// Os cartões das catracas quando o serviço não responde: o último estado conhecido não vale
+    /// mais, e um "Atendendo" verde ali seria falso.
+    /// </summary>
+    public static IReadOnlyList<LinhaDeCatraca> SemNoticia(IReadOnlyList<LinhaDeCatraca> catracas) =>
+        [.. catracas.Select(c => c with { Situacao = "Sem notícia: o serviço não responde", Sinal = Sinal.Neutro })];
+}
+
 public sealed record LinhaDeCatraca(
     int Inner,
     string Nome,

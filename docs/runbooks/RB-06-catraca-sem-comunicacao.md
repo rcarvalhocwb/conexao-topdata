@@ -15,7 +15,7 @@ responde", e não atende há mais de um minuto.
    ter parado). Se só uma está, continue aqui.
    - Critério de sucesso: outras catracas aparecem como "Atendendo".
 2. **Pedir a reconexão pelo painel.** Em *Gerenciar catraca*, escolha a catraca, informe seu nome e clique em
-   *Refazer conexão*.
+   *Refazer a conexão…* e confirme.
    - Critério de sucesso: em até 30 segundos, a catraca volta a "Atendendo" (o histórico mostra o pedido como feito).
    - Se não voltar: vá para o passo 3.
 3. **Verificar o cabo e a energia da catraca.** Confira se a catraca está ligada e se o cabo de rede está encaixado
@@ -23,7 +23,9 @@ responde", e não atende há mais de um minuto.
    - Critério de sucesso: a luz de rede está acesa e a catraca responde ao display.
    - Se não: troque o cabo ou a fonte e repita o passo 2.
 4. **Conferir IP e porta.** Siga o RB-02 (passos 1 e 4).
-   - Critério de sucesso: `Test-NetConnection` até o IP da catraca na porta do grupo responde.
+   - Critério de sucesso: a catraca responde a `ping <IP da catraca>`, e, de outro computador da mesma rede,
+     `Test-NetConnection <IP deste PC> -Port <porta do grupo>` responde. Quem escuta na porta é este PC, não a
+     catraca: é a catraca que se conecta a ele (docs/41, achado E10-13).
 5. **Reiniciar o serviço**, como no RB-01 (passo 3), somente se nenhum passo anterior resolveu e ninguém estiver
    no portão desta catraca.
 

@@ -122,6 +122,13 @@ public static class TransporteLocal
     }
 
     /// <summary>
+    /// O invocador que o painel usa: o canal local com o prazo padrão por chamada
+    /// (<see cref="PrazoDasChamadas"/>, achado E6-2 do docs/41).
+    /// </summary>
+    public static Grpc.Core.CallInvoker CriarInvocadorDoPainel(string endereco, string? token = null) =>
+        Grpc.Core.Interceptors.CallInvokerExtensions.Intercept(CriarCanal(endereco, token).CreateCallInvoker(), new PrazoDasChamadas());
+
+    /// <summary>
     /// Conecta com espera limitada.
     /// </summary>
     /// <remarks>

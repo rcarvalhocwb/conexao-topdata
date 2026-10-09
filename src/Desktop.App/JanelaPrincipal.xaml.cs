@@ -70,10 +70,26 @@ public partial class JanelaPrincipal : Window
         // Vive enquanto a janela vive; é descartado quando ela fecha de verdade.
         var fechando = new CancellationTokenSource();
 
+        // Uma atualização por vez: com o serviço lento, o relógio de 2 s empilhava chamadas (E6-2).
+        var atualizando = false;
+
         async Task AtualizarAsync()
         {
-            await Janela.AtualizarAsync().ConfigureAwait(true);
-            Atualizada?.Invoke(this, EventArgs.Empty);
+            if (atualizando)
+            {
+                return;
+            }
+
+            atualizando = true;
+            try
+            {
+                await Janela.AtualizarAsync().ConfigureAwait(true);
+                Atualizada?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                atualizando = false;
+            }
         }
 
         _relogio.Tick += async (_, _) => await AtualizarAsync().ConfigureAwait(true);
@@ -218,7 +234,6 @@ public partial class JanelaPrincipal : Window
         // as mensagens de falha dizem que falta o grupo dos operadores (MensagemDeFalha).
         Desktop.ViewModels.MensagemDeFalha.TokenSemPermissao = InstalacaoLocal.TokenIlegivel();
         var token = InstalacaoLocal.LerToken();
-        var canal = TransporteLocal.CriarCanal(endereco, token);
-        return new JanelaViewModel(new EdgeControl.EdgeControlClient(canal));
+        return new JanelaViewModel(new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(endereco, token)));
     }
 }

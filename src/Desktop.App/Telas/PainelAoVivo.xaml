@@ -50,8 +50,8 @@
             <ItemsControl ItemsSource="{Binding Catracas}" ItemTemplate="{StaticResource Cartao.Catraca}"
                           AutomationProperties.Name="Catracas" />
           </ScrollViewer>
-          <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="Nenhuma catraca configurada"
-                               Texto="As catracas aparecem aqui depois do Assistente de configuração (passo 2)."
+          <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="{Binding TituloSemCatracas}"
+                               Texto="{Binding TextoSemCatracas}"
                                Visibility="{Binding Catracas, Converter={StaticResource ZeroParaVisivel}}" />
         </Grid>
       </DockPanel>

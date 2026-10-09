@@ -1,15 +1,29 @@
 # RB-09 — Restaurar o banco a partir de uma cópia de segurança
 
-**Quando usar:** o sistema não sobe por causa do banco (`acesso.db` corrompido ou apagado), ou o Diagnóstico acusa
-falha de integridade do banco.
+**Quando usar:** fora do evento, quando o sistema não sobe por causa do banco (`acesso.db` corrompido ou apagado). O
+motivo aparece no arquivo `%ProgramData%\ConexaoTopdata\registros\servico-AAAA-MM-DD.log`, numa linha que começa
+com `PARTIDA` ("Não foi possível abrir ou atualizar a base local").
 **Impacto se não tratar:** sem o banco, o sistema não decide acessos e a prestação de contas se perde.
 **Tempo estimado:** 15 minutos · **Perfil necessário:** técnico
+
+## Atenção: não restaure durante o evento
+
+Restaurar volta a base ao instante da cópia. **Todo ingresso usado depois da cópia volta a valer**: quem
+já entrou passa de novo, e o reuso dos cartões perde a contagem (docs/41, achado E3-03). Ainda não existe
+ferramenta que reaplique esses usos.
+
+- **Durante o evento:** não restaure. Opere pela liberação manual com motivo (tela *Gerenciar catraca*)
+  até o fim e chame o suporte. O banco com problema fica como está, para análise.
+- **Fora do evento:** restaure seguindo os passos abaixo, sabendo que os usos posteriores à cópia não
+  estão nela.
 
 ## Antes de começar
 
 - [ ] Você tem uma cópia em `%ProgramData%\ConexaoTopdata\copias\`. As cópias se chamam
       `acesso-AAAAMMDD-HHmmss-fff.db` e são feitas ao iniciar o serviço e depois a cada 6 horas (as 14 mais recentes
-      ficam guardadas). Escolha a mais recente que seja anterior ao problema.
+      ficam guardadas). Escolha a mais recente que seja anterior ao problema. Para voltar à versão anterior do
+      sistema depois de uma atualização, use a de `copias\antes-da-migracao\`, feita logo antes de a versão
+      nova mudar a base.
 - [ ] Você sabe a hora da última cópia boa. Acessos depois dela **não estão** na cópia; anote-os pelo que estiver
       no painel e no registro de acessos.
 - [ ] Você tem permissão de administrador.

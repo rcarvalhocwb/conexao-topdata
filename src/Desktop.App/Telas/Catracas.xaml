@@ -18,8 +18,8 @@
           </ItemsControl.ItemsPanel>
         </ItemsControl>
       </ScrollViewer>
-      <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="Nenhuma catraca configurada"
-                           Texto="Abra o Assistente de configuração e informe o número do Inner de cada catraca."
+      <rz:RayzerEmptyState Icone="{DynamicResource Rayzer.Icon.Devices}" Titulo="{Binding TituloSemCatracas}"
+                           Texto="{Binding TextoSemCatracas}"
                            Visibility="{Binding Catracas, Converter={StaticResource ZeroParaVisivel}}" />
     </Grid>
   </DockPanel>

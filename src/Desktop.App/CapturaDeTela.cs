@@ -47,7 +47,7 @@ internal static class CapturaDeTela
 
         var endereco = Environment.GetEnvironmentVariable("EDGE_ENDERECO") ?? TransporteLocal.EnderecoPadrao();
         var token = InstalacaoLocal.LerToken();
-        var janela = new JanelaViewModel(new EdgeControl.EdgeControlClient(TransporteLocal.CriarCanal(endereco, token)));
+        var janela = new JanelaViewModel(new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(endereco, token)));
 
         var gravados = new List<Captura>();
         var numero = 1;

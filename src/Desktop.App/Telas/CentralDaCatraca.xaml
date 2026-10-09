@@ -112,10 +112,21 @@
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Manutenção (pedido imediato)" />
             <WrapPanel Margin="0,4,0,0">
               <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,6" Content="Acertar o relógio agora" Command="{Binding Comandos.AcertarRelogio}" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,0,6" Content="Refazer a conexão" Command="{Binding Comandos.RefazerConexao}"
+              <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,0,6" Content="Refazer a conexão…" Command="{Binding Comandos.RefazerConexao}"
                       Visibility="{Binding MostraRefazerConexao, Converter={StaticResource BoolParaVisibilidade}}"
                       ToolTip="A catraca reconecta e recebe a configuração completa de novo. Fica alguns segundos sem atender." />
             </WrapPanel>
+            <Border Margin="0,6,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                    Background="{DynamicResource Rayzer.Warning.Subtle}"
+                    Visibility="{Binding Comandos.ConfirmandoRefazerConexao, Converter={StaticResource BoolParaVisibilidade}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding Comandos.TextoDaConfirmacaoDeRefazerConexao}" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Style="{StaticResource Rayzer.Button.Primary}" Content="Confirmar e refazer" Command="{Binding Comandos.ConfirmarRefazerConexao}" />
+                  <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Cancelar" Margin="10,0,0,0" Command="{Binding Comandos.CancelarRefazerConexao}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
           </StackPanel>
           <rz:RayzerAlert Margin="0,8,0,0" Tom="Neutro" Titulo="{Binding Comandos.Mensagem}"
                           Visibility="{Binding Comandos.Mensagem, Converter={StaticResource VazioSome}}" />

@@ -284,6 +284,22 @@ public partial class JanelaDoAssistente : Window
 
     private void Gravar(object sender, RoutedEventArgs e)
     {
+        // Achado E6-5 do docs/41: com o serviço rodando, gravar o reinicia, e todas as catracas ficam
+        // sem atender por até um minuto. Antes isso acontecia sem aviso; feito durante o evento,
+        // parava o portão inteiro. Agora pergunta, com "Não" como padrão.
+        if (ServicoRodando() && MessageBox.Show(
+                this,
+                "O serviço das catracas está rodando. Gravar a configuração reinicia o serviço, e todas as " +
+                "catracas ficam sem atender por até um minuto.\n\nGravar e reiniciar agora?",
+                "Reiniciar o serviço das catracas",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            TextoResultado.Text = "Nada foi gravado. O serviço segue rodando com a configuração anterior.";
+            return;
+        }
+
         var dados = Ler();
 
         try
@@ -300,6 +316,20 @@ public partial class JanelaDoAssistente : Window
         catch (Exception erro) when (erro is ArgumentException or IOException or UnauthorizedAccessException)
         {
             TextoResultado.Text = $"Não foi possível gravar: {erro.Message}";
+        }
+    }
+
+    private static bool ServicoRodando()
+    {
+        try
+        {
+            using var servico = new ServiceController(NomeDoServico);
+            return servico.Status is not ServiceControllerStatus.Stopped;
+        }
+        catch (InvalidOperationException)
+        {
+            // Serviço não instalado (ou sem permissão para consultar): não há o que interromper.
+            return false;
         }
     }
 

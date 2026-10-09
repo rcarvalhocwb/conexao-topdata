@@ -99,4 +99,25 @@ public sealed class CopiaDeSegurancaTests : IDisposable
         comando.CommandText = sql;
         return comando.ExecuteScalar();
     }
+
+    /// <summary>
+    /// Achado E10-7 do docs/41: a migração rodava antes de qualquer cópia, e voltar de versão exigia a
+    /// cópia de até 6 h antes. O serviço pergunta o que falta numa base já migrada e copia antes.
+    /// </summary>
+    [Fact]
+    public void Pendentes_so_aparecem_numa_base_ja_migrada_que_esta_atras()
+    {
+        using var nova = new BancoTemporario();
+        Assert.Empty(new Migrator(nova.Fabrica).PendentesNumaBaseExistente());
+
+        // A base deste teste já está migrada: nada falta.
+        var migrador = new Migrator(_banco.Fabrica);
+        Assert.Empty(migrador.PendentesNumaBaseExistente());
+
+        // Uma versão mais nova traz uma migração que esta base não tem.
+        var ultima = Migrator.Disponiveis()[^1];
+        Executar($"DELETE FROM schema_version WHERE nome = '{ultima}';");
+
+        Assert.Equal([ultima], migrador.PendentesNumaBaseExistente());
+    }
 }

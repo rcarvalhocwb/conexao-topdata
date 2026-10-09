@@ -63,7 +63,7 @@
           <StackPanel>
             <rz:RayzerSectionHeader Titulo="Liberação manual" />
             <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Margin="0,0,0,10"
-                       Text="Libera um giro no sentido de entrada, sem ingresso. Não entra na contagem de ingressos: aparece só aqui, com o motivo. Se a catraca estiver ocupada por mais de 15 segundos, o pedido não é executado." />
+                       Text="Libera um giro sem ingresso, no sentido que o mapa de giro desta catraca define para a liberação manual (entrada, no padrão). Não entra na contagem de ingressos: aparece só aqui, com o motivo. Se a catraca estiver ocupada por mais de 15 segundos, o pedido não é executado." />
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Motivo (obrigatório)" />
             <TextBox MaxLength="200" Text="{Binding Motivo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Motivo da liberação" />
             <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Left" Margin="0,12,0,0"
@@ -109,9 +109,20 @@
             <rz:RayzerSectionHeader Titulo="Manutenção" />
             <WrapPanel>
               <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Acertar o _relógio agora" Command="{Binding AcertarRelogio}" />
-              <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Refazer a _conexão" Command="{Binding RefazerConexao}"
+              <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Refazer a _conexão…" Command="{Binding RefazerConexao}"
                       ToolTip="A catraca reconecta e recebe a configuração completa de novo. Fica alguns segundos sem atender." />
             </WrapPanel>
+            <Border Margin="0,10,0,0" Padding="12,10" CornerRadius="{DynamicResource Rayzer.Radius.Md}"
+                    Background="{DynamicResource Rayzer.Warning.Subtle}"
+                    Visibility="{Binding ConfirmandoRefazerConexao, Converter={StaticResource BoolParaVisibilidade}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding TextoDaConfirmacaoDeRefazerConexao}" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Style="{StaticResource Rayzer.Button.Primary}" Content="Confirmar e refazer" Command="{Binding ConfirmarRefazerConexao}" />
+                  <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Cancelar" Margin="10,0,0,0" Command="{Binding CancelarRefazerConexao}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </Border>
       </Grid>

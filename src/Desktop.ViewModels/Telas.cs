@@ -220,13 +220,41 @@ public sealed class PainelAoVivoViewModel : TelaBase
             }
         }).ConfigureAwait(true);
 
+        ServicoRespondeu = ok;
+
         if (!ok)
         {
             Estado = Estado.ComFalhaDeComunicacao(Mensagem, Relogio(), MensagemDeFalha.TokenSemPermissao);
             ServicoResumo = "Sem resposta";
             ServicoSinal = Sinal.Problema;
+
+            // Sinais de antes da queda não valem (achado E6-3 do docs/41): "2/2 online" verde e
+            // "Atendendo" nos cartões, com o serviço sem resposta, eram falsos.
+            (CatracasResumo, CatracasSinal) = ("Sem informação", Sinal.Neutro);
+            (NuvemResumo, NuvemSinal) = ("Sem informação", Sinal.Neutro);
+            Catracas = SemCatracas.SemNoticia(Catracas);
         }
     }
+
+    private bool _servicoRespondeu = true;
+
+    /// <summary>A última atualização teve resposta do serviço.</summary>
+    public bool ServicoRespondeu
+    {
+        get => _servicoRespondeu;
+        private set
+        {
+            if (Definir(ref _servicoRespondeu, value))
+            {
+                Avisar(nameof(TituloSemCatracas));
+                Avisar(nameof(TextoSemCatracas));
+            }
+        }
+    }
+
+    public string TituloSemCatracas => SemCatracas.Titulo(ServicoRespondeu);
+
+    public string TextoSemCatracas => SemCatracas.Texto(ServicoRespondeu);
 
     /// <summary>
     /// Recebe os acessos ao vivo até o cancelamento. Se a conexão cair, espera e reconecta.
@@ -380,14 +408,41 @@ public sealed class CatracasViewModel : TelaBase
 
     public IReadOnlyList<LinhaDeCatraca> Catracas { get => _catracas; private set => Definir(ref _catracas, value); }
 
-    public override Task AtualizarAsync(CancellationToken cancelamento = default) =>
-        Tentar(async () =>
+    private bool _servicoRespondeu = true;
+
+    /// <summary>A última atualização teve resposta do serviço.</summary>
+    public bool ServicoRespondeu
+    {
+        get => _servicoRespondeu;
+        private set
+        {
+            if (Definir(ref _servicoRespondeu, value))
+            {
+                Avisar(nameof(TituloSemCatracas));
+                Avisar(nameof(TextoSemCatracas));
+            }
+        }
+    }
+
+    public string TituloSemCatracas => SemCatracas.Titulo(ServicoRespondeu);
+
+    public string TextoSemCatracas => SemCatracas.Texto(ServicoRespondeu);
+
+    public override async Task AtualizarAsync(CancellationToken cancelamento = default)
+    {
+        ServicoRespondeu = await Tentar(async () =>
         {
             var lista = await Cliente.ListarEquipamentosAsync(new ListarEquipamentosRequest(), cancellationToken: cancelamento);
             var agora = Relogio();
             Catracas = [.. lista.Equipamentos.Select(e => PainelAoVivoViewModel.Linha(e, agora))];
             Mensagem = Catracas.Count == 0 ? "Nenhuma catraca cadastrada na instalação." : string.Empty;
-        });
+        }).ConfigureAwait(true);
+
+        if (!ServicoRespondeu)
+        {
+            Catracas = SemCatracas.SemNoticia(Catracas);
+        }
+    }
 }
 
 /// <summary>Acessos: histórico com filtros.</summary>
