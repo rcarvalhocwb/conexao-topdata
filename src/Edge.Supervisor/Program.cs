@@ -305,6 +305,23 @@ if (usuariosDoSistema.GarantirAdministradorPadrao(DateTimeOffset.UtcNow))
 
 var sessoesDoPainel = new SessoesDoPainel();
 
+// Cadastro local de pessoas (docs/43): os dados pessoais são cifrados com uma chave do cofre (DPAPI, só
+// no Windows). Sem a chave, o cadastro fica fora e o painel diz por quê; a catraca continua decidindo,
+// porque a decisão não lê dado pessoal.
+CadastroDePessoas? cadastroDePessoas = null;
+if (OperatingSystem.IsWindows())
+{
+    try
+    {
+        cadastroDePessoas = new CadastroDePessoas(fabrica, ChaveDosDadosPessoais.Obter(new CofreDpapi(InstalacaoLocal.PastaDosSegredos)));
+    }
+    catch (Exception erro) when (erro is InvalidOperationException or IOException or UnauthorizedAccessException
+        or System.Security.Cryptography.CryptographicException)
+    {
+        Console.Error.WriteLine($"Chave dos dados pessoais indisponível ({erro.GetType().Name}): o cadastro de pessoas fica fora. {erro.Message}");
+    }
+}
+
 SincronizacaoComANuvem? sincronizacao = null;
 if (configuracao.Nuvem is { } configuracaoDaNuvem)
 {
@@ -393,7 +410,9 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     filaDeSaida: new FilaDeSaidaSqlite(fabrica),
     estornos: new EstornosDeUso(fabrica),
     usuarios: usuariosDoSistema,
-    sessoes: sessoesDoPainel));
+    sessoes: sessoesDoPainel,
+    pessoas: cadastroDePessoas,
+    parametrosDoCadastro: new ParametrosDoCadastro(fabrica)));
 
 // Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
 construtor.Services.AddGrpc(o =>

@@ -72,6 +72,25 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["EstornarUso"] = Permissoes.AcessosEstornar,
         ["SimularLeitura"] = Permissoes.SimuladorUsar,
 
+        // Cadastro local de pessoas (docs/43). Os parâmetros não têm dado pessoal: basta estar logado.
+        ["BuscarPessoas"] = Permissoes.PessoasVer,
+        ["ObterPessoa"] = Permissoes.PessoasVer,
+        ["GravarPessoa"] = Permissoes.PessoasEditar,
+        ["AdicionarCredencial"] = Permissoes.PessoasEditar,
+        ["MudarSituacaoDaPessoa"] = Permissoes.PessoasBloquear,
+        ["MudarSituacaoDaCredencial"] = Permissoes.PessoasBloquear,
+        ["ObterParametrosDoCadastro"] = null,
+        ["GravarEmpresa"] = Permissoes.CadastroParametros,
+        ["GravarSala"] = Permissoes.CadastroParametros,
+        ["GravarHorario"] = Permissoes.CadastroParametros,
+        ["ExcluirHorario"] = Permissoes.CadastroParametros,
+        ["GravarFeriado"] = Permissoes.CadastroParametros,
+        ["ExcluirFeriado"] = Permissoes.CadastroParametros,
+        ["GravarPerfil"] = Permissoes.CadastroParametros,
+        ["ListarCatracasFechadas"] = Permissoes.OperacaoVer,
+        ["FecharCatraca"] = Permissoes.CatracaFechar,
+        ["AbrirCatraca"] = Permissoes.CatracaFechar,
+
         // Administração.
         ["ListarUsuarios"] = Permissoes.UsuariosGerenciar,
         ["GravarUsuario"] = Permissoes.UsuariosGerenciar,

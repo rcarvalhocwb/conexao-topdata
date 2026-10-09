@@ -91,6 +91,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="estornos">Usos sem passagem e o estorno pelo operador (E1-05).</param>
     /// <param name="usuarios">Usuários do sistema (ADR-0026). Sem eles, o login fica desligado (ferramentas e testes).</param>
     /// <param name="sessoes">Sessões abertas pelo login.</param>
+    /// <param name="pessoas">Cadastro local de pessoas (docs/43); nulo sem a chave dos dados pessoais.</param>
+    /// <param name="parametrosDoCadastro">Empresas, salas, horários, feriados e perfis do cadastro.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -113,7 +115,9 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         Access.Infrastructure.SQLite.FilaDeSaidaSqlite? filaDeSaida = null,
         Access.Infrastructure.SQLite.EstornosDeUso? estornos = null,
         Access.Infrastructure.SQLite.UsuariosDoSistema? usuarios = null,
-        SessoesDoPainel? sessoes = null)
+        SessoesDoPainel? sessoes = null,
+        Access.Infrastructure.SQLite.CadastroDePessoas? pessoas = null,
+        Access.Infrastructure.SQLite.ParametrosDoCadastro? parametrosDoCadastro = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -138,6 +142,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _estornos = estornos;
         _usuarios = usuarios;
         _sessoes = sessoes ?? new SessoesDoPainel();
+        _pessoas = pessoas;
+        _parametrosDoCadastro = parametrosDoCadastro;
     }
 
     private readonly Access.Infrastructure.SQLite.FilaDeSaidaSqlite? _filaDeSaida;

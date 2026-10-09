@@ -21,6 +21,12 @@ public static class CodigosDePermissao
     public const string AcessosEstornar = "acessos.estornar";
     public const string SimuladorUsar = "simulador.usar";
     public const string UsuariosGerenciar = "usuarios.gerenciar";
+    public const string PessoasVer = "pessoas.ver";
+    public const string PessoasVerDados = "pessoas.ver_dados";
+    public const string PessoasEditar = "pessoas.editar";
+    public const string PessoasBloquear = "pessoas.bloquear";
+    public const string CadastroParametros = "cadastro.parametros";
+    public const string CatracaFechar = "catraca.fechar";
 }
 
 /// <summary>Em que ponto está o login do painel.</summary>

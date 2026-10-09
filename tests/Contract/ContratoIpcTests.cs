@@ -60,6 +60,39 @@ public sealed partial class ContratoIpcTests
         Assert.Empty(problemas);
     }
 
+    /// <summary>
+    /// O código de acesso em claro só existe nos pedidos (painel → serviço): consultar, simular e dar uma
+    /// credencial a uma pessoa (docs/43). Nas respostas, só a máscara; os outros campos "codigo" são de
+    /// permissão e de campo do formulário, não de acesso.
+    /// </summary>
+    [Fact]
+    public void Codigo_em_claro_so_existe_nos_pedidos()
+    {
+        string[] permitidos = ["codigo_mascarado", "PermissaoDoCatalogo.codigo", "CampoDoFormulario.codigo"];
+        var problemas = new List<string>();
+        foreach (Match mensagem in Regex.Matches(Proto(), @"message\s+(\w+)\s*\{(.*?)\n\}", RegexOptions.Singleline))
+        {
+            var nome = mensagem.Groups[1].Value;
+            if (nome.EndsWith("Request", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // Só texto: "codigos" de ProvedorCadastrado, por exemplo, é uma contagem.
+            foreach (Match campo in Regex.Matches(mensagem.Groups[2].Value, @"^\s*(?:repeated\s+)?string\s+(\w+)\s*=\s*\d+", RegexOptions.Multiline))
+            {
+                var nomeDoCampo = campo.Groups[1].Value;
+                if (nomeDoCampo.Contains("codigo", StringComparison.Ordinal)
+                    && !permitidos.Contains(nomeDoCampo) && !permitidos.Contains($"{nome}.{nomeDoCampo}"))
+                {
+                    problemas.Add($"{nome}.{nomeDoCampo}");
+                }
+            }
+        }
+
+        Assert.Empty(problemas);
+    }
+
     [Fact]
     public void A_credencial_so_aparece_mascarada()
     {

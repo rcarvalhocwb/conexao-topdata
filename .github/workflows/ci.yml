@@ -82,6 +82,21 @@ jobs:
       - name: Testar
         run: dotnet test --no-build --configuration Release --logger "trx" --logger "console;verbosity=normal" --results-directory TestResults
 
+      # O log da tarefa é longo e quem lê pela API recebe só o fim: as falhas se repetem aqui, no fim,
+      # com o nome do teste e a mensagem, lidas dos TRX.
+      - name: Resumir as falhas dos testes
+        if: failure()
+        shell: pwsh
+        run: |
+          foreach ($arquivo in Get-ChildItem TestResults -Recurse -Filter *.trx) {
+            [xml]$trx = Get-Content $arquivo.FullName -Raw
+            foreach ($r in $trx.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' }) {
+              Write-Host "FALHOU: $($r.testName)"
+              Write-Host ($r.Output.ErrorInfo.Message | Out-String)
+              Write-Host (($r.Output.ErrorInfo.StackTrace | Out-String) -split "`n" | Select-Object -First 8 | Out-String)
+            }
+          }
+
       - name: Guardar os resultados dos testes
         if: always()
         uses: actions/upload-artifact@v4

@@ -28,6 +28,29 @@ service EdgeControl {
   rpc ListarPapeis(ListarPapeisRequest) returns (ListarPapeisResponse);
   rpc GravarPapel(GravarPapelRequest) returns (GravarPapelResponse);
 
+  // Cadastro local de pessoas (docs/43, ADR-0026). Só local, nada vai para a nuvem. O código de uma
+  // credencial só vai do painel ao serviço (AdicionarCredencialRequest.codigo); as respostas trazem o
+  // código mascarado. Documento e contato vêm mascarados para quem não tem "pessoas.ver_dados".
+  rpc BuscarPessoas(BuscarPessoasRequest) returns (BuscarPessoasResponse);
+  rpc ObterPessoa(ObterPessoaRequest) returns (FichaDaPessoa);
+  rpc GravarPessoa(GravarPessoaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc MudarSituacaoDaPessoa(MudarSituacaoDaPessoaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc AdicionarCredencial(AdicionarCredencialRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc MudarSituacaoDaCredencial(MudarSituacaoDaCredencialRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ObterParametrosDoCadastro(ObterParametrosDoCadastroRequest) returns (ParametrosDoCadastroDePessoas);
+  rpc GravarEmpresa(GravarEmpresaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarSala(GravarSalaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarHorario(GravarHorarioRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ExcluirHorario(ExcluirHorarioRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarFeriado(GravarFeriadoRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ExcluirFeriado(ExcluirFeriadoRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarPerfil(GravarPerfilRequest) returns (ResultadoDoCadastroDePessoas);
+
+  // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
+  rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
+  rpc FecharCatraca(FecharCatracaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc AbrirCatraca(AbrirCatracaRequest) returns (ResultadoDoCadastroDePessoas);
+
   // Estado geral do serviço, para o painel.
   rpc ObterEstado(ObterEstadoRequest) returns (ObterEstadoResponse);
 
@@ -1175,4 +1198,228 @@ message GravarPapelResponse {
   bool gravado = 1;
   string id = 2;
   repeated string problemas = 3;
+}
+
+// --- Cadastro local de pessoas (docs/43, ADR-0026) ---
+
+message PessoaDoCadastro {
+  string id = 1;                       // vazio: pessoa nova
+  string perfil_id = 2;
+  string nome_completo = 3;
+  string nome_social = 4;
+  string tipo_do_documento = 5;        // cpf, rg, cnh, passaporte, rne, outro
+  string documento = 6;                // mascarado na resposta sem pessoas.ver_dados
+  string nascimento = 7;               // AAAA-MM-DD; vazio na resposta sem pessoas.ver_dados
+  string telefone = 8;                 // mascarado na resposta sem pessoas.ver_dados
+  string email = 9;                    // mascarado na resposta sem pessoas.ver_dados
+  string veiculo = 10;                 // mascarado na resposta sem pessoas.ver_dados
+  string responsavel = 11;             // vazio na resposta sem pessoas.ver_dados
+  string empresa_id = 12;
+  string sala_id = 13;
+  string anfitriao_id = 14;
+  string departamento = 15;
+  string cargo = 16;
+  string matricula = 17;
+  string observacao = 18;
+  google.protobuf.Timestamp valido_de = 19;
+  google.protobuf.Timestamp valido_ate = 20;
+  int32 tabela_de_horario = 21;        // 0: a do perfil
+  int32 limite_diario = 22;            // 0: o do perfil
+  bool atendimento_prioritario = 23;
+  repeated int32 catracas = 24;        // vazia: as do perfil
+}
+
+message CredencialDaPessoa {
+  string id = 1;
+  string tipo = 2;                     // crachá de proximidade, qr ou senha de teclado
+  string codigo_mascarado = 3;
+  string situacao = 4;                 // ativa, bloqueada, perdida, devolvida
+  string motivo = 5;
+  google.protobuf.Timestamp valido_de = 6;
+  google.protobuf.Timestamp valido_ate = 7;
+  google.protobuf.Timestamp criada_em = 8;
+}
+
+message FichaDaPessoa {
+  PessoaDoCadastro pessoa = 1;
+  string situacao = 2;                 // ativo, bloqueado, inativo
+  string motivo_da_situacao = 3;
+  google.protobuf.Timestamp criada_em = 4;
+  google.protobuf.Timestamp atualizada_em = 5;
+  repeated CredencialDaPessoa credenciais = 6;
+  bool dados_completos = 7;            // falso: documento e contato vieram mascarados
+}
+
+message LinhaDePessoa {
+  string id = 1;
+  string nome = 2;
+  string perfil = 3;
+  string empresa = 4;
+  string sala = 5;
+  string situacao = 6;
+  google.protobuf.Timestamp valido_ate = 7;
+  int32 credenciais = 8;
+}
+
+message BuscarPessoasRequest {
+  string texto = 1;                    // nome (partes de 3 letras ou mais), documento ou código
+  string perfil_id = 2;
+  string empresa_id = 3;
+  string situacao = 4;
+  int32 limite = 5;
+}
+
+message BuscarPessoasResponse {
+  repeated LinhaDePessoa pessoas = 1;
+}
+
+message ObterPessoaRequest {
+  string id = 1;
+}
+
+message GravarPessoaRequest {
+  PessoaDoCadastro pessoa = 1;
+}
+
+message MudarSituacaoDaPessoaRequest {
+  string id = 1;
+  string situacao = 2;
+  string motivo = 3;
+}
+
+message AdicionarCredencialRequest {
+  string pessoa_id = 1;
+  string tipo = 2;
+  string codigo = 3;                   // único lugar em que o código vai em claro: do painel ao serviço
+  google.protobuf.Timestamp valido_de = 4;
+  google.protobuf.Timestamp valido_ate = 5;
+}
+
+message MudarSituacaoDaCredencialRequest {
+  string id = 1;
+  string situacao = 2;
+  string motivo = 3;
+}
+
+message ResultadoDoCadastroDePessoas {
+  bool gravado = 1;
+  string id = 2;
+  repeated string problemas = 3;
+  repeated string avisos = 4;
+}
+
+message EmpresaDoCadastro {
+  string id = 1;
+  string nome = 2;
+  string cnpj = 3;
+  bool ativa = 4;
+}
+
+message SalaDoCadastro {
+  string id = 1;
+  string nome = 2;
+  string empresa_id = 3;
+  string andar = 4;
+  string bloco = 5;
+  bool ativa = 6;
+}
+
+message FaixaDoHorario {
+  int32 dia = 1;                       // 0 domingo ... 6 sábado, 7 feriado
+  int32 inicio = 2;                    // minutos desde a meia-noite (Brasília)
+  int32 fim = 3;                       // exclusivo
+}
+
+message HorarioDoCadastro {
+  int32 id = 1;                        // 0: o primeiro número livre
+  string nome = 2;
+  repeated FaixaDoHorario faixas = 3;
+}
+
+message FeriadoDoCadastro {
+  string dia = 1;                      // AAAA-MM-DD
+  string nome = 2;
+}
+
+message PerfilDoCadastro {
+  string id = 1;
+  string nome = 2;
+  bool pronto = 3;
+  repeated string campos_obrigatorios = 4;
+  bool exige_anfitriao = 5;
+  int32 dias_de_validade = 6;          // -1: sem validade padrão
+  int32 tabela_de_horario = 7;         // 0: sem restrição
+  int32 limite_diario = 8;             // 0: sem limite
+  int32 dias_de_retencao = 9;
+  bool ativo = 10;
+  repeated int32 catracas = 11;        // vazia: todas
+}
+
+message CampoDoFormulario {
+  string codigo = 1;
+  string rotulo = 2;
+}
+
+message ObterParametrosDoCadastroRequest {}
+
+message ParametrosDoCadastroDePessoas {
+  repeated PerfilDoCadastro perfis = 1;
+  repeated EmpresaDoCadastro empresas = 2;
+  repeated SalaDoCadastro salas = 3;
+  repeated HorarioDoCadastro horarios = 4;
+  repeated FeriadoDoCadastro feriados = 5;
+  repeated CampoDoFormulario campos = 6;
+  repeated string tipos_de_documento = 7;
+  repeated string tipos_de_codigo = 8;
+}
+
+message GravarEmpresaRequest {
+  EmpresaDoCadastro empresa = 1;
+}
+
+message GravarSalaRequest {
+  SalaDoCadastro sala = 1;
+}
+
+message GravarHorarioRequest {
+  HorarioDoCadastro horario = 1;
+}
+
+message ExcluirHorarioRequest {
+  int32 id = 1;
+}
+
+message GravarFeriadoRequest {
+  FeriadoDoCadastro feriado = 1;
+}
+
+message ExcluirFeriadoRequest {
+  string dia = 1;
+}
+
+message GravarPerfilRequest {
+  PerfilDoCadastro perfil = 1;
+}
+
+message CatracaFechadaNoCadastro {
+  int32 inner = 1;
+  google.protobuf.Timestamp em = 2;
+  string por = 3;
+  string motivo = 4;
+}
+
+message ListarCatracasFechadasRequest {}
+
+message ListarCatracasFechadasResponse {
+  repeated CatracaFechadaNoCadastro catracas = 1;
+}
+
+message FecharCatracaRequest {
+  int32 inner = 1;
+  string motivo = 2;
+}
+
+message AbrirCatracaRequest {
+  int32 inner = 1;
+  string motivo = 2;
 }

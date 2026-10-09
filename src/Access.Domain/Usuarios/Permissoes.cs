@@ -26,6 +26,12 @@ public static class Permissoes
     public const string AcessosEstornar = "acessos.estornar";
     public const string SimuladorUsar = "simulador.usar";
     public const string UsuariosGerenciar = "usuarios.gerenciar";
+    public const string PessoasVer = "pessoas.ver";
+    public const string PessoasVerDados = "pessoas.ver_dados";
+    public const string PessoasEditar = "pessoas.editar";
+    public const string PessoasBloquear = "pessoas.bloquear";
+    public const string CadastroParametros = "cadastro.parametros";
+    public const string CatracaFechar = "catraca.fechar";
 
     /// <summary>Todas, na ordem da tela.</summary>
     public static IReadOnlyList<Permissao> Todas { get; } =
@@ -40,6 +46,12 @@ public static class Permissoes
         new(SincronizacaoOperar, "Configuração", "Reenviar à nuvem o que ela recusou"),
         new(AcessosEstornar, "Acessos", "Estornar um uso sem passagem"),
         new(SimuladorUsar, "Acessos", "Usar o simulador de leituras"),
+        new(CatracaFechar, "Catracas", "Fechar e reabrir uma catraca (ninguém passa enquanto fechada)"),
+        new(PessoasVer, "Pessoas", "Ver e buscar pessoas e credenciais (documento e contato mascarados)"),
+        new(PessoasVerDados, "Pessoas", "Ver documento, contato e nascimento completos"),
+        new(PessoasEditar, "Pessoas", "Cadastrar e alterar pessoas e dar credenciais"),
+        new(PessoasBloquear, "Pessoas", "Bloquear, desbloquear e inativar pessoas e credenciais"),
+        new(CadastroParametros, "Pessoas", "Empresas, salas, horários, feriados e perfis"),
         new(UsuariosGerenciar, "Administração", "Criar usuários, papéis e permissões"),
     ];
 

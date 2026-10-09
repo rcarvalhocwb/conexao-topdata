@@ -257,11 +257,21 @@ public sealed class CadastroDePessoasTests : IDisposable
         Assert.Empty(_pessoas.Buscar("Silva"));
 
         // Nenhum dado pessoal em claro nos arquivos da base (nem no WAL).
-        var bytes = Directory.GetFiles(Path.GetDirectoryName(_banco.Caminho)!).SelectMany(File.ReadAllBytes).ToArray();
+        // No Windows, a conexão no pool segura os arquivos: solta antes e lê sem exigir exclusividade.
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        var bytes = Directory.GetFiles(Path.GetDirectoryName(_banco.Caminho)!).SelectMany(LerArquivo).ToArray();
         foreach (var claro in new[] { "Joaquina", "Gonçalves", "52998224725", "529.982.247-25", "98888", "exemplo.com" })
         {
             Assert.DoesNotContain(claro, Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
         }
+    }
+
+    private static byte[] LerArquivo(string arquivo)
+    {
+        using var fluxo = new FileStream(arquivo, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var memoria = new MemoryStream();
+        fluxo.CopyTo(memoria);
+        return memoria.ToArray();
     }
 
     [Fact]
