@@ -132,7 +132,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal("1 de 2 catraca(s) atendendo", painel.Resumo);
         Assert.Equal(("Atendendo", Sinal.Bom), (painel.Catracas[0].Situacao, painel.Catracas[0].Sinal));
         Assert.Equal("Aguardando a catraca conectar", painel.Catracas[1].Situacao);
-        Assert.StartsWith("Nuvem: sem sincronização", painel.Internet, StringComparison.Ordinal);
+        // Sem configuração da nuvem nesta máquina: o painel diz isso, não "sem sincronização".
+        Assert.Contains("Nuvem: não configurada nesta máquina", painel.Internet, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -483,7 +484,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.Equal(("Operacional", Sinal.Bom), (painel.ServicoResumo, painel.ServicoSinal));
         Assert.Equal(("1/2 online", Sinal.Atencao), (painel.CatracasResumo, painel.CatracasSinal));
-        Assert.Equal(("Sem sincronização", Sinal.Neutro), (painel.NuvemResumo, painel.NuvemSinal));
+        Assert.Equal(("Não configurada", Sinal.Neutro), (painel.NuvemResumo, painel.NuvemSinal));
 
         // Sem serviço: o bloco do serviço diz na hora, sem esperar outra tela.
         var semServico = new PainelAoVivoViewModel(Cliente(TransporteLocal.EnderecoPadrao($"inexistente-{Guid.NewGuid():N}")));

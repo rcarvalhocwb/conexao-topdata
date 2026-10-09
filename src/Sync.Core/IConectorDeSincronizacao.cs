@@ -49,11 +49,86 @@ public enum ResultadoDoEnvio
     FalhaPermanente,
 }
 
+/// <summary>
+/// O que deu errado, em termos que o painel entende. Separa "a internet caiu" de "a nuvem recusou
+/// a credencial" (P0-02): só a primeira diz que não há internet.
+/// </summary>
+public enum TipoDeFalha
+{
+    /// <summary>Não houve falha.</summary>
+    Nenhuma,
+
+    /// <summary>
+    /// Outra causa: o conector explodiu, ou a resposta não diz nada sobre a rede. Não prova
+    /// nada sobre a internet.
+    /// </summary>
+    Outra,
+
+    /// <summary>
+    /// O destino respondeu, com 5xx, 408, 425 ou 429. A rede está de pé; o destino está
+    /// sobrecarregado ou fora.
+    /// </summary>
+    Servidor,
+
+    /// <summary>
+    /// Não houve resposta: DNS, recusa de conexão, TLS, tempo esgotado. Prova falta de
+    /// conectividade.
+    /// </summary>
+    Rede,
+
+    /// <summary>
+    /// O destino respondeu 401 ou 403: a credencial desta borda foi recusada. A internet
+    /// funciona; quem precisa agir é quem guarda o segredo.
+    /// </summary>
+    Autenticacao,
+}
+
+/// <summary>Regras de tipo de falha, compartilhadas pelos conectores e pela sincronização.</summary>
+public static class TipoDeFalhaHttp
+{
+    /// <summary>Tipo de uma resposta HTTP de erro, pelo código de situação.</summary>
+    public static TipoDeFalha DeStatus(int codigo) => codigo switch
+    {
+        401 or 403 => TipoDeFalha.Autenticacao,
+        408 or 423 or 425 or 429 => TipoDeFalha.Servidor,
+        >= 500 and <= 599 => TipoDeFalha.Servidor,
+        _ => TipoDeFalha.Outra,
+    };
+
+    /// <summary>
+    /// Tipo de uma exceção de leitura ou envio. Sem código de situação, falha de rede; com ele, o
+    /// código decide.
+    /// </summary>
+    public static TipoDeFalha DeExcecao(Exception erro) => erro switch
+    {
+        HttpRequestException { StatusCode: { } status } => DeStatus((int)status),
+        HttpRequestException => TipoDeFalha.Rede,
+        TaskCanceledException => TipoDeFalha.Rede,
+        _ => TipoDeFalha.Outra,
+    };
+
+    /// <summary>
+    /// O mais grave de dois: credencial recusada pede ação humana; depois, rede; depois, destino;
+    /// depois o resto.
+    /// </summary>
+    public static TipoDeFalha MaisGrave(TipoDeFalha a, TipoDeFalha b) => Posicao(a) >= Posicao(b) ? a : b;
+
+    private static int Posicao(TipoDeFalha tipo) => tipo switch
+    {
+        TipoDeFalha.Autenticacao => 4,
+        TipoDeFalha.Rede => 3,
+        TipoDeFalha.Servidor => 2,
+        TipoDeFalha.Outra => 1,
+        _ => 0,
+    };
+}
+
 /// <summary>Resposta do destino para um item do lote.</summary>
 /// <param name="Id">O mesmo <see cref="ItemDeSaida.Id"/> enviado.</param>
 /// <param name="Resultado">Veredito.</param>
 /// <param name="Erro">Detalhe para diagnóstico. Nunca deve conter dado sensível.</param>
-public sealed record RespostaDeItem(string Id, ResultadoDoEnvio Resultado, string? Erro = null);
+/// <param name="Tipo">Por que falhou, quando falhou.</param>
+public sealed record RespostaDeItem(string Id, ResultadoDoEnvio Resultado, string? Erro = null, TipoDeFalha Tipo = TipoDeFalha.Nenhuma);
 
 /// <summary>
 /// Ponte para um sistema externo: bilheteria, ERP de academia, aplicativo de condomínio,

@@ -48,7 +48,11 @@ public sealed record EstadoDoPainel
 
     public int WorkersAtivos { get; init; }
 
+    /// <summary>Catracas físicas atendendo (P0-01). Nunca inclui simuladas.</summary>
     public int EquipamentosConectados { get; init; }
+
+    /// <summary>Catracas simuladas ativas, separadas das físicas.</summary>
+    public int CatracasSimuladasAtivas { get; init; }
 
     public long OutboxPendente { get; init; }
 
@@ -101,7 +105,7 @@ public sealed record EstadoDoPainel
             saude = SaudeDoPainel.Acao;
             mensagem = "Instalação ainda não configurada — abra o Assistente de configuração";
         }
-        else if (resposta.EquipamentosConectados == 0)
+        else if (resposta.EquipamentosConectados == 0 && resposta.CatracasSimuladasAtivas == 0)
         {
             saude = SaudeDoPainel.Acao;
             mensagem = "Nenhuma catraca conectada — verifique a rede e a alimentação";
@@ -132,6 +136,7 @@ public sealed record EstadoDoPainel
                 $"versão {resposta.Versao} · nível {resposta.Nivel} · outbox {resposta.OutboxPendente}"),
             WorkersAtivos = resposta.WorkersAtivos,
             EquipamentosConectados = resposta.EquipamentosConectados,
+            CatracasSimuladasAtivas = resposta.CatracasSimuladasAtivas,
             OutboxPendente = resposta.OutboxPendente,
             AtualizadoEm = em,
         };

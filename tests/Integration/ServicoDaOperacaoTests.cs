@@ -359,7 +359,7 @@ public sealed class ServicoDaOperacaoTests
     {
         using var c = new Cenario();
         c.Nuvem.Configurada = true;
-        c.Nuvem.RegistrarFalha("cartões: HTTP 503");
+        c.Nuvem.RegistrarFalha("cartões: HTTP 503", Sync.Core.TipoDeFalha.Servidor, Agora);
 
         var sincronizacao = await c.Servico.ObterSincronizacao(new ObterSincronizacaoRequest(), null!);
         Assert.True(sincronizacao.Configurada);

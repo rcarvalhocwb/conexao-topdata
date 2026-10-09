@@ -185,30 +185,27 @@ public sealed class PainelAoVivoViewModel : TelaBase
             LiberadosUltimos5Minutos = estado.LiberadosUltimos5Minutos;
             PendentesDeEnvio = estado.OutboxPendente;
             Catracas = [.. lista.Equipamentos.Select(e => Linha(e, agora))];
-            Resumo = string.Create(
-                CultureInfo.CurrentCulture,
-                $"{estado.EquipamentosConectados} de {estado.EquipamentosCadastrados} catraca(s) atendendo");
-            Internet = estado.InternetDisponivel
-                ? $"Nuvem: sincronizado {Textos.Ha(estado.UltimaSincronizacao?.ToDateTimeOffset(), agora)}"
-                : estado.UltimaSincronizacao is null
-                    ? "Nuvem: sem sincronização — o acesso segue pela lista local deste computador"
-                    : $"Nuvem: sem internet desde {Textos.Ha(estado.UltimaSincronizacao.ToDateTimeOffset(), agora)} — o acesso segue pela lista local deste computador";
+            // Físicas e simuladas em contagens separadas: uma simulada nunca vira "atendendo" de catraca real.
+            var simuladas = estado.CatracasSimuladasAtivas;
+            Resumo = simuladas > 0
+                ? string.Create(CultureInfo.CurrentCulture, $"{estado.EquipamentosConectados} física(s) atendendo · {simuladas} simulada(s) ativa(s)")
+                : string.Create(CultureInfo.CurrentCulture, $"{estado.EquipamentosConectados} de {estado.EquipamentosCadastrados} catraca(s) atendendo");
+            var nuvem = Textos.Nuvem(estado.SituacaoDaNuvem, estado.UltimaSincronizacao?.ToDateTimeOffset(), agora);
+            Internet = $"{Textos.Internet(estado.SituacaoDaInternet)} · {nuvem.Texto} · {Textos.Fila(estado.SituacaoDaFila, estado.OutboxPendente)}";
             Mensagem = string.Empty;
 
             ServicoResumo = "Operacional";
             ServicoSinal = Sinal.Bom;
-            (CatracasResumo, CatracasSinal) = (estado.EquipamentosCadastrados, estado.EquipamentosConectados) switch
-            {
-                (0, _) => ("Nenhuma cadastrada", Sinal.Neutro),
-                (var total, var conectadas) when conectadas >= total => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Bom),
-                (var total, 0) => (string.Create(CultureInfo.InvariantCulture, $"0/{total} online"), Sinal.Problema),
-                (var total, var conectadas) => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Atencao),
-            };
-            (NuvemResumo, NuvemSinal) = estado.InternetDisponivel
-                ? ("Online", Sinal.Bom)
-                : estado.UltimaSincronizacao is null
-                    ? ("Sem sincronização", Sinal.Neutro)
-                    : ("Offline — catracas seguem", Sinal.Atencao);
+            (CatracasResumo, CatracasSinal) = simuladas > 0 && estado.EquipamentosConectados == 0
+                ? (string.Create(CultureInfo.InvariantCulture, $"{simuladas} simulada(s) ativa(s)"), Sinal.Atencao)
+                : (estado.EquipamentosCadastrados, estado.EquipamentosConectados) switch
+                {
+                    (0, _) => ("Nenhuma cadastrada", Sinal.Neutro),
+                    (var total, var conectadas) when conectadas >= total => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Bom),
+                    (var total, 0) => (string.Create(CultureInfo.InvariantCulture, $"0/{total} online"), Sinal.Problema),
+                    (var total, var conectadas) => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Atencao),
+                };
+            (NuvemResumo, NuvemSinal) = Textos.NuvemCurta(estado.SituacaoDaNuvem);
 
             // Lista vazia com acesso já contado: completa pelo que está gravado, sem esperar o
             // fluxo ao vivo conectar (ou sem ele, como na captura das telas).
