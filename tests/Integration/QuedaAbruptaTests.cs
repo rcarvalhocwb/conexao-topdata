@@ -134,7 +134,7 @@ public sealed class QuedaAbruptaTests
         await processo.WaitForExitAsync().ConfigureAwait(true);
 
         var fabrica = new SqliteConnectionFactory(banco.Caminho);
-        Assert.Equal("ok", fabrica.VerificarIntegridade());
+        Assert.Equal("ok", await IntegridadeDepoisDaQuedaAsync(fabrica).ConfigureAwait(true));
 
         using var conexao = fabrica.Abrir();
         long Contar(string sql) => SqliteConnectionFactory.Escalar<long>(conexao, sql);
@@ -159,6 +159,33 @@ public sealed class QuedaAbruptaTests
 
         // E no máximo uma passagem ficou sem o giro gravado: a que estava entre as duas gravações.
         Assert.InRange(tentativas - comGiro, 0, 1);
+    }
+
+    /// <summary>
+    /// A integridade da base logo depois do Kill no meio de uma gravação.
+    /// </summary>
+    /// <remarks>
+    /// No Windows, as travas de arquivo de um processo morto são soltas pelo sistema "num tempo que
+    /// depende dos recursos disponíveis" (documentação do LockFileEx). Abrir no mesmo instante pode dar
+    /// SQLITE_IOERR ou SQLITE_BUSY enquanto o sistema solta as travas do -shm. Tenta por até 15 s, só
+    /// nesses dois erros; qualquer outro, ou a base não abrir depois disso, reprova.
+    /// </remarks>
+    private static async Task<string> IntegridadeDepoisDaQuedaAsync(SqliteConnectionFactory fabrica)
+    {
+        var limite = Stopwatch.StartNew();
+        while (true)
+        {
+            try
+            {
+                return fabrica.VerificarIntegridade();
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException erro)
+                when (erro.SqliteErrorCode is 10 or 5 && limite.Elapsed < TimeSpan.FromSeconds(15))
+            {
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                await Task.Delay(250).ConfigureAwait(false);
+            }
+        }
     }
 
     private static async Task<int> EsperarConfirmacoesAsync(Process processo, int alvo, TimeSpan limite)
