@@ -15,6 +15,9 @@ public enum Tema
 
     /// <summary>Tema escuro operacional Rayzer.</summary>
     Escuro,
+
+    /// <summary>Alto contraste explícito, inclusive nas capturas e nos testes.</summary>
+    AltoContraste,
 }
 
 /// <summary>
@@ -135,7 +138,7 @@ public static class TemaRayzer
 
     private static string Resolver(Tema tema)
     {
-        if (SystemParameters.HighContrast)
+        if (SystemParameters.HighContrast || tema == Tema.AltoContraste)
         {
             return "AltoContraste";
         }

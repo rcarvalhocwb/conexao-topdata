@@ -780,6 +780,7 @@
   </Style>
 
   <Style x:Key="Rayzer.Nav.Item" TargetType="ListBoxItem">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="Foreground" Value="{DynamicResource Rayzer.Nav.Text}" />
     <Setter Property="FontSize" Value="{DynamicResource Rayzer.FontSize.Body}" />
     <Setter Property="Cursor" Value="Hand" />
@@ -793,7 +794,8 @@
               <!-- A linha do fluxo: marca o item ativo. -->
               <Border x:Name="Indicador" Width="3" HorizontalAlignment="Left" Margin="0,10" CornerRadius="2"
                       Background="{DynamicResource Rayzer.Nav.Indicator}" Visibility="Collapsed" />
-              <ContentPresenter Margin="14,0" VerticalAlignment="Center" />
+              <ContentPresenter Margin="14,0" VerticalAlignment="Center"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
             </Grid>
           </Border>
           <ControlTemplate.Triggers>
