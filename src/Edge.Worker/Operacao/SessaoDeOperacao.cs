@@ -247,7 +247,8 @@ public sealed class SessaoDeOperacao
             sequenciaOficial: sequenciaOficial,
             gravadorDeBilhetes: gravadorDeBilhetes,
             exibirTextoDoGiro: exibirTextoDoGiro,
-            aoDesistirDoGiro: decisor.DescartarPendente);
+            aoDesistirDoGiro: decisor.DescartarPendente,
+            aoFalharALiberacao: decisor.RegistrarCausaSemGiro);
 
         _laco = new DeviceGroupLoop(
             adapter,

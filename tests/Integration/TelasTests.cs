@@ -80,7 +80,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
             configuracoesDasCatracas: new ConfiguracoesDasCatracas(_banco.Fabrica),
             configuracaoPorCatraca: new ConfiguracaoPorCatraca(_banco.Fabrica),
             mapasDeGiro: new MapasDeGiro(_banco.Fabrica),
-            filaDeSaida: new FilaDeSaidaSqlite(_banco.Fabrica));
+            filaDeSaida: new FilaDeSaidaSqlite(_banco.Fabrica),
+            estornos: new EstornosDeUso(_banco.Fabrica));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"telas-{Guid.NewGuid():N}");
@@ -825,6 +826,45 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     /// Achado E5-2 do docs/41: o que ia para cartas mortas não tinha caminho de volta. Pela tela de
     /// Sincronização, com o nome de quem pede, volta para a fila e fica anotado na base.
     /// </summary>
+    [Fact]
+    public async Task Estorno_pela_tela_de_acessos_pede_nome_motivo_e_confirmacao_e_devolve_o_ingresso()
+    {
+        // Achado E1-05 do docs/41: consumido há 3 min, liberação que falhou.
+        var (uso, tentativa) = _repositorio.TentarUsar(Qr, "portao-1", "inner-1", DateTimeOffset.UtcNow.AddMinutes(-3));
+        Assert.True(uso.Liberou);
+        _repositorio.RegistrarLiberacaoFalhou(tentativa, DateTimeOffset.UtcNow.AddMinutes(-3), "a catraca não aceitou a liberação (erro de comunicação)");
+
+        var tela = new AcessosViewModel(Cliente());
+        await tela.AtualizarAsync();
+        var painel = tela.UsosSemPassagem;
+
+        var linha = Assert.Single(painel.Linhas);
+        Assert.StartsWith("Liberação falhou: a catraca não aceitou", linha.Causa, StringComparison.Ordinal);
+        Assert.DoesNotContain(Qr, linha.Codigo, StringComparison.Ordinal);
+        Assert.False(string.IsNullOrWhiteSpace(painel.Alcance));
+
+        // Sem seleção, nome e motivo, não abre a confirmação.
+        Assert.False(painel.PrepararEstorno.CanExecute(null));
+        painel.Selecionada = linha;
+        painel.Operador = "Ana";
+        Assert.False(painel.PrepararEstorno.CanExecute(null));
+        painel.Motivo = "não passou, conferido";
+        Assert.True(painel.PrepararEstorno.CanExecute(null));
+
+        // Dois passos: o primeiro só abre a confirmação, que diz o alcance.
+        Assert.False(painel.ConfirmarEstorno.CanExecute(null));
+        await painel.PrepararEstorno.ExecutarAsync();
+        Assert.True(painel.Confirmando);
+        Assert.Contains(painel.Alcance, painel.TextoDaConfirmacao, StringComparison.Ordinal);
+
+        await painel.ConfirmarEstorno.ExecutarAsync();
+
+        Assert.False(painel.Confirmando);
+        Assert.Contains("estornado", painel.Mensagem, StringComparison.Ordinal);
+        Assert.Empty(painel.Linhas);
+        Assert.True(_repositorio.TentarUsar(Qr, "portao-1", "inner-1", DateTimeOffset.UtcNow).Resultado.Liberou);
+    }
+
     [Fact]
     public async Task Reenviar_os_recusados_pela_tela_devolve_a_fila_e_anota_quem_pediu()
     {

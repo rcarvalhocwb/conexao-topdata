@@ -381,7 +381,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     sessao: sessaoDoServico,
     mapasDeGiro: new MapasDeGiro(fabrica),
     analisador: analisador,
-    filaDeSaida: new FilaDeSaidaSqlite(fabrica)));
+    filaDeSaida: new FilaDeSaidaSqlite(fabrica),
+    estornos: new EstornosDeUso(fabrica)));
 construtor.Services.AddGrpc(o => o.Interceptors.Add<InterceptadorDeToken>(token));
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();

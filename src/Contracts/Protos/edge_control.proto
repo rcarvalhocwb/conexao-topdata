@@ -42,6 +42,12 @@ service EdgeControl {
   // de corrigida a causa. Fica anotado quem pediu. Reenviar é seguro: a nuvem reconhece repetição.
   rpc ReenviarCartasMortas(ReenviarCartasMortasRequest) returns (ReenviarCartasMortasResponse);
 
+  // Achado E1-05 (docs/41), decisão do dono do produto: ingresso consumido cuja liberação falhou (ou
+  // que liberou e não girou) continua consumido; o operador vê a lista e estorna, com nome e motivo.
+  // O estorno vale nesta borda: o uso já enviado à nuvem e ao provedor fica como foi.
+  rpc ListarUsosSemPassagem(ListarUsosSemPassagemRequest) returns (ListarUsosSemPassagemResponse);
+  rpc EstornarUso(EstornarUsoRequest) returns (EstornarUsoResponse);
+
   // Modo simulação: "passa" um código numa catraca simulada. Recusado fora da simulação.
   rpc SimularLeitura(SimularLeituraRequest) returns (SimularLeituraResponse);
 
@@ -400,6 +406,38 @@ message ReenviarCartasMortasResponse {
   bool aceito = 1;
   int32 reenviadas = 2;
   string mensagem = 3;
+}
+
+message ListarUsosSemPassagemRequest {
+  bool somente_com_falha = 1;   // só os que a liberação falhou
+  int32 limite = 2;             // 0 = 100
+}
+
+message UsoSemPassagem {
+  string tentativa_id = 1;
+  google.protobuf.Timestamp em = 2;
+  string catraca = 3;               // device_id
+  string portao = 4;
+  string provedor = 5;
+  string categoria = 6;
+  string codigo_mascarado = 7;      // nunca o código inteiro
+  string falha_da_liberacao = 8;    // vazio: liberou e não veio o giro
+}
+
+message ListarUsosSemPassagemResponse {
+  repeated UsoSemPassagem usos = 1;
+  string alcance_do_estorno = 2;    // o que o estorno faz e não faz, para o operador ler
+}
+
+message EstornarUsoRequest {
+  string tentativa_id = 1;
+  string operador = 2;
+  string motivo = 3;
+}
+
+message EstornarUsoResponse {
+  bool estornado = 1;
+  repeated string problemas = 2;
 }
 
 message PacoteDeDiagnostico {

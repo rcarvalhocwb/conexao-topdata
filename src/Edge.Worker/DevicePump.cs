@@ -271,6 +271,7 @@ public sealed class DevicePump
     private readonly IGravadorDeBilhetes? _gravadorDeBilhetes;
     private readonly bool _exibirTextoDoGiro;
     private readonly Action<string>? _aoDesistirDoGiro;
+    private readonly Action<string, string>? _aoFalharALiberacao;
     private readonly TimeSpan _sondaDeVida;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
@@ -327,6 +328,12 @@ public sealed class DevicePump
     /// catraca vai para reconexão e o painel deixa de mostrá-la em operação. Padrão: 10 s. Se testar
     /// a conexão com a catraca em operação a atrapalha é <c>A_CONFIRMAR_COM_TOPDATA</c> (HIL-EVT-01).
     /// </param>
+    /// <param name="aoFalharALiberacao">
+    /// Chamado com o id do equipamento e a causa, logo antes de <paramref name="aoDesistirDoGiro"/>,
+    /// quando a liberação de um ingresso não saiu ou a comunicação caiu esperando o giro (achado E1-05
+    /// do docs/41). O decisor grava a causa na tentativa, que fica consumida e aparece no painel para o
+    /// operador estornar.
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -340,10 +347,12 @@ public sealed class DevicePump
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         bool exibirTextoDoGiro = false,
         Action<string>? aoDesistirDoGiro = null,
-        TimeSpan? sondaDeVida = null)
+        TimeSpan? sondaDeVida = null,
+        Action<string, string>? aoFalharALiberacao = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _aoDesistirDoGiro = aoDesistirDoGiro;
+        _aoFalharALiberacao = aoFalharALiberacao;
         _sondaDeVida = sondaDeVida ?? TimeSpan.FromSeconds(10);
         _sequenciaOficial = sequenciaOficial;
         _exibirTextoDoGiro = exibirTextoDoGiro;
@@ -1221,6 +1230,7 @@ public sealed class DevicePump
             if (estado is DeviceState.LiberarCatraca)
             {
                 // A liberação nem saiu: nenhum giro pode ser da pessoa autorizada.
+                _aoFalharALiberacao?.Invoke(d.Maquina.DeviceId, $"a liberação não saiu no prazo de {Segundos(prazo)} s");
                 _aoDesistirDoGiro?.Invoke(d.Maquina.DeviceId);
             }
 
@@ -1278,6 +1288,11 @@ public sealed class DevicePump
     {
         if (d.Maquina.Current is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
         {
+            _aoFalharALiberacao?.Invoke(
+                d.Maquina.DeviceId,
+                d.Maquina.Current is DeviceState.LiberarCatraca
+                    ? "a catraca não aceitou a liberação (erro de comunicação)"
+                    : "a comunicação caiu esperando o giro: não se sabe se a pessoa passou");
             _aoDesistirDoGiro?.Invoke(d.Maquina.DeviceId);
         }
     }

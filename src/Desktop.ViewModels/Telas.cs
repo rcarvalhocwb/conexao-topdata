@@ -463,10 +463,14 @@ public sealed class AcessosViewModel : TelaBase
     {
         Buscar = new ComandoAssincrono(() => AtualizarAsync());
         PorQue = new PainelPorQue(cliente);
+        UsosSemPassagem = new PainelDeUsosSemPassagem(cliente);
     }
 
     /// <summary>"Por quê?" de cada negação da lista (Etapa I.2 do docs/36).</summary>
     public PainelPorQue PorQue { get; }
+
+    /// <summary>Usos consumidos sem giro e o estorno pelo operador (achado E1-05 do docs/41).</summary>
+    public PainelDeUsosSemPassagem UsosSemPassagem { get; }
 
     public override string Titulo => "Acessos";
 
@@ -535,6 +539,7 @@ public sealed class AcessosViewModel : TelaBase
             }
 
             var resposta = await Cliente.ListarAcessosAsync(pedido, cancellationToken: cancelamento);
+            await UsosSemPassagem.AtualizarAsync(cancelamento).ConfigureAwait(true);
             Linhas = [.. resposta.Acessos.Select(LinhaDeAcesso.De)];
             HaMais = resposta.HaMais;
             Mensagem = Linhas.Count == 0

@@ -429,6 +429,25 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
         return (resultado, tentativaId);
     }
 
+    /// <inheritdoc />
+    public void RegistrarLiberacaoFalhou(Guid tentativaId, DateTimeOffset em, string causa)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(causa);
+
+        using var conexao = _fabrica.Abrir();
+        using var comando = conexao.CreateCommand();
+        comando.CommandText =
+            """
+            UPDATE ticket_use_attempt
+            SET release_failed_at = $em, release_failure = $causa
+            WHERE id = $id AND outcome = 'consumido' AND passage_confirmed_at IS NULL AND release_failed_at IS NULL;
+            """;
+        comando.Parameters.AddWithValue("$id", tentativaId.ToString());
+        comando.Parameters.AddWithValue("$em", Iso(em));
+        comando.Parameters.AddWithValue("$causa", causa.Length > 300 ? causa[..300] : causa);
+        comando.ExecuteNonQuery();
+    }
+
     /// <summary>
     /// Anexa a prova de giro a uma tentativa consumida.
     /// </summary>

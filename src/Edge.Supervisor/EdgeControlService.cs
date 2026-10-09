@@ -88,6 +88,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// saúde dele. Nulo: o Diagnóstico diz que ele não existe neste serviço.
     /// </param>
     /// <param name="filaDeSaida">A outbox, para reenviar as cartas mortas a pedido do operador (E5-2).</param>
+    /// <param name="estornos">Usos sem passagem e o estorno pelo operador (E1-05).</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -107,7 +108,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         string? sessao = null,
         Access.Infrastructure.SQLite.MapasDeGiro? mapasDeGiro = null,
         AnalisadorDaOperacao? analisador = null,
-        Access.Infrastructure.SQLite.FilaDeSaidaSqlite? filaDeSaida = null)
+        Access.Infrastructure.SQLite.FilaDeSaidaSqlite? filaDeSaida = null,
+        Access.Infrastructure.SQLite.EstornosDeUso? estornos = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -129,9 +131,62 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _mapasDeGiro = mapasDeGiro;
         _analisador = analisador;
         _filaDeSaida = filaDeSaida;
+        _estornos = estornos;
     }
 
     private readonly Access.Infrastructure.SQLite.FilaDeSaidaSqlite? _filaDeSaida;
+    private readonly Access.Infrastructure.SQLite.EstornosDeUso? _estornos;
+
+    public override Task<ListarUsosSemPassagemResponse> ListarUsosSemPassagem(ListarUsosSemPassagemRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var resposta = new ListarUsosSemPassagemResponse { AlcanceDoEstorno = Access.Infrastructure.SQLite.EstornosDeUso.Alcance };
+
+        if (_estornos is null)
+        {
+            return Task.FromResult(resposta);
+        }
+
+        foreach (var uso in _estornos.Listar(_relogio(), request.SomenteComFalha, request.Limite > 0 ? request.Limite : 100))
+        {
+            resposta.Usos.Add(new UsoSemPassagem
+            {
+                TentativaId = uso.Tentativa.ToString(),
+                Em = Timestamp.FromDateTimeOffset(uso.Em),
+                Catraca = uso.Catraca,
+                Portao = uso.Portao,
+                Provedor = uso.Provedor ?? string.Empty,
+                Categoria = uso.Categoria ?? string.Empty,
+                CodigoMascarado = uso.Codigo,
+                FalhaDaLiberacao = uso.FalhaDaLiberacao ?? string.Empty,
+            });
+        }
+
+        return Task.FromResult(resposta);
+    }
+
+    public override Task<EstornarUsoResponse> EstornarUso(EstornarUsoRequest request, ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var resposta = new EstornarUsoResponse();
+
+        if (_estornos is null)
+        {
+            resposta.Problemas.Add("Este serviço não tem base local para estornar.");
+            return Task.FromResult(resposta);
+        }
+
+        if (!Guid.TryParse(request.TentativaId, out var tentativa))
+        {
+            resposta.Problemas.Add("Tentativa inválida.");
+            return Task.FromResult(resposta);
+        }
+
+        var (estornado, problemas) = _estornos.Estornar(tentativa, request.Operador, request.Motivo, _relogio());
+        resposta.Estornado = estornado;
+        resposta.Problemas.AddRange(problemas);
+        return Task.FromResult(resposta);
+    }
 
     public override Task<ReenviarCartasMortasResponse> ReenviarCartasMortas(ReenviarCartasMortasRequest request, ServerCallContext context)
     {

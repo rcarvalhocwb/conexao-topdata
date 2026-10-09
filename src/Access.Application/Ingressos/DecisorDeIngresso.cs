@@ -80,6 +80,18 @@ public interface IValidadorDeIngressos
     /// </remarks>
     void ConfirmarPassagemFisica(Guid tentativaId, DateTimeOffset em, byte complementoDoGiro) =>
         ConfirmarPassagemFisica(tentativaId, em);
+
+    /// <summary>
+    /// Grava na tentativa consumida por que a liberação falhou (achado E1-05 do docs/41). O uso continua
+    /// consumido; o operador vê a tentativa no painel e pode estorná-la.
+    /// </summary>
+    /// <remarks>Implementação padrão: não grava nada (dublês de teste).</remarks>
+    /// <param name="tentativaId">A tentativa consumida.</param>
+    /// <param name="em">Quando a falha aconteceu.</param>
+    /// <param name="causa">O que aconteceu, em texto para o operador.</param>
+    void RegistrarLiberacaoFalhou(Guid tentativaId, DateTimeOffset em, string causa)
+    {
+    }
 }
 
 /// <summary>
@@ -111,6 +123,7 @@ public sealed class DecisorDeIngresso
     private readonly CredentialNormalization _perfilDaLeitura;
     private readonly Dictionary<string, Guid> _pendentes = new(StringComparer.Ordinal);
     private readonly List<(Guid Tentativa, DateTimeOffset Em, byte Complemento)> _confirmacoesAGravar = [];
+    private readonly List<(Guid Tentativa, DateTimeOffset Em, string Causa)> _falhasDeLiberacaoAGravar = [];
 
     /// <summary>
     /// </summary>
@@ -144,8 +157,11 @@ public sealed class DecisorDeIngresso
     /// <summary>Autorizações que terminaram sem giro. Para o painel da bancada.</summary>
     public int AutorizacoesSemGiro { get; private set; }
 
-    /// <summary>Giros já recebidos cuja gravação na base ainda não deu certo (base ocupada, por exemplo).</summary>
-    public int ConfirmacoesAGravar => _confirmacoesAGravar.Count;
+    /// <summary>
+    /// Giros já recebidos, e causas de liberação que falhou, cuja gravação na base ainda não deu certo
+    /// (base ocupada, por exemplo).
+    /// </summary>
+    public int ConfirmacoesAGravar => _confirmacoesAGravar.Count + _falhasDeLiberacaoAGravar.Count;
 
     /// <summary>Tentativas de gravar uma confirmação de giro que falharam e serão repetidas.</summary>
     public int FalhasAoGravarConfirmacao { get; private set; }
@@ -259,6 +275,8 @@ public sealed class DecisorDeIngresso
     /// </remarks>
     public void GravarConfirmacoesPendentes()
     {
+        GravarFalhasDeLiberacao();
+
         while (_confirmacoesAGravar.Count > 0)
         {
             var (tentativa, em, complemento) = _confirmacoesAGravar[0];
@@ -273,6 +291,48 @@ public sealed class DecisorDeIngresso
             }
 
             _confirmacoesAGravar.RemoveAt(0);
+        }
+    }
+
+    /// <summary>
+    /// Anota por que a liberação da tentativa pendente do equipamento falhou, para gravar na base. Não a
+    /// encerra: quem encerra é <see cref="DescartarPendente"/>, chamado logo depois. Nunca lança.
+    /// </summary>
+    /// <param name="deviceId">O equipamento.</param>
+    /// <param name="causa">O que aconteceu, em texto para o operador.</param>
+    /// <remarks>
+    /// Achado E1-05 do docs/41 (decisão do dono do produto: o ingresso continua consumido, com registro
+    /// individual para o operador estornar pelo painel). Sem tentativa pendente (liberação manual, por
+    /// exemplo), não há o que anotar.
+    /// </remarks>
+    public void RegistrarCausaSemGiro(string deviceId, string causa)
+    {
+        ArgumentNullException.ThrowIfNull(deviceId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(causa);
+
+        if (_pendentes.TryGetValue(deviceId, out var tentativa))
+        {
+            _falhasDeLiberacaoAGravar.Add((tentativa, _relogio.GetUtcNow(), causa));
+            GravarFalhasDeLiberacao();
+        }
+    }
+
+    private void GravarFalhasDeLiberacao()
+    {
+        while (_falhasDeLiberacaoAGravar.Count > 0)
+        {
+            var (tentativa, em, causa) = _falhasDeLiberacaoAGravar[0];
+            try
+            {
+                _validador.RegistrarLiberacaoFalhou(tentativa, em, causa);
+            }
+            catch (Exception erro) when (erro is not OutOfMemoryException)
+            {
+                FalhasAoGravarConfirmacao++;
+                return;
+            }
+
+            _falhasDeLiberacaoAGravar.RemoveAt(0);
         }
     }
 

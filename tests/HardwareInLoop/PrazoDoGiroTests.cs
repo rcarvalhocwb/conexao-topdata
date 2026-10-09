@@ -118,8 +118,10 @@ public sealed class PrazoDoGiroTests
         var costura = new CosturaFalsa { OrigemADevolver = 0 };
         using var adapter = new TopdataInnerAdapter(costura);
         var desistencias = new List<string>();
+        var causas = new List<(string Catraca, string Causa)>();
         var laco = new DevicePump(
-            adapter, () => _agora, LinhaDaCosturaFalsa, decidir: _ => Autorizado(), aoDesistirDoGiro: desistencias.Add);
+            adapter, () => _agora, LinhaDaCosturaFalsa, decidir: _ => Autorizado(), aoDesistirDoGiro: desistencias.Add,
+            aoFalharALiberacao: (c, causa) => causas.Add((c, causa)));
         var catraca = new DeviceSlot(1, Configuracao(), () => _agora);
         Ate(laco, catraca, DeviceState.Polling);
         Passo(laco, catraca);
@@ -139,6 +141,11 @@ public sealed class PrazoDoGiroTests
 
         Assert.Contains("falha ao liberar giro", feito, StringComparison.Ordinal);
         Assert.Equal([catraca.Maquina.DeviceId], desistencias);
+
+        // A causa vai junto, para a tentativa consumida ficar no painel do estorno (E1-05).
+        var (comCausa, causa) = Assert.Single(causas);
+        Assert.Equal(catraca.Maquina.DeviceId, comCausa);
+        Assert.Contains("não aceitou a liberação", causa, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -22,7 +22,7 @@ public sealed partial class LigacoesDasTelasTests
     {
         ["Telas/PainelAoVivo.xaml"] = [typeof(PainelAoVivoViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeAcesso), typeof(PainelPorQue)],
         ["Telas/Catracas.xaml"] = [typeof(CatracasViewModel), typeof(LinhaDeCatraca)],
-        ["Telas/Acessos.xaml"] = [typeof(AcessosViewModel), typeof(LinhaDeAcesso), typeof(PainelPorQue)],
+        ["Telas/Acessos.xaml"] = [typeof(AcessosViewModel), typeof(LinhaDeAcesso), typeof(PainelPorQue), typeof(PainelDeUsosSemPassagem), typeof(LinhaSemPassagem)],
         ["Telas/Consulta.xaml"] = [typeof(ConsultaViewModel), typeof(ParDeTexto), typeof(LinhaDeAcesso)],
         ["Telas/Sincronizacao.xaml"] = [typeof(SincronizacaoViewModel), typeof(ParDeTexto), typeof(ProvedorCadastrado)],
         ["Telas/Contas.xaml"] =
