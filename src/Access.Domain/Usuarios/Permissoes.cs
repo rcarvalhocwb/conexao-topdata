@@ -30,6 +30,7 @@ public static class Permissoes
     public const string PessoasVerDados = "pessoas.ver_dados";
     public const string PessoasEditar = "pessoas.editar";
     public const string PessoasBloquear = "pessoas.bloquear";
+    public const string PessoasImportar = "pessoas.importar";
     public const string CadastroParametros = "cadastro.parametros";
     public const string CatracaFechar = "catraca.fechar";
 
@@ -51,6 +52,7 @@ public static class Permissoes
         new(PessoasVerDados, "Pessoas", "Ver documento, contato e nascimento completos"),
         new(PessoasEditar, "Pessoas", "Cadastrar e alterar pessoas e dar credenciais"),
         new(PessoasBloquear, "Pessoas", "Bloquear, desbloquear e inativar pessoas e credenciais"),
+        new(PessoasImportar, "Pessoas", "Importar pessoas por planilha e desfazer uma importação"),
         new(CadastroParametros, "Pessoas", "Empresas, salas, horários, feriados e perfis"),
         new(UsuariosGerenciar, "Administração", "Criar usuários, papéis e permissões"),
     ];

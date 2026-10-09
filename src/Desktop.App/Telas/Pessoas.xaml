@@ -224,6 +224,36 @@
               </DockPanel>
             </StackPanel>
           </Border>
+
+          <!-- Importação por planilha: prévia sem gravar, aplicar tudo ou nada, desfazer o lote. -->
+          <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0">
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="Importar planilha" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap"
+                         Text="Use o modelo modelo-pessoas.csv (pasta modelos do programa) ou um .xlsx com a aba Pessoas. Primeiro a prévia confere cada linha com as regras da ficha; só depois você aplica, e entra tudo ou nada." />
+              <WrapPanel Margin="0,10,0,0">
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Escolher arquivo e _conferir…" Click="EscolherPlanilha" />
+                <Button Style="{StaticResource Rayzer.Button.Primary}" Content="Apli_car importação" Command="{Binding AplicarImportacao}" />
+              </WrapPanel>
+              <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,10,0,0" Text="{Binding ResumoDaImportacao}"
+                         Visibility="{Binding ResumoDaImportacao, Converter={StaticResource VazioSome}}" />
+              <ListBox Margin="0,6,0,0" MaxHeight="160" ItemsSource="{Binding ProblemasDaImportacao}" AutomationProperties.Name="Problemas da importação" />
+
+              <Border Style="{StaticResource Rayzer.Divider}" Margin="0,14,0,12" />
+              <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Importações feitas" />
+              <DataGrid Margin="0,4,0,8" ItemsSource="{Binding Lotes}" SelectedItem="{Binding LoteSelecionado}" MaxHeight="150"
+                        AutomationProperties.Name="Importações feitas">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="QUANDO" Binding="{Binding Em}" Width="130" ElementStyle="{StaticResource Celula.Mono}" />
+                  <DataGridTextColumn Header="POR" Binding="{Binding Por}" Width="*" />
+                  <DataGridTextColumn Header="O QUE ENTROU" Binding="{Binding Resumo}" Width="*" />
+                  <DataGridTextColumn Header="SITUAÇÃO" Binding="{Binding Situacao}" Width="*" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <Button Style="{StaticResource Rayzer.Button.Ghost}" HorizontalAlignment="Left" Content="_Desfazer o lote escolhido" Command="{Binding DesfazerImportacao}"
+                      ToolTip="Apaga as pessoas que o lote criou, com as credenciais. As passagens delas ficam, sem o nome." />
+            </StackPanel>
+          </Border>
         </StackPanel>
       </ScrollViewer>
     </Grid>

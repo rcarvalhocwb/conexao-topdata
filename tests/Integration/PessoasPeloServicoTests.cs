@@ -36,7 +36,8 @@ public sealed class PessoasPeloServicoTests : IAsyncLifetime, IDisposable
         var sessoes = new SessoesDoPainel();
         var servico = new EdgeControlService(
             new WorkerSupervisor([]), relogio: () => Agora, semConfiguracao: true, usuarios: _usuarios, sessoes: sessoes,
-            pessoas: _pessoas, parametrosDoCadastro: new ParametrosDoCadastro(_banco.Fabrica));
+            pessoas: _pessoas, parametrosDoCadastro: new ParametrosDoCadastro(_banco.Fabrica),
+            importacaoDePessoas: new ImportacaoDePessoas(_banco.Fabrica, _pessoas));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"pessoas-{Guid.NewGuid():N}");
@@ -220,6 +221,36 @@ public sealed class PessoasPeloServicoTests : IAsyncLifetime, IDisposable
         gerenciar.MotivoDoFechamento = "Obra concluída";
         await gerenciar.AbrirCatraca.ExecutarAsync();
         Assert.False(gerenciar.EstaFechada);
+    }
+
+    [Fact]
+    public async Task Tela_importa_planilha_com_previa_e_desfaz_o_lote()
+    {
+        var portaria = await Entrar("port", "portaria");
+        var supervisor = await Entrar("sup", "supervisor");
+        var arquivo = System.Text.Encoding.UTF8.GetBytes("Nome;Perfil;Crachá\r\nLia Prado;Aluno;880001\r\nRui Prado;Aluno;880002");
+
+        // A portaria não importa (o papel não tem a permissão).
+        Assert.Equal(StatusCode.PermissionDenied, await Codigo(() => portaria.PreverImportacaoDePessoasAsync(new ImportacaoDePessoasRequest
+        {
+            NomeDoArquivo = "p.csv", Conteudo = Google.Protobuf.ByteString.CopyFrom(arquivo),
+        }).ResponseAsync));
+
+        var tela = new Desktop.ViewModels.PessoasViewModel(supervisor, () => Agora);
+        await tela.AtualizarAsync();
+        Assert.False(tela.AplicarImportacao.CanExecute(null));
+
+        await tela.PreverImportacaoAsync("p.csv", arquivo);
+        Assert.True(tela.ImportacaoAplicavel, string.Join(" | ", tela.ProblemasDaImportacao));
+        Assert.Empty(tela.Pessoas);
+
+        await tela.AplicarImportacao.ExecutarAsync();
+        Assert.Equal(2, tela.Pessoas.Count);
+        tela.LoteSelecionado = Assert.Single(tela.Lotes);
+
+        await tela.DesfazerImportacao.ExecutarAsync();
+        Assert.Empty(tela.Pessoas);
+        Assert.False(Assert.Single(tela.Lotes).PodeDesfazer);
     }
 
     [Theory]

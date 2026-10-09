@@ -12,6 +12,9 @@ public sealed record OpcaoDeLista(string Codigo, string Nome);
 /// <summary>Uma pessoa na lista.</summary>
 public sealed record LinhaDaPessoa(string Id, string Nome, string Perfil, string Empresa, string Sala, string Situacao, string ValidoAte, int Credenciais);
 
+/// <summary>Um lote de importação de pessoas.</summary>
+public sealed record LinhaDeLote(string Id, string Em, string Por, string Resumo, string Situacao, bool PodeDesfazer);
+
 /// <summary>Uma credencial na ficha: só a máscara do código.</summary>
 public sealed record LinhaDaCredencial(string Id, string Tipo, string Codigo, string Situacao, string Validade);
 
@@ -73,6 +76,13 @@ public sealed class PessoasViewModel : TelaBase
     private string _novoTipo = "cartao";
     private string _novoCodigo = string.Empty;
     private string _motivoDaCredencial = string.Empty;
+    private byte[]? _arquivo;
+    private string _nomeDoArquivo = string.Empty;
+    private string _resumoDaImportacao = string.Empty;
+    private bool _importacaoAplicavel;
+    private IReadOnlyList<string> _problemasDaImportacao = [];
+    private IReadOnlyList<LinhaDeLote> _lotes = [];
+    private LinhaDeLote? _loteSelecionado;
 
     public PessoasViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
@@ -93,6 +103,147 @@ public sealed class PessoasViewModel : TelaBase
         BloquearCredencial = new ComandoAssincrono(() => MudarCredencialAsync("bloqueada"), PodeMudarCredencial);
         DevolverCredencial = new ComandoAssincrono(() => MudarCredencialAsync("devolvida"), PodeMudarCredencial);
         ReativarCredencial = new ComandoAssincrono(() => MudarCredencialAsync("ativa"), () => CredencialSelecionada is { Situacao: not "Ativa" });
+        AplicarImportacao = new ComandoAssincrono(AplicarImportacaoAsync, () => ImportacaoAplicavel && _arquivo is not null);
+        DesfazerImportacao = new ComandoAssincrono(DesfazerImportacaoAsync, () => LoteSelecionado is { PodeDesfazer: true });
+    }
+
+    /// <summary>Grava a planilha conferida na prévia: tudo ou nada.</summary>
+    public ComandoAssincrono AplicarImportacao { get; }
+
+    /// <summary>Apaga as pessoas do lote escolhido.</summary>
+    public ComandoAssincrono DesfazerImportacao { get; }
+
+    /// <summary>O que a prévia encontrou.</summary>
+    public string ResumoDaImportacao { get => _resumoDaImportacao; private set => Definir(ref _resumoDaImportacao, value); }
+
+    public bool ImportacaoAplicavel
+    {
+        get => _importacaoAplicavel;
+        private set
+        {
+            if (Definir(ref _importacaoAplicavel, value))
+            {
+                AplicarImportacao.ReavaliarDisponibilidade();
+            }
+        }
+    }
+
+    /// <summary>Cada problema, com a linha do arquivo.</summary>
+    public IReadOnlyList<string> ProblemasDaImportacao { get => _problemasDaImportacao; private set => Definir(ref _problemasDaImportacao, value); }
+
+    public IReadOnlyList<LinhaDeLote> Lotes { get => _lotes; private set => Definir(ref _lotes, value); }
+
+    public LinhaDeLote? LoteSelecionado
+    {
+        get => _loteSelecionado;
+        set
+        {
+            if (Definir(ref _loteSelecionado, value))
+            {
+                DesfazerImportacao.ReavaliarDisponibilidade();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Confere a planilha escolhida, sem gravar nada (a janela abre o arquivo e passa o conteúdo).
+    /// </summary>
+    /// <param name="nome">O nome do arquivo (.csv ou .xlsx).</param>
+    /// <param name="conteudo">O conteúdo.</param>
+    public async Task PreverImportacaoAsync(string nome, byte[] conteudo)
+    {
+        ArgumentNullException.ThrowIfNull(conteudo);
+        _arquivo = null;
+        ImportacaoAplicavel = false;
+        await Tentar(async () =>
+        {
+            var r = await Cliente.PreverImportacaoDePessoasAsync(new ImportacaoDePessoasRequest
+            {
+                NomeDoArquivo = nome, Conteudo = Google.Protobuf.ByteString.CopyFrom(conteudo),
+            });
+            Mostrar(r, nome);
+            if (r.Aplicavel)
+            {
+                _arquivo = conteudo;
+                _nomeDoArquivo = nome;
+            }
+
+            ImportacaoAplicavel = r.Aplicavel;
+        }).ConfigureAwait(true);
+    }
+
+    private async Task AplicarImportacaoAsync()
+    {
+        if (_arquivo is not { } conteudo)
+        {
+            return;
+        }
+
+        await Tentar(async () =>
+        {
+            var r = await Cliente.ImportarPessoasAsync(new ImportacaoDePessoasRequest
+            {
+                NomeDoArquivo = _nomeDoArquivo, Conteudo = Google.Protobuf.ByteString.CopyFrom(conteudo),
+            });
+            Mostrar(r, _nomeDoArquivo);
+            if (r.Aplicada)
+            {
+                Mensagem = $"Importação aplicada: {r.Pessoas} pessoa(s) e {r.Credenciais} credencial(is). Para voltar atrás, desfaça o lote.";
+                _arquivo = null;
+            }
+
+            ImportacaoAplicavel = false;
+        }).ConfigureAwait(true);
+
+        await AtualizarAsync().ConfigureAwait(true);
+    }
+
+    private async Task DesfazerImportacaoAsync()
+    {
+        if (LoteSelecionado is not { } lote)
+        {
+            return;
+        }
+
+        await Tentar(async () =>
+        {
+            var r = await Cliente.DesfazerImportacaoDePessoasAsync(new DesfazerImportacaoDePessoasRequest { LoteId = lote.Id });
+            Mensagem = r.Gravado
+                ? $"Lote de {lote.Em} desfeito: {r.Id} pessoa(s) apagada(s). As passagens delas ficam, sem o nome."
+                : string.Join(" ", r.Problemas);
+        }).ConfigureAwait(true);
+
+        await AtualizarAsync().ConfigureAwait(true);
+    }
+
+    private void Mostrar(ResultadoDaImportacaoDePessoas r, string nome)
+    {
+        ProblemasDaImportacao = [.. r.Problemas.Take(500).Select(p => p.Linha == 0 ? p.Problema : $"Linha {p.Linha}: {p.Problema}"),
+            .. r.Avisos.Select(a => "Aviso: " + a)];
+        ResumoDaImportacao = r.Aplicavel || r.Aplicada
+            ? $"{nome}: {r.Pessoas} pessoa(s), {r.Credenciais} credencial(is), {r.EmpresasNovas} empresa(s) e {r.SalasNovas} sala(s) novas."
+            : $"{nome}: {r.Problemas.Count} problema(s). Corrija o arquivo e escolha de novo; nada foi gravado.";
+    }
+
+    private async Task LerLotesAsync(CancellationToken cancelamento)
+    {
+        try
+        {
+            var r = await Cliente.ListarImportacoesDePessoasAsync(new ListarImportacoesDePessoasRequest(), cancellationToken: cancelamento);
+            Lotes = [.. r.Lotes.Select(l => new LinhaDeLote(
+                l.Id,
+                FusoDoEvento.NoEvento(l.Em.ToDateTimeOffset()).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture),
+                l.Por,
+                $"{l.Pessoas} pessoa(s), {l.Credenciais} credencial(is)",
+                l.DesfeitoEm is null ? "Aplicado" : "Desfeito em " + FusoDoEvento.NoEvento(l.DesfeitoEm.ToDateTimeOffset()).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture),
+                l.DesfeitoEm is null))];
+        }
+        catch (Grpc.Core.RpcException)
+        {
+            // Papel sem importar, serviço sem o cadastro ou fora do ar: a seção fica vazia. A busca, logo
+            // antes, já pôs a falha de comunicação na mensagem da tela.
+            Lotes = [];
+        }
     }
 
     public override string Titulo => "Pessoas";
@@ -407,6 +558,7 @@ public sealed class PessoasViewModel : TelaBase
         }).ConfigureAwait(true);
 
         await BuscarAsync(cancelamento).ConfigureAwait(true);
+        await LerLotesAsync(cancelamento).ConfigureAwait(true);
     }
 
     private async Task BuscarAsync(CancellationToken cancelamento)

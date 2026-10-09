@@ -46,6 +46,12 @@ service EdgeControl {
   rpc ExcluirFeriado(ExcluirFeriadoRequest) returns (ResultadoDoCadastroDePessoas);
   rpc GravarPerfil(GravarPerfilRequest) returns (ResultadoDoCadastroDePessoas);
 
+  // Importação de pessoas por planilha (docs/43 P5): prévia sem gravar, aplicar tudo ou nada, desfazer.
+  rpc PreverImportacaoDePessoas(ImportacaoDePessoasRequest) returns (ResultadoDaImportacaoDePessoas);
+  rpc ImportarPessoas(ImportacaoDePessoasRequest) returns (ResultadoDaImportacaoDePessoas);
+  rpc ListarImportacoesDePessoas(ListarImportacoesDePessoasRequest) returns (ListarImportacoesDePessoasResponse);
+  rpc DesfazerImportacaoDePessoas(DesfazerImportacaoDePessoasRequest) returns (ResultadoDoCadastroDePessoas);
+
   // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
   rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
   rpc FecharCatraca(FecharCatracaRequest) returns (ResultadoDoCadastroDePessoas);
@@ -1422,4 +1428,45 @@ message FecharCatracaRequest {
 message AbrirCatracaRequest {
   int32 inner = 1;
   string motivo = 2;
+}
+
+message ImportacaoDePessoasRequest {
+  string nome_do_arquivo = 1;          // .csv ou .xlsx
+  bytes conteudo = 2;                  // até 20 MB
+}
+
+message ProblemaDaLinha {
+  int32 linha = 1;                     // 0: o arquivo inteiro
+  string problema = 2;
+}
+
+message ResultadoDaImportacaoDePessoas {
+  bool aplicavel = 1;                  // sem problema: pode aplicar
+  bool aplicada = 2;
+  string lote_id = 3;
+  int32 pessoas = 4;
+  int32 credenciais = 5;
+  int32 empresas_novas = 6;
+  int32 salas_novas = 7;
+  repeated ProblemaDaLinha problemas = 8;
+  repeated string avisos = 9;
+}
+
+message LoteDeImportacaoDePessoas {
+  string id = 1;
+  google.protobuf.Timestamp em = 2;
+  string por = 3;
+  int32 pessoas = 4;
+  int32 credenciais = 5;
+  google.protobuf.Timestamp desfeito_em = 6;
+}
+
+message ListarImportacoesDePessoasRequest {}
+
+message ListarImportacoesDePessoasResponse {
+  repeated LoteDeImportacaoDePessoas lotes = 1;
+}
+
+message DesfazerImportacaoDePessoasRequest {
+  string lote_id = 1;
 }

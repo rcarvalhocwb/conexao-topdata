@@ -269,6 +269,16 @@ O painel pede usuário e senha. Na instalação nova, existe um único usuário:
 - **Bloqueio:** 5 senhas erradas seguidas bloqueiam o usuário por 5 minutos.
 - **Antes de entrar:** o ícone perto do relógio continua mostrando a situação das catracas. As telas só abrem depois do login.
 
+### Cadastro de pessoas (portaria, condomínio, academia)
+
+Para usar a catraca com pessoas cadastradas aqui, e não só com ingressos (docs/43):
+
+1. Em **Perfis e horários**, confira os perfis prontos (Colaborador, Prestador, Visitante, Morador, Aluno, Staff, Imprensa, Fornecedor, Artista): o que cada um exige no cadastro, a validade padrão, as catracas e a tabela de horário. Cadastre as empresas, as salas e os feriados.
+2. Em **Pessoas**, cadastre cada pessoa e dê a credencial (crachá, QR ou senha de teclado). Ou importe uma planilha: o modelo é `Modelos\modelo-pessoas.csv`. Primeiro a prévia confere cada linha; depois aplicar grava tudo ou nada, e o lote pode ser desfeito.
+3. **Bloquear** uma pessoa ou uma credencial vale na leitura seguinte. Em **Gerenciar catraca**, **Fechar a catraca** faz ninguém passar até reabrir.
+
+Os dados pessoais ficam só neste computador, cifrados com uma chave do cofre do Windows (DPAPI). Sem essa chave (cofre apagado ou restaurado em outra máquina), o cadastro fica fora e o painel avisa; a catraca continua decidindo. Faça a cópia de segurança do cofre junto com a base.
+
 ## Imagens das telas
 
 Numa máquina Windows, com o serviço rodando:

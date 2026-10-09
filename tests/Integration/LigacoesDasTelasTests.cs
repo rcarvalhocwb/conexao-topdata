@@ -52,7 +52,7 @@ public sealed partial class LigacoesDasTelasTests
         ],
         ["Telas/Diagnostico.xaml"] = [typeof(DiagnosticoViewModel), typeof(Diagnostico), typeof(DiagnosticoDeWorker), typeof(ParDeTexto)],
         ["Telas/Simulador.xaml"] = [typeof(SimuladorViewModel), typeof(LinhaDeAcesso), typeof(ParDeTexto)],
-        ["Telas/Pessoas.xaml"] = [typeof(PessoasViewModel), typeof(LinhaDaPessoa), typeof(LinhaDaCredencial), typeof(OpcaoDeLista)],
+        ["Telas/Pessoas.xaml"] = [typeof(PessoasViewModel), typeof(LinhaDaPessoa), typeof(LinhaDaCredencial), typeof(OpcaoDeLista), typeof(LinhaDeLote)],
         ["Telas/ParametrosDoCadastro.xaml"] =
         [
             typeof(ParametrosDoCadastroViewModel), typeof(LinhaDePerfil), typeof(LinhaDeHorario), typeof(LinhaDeFeriado),

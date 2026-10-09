@@ -1,0 +1,5 @@
+﻿Nome;Nome social;Perfil;Tipo de documento;Documento;Nascimento;Telefone;E-mail;Empresa;Sala;Veículo;Responsável;Departamento;Cargo;Matrícula;Observação;Vale de;Vale até;Catracas;Crachá;QR;Senha
+Exemplo Colaborador Um;;Colaborador;rg;99.999.999-1;;;;Empresa Exemplo;Sala 101;;;Financeiro;Analista;E0001;exemplo fictício;;;1, 2;9999000001;;
+Exemplo Prestadora Dois;;Prestador;rg;99.999.999-2;;;;Empresa Exemplo;;;;;;;exemplo fictício;;31/12/2026;1;9999000002;;
+Exemplo Morador Tres;;Morador;;;;;;;Apto 32;ABC1D23;;;;;exemplo fictício;;;;;;48213
+Exemplo Aluna Quatro;;Aluno;;;;;;;;;;;;;exemplo fictício;;;;;9999QR0004;

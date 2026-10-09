@@ -202,7 +202,18 @@ public sealed class CadastroDePessoas
 
         using var conexao = _fabrica.Abrir();
         using var transacao = conexao.BeginTransaction();
+        var resultado = GravarNa(conexao, transacao, quem, dados, agora);
+        if (resultado.Gravado)
+        {
+            transacao.Commit();
+        }
 
+        return resultado;
+    }
+
+    /// <summary>O mesmo que <see cref="Gravar"/>, numa transação de quem chama (a importação grava tudo ou nada).</summary>
+    internal ResultadoDoCadastro GravarNa(SqliteConnection conexao, SqliteTransaction transacao, string? quem, DadosDaPessoa dados, DateTimeOffset agora)
+    {
         var nova = string.IsNullOrWhiteSpace(dados.Id);
         var id = nova ? Guid.CreateVersion7(agora).ToString() : dados.Id!.Trim();
         if (!nova && Escalar(conexao, transacao, "SELECT 1 FROM person WHERE id = $id;", ("$id", id)) is null)
@@ -301,7 +312,6 @@ public sealed class CadastroDePessoas
         }
 
         Registrar(conexao, transacao, agora, quem, id, nova ? "pessoa.criar" : "pessoa.alterar", $"perfil={perfil.Value.Id}");
-        transacao.Commit();
         return ResultadoDoCadastro.Ok(id);
     }
 
@@ -513,6 +523,22 @@ public sealed class CadastroDePessoas
     public ResultadoDoCadastro AdicionarCredencial(
         string? quem, string pessoaId, string tipo, string valor, DateTimeOffset? validoDe, DateTimeOffset? validoAte, DateTimeOffset agora)
     {
+        using var conexao = _fabrica.Abrir();
+        using var transacao = conexao.BeginTransaction();
+        var resultado = AdicionarCredencialNa(conexao, transacao, quem, pessoaId, tipo, valor, validoDe, validoAte, agora);
+        if (resultado.Gravado)
+        {
+            transacao.Commit();
+        }
+
+        return resultado;
+    }
+
+    /// <summary>O mesmo que <see cref="AdicionarCredencial"/>, numa transação de quem chama.</summary>
+    internal static ResultadoDoCadastro AdicionarCredencialNa(
+        SqliteConnection conexao, SqliteTransaction transacao,
+        string? quem, string pessoaId, string tipo, string valor, DateTimeOffset? validoDe, DateTimeOffset? validoAte, DateTimeOffset agora)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(pessoaId);
         var codigo = (valor ?? string.Empty).Trim();
         if (!TiposDeCredencial.Contains(tipo))
@@ -530,8 +556,6 @@ public sealed class CadastroDePessoas
             return ResultadoDoCadastro.Recusado("O fim da validade vem antes do início.");
         }
 
-        using var conexao = _fabrica.Abrir();
-        using var transacao = conexao.BeginTransaction();
         if (Escalar(conexao, transacao, "SELECT 1 FROM person WHERE id = $id;", ("$id", pessoaId)) is null)
         {
             return ResultadoDoCadastro.Recusado("Pessoa não encontrada.");
@@ -556,7 +580,6 @@ public sealed class CadastroDePessoas
             ("$id", id), ("$pessoa", pessoaId), ("$tipo", tipo), ("$valor", codigo),
             ("$de", (object?)IsoOuNulo(validoDe) ?? DBNull.Value), ("$ate", (object?)IsoOuNulo(validoAte) ?? DBNull.Value), ("$em", Iso(agora)));
         Registrar(conexao, transacao, agora, quem, pessoaId, "credencial.adicionar", $"credencial={id}; tipo={tipo}");
-        transacao.Commit();
         return ResultadoDoCadastro.Ok(id);
     }
 

@@ -25,6 +25,7 @@ public static class CodigosDePermissao
     public const string PessoasVerDados = "pessoas.ver_dados";
     public const string PessoasEditar = "pessoas.editar";
     public const string PessoasBloquear = "pessoas.bloquear";
+    public const string PessoasImportar = "pessoas.importar";
     public const string CadastroParametros = "cadastro.parametros";
     public const string CatracaFechar = "catraca.fechar";
 }

@@ -412,11 +412,14 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     usuarios: usuariosDoSistema,
     sessoes: sessoesDoPainel,
     pessoas: cadastroDePessoas,
-    parametrosDoCadastro: new ParametrosDoCadastro(fabrica)));
+    parametrosDoCadastro: new ParametrosDoCadastro(fabrica),
+    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas)));
 
 // Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
 construtor.Services.AddGrpc(o =>
 {
+    // A planilha de pessoas vai inteira num pedido (até 20 MB, docs/43 P5); o padrão do gRPC é 4 MB.
+    o.MaxReceiveMessageSize = 24 * 1024 * 1024;
     o.Interceptors.Add<InterceptadorDeToken>(token);
     o.Interceptors.Add<InterceptadorDeSessao>(usuariosDoSistema, sessoesDoPainel, (Func<DateTimeOffset>)(() => DateTimeOffset.UtcNow));
 });

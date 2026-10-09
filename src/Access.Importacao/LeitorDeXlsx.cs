@@ -44,7 +44,12 @@ public static class LeitorDeXlsx
     };
 
     /// <summary>Lê o pacote inteiro.</summary>
-    public static ArquivoLido Ler(Stream arquivo)
+    /// <param name="arquivo">O .xlsx.</param>
+    /// <param name="abaPrincipal">
+    /// O nome da aba de dados: "Cartões" no cadastro de cartões, "Pessoas" no de pessoas (docs/43 P5).
+    /// Volta em <see cref="ArquivoLido.Cartoes"/> nos dois casos.
+    /// </param>
+    public static ArquivoLido Ler(Stream arquivo, string abaPrincipal = "Cartões")
     {
         ArgumentNullException.ThrowIfNull(arquivo);
 
@@ -59,7 +64,7 @@ public static class LeitorDeXlsx
         try
         {
             using var pacote = new ZipArchive(new MemoryStream(conteudo, writable: false), ZipArchiveMode.Read);
-            return LerPacote(pacote, conteudo.LongLength, sha);
+            return LerPacote(pacote, conteudo.LongLength, sha, abaPrincipal);
         }
         catch (PacoteGrandeDemais)
         {
@@ -72,7 +77,7 @@ public static class LeitorDeXlsx
         }
     }
 
-    private static ArquivoLido LerPacote(ZipArchive pacote, long bytes, string sha)
+    private static ArquivoLido LerPacote(ZipArchive pacote, long bytes, string sha, string abaPrincipal)
     {
         if (pacote.Entries.Count > LimitesDaImportacao.EntradasDoPacote
             || pacote.Entries.Sum(e => e.Length) > LimitesDaImportacao.BytesDescompactados)
@@ -105,11 +110,12 @@ public static class LeitorDeXlsx
         var avisos = new List<string>();
         var ignoradas = new HashSet<string>(StringComparer.Ordinal) { "exemplo", "instrucoes" };
 
-        var cartoes = abas.Where(a => Apoio.Chave(a.Nome) is "cartoes").ToList();
+        var chaveDaPrincipal = Apoio.Chave(abaPrincipal);
+        var cartoes = abas.Where(a => Apoio.Chave(a.Nome) == chaveDaPrincipal).ToList();
         var tipos = abas.Where(a => Apoio.Chave(a.Nome) is "tipos").ToList();
         if (cartoes.Count > 1 || tipos.Count > 1)
         {
-            return ArquivoLido.Recusa("xlsx", bytes, sha, "A planilha tem mais de uma aba Cartões ou Tipos.");
+            return ArquivoLido.Recusa("xlsx", bytes, sha, $"A planilha tem mais de uma aba {abaPrincipal} ou Tipos.");
         }
 
         if (cartoes.Count == 0)
@@ -118,10 +124,12 @@ public static class LeitorDeXlsx
             if (candidatas.Count != 1)
             {
                 return ArquivoLido.Recusa("xlsx", bytes, sha,
-                    "A planilha não tem a aba \"Cartões\". Use o modelo (docs/26) ou renomeie a aba dos cartões.");
+                    chaveDaPrincipal == "cartoes"
+                        ? "A planilha não tem a aba \"Cartões\". Use o modelo (docs/26) ou renomeie a aba dos cartões."
+                        : $"A planilha não tem a aba \"{abaPrincipal}\". Use o modelo ou renomeie a aba.");
             }
 
-            avisos.Add($"A planilha não tem a aba \"Cartões\"; foi lida a aba \"{candidatas[0].Nome}\".");
+            avisos.Add($"A planilha não tem a aba \"{abaPrincipal}\"; foi lida a aba \"{candidatas[0].Nome}\".");
             cartoes = candidatas;
         }
 
@@ -138,7 +146,7 @@ public static class LeitorDeXlsx
         var planilhaDeCartoes = LerAbaDoPacote(cartoes[0]);
         if (planilhaDeCartoes is null)
         {
-            return ArquivoLido.Recusa("xlsx", bytes, sha, "A aba de cartões está vazia ou ilegível.");
+            return ArquivoLido.Recusa("xlsx", bytes, sha, $"A aba {abaPrincipal} está vazia ou ilegível.");
         }
 
         if (planilhaDeCartoes.Linhas.Count > LimitesDaImportacao.LinhasMaximas)
