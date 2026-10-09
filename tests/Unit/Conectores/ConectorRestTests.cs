@@ -86,15 +86,45 @@ public sealed class ConectorRestTests
 
     [Theory]
     [InlineData(HttpStatusCode.BadRequest)]
-    [InlineData(HttpStatusCode.Unauthorized)]
-    [InlineData(HttpStatusCode.Forbidden)]
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.UnprocessableEntity)]
-    public async Task Recusa_de_conteudo_ou_de_permissao_nao_adianta_repetir(HttpStatusCode status)
+    public async Task Recusa_de_conteudo_nao_adianta_repetir(HttpStatusCode status)
     {
-        // Martelar um 401 durante quatro horas não conserta a credencial e atrasa a fila
-        // inteira. Vai para cartas mortas, onde alguém vê.
+        // Conteúdo recusado não muda com o tempo. Vai para cartas mortas, onde alguém vê.
         Assert.Equal(ResultadoDoEnvio.FalhaPermanente, await EnviarUm(Sempre(status)));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task Credencial_recusada_espera_na_fila_e_e_marcada_como_autenticacao(HttpStatusCode status)
+    {
+        // Achado E5-2 do docs/41: um 401 mandava a passagem para cartas mortas, sem volta. A
+        // credencial errada se corrige no segredo, e depois a fila tem de subir inteira. A
+        // internet funciona; quem precisa agir é quem guarda o segredo.
+        var (conector, _) = Criar(_ => new HttpResponseMessage(status));
+        var resposta = Assert.Single(await conector.EnviarAsync([Item("a")], default));
+
+        Assert.Equal(ResultadoDoEnvio.FalhaTemporaria, resposta.Resultado);
+        Assert.Equal(TipoDeFalha.Autenticacao, resposta.Tipo);
+    }
+
+    [Fact]
+    public async Task Rede_fora_e_marcada_como_rede_e_nao_como_destino()
+    {
+        var (conector, _) = Criar(_ => throw new HttpRequestException("Connection refused"));
+        var resposta = Assert.Single(await conector.EnviarAsync([Item("a")], default));
+
+        Assert.Equal(TipoDeFalha.Rede, resposta.Tipo);
+    }
+
+    [Fact]
+    public async Task Destino_com_erro_de_servidor_e_marcado_como_servidor()
+    {
+        var (conector, _) = Criar(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        var resposta = Assert.Single(await conector.EnviarAsync([Item("a")], default));
+
+        Assert.Equal(TipoDeFalha.Servidor, resposta.Tipo);
     }
 
     [Fact]

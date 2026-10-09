@@ -10,12 +10,14 @@ namespace Sync.Core;
 /// Nomes que constam da fila mas para os quais nenhum conector está registrado.
 /// </param>
 /// <param name="UltimoErro">O motivo da última falha temporária da rodada, para o painel dizer por quê.</param>
+/// <param name="TipoDoUltimoErro">O tipo mais grave entre as falhas temporárias da rodada.</param>
 public sealed record ResumoDaRodada(
     int Enviados,
     int Adiados,
     int CartasMortas,
     IReadOnlyList<string> ConectoresSemImplementacao,
-    string? UltimoErro = null)
+    string? UltimoErro = null,
+    TipoDeFalha TipoDoUltimoErro = TipoDeFalha.Nenhuma)
 {
     /// <summary>Rodada em que nada havia para fazer.</summary>
     public static ResumoDaRodada Vazia { get; } = new(0, 0, 0, []);
@@ -157,6 +159,7 @@ public sealed class DrenadorDaOutbox
         var cartasMortas = 0;
         var semImplementacao = new List<string>();
         string? ultimoErro = null;
+        var tipoDoErro = TipoDeFalha.Nenhuma;
 
         foreach (var nome in pendentes)
         {
@@ -172,14 +175,15 @@ public sealed class DrenadorDaOutbox
                 continue;
             }
 
-            var (e, a, c, erro) = await DrenarConectorAsync(conector, cancelamento).ConfigureAwait(false);
+            var (e, a, c, erro, tipo) = await DrenarConectorAsync(conector, cancelamento).ConfigureAwait(false);
             enviados += e;
             adiados += a;
             cartasMortas += c;
             ultimoErro = erro ?? ultimoErro;
+            tipoDoErro = TipoDeFalhaHttp.MaisGrave(tipoDoErro, tipo);
         }
 
-        return new ResumoDaRodada(enviados, adiados, cartasMortas, semImplementacao, ultimoErro);
+        return new ResumoDaRodada(enviados, adiados, cartasMortas, semImplementacao, ultimoErro, tipoDoErro);
     }
 
     /// <summary>
@@ -229,7 +233,7 @@ public sealed class DrenadorDaOutbox
         }
     }
 
-    private async Task<(int Enviados, int Adiados, int CartasMortas, string? UltimoErro)> DrenarConectorAsync(
+    private async Task<(int Enviados, int Adiados, int CartasMortas, string? UltimoErro, TipoDeFalha Tipo)> DrenarConectorAsync(
         IConectorDeSincronizacao conector,
         CancellationToken cancelamento)
     {
@@ -241,7 +245,7 @@ public sealed class DrenadorDaOutbox
 
         if (lote.Count == 0)
         {
-            return (0, 0, 0, null);
+            return (0, 0, 0, null, TipoDeFalha.Nenhuma);
         }
 
         IReadOnlyList<RespostaDeItem> respostas;
@@ -260,7 +264,7 @@ public sealed class DrenadorDaOutbox
             // Conector que explode é tratado como destino fora do ar, nunca como item
             // ruim: a causa quase sempre é rede, e marcar carta morta aqui perderia o
             // lote inteiro por causa de um cabo.
-            respostas = [.. lote.Select(i => new RespostaDeItem(i.Id, ResultadoDoEnvio.FalhaTemporaria, Resumir(erro)))];
+            respostas = [.. lote.Select(i => new RespostaDeItem(i.Id, ResultadoDoEnvio.FalhaTemporaria, Resumir(erro), TipoDeFalhaHttp.DeExcecao(erro)))];
             Observar(new OcorrenciaDeDrenagem(conector.Nome, "excecao_no_conector", lote.Count, Resumir(erro)));
         }
 
@@ -277,6 +281,7 @@ public sealed class DrenadorDaOutbox
         var adiados = 0;
         var cartasMortas = 0;
         string? ultimoErro = null;
+        var tipoDoErro = TipoDeFalha.Nenhuma;
 
         foreach (var item in lote)
         {
@@ -285,7 +290,7 @@ public sealed class DrenadorDaOutbox
             // descarta; o custo de assumir entrega é uma passagem que some do relatório.
             var resposta = porId.TryGetValue(item.Id, out var r)
                 ? r
-                : new RespostaDeItem(item.Id, ResultadoDoEnvio.FalhaTemporaria, "sem resposta do conector para este item");
+                : new RespostaDeItem(item.Id, ResultadoDoEnvio.FalhaTemporaria, "sem resposta do conector para este item", TipoDeFalha.Outra);
 
             switch (resposta.Resultado)
             {
@@ -323,6 +328,7 @@ public sealed class DrenadorDaOutbox
                     else
                     {
                         ultimoErro = resposta.Erro ?? ultimoErro;
+                        tipoDoErro = TipoDeFalhaHttp.MaisGrave(tipoDoErro, resposta.Tipo);
                         var proxima = _relogio.GetUtcNow() + _esperaPorTentativa(tentativas);
                         await _fila
                             .AdiarAsync(item.Id, tentativas, proxima, resposta.Erro ?? "falha temporária sem detalhe", cancelamento)
@@ -350,7 +356,7 @@ public sealed class DrenadorDaOutbox
             Observar(new OcorrenciaDeDrenagem(conector.Nome, "cartas_mortas", cartasMortas));
         }
 
-        return (confirmados.Count, adiados, cartasMortas, ultimoErro);
+        return (confirmados.Count, adiados, cartasMortas, ultimoErro, tipoDoErro);
     }
 
     private void Observar(OcorrenciaDeDrenagem ocorrencia)

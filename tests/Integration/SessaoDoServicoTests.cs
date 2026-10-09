@@ -161,13 +161,18 @@ public sealed class SessaoDoServicoTests : IAsyncLifetime, IDisposable
         Assert.True(simulada.EmOperacao);
         Assert.True(simulada.Simulacao);
         Assert.Equal("4.2.0", simulada.Firmware);
-        Assert.Equal(("Atendendo", Sinal.Bom), Textos.SituacaoDaCatraca(simulada));
+        // P0-01: a linha da simulada leva o prefixo, para não parecer catraca física atendendo.
+        Assert.Equal(("Simulada · Atendendo", Sinal.Bom), Textos.SituacaoDaCatraca(simulada));
 
         var real = await Catraca(2);
         Assert.True(real.EmOperacao);
         Assert.False(real.Simulacao);
 
-        Assert.Equal(2, (await _servico.ObterEstado(new ObterEstadoRequest(), null!)).EquipamentosConectados);
+        // Categorias exclusivas (P0-01): a física conta só como física; a simulada, só como simulada.
+        var estado = await _servico.ObterEstado(new ObterEstadoRequest(), null!);
+        Assert.Equal(1, estado.EquipamentosConectados);
+        Assert.Equal(1, estado.CatracasFisicasConectadas);
+        Assert.Equal(1, estado.CatracasSimuladasAtivas);
     }
 
     /// <summary>O selo "Simulação" chega ao cartão da catraca, pelo IPC de verdade.</summary>
@@ -182,7 +187,7 @@ public sealed class SessaoDoServicoTests : IAsyncLifetime, IDisposable
 
         var um = tela.Catracas.Single(c => c.Inner == 1);
         Assert.True(um.Simulacao);
-        Assert.Equal("Atendendo", um.Situacao);
+        Assert.Equal("Simulada · Atendendo", um.Situacao);
 
         var dois = tela.Catracas.Single(c => c.Inner == 2);
         Assert.False(dois.Simulacao);

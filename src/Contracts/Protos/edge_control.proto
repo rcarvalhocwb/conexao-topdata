@@ -185,6 +185,43 @@ message ObterEstadoResponse {
   // Giros confirmados pelo rótulo do mapa de giro (D9). Sem regra no mapa, conta como entrada.
   int64 entradas = 17;
   int64 saidas = 18;
+
+  // Situação de cada parte, medida pela última tentativa recente (P0-02). Não é
+  // inferida do último sucesso antigo. Ver Edge.Supervisor/EstadoDaNuvem.cs.
+  SituacaoDaInternet situacao_da_internet = 19;
+  SituacaoDaNuvem situacao_da_nuvem = 20;
+  SituacaoDaFila situacao_da_fila = 21;
+
+  // Catracas por categoria (P0-01). Uma catraca conta em uma única categoria.
+  int32 catracas_fisicas_conectadas = 22;
+  int32 catracas_simuladas_ativas = 23;
+}
+
+enum SituacaoDaInternet {
+  SITUACAO_DA_INTERNET_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_INTERNET_DESCONHECIDA = 1;
+  SITUACAO_DA_INTERNET_DISPONIVEL = 2;
+  SITUACAO_DA_INTERNET_INDISPONIVEL = 3;
+}
+
+enum SituacaoDaNuvem {
+  SITUACAO_DA_NUVEM_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_NUVEM_DESCONHECIDA = 1;
+  SITUACAO_DA_NUVEM_NAO_CONFIGURADA = 2;
+  SITUACAO_DA_NUVEM_CONECTANDO = 3;
+  SITUACAO_DA_NUVEM_CONECTADA = 4;
+  SITUACAO_DA_NUVEM_FALHA_DE_AUTENTICACAO = 5;
+  SITUACAO_DA_NUVEM_INDISPONIVEL = 6;
+  SITUACAO_DA_NUVEM_SEGREDO_AUSENTE = 7;
+}
+
+enum SituacaoDaFila {
+  SITUACAO_DA_FILA_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_FILA_DESCONHECIDA = 1;
+  SITUACAO_DA_FILA_PROCESSANDO = 2;
+  SITUACAO_DA_FILA_FALHA = 3;
+  SITUACAO_DA_FILA_PENDENTE = 4;
+  SITUACAO_DA_FILA_SINCRONIZADA = 5;
 }
 
 message ListarEquipamentosRequest {}
