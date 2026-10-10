@@ -18,17 +18,26 @@ $ErrorActionPreference = 'Stop'
 $pastaDoScript = Split-Path -Parent $MyInvocation.MyCommand.Path
 $problemas = @()
 
-# Dois lugares onde este script roda:
+# Três lugares onde este script roda:
 #  - instalado: C:\Program Files\Rayzer\XAcess\verificar-ambiente.ps1, com o worker em Worker\;
+#  - pacote da bancada: verificar-ambiente.ps1 ao lado de Edge.Worker.X86\;
 #  - no repositório: installer\verificar-ambiente.ps1, com o worker em artifacts\Edge.Worker.X86\.
-$instalado = Test-Path (Join-Path $pastaDoScript 'Worker')
+$instalado = Test-Path (Join-Path $pastaDoScript 'Worker') -PathType Container
+# O roteiro também identifica um pacote incompleto: nesse caso a falha deve apontar
+# para Edge.Worker.X86\, e não mandar republicar um repositório que o operador não tem.
+$pacoteDaBancada = (Test-Path (Join-Path $pastaDoScript 'Edge.Worker.X86') -PathType Container) -or
+    (Test-Path (Join-Path $pastaDoScript '21-roteiro-da-bancada.md') -PathType Leaf)
 $pastaDoWorker = if ($instalado) {
     Join-Path $pastaDoScript 'Worker'
+} elseif ($pacoteDaBancada) {
+    Join-Path $pastaDoScript 'Edge.Worker.X86'
 } else {
     Join-Path (Split-Path -Parent $pastaDoScript) 'artifacts\Edge.Worker.X86'
 }
 $comoRefazerOWorker = if ($instalado) {
     'Reinstale o Rayzer XAcess pelo Setup.'
+} elseif ($pacoteDaBancada) {
+    'Extraia novamente o pacote-da-bancada inteiro, mantendo a pasta Edge.Worker.X86 ao lado deste script.'
 } else {
     'Republique com .\installer\publicar.ps1.'
 }
@@ -94,7 +103,12 @@ $dll = @(
 Conferir 'DLLS_REGISTRADAS' ($null -ne $dll) $(if ($dll) {
     "EasyInner.dll encontrada em $dll."
 } else {
-    "EasyInner.dll não encontrada (procurada em $pastaDoWorker, SysWOW64 e System32). No Assistente de configuração, use o botão Localizar para apontar a DLL do SDK da Topdata."
+    $comoLocalizarASdk = if ($pacoteDaBancada -and -not $instalado) {
+        "Use o SDK Inner Acesso instalado neste PC ou copie as DLLs do seu SDK para $pastaDoWorker. O pacote público não contém o SDK."
+    } else {
+        'No Assistente de configuração, use o botão Localizar para apontar a DLL do SDK da Topdata.'
+    }
+    "EasyInner.dll não encontrada (procurada em $pastaDoWorker, SysWOW64 e System32). $comoLocalizarASdk"
 })
 
 # Cada worker escuta numa porta própria (ADR-0021). Ocupada pelo próprio programa das catracas é o
