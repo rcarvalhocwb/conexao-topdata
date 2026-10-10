@@ -30,7 +30,7 @@ namespace Desktop.App;
 /// as imagens dos dois temas saem como artefato e no pré-lançamento, para revisão visual.
 /// </para>
 /// </remarks>
-internal static class CapturaDeTela
+internal static partial class CapturaDeTela
 {
     private const int Largura = 1366;
     private const int Altura = 768;
@@ -108,6 +108,8 @@ internal static class CapturaDeTela
                 else
                 {
                     gravados.Add(await GravarAsync(Path.Combine(pasta, nome + ".png"), janela).ConfigureAwait(true));
+                    if (tela is PessoasViewModel pessoas && Environment.GetEnvironmentVariable("EDGE_EVIDENCIAS_LGPD") == "1")
+                        gravados.Add(await GravarLgpdAsync(Path.Combine(pasta, nome + "-lgpd.png"), janela, pessoas, cliente).ConfigureAwait(true));
                 }
             }
             catch (Exception erro) when (erro is not OutOfMemoryException)

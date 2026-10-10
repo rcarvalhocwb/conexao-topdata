@@ -1487,6 +1487,15 @@ public sealed class JanelaViewModel : Notificavel
                 TelaAtual = acessos;
             }
         });
+        if (Sessao is not null)
+        {
+            var pessoas = Telas.OfType<PessoasViewModel>().Single();
+            void PermissoesLgpd() => pessoas.DefinirPermissoesLgpd(
+                Sessao.Logado && Sessao.Pode(CodigosDePermissao.PessoasVerDados),
+                Sessao.Logado && Sessao.Pode(CodigosDePermissao.PessoasExcluir));
+            Sessao.SessaoMudou += (_, _) => PermissoesLgpd();
+            PermissoesLgpd();
+        }
     }
 
     /// <summary>A Parametrização da catraca (Etapa A.6), aberta pela "Gerenciar catraca".</summary>

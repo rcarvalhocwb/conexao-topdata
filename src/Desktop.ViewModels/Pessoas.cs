@@ -27,7 +27,7 @@ public sealed record LinhaDaCredencial(string Id, string Tipo, string Codigo, st
 /// vê-los; gravar a ficha com a máscara mantém o dado guardado. O código da credencial vai ao serviço e
 /// nunca volta: a ficha mostra só a máscara.
 /// </remarks>
-public sealed class PessoasViewModel : TelaBase
+public sealed partial class PessoasViewModel : TelaBase, IDisposable
 {
     private const string FormatoDaData = "dd/MM/yyyy";
 
@@ -105,6 +105,7 @@ public sealed class PessoasViewModel : TelaBase
         ReativarCredencial = new ComandoAssincrono(() => MudarCredencialAsync("ativa"), () => CredencialSelecionada is { Situacao: not "Ativa" });
         AplicarImportacao = new ComandoAssincrono(AplicarImportacaoAsync, () => ImportacaoAplicavel && _arquivo is not null);
         DesfazerImportacao = new ComandoAssincrono(DesfazerImportacaoAsync, () => LoteSelecionado is { PodeDesfazer: true });
+        PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Ocupada)) AvisarLgpd(); };
     }
 
     /// <summary>Grava a planilha conferida na prévia: tudo ou nada.</summary>
@@ -152,6 +153,8 @@ public sealed class PessoasViewModel : TelaBase
     /// <param name="conteudo">O conteúdo.</param>
     public async Task PreverImportacaoAsync(string nome, byte[] conteudo)
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         ArgumentNullException.ThrowIfNull(conteudo);
         _arquivo = null;
         ImportacaoAplicavel = false;
@@ -161,6 +164,7 @@ public sealed class PessoasViewModel : TelaBase
             {
                 NomeDoArquivo = nome, Conteudo = Google.Protobuf.ByteString.CopyFrom(conteudo),
             });
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             Mostrar(r, nome);
             if (r.Aplicavel)
             {
@@ -174,6 +178,8 @@ public sealed class PessoasViewModel : TelaBase
 
     private async Task AplicarImportacaoAsync()
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         if (_arquivo is not { } conteudo)
         {
             return;
@@ -185,6 +191,7 @@ public sealed class PessoasViewModel : TelaBase
             {
                 NomeDoArquivo = _nomeDoArquivo, Conteudo = Google.Protobuf.ByteString.CopyFrom(conteudo),
             });
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             Mostrar(r, _nomeDoArquivo);
             if (r.Aplicada)
             {
@@ -195,11 +202,13 @@ public sealed class PessoasViewModel : TelaBase
             ImportacaoAplicavel = false;
         }).ConfigureAwait(true);
 
-        await AtualizarAsync().ConfigureAwait(true);
+        if (sessao == _geracaoDaSessao) await AtualizarAsync().ConfigureAwait(true);
     }
 
     private async Task DesfazerImportacaoAsync()
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         if (LoteSelecionado is not { } lote)
         {
             return;
@@ -208,12 +217,13 @@ public sealed class PessoasViewModel : TelaBase
         await Tentar(async () =>
         {
             var r = await Cliente.DesfazerImportacaoDePessoasAsync(new DesfazerImportacaoDePessoasRequest { LoteId = lote.Id });
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             Mensagem = r.Gravado
                 ? $"Lote de {lote.Em} desfeito: {r.Id} pessoa(s) apagada(s). As passagens delas ficam, sem o nome."
                 : string.Join(" ", r.Problemas);
         }).ConfigureAwait(true);
 
-        await AtualizarAsync().ConfigureAwait(true);
+        if (sessao == _geracaoDaSessao) await AtualizarAsync().ConfigureAwait(true);
     }
 
     private void Mostrar(ResultadoDaImportacaoDePessoas r, string nome)
@@ -227,9 +237,12 @@ public sealed class PessoasViewModel : TelaBase
 
     private async Task LerLotesAsync(CancellationToken cancelamento)
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         try
         {
             var r = await Cliente.ListarImportacoesDePessoasAsync(new ListarImportacoesDePessoasRequest(), cancellationToken: cancelamento);
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             Lotes = [.. r.Lotes.Select(l => new LinhaDeLote(
                 l.Id,
                 FusoDoEvento.NoEvento(l.Em.ToDateTimeOffset()).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture),
@@ -563,28 +576,38 @@ public sealed class PessoasViewModel : TelaBase
 
     private async Task BuscarAsync(CancellationToken cancelamento)
     {
+        var sessao = _geracaoDaSessao;
         await Tentar(async () =>
         {
             var resposta = await Cliente.BuscarPessoasAsync(
                 new BuscarPessoasRequest { Texto = Busca.Trim(), PerfilId = FiltroPerfil, Situacao = FiltroSituacao, Limite = 500 },
                 cancellationToken: cancelamento);
+            if (sessao != _geracaoDaSessao) return;
             Pessoas = [.. resposta.Pessoas.Select(p => new LinhaDaPessoa(
                 p.Id, p.Nome, p.Perfil, p.Empresa, p.Sala, Situacoes(p.Situacao),
                 p.ValidoAte is null ? "—" : FusoDoEvento.NoEvento(p.ValidoAte.ToDateTimeOffset()).ToString(FormatoDaData, CultureInfo.InvariantCulture),
                 p.Credenciais))];
 
             var ativas = await Cliente.BuscarPessoasAsync(new BuscarPessoasRequest { Situacao = "ativo", Limite = 2000 }, cancellationToken: cancelamento);
+            if (sessao != _geracaoDaSessao) return;
             Anfitrioes = [new(string.Empty, "(ninguém)"), .. ativas.Pessoas.Where(p => p.Id != Id).Select(p => new OpcaoDeLista(p.Id, p.Nome))];
         }).ConfigureAwait(true);
     }
 
-    private async Task AbrirAsync(string id)
+    public async Task AbrirAsync(string id)
     {
-        await Tentar(async () => Preencher(await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id }))).ConfigureAwait(true);
+        var sessao = _geracaoDaSessao;
+        var ficha = ++_geracaoDaFicha;
+        await Tentar(async () =>
+        {
+            var r = await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id });
+            if (sessao == _geracaoDaSessao && ficha == _geracaoDaFicha) Preencher(r);
+        }).ConfigureAwait(true);
     }
 
     private void Preencher(FichaDaPessoa? ficha)
     {
+        _geracaoDaFicha++;
         var p = ficha?.Pessoa ?? new PessoaDoCadastro { PerfilId = PerfilId.Length > 0 ? PerfilId : "colaborador", TipoDoDocumento = "cpf" };
         Id = p.Id;
         PerfilId = p.PerfilId;
@@ -624,11 +647,14 @@ public sealed class PessoasViewModel : TelaBase
             c.CodigoMascarado,
             SituacaoDaCredencial(c.Situacao) + (c.Motivo.Length > 0 ? $" ({c.Motivo})" : string.Empty),
             Validade(c.ValidoDe, c.ValidoAte)))];
+        CredencialSelecionada = null;
         Avisar(nameof(TituloDaFicha));
     }
 
     private async Task GravarAsync()
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         if (!LerFormulario(out var pessoa))
         {
             return;
@@ -637,6 +663,7 @@ public sealed class PessoasViewModel : TelaBase
         await Tentar(async () =>
         {
             var r = await Cliente.GravarPessoaAsync(new GravarPessoaRequest { Pessoa = pessoa });
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             if (!r.Gravado)
             {
                 Mensagem = string.Join(" ", r.Problemas);
@@ -646,10 +673,11 @@ public sealed class PessoasViewModel : TelaBase
             Mensagem = Id.Length == 0
                 ? $"{pessoa.NomeCompleto} cadastrada. Agora dê a credencial (crachá, QR ou senha) na ficha."
                 : $"Ficha de {pessoa.NomeCompleto} gravada.";
-            Preencher(await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = r.Id }));
+            var atual = await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = r.Id });
+            if (sessao == _geracaoDaSessao && ficha == _geracaoDaFicha) Preencher(atual);
         }).ConfigureAwait(true);
 
-        await BuscarAsync(CancellationToken.None).ConfigureAwait(true);
+        if (sessao == _geracaoDaSessao) await BuscarAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
     /// <summary>Monta o pedido a partir do formulário; falso, com a mensagem, se algo não dá para ler.</summary>
@@ -746,10 +774,13 @@ public sealed class PessoasViewModel : TelaBase
 
     private async Task MudarSituacaoAsync(string situacao)
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         var id = Id;
         await Tentar(async () =>
         {
             var r = await Cliente.MudarSituacaoDaPessoaAsync(new MudarSituacaoDaPessoaRequest { Id = id, Situacao = situacao, Motivo = Motivo.Trim() });
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             if (!r.Gravado)
             {
                 Mensagem = string.Join(" ", r.Problemas);
@@ -762,14 +793,17 @@ public sealed class PessoasViewModel : TelaBase
                 "inativo" => $"{NomeCompleto} inativada: a próxima leitura já é negada.",
                 _ => $"{NomeCompleto} desbloqueada: volta a passar conforme as regras.",
             };
-            Preencher(await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id }));
+            var atual = await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id });
+            if (sessao == _geracaoDaSessao && ficha == _geracaoDaFicha) Preencher(atual);
         }).ConfigureAwait(true);
 
-        await BuscarAsync(CancellationToken.None).ConfigureAwait(true);
+        if (sessao == _geracaoDaSessao) await BuscarAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
     private async Task AdicionarCredencialAsync()
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         var id = Id;
         await Tentar(async () =>
         {
@@ -777,6 +811,7 @@ public sealed class PessoasViewModel : TelaBase
 
             // O código digitado some da tela de qualquer jeito: ele não fica à vista.
             NovoCodigo = string.Empty;
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             if (!r.Gravado)
             {
                 Mensagem = string.Join(" ", r.Problemas);
@@ -784,14 +819,17 @@ public sealed class PessoasViewModel : TelaBase
             }
 
             Mensagem = "Credencial cadastrada: já vale na catraca.";
-            Preencher(await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id }));
+            var atual = await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id });
+            if (sessao == _geracaoDaSessao && ficha == _geracaoDaFicha) Preencher(atual);
         }).ConfigureAwait(true);
 
-        await BuscarAsync(CancellationToken.None).ConfigureAwait(true);
+        if (sessao == _geracaoDaSessao) await BuscarAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
     private async Task MudarCredencialAsync(string situacao)
     {
+        var sessao = _geracaoDaSessao;
+        var ficha = _geracaoDaFicha;
         if (CredencialSelecionada is not { } credencial)
         {
             return;
@@ -804,6 +842,7 @@ public sealed class PessoasViewModel : TelaBase
             {
                 Id = credencial.Id, Situacao = situacao, Motivo = MotivoDaCredencial.Trim(),
             });
+            if (sessao != _geracaoDaSessao || ficha != _geracaoDaFicha) return;
             if (!r.Gravado)
             {
                 Mensagem = string.Join(" ", r.Problemas);
@@ -811,7 +850,8 @@ public sealed class PessoasViewModel : TelaBase
             }
 
             Mensagem = $"Credencial {credencial.Codigo}: {SituacaoDaCredencial(situacao).ToLowerInvariant()}.";
-            Preencher(await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id }));
+            var atual = await Cliente.ObterPessoaAsync(new ObterPessoaRequest { Id = id });
+            if (sessao == _geracaoDaSessao && ficha == _geracaoDaFicha) Preencher(atual);
         }).ConfigureAwait(true);
     }
 
@@ -829,6 +869,7 @@ public sealed class PessoasViewModel : TelaBase
         BloquearCredencial?.ReavaliarDisponibilidade();
         DevolverCredencial?.ReavaliarDisponibilidade();
         ReativarCredencial?.ReavaliarDisponibilidade();
+        AvisarLgpd();
     }
 
     private static string Situacoes(string situacao) => situacao switch

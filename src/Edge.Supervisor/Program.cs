@@ -309,11 +309,13 @@ var sessoesDoPainel = new SessoesDoPainel();
 // no Windows). Sem a chave, o cadastro fica fora e o painel diz por quê; a catraca continua decidindo,
 // porque a decisão não lê dado pessoal.
 CadastroDePessoas? cadastroDePessoas = null;
+CifraDeDadosPessoais? cifraDePessoas = null;
 if (OperatingSystem.IsWindows())
 {
     try
     {
-        cadastroDePessoas = new CadastroDePessoas(fabrica, ChaveDosDadosPessoais.Obter(new CofreDpapi(InstalacaoLocal.PastaDosSegredos)));
+        cifraDePessoas = ChaveDosDadosPessoais.Obter(new CofreDpapi(InstalacaoLocal.PastaDosSegredos));
+        cadastroDePessoas = new CadastroDePessoas(fabrica, cifraDePessoas);
     }
     catch (Exception erro) when (erro is InvalidOperationException or IOException or UnauthorizedAccessException
         or System.Security.Cryptography.CryptographicException)
@@ -322,6 +324,7 @@ if (OperatingSystem.IsWindows())
     }
 }
 
+var retencaoDePessoas = new RetencaoDePessoas(fabrica, cifraDePessoas);
 SincronizacaoComANuvem? sincronizacao = null;
 if (configuracao.Nuvem is { } configuracaoDaNuvem)
 {
@@ -413,7 +416,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     sessoes: sessoesDoPainel,
     pessoas: cadastroDePessoas,
     parametrosDoCadastro: new ParametrosDoCadastro(fabrica),
-    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas)));
+    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas),
+    retencaoDePessoas: retencaoDePessoas));
 
 // Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
 construtor.Services.AddGrpc(o =>
@@ -426,6 +430,8 @@ construtor.Services.AddGrpc(o =>
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();
 construtor.Services.AddHostedService<AcompanhamentoDaOperacao>();
+construtor.Services.AddSingleton(retencaoDePessoas);
+construtor.Services.AddHostedService<LimpezaDiariaDePessoas>();
 
 // Cópia de segurança de acesso.db (A05): verificada, com retenção. Fica em PastaDeDados\copias.
 construtor.Services.AddSingleton(new CopiaDeSeguranca(fabrica, Path.Combine(configuracao.PastaDeDados, "copias")));

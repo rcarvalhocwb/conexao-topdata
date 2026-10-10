@@ -51,6 +51,11 @@ service EdgeControl {
   rpc ImportarPessoas(ImportacaoDePessoasRequest) returns (ResultadoDaImportacaoDePessoas);
   rpc ListarImportacoesDePessoas(ListarImportacoesDePessoasRequest) returns (ListarImportacoesDePessoasResponse);
   rpc DesfazerImportacaoDePessoas(DesfazerImportacaoDePessoasRequest) returns (ResultadoDoCadastroDePessoas);
+  // P7: exportação em blocos para não truncar históricos maiores que uma mensagem gRPC.
+  rpc ExportarDadosDaPessoa(ObterPessoaRequest) returns (stream BlocoDosDadosDaPessoa);
+  rpc ExcluirTitular(ExcluirTitularRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc GravarTermoDeConsentimento(GravarTermoDeConsentimentoRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc RegistrarAceiteDoTermo(RegistrarAceiteDoTermoRequest) returns (ResultadoDoCadastroDePessoas);
 
   // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
   rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
@@ -1469,4 +1474,24 @@ message ListarImportacoesDePessoasResponse {
 
 message DesfazerImportacaoDePessoasRequest {
   string lote_id = 1;
+}
+
+// P7: somente o último bloco confirma que todo o JSON foi entregue.
+message BlocoDosDadosDaPessoa {
+  bytes conteudo = 1;
+  bool concluido = 2;
+}
+message ExcluirTitularRequest {
+  string pessoa_id = 1;
+  bool confirmada = 2;
+}
+message GravarTermoDeConsentimentoRequest {
+  string versao = 1;
+  string texto = 2;
+}
+message RegistrarAceiteDoTermoRequest {
+  string pessoa_id = 1;
+  string versao = 2;
+  google.protobuf.Timestamp aceito_em = 3;
+  bool confirmado = 4;
 }

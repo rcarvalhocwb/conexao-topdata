@@ -672,7 +672,7 @@ public sealed class RepositorioDeIngressos : IDestinoDeIngressos, IValidadorDeIn
             """
             SELECT COUNT(*), COUNT(DISTINCT qr_normalized)
             FROM ticket_use_attempt
-            WHERE ticket_id IS NULL AND person_id IS NULL AND at <= $ate;
+            WHERE ticket_id IS NULL AND person_id IS NULL AND person_data_erased = 0 AND at <= $ate;
             """;
         comando.Parameters.AddWithValue("$ate", Iso(corte));
 
