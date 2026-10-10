@@ -279,6 +279,14 @@ Para usar a catraca com pessoas cadastradas aqui, e não só com ingressos (docs
 
 Os dados pessoais ficam só neste computador, cifrados com uma chave do cofre do Windows (DPAPI). Sem essa chave (cofre apagado ou restaurado em outra máquina), o cadastro fica fora e o painel avisa; a catraca continua decidindo. Faça a cópia de segurança do cofre junto com a base.
 
+### Visitas (portaria e condomínio empresarial)
+
+1. Em **Visitas → Agendar**, informe nome, anfitrião ativo, motivo e início/fim no horário de Brasília. Use a busca de anfitrião quando ele não estiver nas opções iniciais. Agendar não libera acesso.
+2. Na chegada, selecione a visita, confira o documento e marque a conferência. Informe o código do crachá, QR ou teclado e registre a chegada. O perfil Visitante exige documento por padrão; o serviço recusa chegada fora da janela ou com anfitrião bloqueado/inativo. Campos adicionais exigidos pelo perfil precisam estar preenchidos em Pessoas.
+3. Na saída, confirme o recolhimento da credencial e registre a saída. O acesso termina na próxima leitura. Mesmo sem registrar saída, a credencial deixa de autorizar após o fim agendado.
+
+Administrador, Supervisor e Portaria recebem as permissões de ver, agendar, receber e encerrar visitas. O administrador pode ajustar os papéis em **Usuários**; um anfitrião que usa o painel pode ter só ver/agendar. Documento e credencial aparecem mascarados, e os dados pessoais ficam cifrados somente neste computador. Um crachá provisório pode ser entregue novamente após a saída anterior; credencial pessoal, perdida ou bloqueada não é reutilizada por esse fluxo.
+
 ## Imagens das telas
 
 Numa máquina Windows, com o serviço rodando:

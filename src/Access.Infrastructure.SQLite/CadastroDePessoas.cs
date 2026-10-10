@@ -321,7 +321,15 @@ public sealed class CadastroDePessoas
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         using var conexao = _fabrica.Abrir();
+        return ObterNa(conexao, null, id);
+    }
+
+    /// <summary>A mesma ficha na transação de chegada, sem perder as regras do perfil nem os demais campos.</summary>
+    internal PessoaCadastrada? ObterNa(SqliteConnection conexao, SqliteTransaction? transacao, string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
         using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
         comando.CommandText =
             """
             SELECT id, profile_id, company_id, place_id, host_person_id, status, status_reason, valid_from, valid_to,
@@ -366,9 +374,9 @@ public sealed class CadastroDePessoas
                 Cargo = Texto(l, 22),
                 Matricula = Texto(l, 23),
                 Observacao = Texto(l, 24),
-                Catracas = Catracas(conexao, id),
+                Catracas = Catracas(conexao, id, transacao),
             };
-            pessoa = new PessoaCadastrada(dados, l.GetString(5), Texto(l, 6), Instante(l, 25)!.Value, Instante(l, 26)!.Value, Credenciais(conexao, id));
+            pessoa = new PessoaCadastrada(dados, l.GetString(5), Texto(l, 6), Instante(l, 25)!.Value, Instante(l, 26)!.Value, Credenciais(conexao, id, transacao));
         }
 
         return pessoa;
@@ -863,9 +871,10 @@ public sealed class CadastroDePessoas
         _ => null,
     };
 
-    private static List<CredencialCadastrada> Credenciais(SqliteConnection conexao, string pessoaId)
+    private static List<CredencialCadastrada> Credenciais(SqliteConnection conexao, string pessoaId, SqliteTransaction? transacao = null)
     {
         using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
         comando.CommandText =
             """
             SELECT id, kind, value_normalized, status, status_reason, valid_from, valid_to, created_at
@@ -882,9 +891,10 @@ public sealed class CadastroDePessoas
         return linhas;
     }
 
-    private static List<int> Catracas(SqliteConnection conexao, string pessoaId)
+    private static List<int> Catracas(SqliteConnection conexao, string pessoaId, SqliteTransaction? transacao = null)
     {
         using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
         comando.CommandText = "SELECT inner_number FROM person_gate WHERE person_id = $id ORDER BY inner_number;";
         comando.Parameters.AddWithValue("$id", pessoaId);
         var linhas = new List<int>();

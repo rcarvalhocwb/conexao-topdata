@@ -28,6 +28,10 @@ public static class CodigosDePermissao
     public const string PessoasImportar = "pessoas.importar";
     public const string CadastroParametros = "cadastro.parametros";
     public const string CatracaFechar = "catraca.fechar";
+    public const string VisitasVer = "visitas.ver";
+    public const string VisitasAgendar = "visitas.agendar";
+    public const string VisitasReceber = "visitas.receber";
+    public const string VisitasEncerrar = "visitas.encerrar";
 }
 
 /// <summary>Em que ponto está o login do painel.</summary>

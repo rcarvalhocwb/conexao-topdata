@@ -1325,6 +1325,7 @@ public sealed class JanelaViewModel : Notificavel
         [typeof(PessoasViewModel)] = CodigosDePermissao.PessoasVer,
         [typeof(ParametrosDoCadastroViewModel)] = CodigosDePermissao.CadastroParametros,
         [typeof(UsuariosViewModel)] = CodigosDePermissao.UsuariosGerenciar,
+        [typeof(VisitasViewModel)] = CodigosDePermissao.VisitasVer,
     };
 
     /// <param name="cliente">O cliente do serviço.</param>
@@ -1355,6 +1356,7 @@ public sealed class JanelaViewModel : Notificavel
             new PessoasViewModel(cliente, relogio),
             new ParametrosDoCadastroViewModel(cliente, relogio),
             new UsuariosViewModel(cliente, relogio),
+            new VisitasViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
 
@@ -1487,6 +1489,12 @@ public sealed class JanelaViewModel : Notificavel
                 TelaAtual = acessos;
             }
         });
+
+        if (Sessao is not null)
+        {
+            AtualizarPermissoesDasVisitas();
+            Sessao.SessaoMudou += (_, _) => AtualizarPermissoesDasVisitas();
+        }
     }
 
     /// <summary>A Parametrização da catraca (Etapa A.6), aberta pela "Gerenciar catraca".</summary>
@@ -1511,6 +1519,16 @@ public sealed class JanelaViewModel : Notificavel
     public PainelAoVivoViewModel Painel { get; }
 
     public IReadOnlyList<ITela> Telas { get; }
+
+    private void AtualizarPermissoesDasVisitas()
+    {
+        if (Sessao is not { } sessao) { return; }
+        Telas.OfType<VisitasViewModel>().Single().DefinirPermissoes(
+            sessao.Logado && sessao.Pode(CodigosDePermissao.VisitasVer),
+            sessao.Logado && sessao.Pode(CodigosDePermissao.VisitasAgendar),
+            sessao.Logado && sessao.Pode(CodigosDePermissao.VisitasReceber),
+            sessao.Logado && sessao.Pode(CodigosDePermissao.VisitasEncerrar));
+    }
 
     /// <summary>O login do painel; nulo sem login (testes e ferramentas).</summary>
     public SessaoDoUsuarioViewModel? Sessao { get; }

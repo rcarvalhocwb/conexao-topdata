@@ -105,6 +105,16 @@ internal static class CapturaDeTela
                 {
                     gravados.AddRange(await GravarGemeoAsync(pasta, nome, janela, gemeo).ConfigureAwait(true));
                 }
+                else if (tela is VisitasViewModel visitas && Environment.GetEnvironmentVariable("EDGE_CAPTURA_VISITAS_DEMO") == "1")
+                {
+                    // Opt-in da automação: nunca cria cadastros numa captura de operação física.
+                    if (!janela.Painel.Estado.Simulacao)
+                    {
+                        throw new InvalidOperationException("As capturas de visitas de demonstração exigem modo simulação.");
+                    }
+
+                    gravados.AddRange(await GravarVisitasAsync(pasta, nome, janela, visitas, cliente).ConfigureAwait(true));
+                }
                 else
                 {
                     gravados.Add(await GravarAsync(Path.Combine(pasta, nome + ".png"), janela).ConfigureAwait(true));
@@ -138,6 +148,58 @@ internal static class CapturaDeTela
         }
 
         return [.. gravados.Select(c => c.Caminho)];
+    }
+
+    /// <summary>P6: fotos do formulário e das três situações pelo serviço real, apenas com dados fictícios.</summary>
+    private static async Task<IReadOnlyList<Captura>> GravarVisitasAsync(string pasta, string nome,
+        JanelaViewModel janela, VisitasViewModel tela, EdgeControl.EdgeControlClient cliente)
+    {
+        var gravados = new List<Captura>();
+        var anfitriao = await cliente.GravarPessoaAsync(new GravarPessoaRequest
+        {
+            Pessoa = new PessoaDoCadastro { PerfilId = "aluno", NomeCompleto = "Anfitrião de demonstração" },
+        });
+        if (!anfitriao.Gravado)
+        {
+            throw new InvalidOperationException("Não foi possível criar o anfitrião fictício da captura: " + string.Join(" ", anfitriao.Problemas));
+        }
+
+        await tela.NovaVisita.ExecutarAsync().ConfigureAwait(true);
+        await tela.AtualizarAsync().ConfigureAwait(true);
+        tela.Nome = "Visita de demonstração";
+        tela.AnfitriaoId = anfitriao.Id;
+        tela.Motivo = "Reunião de demonstração — dados fictícios";
+        gravados.Add(await GravarAsync(Path.Combine(pasta, nome + ".png"), janela).ConfigureAwait(true));
+
+        await tela.Agendar.ExecutarAsync().ConfigureAwait(true);
+        if (tela.Selecionada is not { Situacao: "Agendada" })
+        {
+            throw new InvalidOperationException("A captura não conseguiu agendar a visita fictícia: " + tela.Mensagem);
+        }
+
+        tela.TipoDoDocumento = "rg";
+        tela.Documento = "RG-DEMO-VISITAS";
+        tela.DocumentoConferido = true;
+        tela.TipoDaCredencial = "cartao";
+        tela.Codigo = "77001950";
+        gravados.Add(await GravarAsync(Path.Combine(pasta, nome + "-chegada.png"), janela).ConfigureAwait(true));
+
+        await tela.Receber.ExecutarAsync().ConfigureAwait(true);
+        if (tela.Selecionada is not { Situacao: "Em visita" })
+        {
+            throw new InvalidOperationException("A captura não conseguiu registrar a chegada fictícia: " + tela.Mensagem);
+        }
+
+        tela.SaidaConfirmada = true;
+        gravados.Add(await GravarAsync(Path.Combine(pasta, nome + "-em-visita.png"), janela).ConfigureAwait(true));
+        await tela.Encerrar.ExecutarAsync().ConfigureAwait(true);
+        if (tela.Selecionada is not { Situacao: "Encerrada" })
+        {
+            throw new InvalidOperationException("A captura não conseguiu encerrar a visita fictícia: " + tela.Mensagem);
+        }
+
+        gravados.Add(await GravarAsync(Path.Combine(pasta, nome + "-encerrada.png"), janela).ConfigureAwait(true));
+        return gravados;
     }
 
     /// <summary>Existe só quando alguma imagem não saiu com 1366×768 lógicos (o CI reprova).</summary>

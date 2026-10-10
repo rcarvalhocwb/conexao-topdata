@@ -37,6 +37,7 @@ internal static class DecisaoDePessoas
     /// <param name="TabelaDeHorario">A tabela da pessoa ou, sem ela, a do perfil.</param>
     /// <param name="LimiteDiario">O limite da pessoa ou, sem ele, o do perfil.</param>
     /// <param name="PerfilId">O perfil, para os portões permitidos.</param>
+    /// <param name="Visita">A janela da visita atual, sem qualquer dado pessoal.</param>
     public sealed record CredencialDePessoa(
         string PessoaId,
         string Perfil,
@@ -48,7 +49,10 @@ internal static class DecisaoDePessoas
         DateTimeOffset? CredencialAte,
         int? TabelaDeHorario,
         int? LimiteDiario,
-        string PerfilId);
+        string PerfilId,
+        JanelaDaVisita? Visita = null);
+
+    public sealed record JanelaDaVisita(DateTimeOffset De, DateTimeOffset Ate, DateTimeOffset? Chegada, DateTimeOffset? Saida);
 
     /// <summary>O número do Inner a partir do identificador do equipamento; nulo se não for <c>inner-N</c>.</summary>
     public static int? NumeroDoInner(string deviceId) =>
@@ -80,10 +84,12 @@ internal static class DecisaoDePessoas
         comando.CommandText =
             """
             SELECT p.id, pr.name, p.status, c.status, p.valid_from, p.valid_to, c.valid_from, c.valid_to,
-                   COALESCE(p.schedule_id, pr.schedule_id), COALESCE(p.daily_limit, pr.daily_limit), pr.id
+                   COALESCE(p.schedule_id, pr.schedule_id), COALESCE(p.daily_limit, pr.daily_limit), pr.id,
+                   v.id, v.scheduled_from, v.scheduled_to, v.arrived_at, v.departed_at
             FROM person_credential c
             JOIN person p ON p.id = c.person_id
             JOIN person_profile pr ON pr.id = p.profile_id
+            LEFT JOIN visit v ON v.id = c.visit_id
             WHERE c.value_normalized = $codigo;
             """;
         comando.Parameters.AddWithValue("$codigo", codigo);
@@ -105,7 +111,9 @@ internal static class DecisaoDePessoas
             Instante(leitor, 7),
             leitor.IsDBNull(8) ? null : leitor.GetInt32(8),
             leitor.IsDBNull(9) ? null : leitor.GetInt32(9),
-            leitor.GetString(10));
+            leitor.GetString(10),
+            leitor.IsDBNull(11) ? null : new JanelaDaVisita(
+                Instante(leitor, 12)!.Value, Instante(leitor, 13)!.Value, Instante(leitor, 14), Instante(leitor, 15)));
     }
 
     /// <summary>
@@ -142,6 +150,11 @@ internal static class DecisaoDePessoas
         if (credencial.SituacaoDaCredencial != "ativa")
         {
             return MotivoDoUso.CredencialInativa;
+        }
+
+        if (credencial.Visita is { } visita && (visita.Chegada is null || visita.Saida is not null || ForaDe(visita.De, visita.Ate, agora)))
+        {
+            return MotivoDoUso.ForaDaValidade;
         }
 
         if (ForaDe(credencial.PessoaDe, credencial.PessoaAte, agora) || ForaDe(credencial.CredencialDe, credencial.CredencialAte, agora))

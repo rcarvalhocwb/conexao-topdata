@@ -309,11 +309,14 @@ var sessoesDoPainel = new SessoesDoPainel();
 // no Windows). Sem a chave, o cadastro fica fora e o painel diz por quê; a catraca continua decidindo,
 // porque a decisão não lê dado pessoal.
 CadastroDePessoas? cadastroDePessoas = null;
+Visitas? visitas = null;
 if (OperatingSystem.IsWindows())
 {
     try
     {
-        cadastroDePessoas = new CadastroDePessoas(fabrica, ChaveDosDadosPessoais.Obter(new CofreDpapi(InstalacaoLocal.PastaDosSegredos)));
+        var cifraDosDadosPessoais = ChaveDosDadosPessoais.Obter(new CofreDpapi(InstalacaoLocal.PastaDosSegredos));
+        cadastroDePessoas = new CadastroDePessoas(fabrica, cifraDosDadosPessoais);
+        visitas = new Visitas(fabrica, cifraDosDadosPessoais);
     }
     catch (Exception erro) when (erro is InvalidOperationException or IOException or UnauthorizedAccessException
         or System.Security.Cryptography.CryptographicException)
@@ -413,7 +416,8 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     sessoes: sessoesDoPainel,
     pessoas: cadastroDePessoas,
     parametrosDoCadastro: new ParametrosDoCadastro(fabrica),
-    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas)));
+    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas),
+    visitas: visitas));
 
 // Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
 construtor.Services.AddGrpc(o =>
