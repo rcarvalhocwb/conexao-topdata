@@ -15,7 +15,7 @@ namespace Integration.Tests;
 /// credencial nunca volta em claro; documento e contato voltam mascarados para quem não tem
 /// <c>pessoas.ver_dados</c>, e gravar a ficha com a máscara não apaga o dado guardado.
 /// </summary>
-public sealed class PessoasPeloServicoTests : IAsyncLifetime, IDisposable
+public sealed partial class PessoasPeloServicoTests : IAsyncLifetime, IDisposable
 {
     private static readonly DateTimeOffset Agora = new(2026, 11, 16, 12, 0, 0, TimeSpan.Zero);
 
@@ -31,13 +31,15 @@ public sealed class PessoasPeloServicoTests : IAsyncLifetime, IDisposable
         _banco.Migrar();
         _usuarios = new UsuariosDoSistema(_banco.Fabrica, 100_000);
         _usuarios.GarantirAdministradorPadrao(Agora);
-        _pessoas = new CadastroDePessoas(_banco.Fabrica, new CifraDeDadosPessoais(RandomNumberGenerator.GetBytes(CifraDeDadosPessoais.TamanhoDaChave)));
+        var cifra = new CifraDeDadosPessoais(RandomNumberGenerator.GetBytes(CifraDeDadosPessoais.TamanhoDaChave));
+        _pessoas = new CadastroDePessoas(_banco.Fabrica, cifra);
 
         var sessoes = new SessoesDoPainel();
         var servico = new EdgeControlService(
             new WorkerSupervisor([]), relogio: () => Agora, semConfiguracao: true, usuarios: _usuarios, sessoes: sessoes,
             pessoas: _pessoas, parametrosDoCadastro: new ParametrosDoCadastro(_banco.Fabrica),
-            importacaoDePessoas: new ImportacaoDePessoas(_banco.Fabrica, _pessoas));
+            importacaoDePessoas: new ImportacaoDePessoas(_banco.Fabrica, _pessoas),
+            retencaoDePessoas: new RetencaoDePessoas(_banco.Fabrica, cifra));
 
         _token = InterceptadorDeToken.GerarToken();
         _endereco = TransporteLocal.EnderecoPadrao($"pessoas-{Guid.NewGuid():N}");

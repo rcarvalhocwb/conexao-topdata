@@ -176,7 +176,7 @@
           </Border>
 
           <!-- Situação: bloquear vale na próxima leitura. -->
-          <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0"
+          <Border x:Name="SituacaoDaPessoa" Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,12,0,0"
                   Visibility="{Binding TemFicha, Converter={StaticResource BoolParaVisibilidade}}">
             <StackPanel>
               <rz:RayzerSectionHeader Titulo="Situação" />
@@ -187,6 +187,14 @@
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="_Bloquear" Command="{Binding Bloquear}" />
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="_Desbloquear" Command="{Binding Desbloquear}" />
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="_Inativar" Command="{Binding Inativar}" />
+              </WrapPanel>
+              <WrapPanel Margin="0,12,0,0">
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="_Exportar dados"
+                        Click="ExportarDados" IsEnabled="{Binding PodeExportarDados}"
+                        Visibility="{Binding MostraExportarDados, Converter={StaticResource BoolParaVisibilidade}}" />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="E_xcluir titular"
+                        Click="ExcluirTitular" IsEnabled="{Binding PodeExcluirTitular}"
+                        Visibility="{Binding MostraExcluirTitular, Converter={StaticResource BoolParaVisibilidade}}" />
               </WrapPanel>
             </StackPanel>
           </Border>
