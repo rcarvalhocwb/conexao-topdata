@@ -33,6 +33,10 @@ public static class Permissoes
     public const string PessoasImportar = "pessoas.importar";
     public const string CadastroParametros = "cadastro.parametros";
     public const string CatracaFechar = "catraca.fechar";
+    public const string VisitasVer = "visitas.ver";
+    public const string VisitasAgendar = "visitas.agendar";
+    public const string VisitasReceber = "visitas.receber";
+    public const string VisitasEncerrar = "visitas.encerrar";
 
     /// <summary>Todas, na ordem da tela.</summary>
     public static IReadOnlyList<Permissao> Todas { get; } =
@@ -55,6 +59,10 @@ public static class Permissoes
         new(PessoasImportar, "Pessoas", "Importar pessoas por planilha e desfazer uma importação"),
         new(CadastroParametros, "Pessoas", "Empresas, salas, horários, feriados e perfis"),
         new(UsuariosGerenciar, "Administração", "Criar usuários, papéis e permissões"),
+        new(VisitasVer, "Visitas", "Ver a agenda e buscar anfitriões (documento mascarado)"),
+        new(VisitasAgendar, "Visitas", "Pré-cadastrar visitas para um anfitrião ativo"),
+        new(VisitasReceber, "Visitas", "Conferir o documento e entregar a credencial provisória na chegada"),
+        new(VisitasEncerrar, "Visitas", "Registrar a saída e encerrar a credencial provisória"),
     ];
 
     /// <summary>Verdadeiro se o código está no catálogo.</summary>

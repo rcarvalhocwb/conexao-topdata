@@ -201,6 +201,7 @@
       <DataTemplate DataType="{x:Type vm:PessoasViewModel}"><telas:Pessoas /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ParametrosDoCadastroViewModel}"><telas:ParametrosDoCadastro /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:UsuariosViewModel}"><telas:Usuarios /></DataTemplate>
+      <DataTemplate DataType="{x:Type vm:VisitasViewModel}"><telas:Visitas /></DataTemplate>
       <!-- Fora do menu: aberta pela "Gerenciar catraca" (Etapa A.6). -->
       <DataTemplate DataType="{x:Type vm:ParametrizacaoViewModel}"><telas:Parametrizacao /></DataTemplate>
       <!-- Painel, não tela: o mapa de giro dentro do gêmeo e da aba Giro da Parametrização (D9). -->

@@ -94,6 +94,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="pessoas">Cadastro local de pessoas (docs/43); nulo sem a chave dos dados pessoais.</param>
     /// <param name="parametrosDoCadastro">Empresas, salas, horários, feriados e perfis do cadastro.</param>
     /// <param name="importacaoDePessoas">Importação de pessoas por planilha; nula sem o cadastro.</param>
+    /// <param name="visitas">Agenda local e credenciais provisórias; nula sem a chave dos dados pessoais.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -119,7 +120,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         SessoesDoPainel? sessoes = null,
         Access.Infrastructure.SQLite.CadastroDePessoas? pessoas = null,
         Access.Infrastructure.SQLite.ParametrosDoCadastro? parametrosDoCadastro = null,
-        Access.Infrastructure.SQLite.ImportacaoDePessoas? importacaoDePessoas = null)
+        Access.Infrastructure.SQLite.ImportacaoDePessoas? importacaoDePessoas = null,
+        Access.Infrastructure.SQLite.Visitas? visitas = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -147,6 +149,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _pessoas = pessoas;
         _parametrosDoCadastro = parametrosDoCadastro;
         _importacaoDePessoas = importacaoDePessoas;
+        _visitas = visitas;
     }
 
     private readonly Access.Infrastructure.SQLite.FilaDeSaidaSqlite? _filaDeSaida;

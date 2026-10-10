@@ -122,6 +122,7 @@ public sealed class TelaParaIcone : IValueConverter
             PessoasViewModel => "\uE77B",
             ParametrosDoCadastroViewModel => "\uE787",
             UsuariosViewModel => "\uE716",
+            VisitasViewModel => "\uE8D4",
             _ => "\uE8FD",
         };
 

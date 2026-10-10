@@ -52,6 +52,13 @@ service EdgeControl {
   rpc ListarImportacoesDePessoas(ListarImportacoesDePessoasRequest) returns (ListarImportacoesDePessoasResponse);
   rpc DesfazerImportacaoDePessoas(DesfazerImportacaoDePessoasRequest) returns (ResultadoDoCadastroDePessoas);
 
+  // Agenda de visitas local (docs/43 P6). Agendar não dá acesso; o código só entra na chegada.
+  rpc ListarVisitas(ListarVisitasRequest) returns (ListarVisitasResponse);
+  rpc BuscarAnfitrioesDeVisita(BuscarAnfitrioesDeVisitaRequest) returns (BuscarAnfitrioesDeVisitaResponse);
+  rpc AgendarVisita(AgendarVisitaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc ReceberVisita(ReceberVisitaRequest) returns (ResultadoDoCadastroDePessoas);
+  rpc EncerrarVisita(EncerrarVisitaRequest) returns (ResultadoDoCadastroDePessoas);
+
   // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
   rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
   rpc FecharCatraca(FecharCatracaRequest) returns (ResultadoDoCadastroDePessoas);
@@ -1469,4 +1476,65 @@ message ListarImportacoesDePessoasResponse {
 
 message DesfazerImportacaoDePessoasRequest {
   string lote_id = 1;
+}
+
+// Visitas (P6). Nome e motivo só na conexão local autorizada; documento e código sempre mascarados.
+message VisitaDoCadastro {
+  string id = 1;
+  string pessoa_id = 2;
+  string anfitriao_id = 3;
+  string nome = 4;
+  string anfitriao = 5;
+  string motivo = 6;
+  google.protobuf.Timestamp de = 7;
+  google.protobuf.Timestamp ate = 8;
+  google.protobuf.Timestamp chegada = 9;
+  google.protobuf.Timestamp saida = 10;
+  string codigo_mascarado = 11;
+  string documento_mascarado = 12;
+  string situacao = 13;
+}
+
+message ListarVisitasRequest {
+  string situacao = 1; // vazia, agendada, em_visita, encerrada ou expirada
+  int32 limite = 2;
+}
+
+message ListarVisitasResponse {
+  repeated VisitaDoCadastro visitas = 1;
+}
+
+message BuscarAnfitrioesDeVisitaRequest {
+  string texto = 1;
+  int32 limite = 2;
+}
+
+message AnfitriaoDaVisita {
+  string id = 1;
+  string nome = 2;
+}
+
+message BuscarAnfitrioesDeVisitaResponse {
+  repeated AnfitriaoDaVisita anfitrioes = 1;
+}
+
+message AgendarVisitaRequest {
+  string nome = 1;
+  string anfitriao_id = 2;
+  string motivo = 3;
+  google.protobuf.Timestamp de = 4;
+  google.protobuf.Timestamp ate = 5;
+}
+
+message ReceberVisitaRequest {
+  string id = 1;
+  string tipo_do_documento = 2;
+  string documento = 3;
+  bool documento_conferido = 4;
+  string tipo_do_codigo = 5;
+  string codigo = 6;
+}
+
+message EncerrarVisitaRequest {
+  string id = 1;
 }
