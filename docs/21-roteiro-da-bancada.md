@@ -24,14 +24,37 @@
 **Como baixar o pacote da bancada.** No GitHub, entre logado, abra a aba **Actions**, clique
 na execução mais recente da CI da branch com sucesso e, no fim da página, em **Artifacts**,
 baixe `pacote-da-bancada`. É um zip com a pasta `Edge.Worker.X86` (autocontida: não
-precisa instalar o .NET), este roteiro e o `verificar-ambiente.ps1`. Descompacte, por
+precisa instalar o .NET), este roteiro, o [modelo de relatório](21-relatorio-da-bancada.md),
+o `identificacao-do-pacote.json` e o `verificar-ambiente.ps1`. Descompacte, por
 exemplo, em `C:\Bancada`, e use `C:\Bancada\Edge.Worker.X86` onde este roteiro diz
 `artifacts\Edge.Worker.X86`. A `EasyInner.dll` **não** vem no pacote: ela é da Topdata e
 vem do SDK instalado na máquina.
 
-O MSI (`instalador-msi`, mesma página) instala o serviço e o painel do operador. **Para
-este ensaio ele não é necessário**, e exige o .NET 10 instalado (x64 e x86, e o Desktop
-Runtime para o painel).
+Mantenha a estrutura do ZIP: o verificador e os dois documentos ficam **ao lado** da pasta
+`Edge.Worker.X86`, não dentro dela. Antes do passo 1, no PowerShell:
+
+```powershell
+cd C:\Bancada
+.\verificar-ambiente.ps1 -Porta 3570
+Copy-Item .\21-relatorio-da-bancada.md .\resultado-da-bancada.md
+```
+
+O verificador reconhece essa estrutura, a instalação (`Worker`) e a publicação do
+repositório (`artifacts\Edge.Worker.X86`). Registre sua saída e o código de saída no
+relatório. Ele confere os pré-requisitos; **porta aberta pelo worker**, no passo 1, é
+que prova o carregamento da DLL. Se a porta estiver livre, a linha `conferir` é esperada
+antes de iniciar o worker.
+
+Copie os dados de `identificacao-do-pacote.json` para o relatório e mantenha o arquivo
+junto das evidências: ele identifica a versão, o commit efetivamente compilado, o commit
+da tarefa, a execução do CI e os hashes SHA-256. Cada rodada usa uma cópia do modelo,
+com data, modelo/firmware, SDK e todas as linhas inicialmente **NÃO EXECUTADO**.
+
+O MSI (`instalador-msi`, mesma página) instala o serviço e o painel do operador. Os
+pacotes do CI levam o .NET embutido. Os passos 1–6A e 7 usam o worker sozinho; os passos
+6B–6J indicam quando precisam do sistema instalado. Quem publicar manualmente com
+`installer\publicar.ps1` precisa dos runtimes .NET 10 x86, x64 e Desktop x64, pois esse
+script usa `--self-contained false`. O SDK e os requisitos nativos continuam necessários.
 
 **A catraca precisa ser configurada para se conectar a este PC.** Na integração pela
 `EasyInner.dll`, quem inicia a conexão é a catraca, e o PC escuta. No Gerenciador de
@@ -54,7 +77,7 @@ Edge.Worker.X86.exe --porta 3570
 | O que aparece | O que significa |
 |---|---|
 | `Porta aberta.` | **Passou.** Siga para o passo 2 |
-| `Retorno 8 (GPF)` | Ambiente: rode `installer\verificar-ambiente.ps1` e corrija o que ele apontar |
+| `Retorno 8 (GPF)` | Ambiente: volte à raiz do ZIP, rode `.\verificar-ambiente.ps1` e corrija o que ele apontar (no repositório: `installer\verificar-ambiente.ps1`) |
 | `A EasyInner.dll não foi encontrada` | SDK não instalado, ou fora do caminho |
 | `arquitetura incompatível` | O executável não saiu em 32 bits — publique de novo |
 
@@ -509,8 +532,9 @@ Dito antes, para ninguém descobrir depois:
    provedores do ensaio não têm conector, de propósito.
 3. **Operação sem o sistema.** A mudança automática para off-line está desligada: se o
    programa parar, a catraca para de liberar.
-4. **Várias catracas com supervisor.** O ensaio roda um worker direto. Aceita
-   `--inner 1,2,3`, mas o supervisor, que reinicia worker morto, não está no caminho.
+4. **O parque inteiro sob carga com supervisor.** Os passos do worker direto aceitam
+   `--inner 1,2,3`; os passos 6B–6J que usam o sistema instalado ensaiam os casos descritos,
+   incluindo a testemunha de 6G, sem homologar capacidade ou estabilidade de todo o parque.
 
 ## 9. Critério de aprovação
 
@@ -520,7 +544,7 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 4: cartão libera
 - [ ] Passo 5: as seis regras se comportam como a tabela diz
 - [ ] Passo 6A: relógio conferido com no máximo ±1 s, e o QR logo após o reacerto libera
-- [ ] Passo 6B: os oito pedidos se comportam como a tabela diz; linha 5 com o QR sem giro
+- [ ] Passo 6B: as nove linhas se comportam como a tabela diz; linha 5 com o QR sem giro
 - [ ] Passo 6C: cada chave ensaiada tem a linha preenchida (ou "não ensaiada") e voltou desligada se o resultado foi ruim
 - [ ] Passo 6D: com a sequência oficial ligada, as linhas 2–6 iguais à referência (ou "não ensaiada"); a chave voltou desligada se o resultado foi ruim
 - [ ] Passo 6E: cada comando ensaiado tem a linha preenchida (ou "não ensaiado"); a linha 4 fica "não ensaiada" até a D5; toda chave voltou a `0`
@@ -531,5 +555,15 @@ Dito antes, para ninguém descobrir depois:
 - [ ] Passo 6J: prazo do giro (NOVO-HIL-GIRO-04): com o braço seguro, a pista volta a atender em todas as linhas; nenhum giro dentro do tempo do relé foi cortado
 - [ ] Passo 7: o resumo bate com o que foi feito
 
-**Mande a tabela do passo 3, as dos passos 6A, 6B, 6C e 6D e o resumo do passo 7.** São eles que fecham as perguntas
-em aberto sobre leitor, QR e cartão.
+**Preencha e envie a cópia do [relatório](21-relatorio-da-bancada.md)**, com o resultado de
+cada passo, as tabelas de leitura e de tempo, o resumo do passo 7 e trechos do registro do
+serviço/worker. Identifique a catraca em cada resultado; se o passo exige duas, registre
+também a testemunha. Uma falha precisa apontar para a correção/teste ou para uma issue.
+Passo não executado continua pendente, mesmo com CI verde. As perguntas `A_CONFIRMAR`
+do docs/34 e os ensaios off-line `INT-OFF-03/04` precisam de evidência própria antes da #12.
+
+Os números completos da tabela privada do passo 3 **não são enviados ao repositório**.
+Use aliases (cartão A, QR A), máscara e quantidade de caracteres; remova códigos reais e
+tokens dos trechos anexados. Não anexe `bancada.db`, backups, arquivos com credenciais nem
+as DLLs proprietárias do SDK. O relatório traz o índice de evidências redigidas e as
+pendências que ainda precisam de decisão ou ensaio.

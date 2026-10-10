@@ -639,12 +639,41 @@ jobs:
       # SDK da Topdata instalado na máquina.
       - name: Montar o pacote da bancada
         shell: pwsh
+        env:
+          COMMIT_DA_TAREFA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained true -o bancada/Edge.Worker.X86
+          $versao = "0.1.$env:GITHUB_RUN_NUMBER"
+          dotnet publish src/Edge.Worker.X86 -c Release -r win-x86 --self-contained true -p:Version=$versao -o bancada/Edge.Worker.X86
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar o worker da bancada.' }
           Copy-Item docs/21-roteiro-da-bancada.md bancada/
+          Copy-Item docs/21-relatorio-da-bancada.md bancada/
           Copy-Item installer/verificar-ambiente.ps1 bancada/
-          if (-not (Test-Path bancada/Edge.Worker.X86/bancada.exemplo.json)) { throw 'Falta o bancada.exemplo.json.' }
+          $obrigatorios = '21-roteiro-da-bancada.md', '21-relatorio-da-bancada.md', 'verificar-ambiente.ps1',
+                          'Edge.Worker.X86/Edge.Worker.X86.exe', 'Edge.Worker.X86/Edge.Worker.X86.dll',
+                          'Edge.Worker.X86/Edge.Worker.X86.runtimeconfig.json', 'Edge.Worker.X86/bancada.exemplo.json'
+          foreach ($arquivo in $obrigatorios) {
+            if (-not (Test-Path (Join-Path bancada $arquivo) -PathType Leaf)) { throw "Falta no pacote da bancada: $arquivo" }
+          }
           if (Test-Path bancada/Edge.Worker.X86/EasyInner.dll) { throw 'A EasyInner.dll não pode ir no pacote.' }
+
+          # Identifica exatamente o que será ensaiado: no PR, o checkout é o commit de
+          # integração do GitHub, que pode ser diferente do último commit da tarefa.
+          $commitCompilado = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível identificar o commit compilado.' }
+          $arquivos = foreach ($arquivo in $obrigatorios) {
+            @{ arquivo = $arquivo; sha256 = (Get-FileHash (Join-Path bancada $arquivo) -Algorithm SHA256).Hash.ToLowerInvariant() }
+          }
+          @{
+            formato = 1
+            versao = $versao
+            commit_compilado = $commitCompilado
+            commit_da_tarefa = $env:COMMIT_DA_TAREFA
+            execucao_ci = "https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+            arquitetura = 'win-x86'
+            autocontido = $true
+            sdk_incluido = $false
+            arquivos = @($arquivos)
+          } | ConvertTo-Json -Depth 4 | Set-Content bancada/identificacao-do-pacote.json -Encoding utf8
 
       - name: Publicar o pacote da bancada
         uses: actions/upload-artifact@v4
