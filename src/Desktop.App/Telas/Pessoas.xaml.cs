@@ -31,7 +31,7 @@ public partial class Pessoas : UserControl
         if (DataContext is not PessoasViewModel { PodeExcluirTitular: true } pessoas) return;
         var id = pessoas.Id;
         var confirmada = MessageBox.Show(Window.GetWindow(this),
-            "Excluir definitivamente a ficha deste titular e todas as suas credenciais?\n\nAs passagens ficam sem identificação pessoal. Esta ação não pode ser desfeita.",
+            $"Excluir definitivamente a ficha de {pessoas.NomeCompleto} e todas as suas credenciais?\n\nAs passagens ficam sem identificação pessoal. Esta ação não pode ser desfeita.",
             "Excluir titular", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
         if (confirmada && pessoas.Id == id) await pessoas.ExcluirTitularAsync(true).ConfigureAwait(true);
     }
