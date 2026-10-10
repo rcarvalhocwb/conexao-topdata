@@ -107,6 +107,8 @@ public sealed class LgpdTests : IDisposable
         Assert.True(_pessoas.AdicionarCredencial("operador", id, "cartao", "77009001", null, null, Agora).Gravado);
         var repositorio = new RepositorioDeIngressos(_banco.Fabrica);
         var (_, tentativa) = repositorio.TentarUsar("77009001", "portao-1", "inner-1", Agora);
+        repositorio.TentarUsar("99009999", "portao-1", "inner-1", Agora);
+        Assert.Equal((1L, 1L), repositorio.QrDesconhecidos(Agora));
         Sql("""
             INSERT INTO raw_event VALUES ('leitura', 'inner-1', 'boot', 1, 1, NULL, $codigo, NULL, $em, NULL, 'corr');
             INSERT INTO raw_event VALUES ('giro', 'inner-1', 'boot', 2, 6, NULL, $codigo, NULL, $em, NULL, 'corr');
@@ -126,6 +128,7 @@ public sealed class LgpdTests : IDisposable
         Assert.Equal(0L, Escalar("SELECT COUNT(*) FROM person_consent;"));
         Assert.Equal(1L, Escalar("SELECT COUNT(*) FROM consent_term;"));
         Assert.Equal(1L, Escalar("SELECT COUNT(*) FROM ticket_use_attempt WHERE id = $id AND person_id IS NULL AND qr_normalized = '' AND passage_confirmed_at IS NOT NULL;", ("$id", tentativa.ToString())));
+        Assert.Equal((1L, 1L), repositorio.QrDesconhecidos(Agora));
         Assert.Equal(1L, Escalar("SELECT COUNT(*) FROM physical_passage;"));
         Assert.Equal(0L, Escalar("SELECT COUNT(*) FROM raw_event WHERE length(payload) > 0;"));
         Assert.Equal(1L, Escalar("SELECT COUNT(*) FROM access_decision WHERE credential_value IS NULL AND rule_trace_json IS NULL;"));
@@ -285,7 +288,24 @@ public sealed class LgpdTests : IDisposable
         pessoas.MudarSituacao("operador", id, "inativo", "Segundo encerramento", Agora.AddDays(20));
         pessoas.MudarSituacao("operador", id, "inativo", "Repetição da operação", Agora.AddDays(100));
         pessoas.Gravar("operador", pessoas.Obter(id)!.Dados with { Observacao = "Correção posterior" }, Agora.AddDays(150));
+        var apagada = pessoas.Gravar("operador", new DadosDaPessoa { PerfilId = "aluno", NomeCompleto = "Ficha apagada na versão antiga" }, Agora).Id!;
+        pessoas.AdicionarCredencial("operador", apagada, "cartao", "77009099", null, null, Agora);
+        new RepositorioDeIngressos(legado.Fabrica).TentarUsar("77009099", "p1", "d1", Agora);
+        using (var con = legado.Fabrica.Abrir())
+        using (var cmd = con.CreateCommand())
+        {
+            cmd.CommandText = "DELETE FROM person WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", apagada);
+            cmd.ExecuteNonQuery();
+        }
         Assert.Single(new Migrator(legado.Fabrica).Aplicar());
+        using (var con = legado.Fabrica.Abrir())
+        using (var cmd = con.CreateCommand())
+        {
+            cmd.CommandText = "SELECT COUNT(*) FROM ticket_use_attempt WHERE person_id IS NULL AND qr_normalized = '' AND person_data_erased = 1;";
+            Assert.Equal(1L, cmd.ExecuteScalar());
+        }
+        Assert.Equal((0L, 0L), new RepositorioDeIngressos(legado.Fabrica).QrDesconhecidos(Agora));
         var retencao = new RetencaoDePessoas(legado.Fabrica);
         Assert.Equal(0, retencao.LimparVencidos(Agora.AddDays(199)));
         Assert.Equal(1, retencao.LimparVencidos(Agora.AddDays(200)));

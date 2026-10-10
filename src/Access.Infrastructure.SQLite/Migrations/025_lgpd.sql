@@ -7,6 +7,7 @@ UPDATE person SET inactivated_at = COALESCE(
      ORDER BY e.seq LIMIT 1), updated_at)
 WHERE status = 'inativo';
 CREATE INDEX ix_person_inactive ON person (inactivated_at) WHERE status = 'inativo';
+ALTER TABLE ticket_use_attempt ADD COLUMN person_data_erased INTEGER NOT NULL DEFAULT 0 CHECK (person_data_erased IN (0, 1));
 CREATE TRIGGER person_inactivated_insert AFTER INSERT ON person WHEN NEW.status = 'inativo'
 BEGIN
     UPDATE person SET inactivated_at = NEW.updated_at WHERE id = NEW.id;
@@ -51,7 +52,7 @@ BEGIN
         WHERE a.person_id = OLD.id);
     UPDATE access_decision SET credential_value = NULL, rule_trace_json = NULL
         WHERE id IN (SELECT decision_id FROM ticket_use_attempt WHERE person_id = OLD.id);
-    UPDATE ticket_use_attempt SET person_id = NULL, qr_normalized = '' WHERE person_id = OLD.id;
+    UPDATE ticket_use_attempt SET person_id = NULL, qr_normalized = '', person_data_erased = 1 WHERE person_id = OLD.id;
 END;
 
 -- Auditoria segue só-INSERT, com uma única exceção: retirar dados de um titular já apagado.
@@ -66,5 +67,22 @@ CREATE TRIGGER person_erase_audit AFTER DELETE ON person
 BEGIN
     UPDATE person_event SET person_id = NULL, detail = NULL WHERE person_id = OLD.id;
 END;
+
+-- Bases antigas podem ter fichas apagadas antes desta migração, com vínculos órfãos.
+CREATE TEMP TABLE lgpd_orphans (id TEXT PRIMARY KEY);
+INSERT INTO lgpd_orphans
+SELECT DISTINCT person_id FROM ticket_use_attempt WHERE person_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM person WHERE id = person_id)
+UNION
+SELECT DISTINCT person_id FROM person_event WHERE person_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM person WHERE id = person_id);
+UPDATE raw_event SET payload = X'' WHERE id IN (
+    SELECT d.raw_event_id FROM access_decision d JOIN ticket_use_attempt a ON a.decision_id = d.id WHERE a.person_id IN (SELECT id FROM lgpd_orphans)
+    UNION SELECT p.raw_event_id FROM physical_passage p JOIN ticket_use_attempt a ON a.decision_id = p.decision_id WHERE a.person_id IN (SELECT id FROM lgpd_orphans));
+UPDATE access_decision SET credential_value = NULL, rule_trace_json = NULL
+    WHERE id IN (SELECT decision_id FROM ticket_use_attempt WHERE person_id IN (SELECT id FROM lgpd_orphans));
+UPDATE ticket_use_attempt SET person_id = NULL, qr_normalized = '', person_data_erased = 1 WHERE person_id IN (SELECT id FROM lgpd_orphans);
+UPDATE person_event SET person_id = NULL, detail = NULL WHERE person_id IN (SELECT id FROM lgpd_orphans);
+INSERT INTO person_event (at, action, detail)
+SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'retencao.migrar_orfaos', 'pessoas=' || COUNT(*) FROM lgpd_orphans HAVING COUNT(*) > 0;
+DROP TABLE lgpd_orphans;
 
 INSERT INTO app_role_permission (role_id, permission) VALUES ('administrador', 'pessoas.excluir');
