@@ -27,17 +27,44 @@
             <TextBlock Text="Selecione uma visita para registrar a chegada ou a saída. Mostra até 200 visitas mais recentes."
                        Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Margin="0,0,0,10" />
           </StackPanel>
-          <DataGrid ItemsSource="{Binding Visitas}" SelectedItem="{Binding Selecionada}" AutomationProperties.Name="Agenda de visitas">
+          <DataGrid ItemsSource="{Binding Visitas}" SelectedItem="{Binding Selecionada}" RowHeight="54" AutomationProperties.Name="Agenda de visitas">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="VISITANTE" Binding="{Binding Nome}" Width="*" MinWidth="140" />
-              <DataGridTextColumn Header="ANFITRIÃO" Binding="{Binding Anfitriao}" Width="140" />
+              <DataGridTemplateColumn Header="VISITANTE" Width="*" MinWidth="165">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Nome}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Nome}" />
+                      <TextBlock Text="{Binding Anfitriao, StringFormat=Anfitrião: {0}}" Style="{StaticResource Rayzer.Type.Caption}"
+                                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Anfitriao}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTextColumn Header="SITUAÇÃO" Binding="{Binding Situacao}" Width="105" />
-              <DataGridTextColumn Header="JANELA" Binding="{Binding Janela}" Width="275" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTextColumn Header="JANELA" Binding="{Binding Janela}" Width="175">
+                <DataGridTextColumn.ElementStyle>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Celula.Mono}">
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                  </Style>
+                </DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
       </Border>
       <TabControl Grid.Column="2" SelectedIndex="{Binding Aba}">
+        <!-- O estilo global põe 230 px de passos à esquerda; aqui as duas abas ficam acima do formulário. -->
+        <TabControl.Template>
+          <ControlTemplate TargetType="TabControl">
+            <Grid>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+              <StackPanel Orientation="Horizontal" IsItemsHost="True" Margin="0,0,0,8" KeyboardNavigation.TabIndex="1" />
+              <Border Grid.Row="1" Style="{StaticResource Rayzer.Card}" Padding="8">
+                <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" />
+              </Border>
+            </Grid>
+          </ControlTemplate>
+        </TabControl.Template>
         <TabItem Header="Agendar">
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="14" IsEnabled="{Binding PodeAgendar}">
@@ -75,7 +102,7 @@
             <StackPanel Margin="14">
               <TextBlock Text="Selecione uma visita na agenda." Style="{StaticResource Rayzer.Type.Body}" Margin="0,0,0,8" />
               <StackPanel Visibility="{Binding TemSelecao, Converter={StaticResource BoolParaVisibilidade}}">
-                <rz:RayzerSectionHeader Titulo="{Binding Selecionada.Nome}" />
+                <TextBlock Text="{Binding Selecionada.Nome}" Style="{StaticResource Rayzer.Type.Section}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Selecionada.Anfitriao, StringFormat=Anfitrião: {0}}" TextWrapping="Wrap" Style="{StaticResource Rayzer.Type.Body}" />
                 <TextBlock Text="{Binding Selecionada.Janela}" TextWrapping="Wrap" Style="{StaticResource Rayzer.Type.Body}" Margin="0,4,0,0" />
                 <TextBlock Text="{Binding Selecionada.Motivo}" TextWrapping="Wrap" Style="{StaticResource Rayzer.Type.Body}" Margin="0,4,0,8" />
