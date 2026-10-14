@@ -170,7 +170,7 @@ public sealed record ConfiguracaoDaOperacao(
 /// também — e é devolvido como problema, para o painel mostrar, em vez de derrubar o
 /// worker na hora de subir.
 /// </remarks>
-public sealed class ConfiguracoesDaBorda
+public sealed partial class ConfiguracoesDaBorda
 {
     public const string ChaveTipoDeLeitor = "leitor.tipo";
     public const string ChaveLeitorDaUrna = "leitor.urna";
@@ -338,6 +338,12 @@ public sealed class ConfiguracoesDaBorda
             [ChaveExibirTextoDoGiro] = configuracao.ExibirTextoDoGiro ? "1" : "0",
         };
 
+        GravarPares(pares, agora, quem);
+    }
+
+    // Grava as chaves numa transação só; a que não mudou fica com o autor e a data de antes.
+    private void GravarPares(IReadOnlyDictionary<string, string> pares, DateTimeOffset agora, string? quem)
+    {
         using var conexao = _fabrica.Abrir();
         using var transacao = conexao.BeginTransaction();
 

@@ -134,6 +134,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             "PortaoNaoPermitido" => "Negado · catraca não permitida",
             "LimiteDiario" => "Negado · entradas do dia esgotadas",
             "CatracaFechada" => "Negado · catraca fechada pelo operador",
+            "ForaDoPeriodoDoEvento" => "Negado · fora do período do evento",
             "CredencialInativa" => "Negado · credencial bloqueada ou perdida",
             "ForaDaValidade" => "Negado · fora da validade do cadastro",
             _ => $"Negado · {t.Motivo}",

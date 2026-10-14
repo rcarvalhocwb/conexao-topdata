@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 2;
+    public const int Edicao = 3;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,16 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "Configurações do evento em seis seções, sempre na mesma ordem: Evento (nome, período e hora " +
+        "de corte), Tipos de entrada, Cartões da bilheteria, Padrão das catracas, o que ainda não dá " +
+        "para configurar (com o motivo) e Avançado. Cada seção tem o próprio botão de salvar.",
+
+        "Os cartões já validados podem ser carregados de uma vez a partir dos arquivos do sistema " +
+        "anterior (carregar-cartoes.ps1, como administrador). O número fica como estava, com os zeros.",
+
+        "Período do evento: com a opção ligada, a catraca recusa ingressos lidos antes do início ou " +
+        "depois do fim, com o motivo \"fora do período do evento\". A equipe credenciada não é afetada.",
+
         "\"Gerenciar catraca\" agora fica dentro de \"Configuração da catraca\": a mesma tela tem o " +
         "desenho, a configuração e, embaixo, os comandos (liberar um giro, recado no visor, relógio, " +
         "fechar a catraca) com o histórico. No cartão da catraca, o botão passou a se chamar \"Configurar\".",

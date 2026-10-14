@@ -91,6 +91,7 @@ public static class PorQueNegou
         [nameof(MotivoDoUso.ForaDaValidade)] = ReasonCodes.PessoaForaDaValidade,
         [nameof(MotivoDoUso.LimiteDiario)] = ReasonCodes.LimiteDiario,
         [nameof(MotivoDoUso.CatracaFechada)] = ReasonCodes.CatracaFechada,
+        [nameof(MotivoDoUso.ForaDoPeriodoDoEvento)] = ReasonCodes.ForaDoPeriodoDoEvento,
     };
 
     private const string ProcureOAtendimento = "Procure o atendimento, por favor.";
@@ -128,6 +129,10 @@ public static class PorQueNegou
             "O cadastro ou a credencial desta pessoa está fora da validade (visita encerrada ou ainda não começou).",
             "Seu acesso não vale nesta data. " + ProcureOAtendimento,
             "Confira as datas de validade na ficha da pessoa e o relógio desta catraca."),
+        [ReasonCodes.ForaDoPeriodoDoEvento] = (
+            "O evento ainda não começou ou já terminou, e as configurações do evento recusam ingressos fora do período.",
+            "A entrada não está aberta neste horário. " + ProcureOAtendimento,
+            "Confira o início e o fim em Configurações › Evento e o relógio desta catraca. Para abrir antes, ajuste o início."),
         [ReasonCodes.CatracaFechada] = (
             "Esta catraca está fechada pelo operador: ninguém passa até reabrir.",
             UseOutraCatraca,

@@ -54,6 +54,9 @@ public static class ReasonCodes
     /// <summary>O tipo de entrada do ingresso está desativado (docs/26 §1; docs/35 B.2).</summary>
     public static readonly ReasonCode TipoInativo = new("TIPO_INATIVO");
 
+    /// <summary>Ingresso lido fora do período do evento, com a recusa ligada (docs/57 §4).</summary>
+    public static readonly ReasonCode ForaDoPeriodoDoEvento = new("EVENTO_FORA_DO_PERIODO");
+
     // --- Cadastro local de pessoas (docs/43, ADR-0026) ---
     public static readonly ReasonCode PessoaBloqueada = new("PESSOA_BLOQUEADA");
     public static readonly ReasonCode PessoaInativa = new("PESSOA_INATIVA");

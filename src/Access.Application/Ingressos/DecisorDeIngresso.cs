@@ -381,6 +381,7 @@ public sealed class DecisorDeIngresso
         MotivoDoUso.ForaDaValidade => ReasonCodes.PessoaForaDaValidade,
         MotivoDoUso.LimiteDiario => ReasonCodes.LimiteDiario,
         MotivoDoUso.CatracaFechada => ReasonCodes.CatracaFechada,
+        MotivoDoUso.ForaDoPeriodoDoEvento => ReasonCodes.ForaDoPeriodoDoEvento,
         _ => ReasonCodes.MotivoNaoMapeado,
     };
 

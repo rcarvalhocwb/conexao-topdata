@@ -141,6 +141,52 @@ public sealed partial class RepositorioDeIngressos
         return criados;
     }
 
+    /// <summary>Quantos ingressos um provedor tem, quantos estão desativados, e a última carga de arquivos.</summary>
+    public (int Ingressos, int Desativados, DateTimeOffset? UltimaCargaEm, int UltimaCargaQuantidade) ResumoDoProvedor(string provedorId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(provedorId);
+
+        using var conexao = _fabrica.Abrir();
+        using var comando = conexao.CreateCommand();
+        comando.CommandText =
+            $"""
+            SELECT (SELECT COUNT(*) FROM ticket WHERE provider_id = $p),
+                   (SELECT COUNT(*) FROM ticket WHERE provider_id = $p AND status IN ('{StatusCancelado}', 'bloqueado')),
+                   (SELECT applied_at FROM import_batch WHERE provider_id = $p AND kind = 'cartoes' AND status = 'aplicada'
+                     ORDER BY applied_at DESC LIMIT 1),
+                   (SELECT rows_total FROM import_batch WHERE provider_id = $p AND kind = 'cartoes' AND status = 'aplicada'
+                     ORDER BY applied_at DESC LIMIT 1);
+            """;
+        comando.Parameters.AddWithValue("$p", provedorId);
+        using var leitor = comando.ExecuteReader();
+        leitor.Read();
+
+        DateTimeOffset? carga = !leitor.IsDBNull(2)
+            && DateTimeOffset.TryParse(leitor.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.None, out var em)
+                ? em
+                : null;
+        return (leitor.GetInt32(0), leitor.GetInt32(1), carga, leitor.IsDBNull(3) ? 0 : leitor.GetInt32(3));
+    }
+
+    /// <summary>
+    /// Muda as regras de uso de um provedor que já existe: o intervalo entre usos do mesmo cartão e
+    /// se ele só vale na urna. O resto do provedor fica como está.
+    /// </summary>
+    /// <returns>Falso quando o provedor não existe.</returns>
+    public bool AjustarRegrasDoProvedor(string provedorId, TimeSpan intervaloDeReuso, bool somenteNaUrna, DateTimeOffset agora)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(provedorId);
+
+        var atual = Provedores().FirstOrDefault(p => p.Id == provedorId);
+        if (atual is null)
+        {
+            return false;
+        }
+
+        RegistrarProvedor(atual with { IntervaloDeReuso = intervaloDeReuso, SomenteNaUrna = somenteNaUrna }, agora);
+        return true;
+    }
+
     /// <summary>A regra do código de tipo da migração 011: 2 a 20 de A–Z, 0–9 e "_".</summary>
     public static bool CodigoDeTipoValido(string? codigo) =>
         codigo is { Length: >= 2 and <= 20 } && codigo.All(c => c is (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '_');
@@ -152,7 +198,7 @@ public sealed partial class RepositorioDeIngressos
         "MEIA" => "Meia-entrada",
         "SOCIAL" => "Social",
         "CORTESIA" => "Cortesia",
-        _ => CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(codigo.Replace('_', ' ').ToLowerInvariant()),
+        _ => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(codigo.Replace('_', ' ').ToLowerInvariant()),
     };
 
     private static int? OrdemDeCostume(string codigo) => codigo switch

@@ -115,7 +115,13 @@ public enum MotivoDoUso
     /// Cartão desconhecido lido na urna durante uma sessão de cadastro por leitura. Entrou no lote e
     /// NÃO liberou ninguém: não é passagem.
     /// </summary>
-    CadastradoNoLote
+    CadastradoNoLote,
+
+    /// <summary>
+    /// Ingresso ou cartão da bilheteria lido fora do período do evento, com "recusar fora do período"
+    /// ligado nas configurações do evento (docs/57 §4). Pessoas credenciadas não passam por esta regra.
+    /// </summary>
+    ForaDoPeriodoDoEvento
 }
 
 /// <summary>

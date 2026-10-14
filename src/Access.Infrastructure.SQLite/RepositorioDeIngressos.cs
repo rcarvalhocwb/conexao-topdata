@@ -401,6 +401,20 @@ public sealed partial class RepositorioDeIngressos : IDestinoDeIngressos, IValid
             return (registrado, Guid.CreateVersion7(agora));
         }
 
+        // Fora do período do evento, com a recusa ligada (docs/57 §4): ingresso e cartão da bilheteria
+        // são negados sem consumir. Pessoa credenciada e código desconhecido seguem o caminho de sempre.
+        if (ForaDoPeriodoDoEvento(conexao, transacao, agora) && Estado(conexao, transacao, qrNormalizado) is { } foraDoPeriodo)
+        {
+            var negada = Guid.CreateVersion7(agora);
+            RegistrarTentativa(conexao, transacao, negada, foraDoPeriodo.Id, foraDoPeriodo.Provedor, qrNormalizado, gateId,
+                deviceId, "negado", MotivoDoUso.ForaDoPeriodoDoEvento, decisionId, agora, foraDoPeriodo.Categoria, origemBruta);
+            Espelhar(conexao, transacao, negada, qrNormalizado, deviceId, gateId, agora,
+                liberado: false, MotivoDoUso.ForaDoPeriodoDoEvento, foraDoPeriodo.Provedor, foraDoPeriodo.Categoria);
+            transacao.Commit();
+            return (new ResultadoDoUso(MotivoDoUso.ForaDoPeriodoDoEvento, foraDoPeriodo.Id, foraDoPeriodo.Provedor,
+                foraDoPeriodo.Setor, Categoria: foraDoPeriodo.Categoria), negada);
+        }
+
         // A escrita vem primeiro, de propósito: é ela que pega a trava. Ler antes e
         // escrever depois, numa transação adiada, é a receita do SQLITE_BUSY que não
         // se recupera.
@@ -478,6 +492,29 @@ public sealed partial class RepositorioDeIngressos : IDestinoDeIngressos, IValid
 
         transacao.Commit();
         return (resultado, tentativaId);
+    }
+
+    // As chaves do período do evento, lidas na transação da decisão (três linhas pela chave primária).
+    private static bool ForaDoPeriodoDoEvento(SqliteConnection conexao, SqliteTransaction transacao, DateTimeOffset agora)
+    {
+        using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
+        comando.CommandText = "SELECT key, value FROM edge_setting WHERE key IN ($recusar, $inicio, $fim);";
+        comando.Parameters.AddWithValue("$recusar", ConfiguracoesDaBorda.ChaveEventoRecusarForaDoPeriodo);
+        comando.Parameters.AddWithValue("$inicio", ConfiguracoesDaBorda.ChaveEventoInicio);
+        comando.Parameters.AddWithValue("$fim", ConfiguracoesDaBorda.ChaveEventoFim);
+
+        var valores = new Dictionary<string, string>(StringComparer.Ordinal);
+        using (var leitor = comando.ExecuteReader())
+        {
+            while (leitor.Read())
+            {
+                valores[leitor.GetString(0)] = leitor.GetString(1);
+            }
+        }
+
+        return valores.GetValueOrDefault(ConfiguracoesDaBorda.ChaveEventoRecusarForaDoPeriodo) == "1"
+               && ConfiguracoesDaBorda.EventoDe(valores).ForaDoPeriodo(agora);
     }
 
     // Nega na catraca fechada. Ingresso e código desconhecido seguem para a nuvem como qualquer negativa;

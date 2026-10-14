@@ -198,6 +198,21 @@ O script cria o grupo (se faltar), põe as contas nele e reinicia o serviço. Ca
 precisa **sair e entrar de novo no Windows** para a permissão valer. O script não lê nem imprime
 o token do serviço. Ver `docs/runbooks/RB-01` se o painel continuar sem conectar.
 
+### Cartões já validados: a carga inicial
+
+Os arquivos `.csv` exportados do sistema anterior (cartões, cartões autorizados, autorizações da
+catraca) entram de uma vez, sem nuvem. Como administrador, na pasta de instalação:
+
+```powershell
+.\carregar-cartoes.ps1 -Arquivo 'D:\backup-cartoes'
+```
+
+O script copia os arquivos para `%ProgramData%\ConexaoTopdata\carga-inicial`, reinicia o serviço
+e mostra o resumo (quantos cartões, por tipo). Depois da carga, os arquivos vão para
+`carga-inicial\importados`. Repetir com os mesmos arquivos não muda nada. **Os números dos
+cartões nunca vão no instalador nem no repositório** (ambos são públicos): guarde os arquivos só
+na máquina do evento. Regras e motivos: `docs/57-configuracao-do-evento.md` §3.
+
 ### Configurar — Assistente de configuração
 
 Abra pelo menu Iniciar (ele pede permissão de administrador):

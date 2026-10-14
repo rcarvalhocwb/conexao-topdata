@@ -822,6 +822,8 @@ public sealed class ContasViewModel : TelaBase
 
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)
     {
+        await AplicarDiaDeOperacaoAsync(cancelamento).ConfigureAwait(true);
+
         if (!LerPeriodo(Desde, HoraDesde, Ate, HoraAte, out var inicio, out var fim))
         {
             return;
@@ -840,6 +842,41 @@ public sealed class ContasViewModel : TelaBase
             Contas = await Cliente.ObterPrestacaoDeContasAsync(pedido, cancellationToken: cancelamento);
             Mensagem = Contas.Liberados + Contas.Negados == 0 ? "Nenhuma tentativa no período." : string.Empty;
         }).ConfigureAwait(true);
+    }
+
+    private bool _diaDeOperacaoAplicado;
+
+    /// <summary>
+    /// Na primeira vez, com a hora de corte do evento definida (E9, docs/57 §4) e o período ainda como
+    /// a tela abriu, o período passa a ser o dia de operação de agora: do corte ao corte do dia seguinte.
+    /// </summary>
+    private async Task AplicarDiaDeOperacaoAsync(CancellationToken cancelamento)
+    {
+        if (_diaDeOperacaoAplicado)
+        {
+            return;
+        }
+
+        _diaDeOperacaoAplicado = true;
+        if (Desde != HojeNoEvento() || HoraDesde.Length > 0 || Ate is not null || HoraAte.Length > 0)
+        {
+            return;
+        }
+
+        var evento = new DadosDoEvento();
+        if (!await Tentar(async () => evento = await Cliente.ObterEventoAsync(new ObterEventoRequest(), cancellationToken: cancelamento)).ConfigureAwait(true)
+            || !TimeSpan.TryParseExact(evento.HoraDeCorte, @"hh\:mm", CultureInfo.InvariantCulture, out var corte)
+            || corte == TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var agora = FusoDoEvento.NoEvento(Relogio());
+        var dia = agora.TimeOfDay < corte ? agora.Date.AddDays(-1) : agora.Date;
+        Desde = dia;
+        HoraDesde = corte.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+        Ate = dia.AddDays(1);
+        HoraAte = corte.Subtract(TimeSpan.FromMinutes(1)).ToString(@"hh\:mm", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -948,8 +985,11 @@ public sealed class ContasViewModel : TelaBase
     }
 }
 
-/// <summary>Configurações do evento que valem para todas as catracas.</summary>
-public sealed class ConfiguracoesViewModel : TelaBase
+/// <summary>
+/// Configurações do evento, em seções (docs/57): o evento, os tipos de entrada, os cartões da
+/// bilheteria, o padrão das catracas (esta parte), o que espera decisão e o avançado.
+/// </summary>
+public sealed partial class ConfiguracoesViewModel : TelaBase
 {
     private int _tipoDeLeitor = 8;
     private bool _leitorDaUrna = true;
@@ -982,6 +1022,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
             ConfirmandoAplicacao = false;
             return Task.CompletedTask;
         }, () => ConfirmandoAplicacao);
+        IniciarSecoes();
     }
 
     private bool _confirmandoAplicacao;
@@ -1026,10 +1067,26 @@ public sealed class ConfiguracoesViewModel : TelaBase
 
     public ComandoAssincrono Salvar { get; }
 
-    /// <summary>Quem está operando, gravado junto da mudança.</summary>
-    public string Operador { get; set; } = string.Empty;
+    private string _operador = string.Empty;
+
+    /// <summary>Quem está operando, gravado junto da mudança. Vem preenchido com o usuário do login.</summary>
+    public string Operador { get => _operador; set => Definir(ref _operador, value ?? string.Empty); }
 
     public int TipoDeLeitor { get => _tipoDeLeitor; set => Definir(ref _tipoDeLeitor, value); }
+
+    /// <summary>O tipo de leitor escolhido na lista, com o nome (a lista grava o número).</summary>
+    public OpcaoDaLista? TipoDeLeitorEscolhido
+    {
+        get => TiposDeLeitor.FirstOrDefault(t => t.Valor == TipoDeLeitor);
+        set
+        {
+            if (value is not null)
+            {
+                TipoDeLeitor = value.Valor;
+                Avisar();
+            }
+        }
+    }
 
     public bool LeitorDaUrna { get => _leitorDaUrna; set => Definir(ref _leitorDaUrna, value); }
 
@@ -1048,6 +1105,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
         {
             var c = await Cliente.ObterConfiguracaoAsync(new ObterConfiguracaoRequest(), cancellationToken: cancelamento);
             TipoDeLeitor = c.TipoDeLeitor;
+            Avisar(nameof(TipoDeLeitorEscolhido));
             LeitorDaUrna = c.LeitorDaUrna;
             TempoDeAcionamento = c.TempoDeAcionamentoSegundos;
             MensagemPadrao = c.MensagemPadrao;
@@ -1055,6 +1113,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
             _esperaGravada = c.EsperaPeloGiroSegundos;
             NuvemLigada = c.NuvemLigada;
             Problemas = [];
+            await AtualizarSecoesAsync(cancelamento).ConfigureAwait(true);
         });
 
     private async Task SalvarAsync() =>
@@ -1359,6 +1418,22 @@ public sealed class JanelaViewModel : Notificavel
         {
             Sessao.SessaoMudou += (_, _) =>
             {
+                // Quem entrou não precisa digitar o nome de novo onde ele fica registrado (docs/51).
+                if (Sessao.Logado)
+                {
+                    var configuracoes = Telas.OfType<ConfiguracoesViewModel>().First();
+                    if (configuracoes.Operador.Length == 0)
+                    {
+                        configuracoes.Operador = Sessao.Nome;
+                    }
+
+                    var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
+                    if (gemeo.Central.Operador.Length == 0)
+                    {
+                        gemeo.Central.Operador = Sessao.Nome;
+                    }
+                }
+
                 Avisar(nameof(TelasDoMenu));
                 if (!TelasDoMenu.Contains(TelaAtual) && TelasDoMenu.Count > 0)
                 {

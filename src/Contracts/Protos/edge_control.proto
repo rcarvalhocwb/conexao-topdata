@@ -77,6 +77,15 @@ service EdgeControl {
   rpc ListarAcessos(ListarAcessosRequest) returns (ListarAcessosResponse);
   rpc ObterConfiguracao(ObterConfiguracaoRequest) returns (ConfiguracaoDoEvento);
   rpc GravarConfiguracao(GravarConfiguracaoRequest) returns (GravarConfiguracaoResponse);
+  // Configurações do evento em seções (docs/57): o evento em si, os tipos de entrada, as regras da
+  // bilheteria local e as chaves técnicas (só leitura). O autor de cada gravação é o usuário do login.
+  rpc ObterEvento(ObterEventoRequest) returns (DadosDoEvento);
+  rpc GravarEvento(GravarEventoRequest) returns (ResultadoDaGravacao);
+  rpc ListarTiposDeEntrada(ListarTiposDeEntradaRequest) returns (ListarTiposDeEntradaResponse);
+  rpc GravarTipoDeEntrada(GravarTipoDeEntradaRequest) returns (ResultadoDaGravacao);
+  rpc ObterBilheteriaLocal(ObterBilheteriaLocalRequest) returns (RegrasDaBilheteria);
+  rpc GravarBilheteriaLocal(GravarBilheteriaLocalRequest) returns (ResultadoDaGravacao);
+  rpc ListarChavesTecnicas(ListarChavesTecnicasRequest) returns (ListarChavesTecnicasResponse);
   rpc ObterSincronizacao(ObterSincronizacaoRequest) returns (SituacaoDaSincronizacao);
   rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
   rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
@@ -380,6 +389,91 @@ message GravarConfiguracaoResponse {
   // (docs/32). Só a espera pelo giro vale a partir do próximo início do serviço.
   // O nome é anterior ao "Aplicar agora" e fica, com o número, para não quebrar clientes.
   bool exige_reinicio = 3;
+}
+
+// Resultado comum das gravações das seções do evento (docs/57).
+message ResultadoDaGravacao {
+  bool gravada = 1;
+  repeated string problemas = 2;
+}
+
+message ObterEventoRequest {}
+
+// O evento em si (docs/57 §4). Instantes em UTC; a tela mostra no horário de Brasília.
+message DadosDoEvento {
+  string nome = 1;
+  // Ausente = sem início (ou sem fim) definido.
+  google.protobuf.Timestamp inicio = 2;
+  google.protobuf.Timestamp fim = 3;
+  // "HH:mm", horário de Brasília: quando um dia de operação vira o seguinte (E9).
+  string hora_de_corte = 4;
+  // Nega ingresso lido fora do período (motivo EVENTO_FORA_DO_PERIODO). Pessoas credenciadas não.
+  bool recusar_fora_do_periodo = 5;
+  // Só leitura: quem gravou por último e quando.
+  string alterado_por = 6;
+  google.protobuf.Timestamp alterado_em = 7;
+}
+
+message GravarEventoRequest {
+  DadosDoEvento evento = 1;
+}
+
+message ListarTiposDeEntradaRequest {}
+
+// Um tipo de entrada (INTEIRA, MEIA, SOCIAL…). O código não muda depois de criado.
+message TipoDeEntrada {
+  string codigo = 1;
+  string nome = 2;
+  int32 ordem = 3;
+  bool ativo = 4;
+  // Só leitura: quantos ingressos usam o tipo.
+  int32 em_uso = 5;
+}
+
+message ListarTiposDeEntradaResponse {
+  repeated TipoDeEntrada tipos = 1;
+}
+
+message GravarTipoDeEntradaRequest {
+  TipoDeEntrada tipo = 1;
+}
+
+message ObterBilheteriaLocalRequest {}
+
+// As regras dos ingressos da bilheteria local (provedor bilheteria-local, docs/57 §5).
+message RegrasDaBilheteria {
+  // Falso até a primeira partida do serviço criar o provedor.
+  bool existe = 1;
+  int32 intervalo_de_reuso_segundos = 2;
+  bool somente_na_urna = 3;
+  // Com a nuvem ligada, a nuvem manda: as regras não mudam pelo painel.
+  bool definida_pela_nuvem = 4;
+  // Só leitura: quantos ingressos a bilheteria tem, e quantos estão desativados.
+  int32 ingressos = 5;
+  int32 desativados = 6;
+  // Só leitura: a última carga de arquivos (vazio se nunca houve).
+  google.protobuf.Timestamp ultima_carga_em = 7;
+  int32 ultima_carga_quantidade = 8;
+}
+
+message GravarBilheteriaLocalRequest {
+  int32 intervalo_de_reuso_segundos = 1;
+  bool somente_na_urna = 2;
+}
+
+message ListarChavesTecnicasRequest {}
+
+// Uma chave técnica da catraca (docs/34 §4.1): só leitura no painel.
+message ChaveTecnica {
+  string chave = 1;
+  string descricao = 2;
+  bool ligada = 3;
+  // O ensaio da bancada que libera ligar (docs/21).
+  string liberada_por = 4;
+}
+
+message ListarChavesTecnicasResponse {
+  repeated ChaveTecnica chaves = 1;
 }
 
 message ObterSincronizacaoRequest {}
