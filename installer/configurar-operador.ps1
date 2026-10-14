@@ -18,7 +18,11 @@ param(
     [string[]]$Operador,
 
     [string]$Grupo = 'ConexaoTopdata Operadores',
-    [string]$Servico = 'ConexaoTopdataEdge'
+    [string]$Servico = 'ConexaoTopdataEdge',
+
+    # Usado pelo instalador: só cria o grupo e inclui a conta. Quem inicia o serviço depois é o
+    # assistente (instalação nova) ou a própria atualização, e a partida aplica a permissão.
+    [switch]$SemReiniciar
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,7 +56,9 @@ foreach ($conta in $Operador) {
 }
 
 # O serviço reaplica a permissão do canal e do token na partida.
-if (Get-Service -Name $Servico -ErrorAction SilentlyContinue) {
+if ($SemReiniciar) {
+    Write-Host 'Serviço não reiniciado: a permissão vale na próxima partida dele.'
+} elseif (Get-Service -Name $Servico -ErrorAction SilentlyContinue) {
     Restart-Service -Name $Servico
     Write-Host "Serviço $Servico reiniciado para aplicar a permissão."
 } else {

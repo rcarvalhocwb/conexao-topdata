@@ -89,7 +89,26 @@
     <CustomAction Id="IniciarServicoAtualizado" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
                   Execute="deferred" Impersonate="no" Return="ignore" />
 
+    <!--
+      Operadores (achado do teste de bancada de 14/10): sem o grupo "ConexaoTopdata Operadores", só
+      SYSTEM e Administradores com elevação leem o token do serviço, e o painel aberto normalmente
+      mostra "Sua conta não tem permissão para falar com o serviço". Antes, o grupo só existia se
+      alguém rodasse configurar-operador.ps1 à mão.
+
+      Aqui o instalador cria o grupo e inclui a conta que rodou a instalação ([LogonUser]). Roda antes
+      de o serviço partir (o serviço aplica a permissão do token e do canal na partida) e não o
+      reinicia (-SemReiniciar): na instalação nova quem inicia o serviço é o assistente. A conta só
+      ganha a permissão depois de sair e entrar de novo no Windows. Falhar não desfaz a instalação.
+    -->
+    <SetProperty Id="ConfigurarOperadores" Sequence="execute" Before="ConfigurarOperadores"
+                 Value="&quot;[WindowsFolder]Sysnative\WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]configurar-operador.ps1&quot; -Operador &quot;[LogonUser]&quot; -SemReiniciar" />
+
+    <CustomAction Id="ConfigurarOperadores" BinaryRef="Wix4UtilCA_X86" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
     <InstallExecuteSequence>
+      <Custom Action="ConfigurarOperadores" After="InstallServices"
+              Condition="NOT (REMOVE ~= &quot;ALL&quot;)" />
       <Custom Action="HabilitarNetFx35" Before="InstallFinalize"
               Condition="NOT Installed AND NETFX35INSTALADO &lt;&gt; &quot;#1&quot; AND NOT PULAR_NETFX35" />
       <Custom Action="IniciarServicoAtualizado" After="HabilitarNetFx35"
