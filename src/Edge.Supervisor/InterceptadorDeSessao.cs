@@ -65,6 +65,7 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["ObterRelatorioPosEvento"] = Permissoes.RelatoriosVer,
         ["ConsultarCodigo"] = Permissoes.CodigosConsultar,
         ["ObterPrestacaoDeContas"] = Permissoes.RelatoriosVer,
+        ["ObterRelatorios"] = Permissoes.RelatoriosVer,
         ["ObterDiagnostico"] = Permissoes.DiagnosticoVer,
         ["ObterPacoteDeDiagnostico"] = Permissoes.DiagnosticoVer,
 

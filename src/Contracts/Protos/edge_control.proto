@@ -92,6 +92,8 @@ service EdgeControl {
   rpc ListarChavesTecnicas(ListarChavesTecnicasRequest) returns (ListarChavesTecnicasResponse);
   rpc ObterSincronizacao(ObterSincronizacaoRequest) returns (SituacaoDaSincronizacao);
   rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
+  // Relatórios R1 (boletim do dia), R2 (por hora e tipo), R3 (por catraca) e R7 (consolidado), docs/25.
+  rpc ObterRelatorios(ObterRelatoriosRequest) returns (RelatoriosDoEvento);
   rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
   rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
 
@@ -553,6 +555,76 @@ message PrestacaoDeContas {
   // Giros pelo rótulo do mapa de giro (D9); sem rótulo, entrada.
   int64 entradas = 11;
   int64 saidas = 12;
+}
+
+message ObterRelatoriosRequest {
+  google.protobuf.Timestamp desde = 1;
+  google.protobuf.Timestamp ate = 2;
+}
+
+// Os relatórios do período (docs/25 §3 e §4). Agregados: nenhum número de cartão nem nome de titular.
+message RelatoriosDoEvento {
+  string nome_do_evento = 1;
+  // "HH:mm", horário de Brasília: começo de cada dia de operação.
+  string hora_de_corte = 2;
+  google.protobuf.Timestamp periodo_desde = 3;
+  google.protobuf.Timestamp periodo_ate = 4;
+  google.protobuf.Timestamp gerado_em = 5;
+  string gerado_por = 6;
+  string versao = 7;
+  // Os tipos de entrada na ordem cadastrada, com o nome.
+  repeated TipoNoRelatorio tipos = 8;
+  // R1, um por dia de operação. O R7 (consolidado) é a soma deles.
+  repeated BoletimDoDiaDeOperacao dias = 9;
+  // R2.
+  repeated ValidadosPorHoraETipo por_hora = 10;
+  // R3.
+  repeated MovimentoPorCatraca por_catraca = 11;
+  // SHA-256 dos números (16 dígitos): o mesmo período e os mesmos dados dão o mesmo código.
+  string conferencia = 12;
+}
+
+message TipoNoRelatorio {
+  string tipo = 1;
+  string nome = 2;
+}
+
+message QuantidadePorChave {
+  // Tipo de entrada ou motivo (MotivoDoUso).
+  string chave = 1;
+  int64 quantidade = 2;
+  // Para motivo: o texto em português de portaria.
+  string descricao = 3;
+}
+
+message BoletimDoDiaDeOperacao {
+  google.protobuf.Timestamp inicio = 1;
+  // Liberou e girou (entrada), por tipo.
+  repeated QuantidadePorChave validados = 2;
+  // Liberou e a pessoa não passou, por tipo.
+  repeated QuantidadePorChave sem_passagem = 3;
+  // Negados por motivo.
+  repeated QuantidadePorChave negados = 4;
+  // Ingressos e credenciais distintos validados: o total menos este número são reentradas.
+  int64 distintos = 5;
+  google.protobuf.Timestamp primeiro = 6;
+  google.protobuf.Timestamp ultimo = 7;
+  google.protobuf.Timestamp hora_de_pico = 8;
+  int64 no_pico = 9;
+}
+
+message ValidadosPorHoraETipo {
+  google.protobuf.Timestamp hora = 1;
+  string tipo = 2;
+  int64 quantidade = 3;
+}
+
+message MovimentoPorCatraca {
+  int32 inner = 1;
+  string nome = 2;
+  int64 validados = 3;
+  int64 sem_passagem = 4;
+  int64 negados = 5;
 }
 
 message LinhaPorCategoria {

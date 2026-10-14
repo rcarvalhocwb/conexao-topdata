@@ -30,4 +30,25 @@ public partial class Contas : UserControl
             await contas.ExportarAsync(dialogo.FileName).ConfigureAwait(true);
         }
     }
+
+    // Imprimir ou salvar em PDF ("Microsoft Print to PDF"), com a página numerada e o código de conferência.
+    private void Imprimir(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ContasViewModel { Relatorios: not null } contas)
+        {
+            return;
+        }
+
+        var dialogo = new PrintDialog();
+        if (dialogo.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var documento = DocumentoDosRelatorios.Montar(contas, dialogo.PrintableAreaWidth, dialogo.PrintableAreaHeight);
+        var paginador = new PaginadorComRodape(
+            ((System.Windows.Documents.IDocumentPaginatorSource)documento).DocumentPaginator,
+            $"Código de conferência {contas.Conferencia} · Rayzer XAcess");
+        dialogo.PrintDocument(paginador, "Prestação de contas — Rayzer XAcess");
+    }
 }

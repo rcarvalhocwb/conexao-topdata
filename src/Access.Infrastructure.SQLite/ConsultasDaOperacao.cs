@@ -145,6 +145,10 @@ public sealed class ConsultasDaOperacao
     }
 
     /// <summary>A prestação de contas entre dois instantes.</summary>
+    /// <summary>Os relatórios R1, R2, R3 e R7 do período (docs/25 §3).</summary>
+    public RelatorioDoPeriodo Relatorios(DateTimeOffset desde, DateTimeOffset ate, TimeSpan corte) =>
+        new GeradorDeRelatorios(_fabrica).Gerar(desde, ate, corte);
+
     public ContasDaOperacao Contas(DateTimeOffset desde, DateTimeOffset ate)
     {
         using var conexao = _fabrica.Abrir();

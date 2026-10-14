@@ -138,3 +138,21 @@ aconteceu, de que tipo e quando, e a conciliação com o que foi vendido ou cada
   Sem isso, o sistema informa entradas, não lotação.
 - **Hora de corte** do dia de operação: o padrão proposto é 06:00, e a organização
   confirma.
+
+## 7. Situação (14/10/2026)
+
+| Relatório | Situação |
+|---|---|
+| R1 · Boletim do dia | **Feito**: por dia de operação (hora de corte), validados por tipo com participação, sem passagem, negados por motivo (sem o registro de cartões em lote), distintos e reentradas, primeiro e último acesso, hora de pico |
+| R2 · Fluxo por hora e tipo | **Feito** (por hora; a cada 15 min fica para depois) |
+| R3 · Por catraca | **Feito**: validados, sem passagem e negados. Falta o tempo fora do ar, que entra com o R8 |
+| R7 · Consolidado | **Feito**: dia × tipo, total por tipo, total geral, média por dia, maior dia e maior hora |
+| Cabeçalho do §4 | **Feito**: evento, período, fuso, gerado em, por quem, versão, Rayzer |
+| Código de conferência | **Feito**: SHA-256 dos números, mesmo período e dados dão o mesmo código. "Fechar o corte" (congelar) ainda não |
+| Exportação | **Feito**: CSV com as seções; PDF pela impressora "Microsoft Print to PDF", página "X de N" e campo de assinatura no R1 e no R7 |
+| R4, R5, R6, R8 | Em construção |
+| Cota de meia-entrada (E10) | Aguardando decisão |
+
+Código: `GeradorDeRelatorios` (base), `ObterRelatorios` (serviço), `ContasRelatorios.cs` (painel),
+`DocumentoDosRelatorios.cs` (papel). Testes: `RelatoriosDoEventoTests`, `TelasTests`.
+

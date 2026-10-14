@@ -390,6 +390,37 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
+    /// Relatórios R1, R2, R3 e R7 (docs/25 §3) na Prestação de contas: o mesmo "Gerar" traz os quatro,
+    /// com o cabeçalho e o código de conferência, e o CSV leva as seções.
+    /// </summary>
+    [Fact]
+    public async Task Prestacao_de_contas_traz_o_boletim_do_dia_e_os_relatorios_no_csv()
+    {
+        var agora = DateTimeOffset.UtcNow;
+        var (_, tentativa) = _repositorio.TentarUsar(Qr, "p1", "inner-1", agora);
+        _repositorio.ConfirmarPassagemFisica(tentativa, agora.AddSeconds(2));
+        var hoje = FusoDoEvento.NoEvento(agora).Date;
+
+        var contas = new ContasViewModel(Cliente(), () => agora) { Desde = hoje.AddDays(-1), Ate = hoje };
+        await contas.Gerar.ExecutarAsync();
+
+        Assert.True(contas.TemRelatorios);
+        Assert.NotNull(contas.DiaEscolhido);
+        var linha = Assert.Single(contas.Boletim);
+        Assert.Equal(("meia", 1L, "100%"), (linha.Tipo, linha.Validados, linha.Participacao));
+        Assert.Contains("1 acessos validados, de 1 ingressos", contas.ResumoDoBoletim, StringComparison.Ordinal);
+        Assert.Single(contas.MovimentoPorCatraca);
+        Assert.Single(contas.Consolidado);
+        Assert.Matches("^[0-9A-F]{4}(-[0-9A-F]{4}){3}$", contas.Conferencia);
+        Assert.Contains("Rayzer Serviços e Tecnologia", contas.Cabecalho, StringComparison.Ordinal);
+
+        var csv = contas.ParaCsv();
+        Assert.Contains("R1 · Boletim do dia de operação", csv, StringComparison.Ordinal);
+        Assert.Contains("R7 · Consolidado do evento", csv, StringComparison.Ordinal);
+        Assert.Contains($"Código de conferência;{contas.Conferencia}", csv, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Defeito (relatório "não funcional", 01/10): com o campo "De" vazio a tela não mandava o
     /// início, e o serviço contava só as últimas 24 h — sem dizer. Vazio quer dizer "desde o
     /// começo", como na tela de Acessos.
@@ -445,18 +476,24 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     /// como ainda não disponíveis, cada um com o motivo.
     /// </summary>
     [Fact]
-    public void Relatorios_da_fase_6_aparecem_como_ainda_nao_disponiveis_com_motivo()
+    public void Relatorios_ainda_em_construcao_aparecem_com_motivo_e_os_prontos_saem_da_lista()
     {
         var contas = new ContasViewModel(Cliente());
 
-        foreach (var r in new[] { "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8" })
+        // R1, R2 e R7 estão prontos (14/10); do R3 falta só o tempo fora do ar.
+        foreach (var r in new[] { "R4", "R5", "R6", "R8" })
         {
             var item = Assert.Single(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith(r + " ", StringComparison.Ordinal));
-            Assert.Contains("Fase 6", item.Valor, StringComparison.Ordinal);
+            Assert.Contains("Em construção", item.Valor, StringComparison.Ordinal);
         }
 
-        Assert.Contains(contas.AindaNaoDisponivel, i => i.Rotulo.Contains("código de conferência", StringComparison.Ordinal));
-        Assert.Contains("(PDF)", contas.AindaNaoDisponivel[0].Rotulo, StringComparison.Ordinal);
+        foreach (var pronto in new[] { "R1 ", "R2 ", "R7 " })
+        {
+            Assert.DoesNotContain(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith(pronto, StringComparison.Ordinal));
+        }
+
+        Assert.Contains(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith("R3 · Tempo fora do ar", StringComparison.Ordinal));
+        Assert.All(contas.AindaNaoDisponivel, i => Assert.False(string.IsNullOrWhiteSpace(i.Valor)));
     }
 
     /// <summary>

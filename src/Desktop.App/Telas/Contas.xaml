@@ -5,7 +5,7 @@
              AutomationProperties.Name="Prestação de contas">
   <DockPanel>
     <rz:RayzerPageHeader DockPanel.Dock="Top" Titulo="Prestação de contas"
-                         Descricao="O resumo do que aconteceu nas catracas no período, no horário de Brasília, e o CSV dele. Autorizado = a catraca liberou; com giro = a pessoa passou. &quot;De&quot; vazio = desde o começo. Os relatórios R1–R8 ainda não existem: veja &quot;Ainda não disponível&quot; no fim da página." />
+                         Descricao="O que aconteceu nas catracas no período, no horário de Brasília: os relatórios R1 (boletim do dia), R2 (por hora e tipo), R3 (por catraca) e R7 (consolidado), o resumo e a exportação. Validado = a catraca liberou e a pessoa passou. &quot;De&quot; vazio = desde o começo." />
 
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" Padding="16,12,4,0">
       <WrapPanel>
@@ -35,6 +35,14 @@
             <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Exportar para Excel" />
           </StackPanel>
         </Button>
+        <Button VerticalAlignment="Bottom" Margin="{StaticResource Rayzer.Margin.Field}" Click="Imprimir"
+                IsEnabled="{Binding TemRelatorios}" ToolTip="Imprima ou escolha &quot;Microsoft Print to PDF&quot; para salvar em PDF."
+                AutomationProperties.Name="Imprimir ou salvar em PDF">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="14" Text="&#xE749;" />
+            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Imprimir / PDF" />
+          </StackPanel>
+        </Button>
       </WrapPanel>
     </Border>
 
@@ -58,6 +66,79 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
+      <!-- Relatórios R1, R2, R3 e R7 (docs/25 §3), com o cabeçalho e o código de conferência (§4). -->
+      <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,0,0,12"
+              Visibility="{Binding TemRelatorios, Converter={StaticResource BoolParaVisibilidade}}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Cabecalho}" />
+          <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Body}">
+            <Run Text="Código de conferência: " /><Run FontFamily="{StaticResource Rayzer.Font.Mono}" FontWeight="SemiBold" Text="{Binding Conferencia, Mode=OneWay}" />
+          </TextBlock>
+          <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                     Text="Gerar de novo o mesmo período, com os mesmos dados, dá o mesmo código. Se o código mudar, algum número mudou." />
+
+          <rz:RayzerSectionHeader Margin="0,16,0,0" Titulo="R1 · Boletim do dia" />
+          <ComboBox Width="420" HorizontalAlignment="Left" Margin="0,0,0,8" ItemsSource="{Binding DiasDeOperacao}" DisplayMemberPath="Rotulo"
+                    SelectedItem="{Binding DiaEscolhido}" AutomationProperties.Name="Dia de operação do boletim" />
+          <DataGrid ItemsSource="{Binding Boletim}" AutomationProperties.Name="Boletim do dia por tipo" Margin="0,0,0,8">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="TIPO" Binding="{Binding Tipo}" Width="*" />
+              <DataGridTextColumn Header="VALIDADOS" Binding="{Binding Validados}" Width="130" />
+              <DataGridTextColumn Header="PARTICIPAÇÃO" Binding="{Binding Participacao}" Width="170" />
+              <DataGridTextColumn Header="SEM PASSAGEM" Binding="{Binding SemPassagem}" Width="170" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding ResumoDoBoletim}" />
+          <DataGrid ItemsSource="{Binding NegadosDoDia}" AutomationProperties.Name="Negados do dia por motivo" Margin="0,8,0,0"
+                    Visibility="{Binding NegadosDoDia, Converter={StaticResource VazioSome}}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="NEGADOS POR MOTIVO" Binding="{Binding Rotulo}" Width="*" />
+              <DataGridTextColumn Header="QUANTIDADE" Binding="{Binding Total}" Width="150" />
+            </DataGrid.Columns>
+          </DataGrid>
+
+          <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <rz:RayzerSectionHeader Titulo="R2 · Fluxo por hora e tipo" />
+              <DataGrid ItemsSource="{Binding FluxoPorHora}" MaxHeight="320" AutomationProperties.Name="Fluxo por hora e tipo">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="HORA" Binding="{Binding Rotulo}" Width="110" ElementStyle="{StaticResource Celula.Mono}" />
+                  <DataGridTextColumn Header="POR TIPO" Binding="{Binding Detalhe}" Width="*" />
+                  <DataGridTextColumn Header="TOTAL" Binding="{Binding Total}" Width="90" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <rz:RayzerSectionHeader Titulo="R3 · Por catraca" />
+              <DataGrid ItemsSource="{Binding MovimentoPorCatraca}" AutomationProperties.Name="Movimento por catraca">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="CATRACA" Binding="{Binding Catraca}" Width="*" />
+                  <DataGridTextColumn Header="VALIDADOS" Binding="{Binding Validados}" Width="130" />
+                  <DataGridTextColumn Header="SEM PASSAGEM" Binding="{Binding SemPassagem}" Width="170" />
+                  <DataGridTextColumn Header="NEGADOS" Binding="{Binding Negados}" Width="110" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </StackPanel>
+          </Grid>
+
+          <rz:RayzerSectionHeader Margin="0,16,0,0" Titulo="R7 · Consolidado do evento" />
+          <DataGrid ItemsSource="{Binding Consolidado}" AutomationProperties.Name="Consolidado do evento">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="DIA DE OPERAÇÃO" Binding="{Binding Rotulo}" Width="210" ElementStyle="{StaticResource Celula.Mono}" />
+              <DataGridTextColumn Header="POR TIPO" Binding="{Binding Detalhe}" Width="*" />
+              <DataGridTextColumn Header="TOTAL" Binding="{Binding Total}" Width="90" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Margin="0,6,0,0" Style="{StaticResource Rayzer.Type.Body}" TextWrapping="Wrap" Text="{Binding ResumoDoConsolidado}" />
+        </StackPanel>
+      </Border>
+
+      <rz:RayzerSectionHeader Titulo="Resumo do período" />
       <Grid DataContext="{Binding Contas}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
@@ -117,15 +198,15 @@
       <!-- O que não existe aparece desabilitado, com o motivo: nada de fingir (docs/25, fase 6). -->
       <Border Style="{StaticResource Rayzer.Card}" Padding="16,14" Margin="0,4,0,0">
         <StackPanel>
-          <rz:RayzerSectionHeader Titulo="Ainda não disponível" />
+          <rz:RayzerSectionHeader Titulo="Ainda em construção" />
           <ItemsControl ItemsSource="{Binding AindaNaoDisponivel}" AutomationProperties.Name="Relatórios ainda não disponíveis">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <DockPanel Margin="0,4,0,4">
                   <Button DockPanel.Dock="Left" Style="{StaticResource Rayzer.Button.Ghost}" MinWidth="260" IsEnabled="False"
                           Content="{Binding Rotulo}" />
-                  <rz:RayzerStatusPill DockPanel.Dock="Left" Margin="12,0,12,0" VerticalAlignment="Center" Tom="Atencao"
-                                       Texto="Aguardando confirmação" />
+                  <rz:RayzerStatusPill DockPanel.Dock="Left" Margin="12,0,12,0" VerticalAlignment="Center" Tom="Neutro"
+                                       Texto="Em construção" />
                   <TextBlock VerticalAlignment="Center" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Text="{Binding Valor}" />
                 </DockPanel>
               </DataTemplate>

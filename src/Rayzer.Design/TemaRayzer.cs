@@ -161,6 +161,12 @@ public static class TemaRayzer
         }
     }
 
+    /// <summary>
+    /// As cores do papel: o tema claro, qualquer que seja o tema da tela. Um relatório impresso no tema
+    /// escuro sairia com texto claro em fundo branco.
+    /// </summary>
+    public static ResourceDictionary DoPapel() => Carregar("Temas/Claro.xaml");
+
     private static ResourceDictionary Carregar(string caminho) => new() { Source = new Uri(Pacote + caminho, UriKind.Absolute) };
 
     private static Tema LerPreferencia()

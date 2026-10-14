@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 3;
+    public const int Edicao = 4;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,16 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "Prestação de contas com relatórios: R1 boletim do dia por tipo (com reentradas, pico e " +
+        "negados por motivo), R2 por hora e tipo, R3 por catraca e R7 consolidado do evento. " +
+        "Imprima ou salve em PDF (\"Imprimir / PDF\"), com página numerada e código de conferência.",
+
+        "A nuvem não aparece mais como \"Offline\" quando está conectada: se a lista de cartões " +
+        "vier incompleta, o painel diz isso e o que fazer (tela Sincronização).",
+
+        "Login: o olho mostra a senha enquanto você segura o botão, e \"Esqueci minha senha\" " +
+        "explica como recuperar (pelo administrador ou, para o único administrador, pelo suporte Rayzer).",
+
         "Configurações do evento em seis seções, sempre na mesma ordem: Evento (nome, período e hora " +
         "de corte), Tipos de entrada, Cartões da bilheteria, Padrão das catracas, o que ainda não dá " +
         "para configurar (com o motivo) e Avançado. Cada seção tem o próprio botão de salvar.",

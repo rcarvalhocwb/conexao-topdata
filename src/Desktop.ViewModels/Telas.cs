@@ -754,7 +754,7 @@ public sealed class SincronizacaoViewModel : TelaBase
 /// são da fase 6: aparecem em <see cref="AindaNaoDisponivel"/>, desabilitados e com o motivo.
 /// </para>
 /// </remarks>
-public sealed class ContasViewModel : TelaBase
+public sealed partial class ContasViewModel : TelaBase
 {
     private DateTime? _desde;
     private DateTime? _ate;
@@ -827,15 +827,13 @@ public sealed class ContasViewModel : TelaBase
     /// </summary>
     public IReadOnlyList<ParDeTexto> AindaNaoDisponivel { get; } =
     [
-        new("R1 · Boletim do dia (PDF)", "Fase 6. Depende da hora de corte do dia de operação (E9) e da regra da meia-entrada (E10), e dos tipos cadastrados (fase 3). Hoje: o resumo \"Por categoria\" abaixo."),
-        new("R2 · Fluxo por hora e por tipo", "Fase 6. Hoje: \"Por hora\" abaixo, no total, sem separar por tipo."),
-        new("R3 · Por catraca e disponibilidade", "Fase 6. Hoje: \"Por catraca\" abaixo, sem o tempo fora do ar."),
-        new("R4 · Por origem do ingresso", "Fase 6: validados por provedor (bilheteria, venda online, cortesia)."),
-        new("R5 · Conciliação (cadastrado × usado)", "Fase 6: depende do cadastro de cartões (fase 3)."),
-        new("R6 · Ocorrências e auditoria", "Fase 6: negativas repetidas, liberações manuais e comandos. As liberações manuais ainda não entram nos números."),
-        new("R7 · Consolidado do evento", "Fase 6: depende da hora de corte do dia de operação (E9)."),
-        new("R8 · Saúde da operação", "Fase 6: quedas de catraca, do serviço e da sincronização, com duração."),
-        new("Fechar o corte com código de conferência", "Fase 6: números congelados com SHA-256 (docs/25 §4)."),
+        new("R3 · Tempo fora do ar de cada catraca", "Em construção: entra com o R8 (quedas com duração). O R3 acima já traz validados, sem passagem e negados por catraca."),
+        new("R4 · Por origem do ingresso", "Em construção: validados por provedor (bilheteria, venda online, cortesia)."),
+        new("R5 · Conciliação (cadastrado × usado)", "Em construção: cartões cadastrados, usados e nunca usados, por tipo."),
+        new("R6 · Ocorrências e auditoria", "Em construção: negativas repetidas, liberações manuais e comandos, com quem fez."),
+        new("R8 · Saúde da operação", "Em construção: quedas de catraca, do serviço e da sincronização, com duração."),
+        new("Fechar o corte (congelar os números)", "Em construção. Hoje cada relatório já traz o código de conferência (SHA-256): o mesmo período e os mesmos dados dão o mesmo código."),
+        new("Cota de meia-entrada", "Aguardando decisão (E10): a cota se mede sobre a venda, que é do sistema de venda. O R1 já separa as meias validadas."),
     ];
 
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)
@@ -858,6 +856,8 @@ public sealed class ContasViewModel : TelaBase
             };
 
             Contas = await Cliente.ObterPrestacaoDeContasAsync(pedido, cancellationToken: cancelamento);
+            Relatorios = await Cliente.ObterRelatoriosAsync(
+                new ObterRelatoriosRequest { Desde = pedido.Desde, Ate = pedido.Ate }, cancellationToken: cancelamento);
             Mensagem = Contas.Liberados + Contas.Negados == 0 ? "Nenhuma tentativa no período." : string.Empty;
         }).ConfigureAwait(true);
     }
@@ -947,6 +947,7 @@ public sealed class ContasViewModel : TelaBase
             csv.AppendLine(string.Create(cultura, $"{Celula(l.Mensagem)};{l.Quantidade}"));
         }
 
+        AcrescentarRelatorios(csv);
         return csv.ToString();
     }
 
