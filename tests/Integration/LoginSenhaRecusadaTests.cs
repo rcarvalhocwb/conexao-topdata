@@ -15,7 +15,7 @@ namespace Integration.Tests;
 /// </summary>
 public sealed class LoginSenhaRecusadaTests : IAsyncLifetime, IDisposable
 {
-    private const int IteracoesDeTeste = 100_000;
+    private const int IteracoesDeTeste = Access.Infrastructure.SQLite.UsuariosDoSistema.Iteracoes;
     private static readonly DateTimeOffset Agora = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
 
     private readonly BancoTemporario _banco = new();
@@ -63,6 +63,21 @@ public sealed class LoginSenhaRecusadaTests : IAsyncLifetime, IDisposable
     }
 
     public void Dispose() => _banco.Dispose();
+
+    [Fact]
+    public async Task Login_com_a_senha_padrao_com_iteracoes_de_producao_nao_falha_no_servico()
+    {
+        var sessao = new SessaoDoPainel();
+        var cliente = new EdgeControl.EdgeControlClient(TransporteLocal.CriarInvocadorDoPainel(_endereco, _token, sessao));
+        var tela = new SessaoDoUsuarioViewModel(cliente, sessao);
+        await tela.IniciarAsync();
+
+        tela.Login = "admin";
+        tela.Senha = "xacess";
+        await tela.Entrar.ExecutarAsync();
+
+        Assert.True(tela.PedindoTroca, tela.Mensagem);
+    }
 
     [Fact]
     public async Task Senha_recusada_mantem_o_botao_entrar_disponivel_para_nova_tentativa()
