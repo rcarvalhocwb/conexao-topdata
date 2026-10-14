@@ -1104,7 +1104,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
 
             Problemas = [.. r.Problemas];
             Mensagem = r.Aceito
-                ? $"Pedido a {r.Ids.Count} catraca(s). Cada uma reconecta e fica alguns segundos sem atender. Acompanhe em Gerenciar catraca."
+                ? $"Pedido a {r.Ids.Count} catraca(s). Cada uma reconecta e fica alguns segundos sem atender. Acompanhe em Configuração da catraca."
                 : "Não foi pedido. Corrija os itens abaixo.";
 
             // Só some a confirmação quando o pedido saiu: um nome faltando não obriga a começar de novo.
@@ -1314,7 +1314,6 @@ public sealed class JanelaViewModel : Notificavel
         [typeof(ConsultaViewModel)] = CodigosDePermissao.CodigosConsultar,
         [typeof(SincronizacaoViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(ContasViewModel)] = CodigosDePermissao.RelatoriosVer,
-        [typeof(GerenciarCatracaViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(GemeoDigitalViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(ConfiguracoesViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(DiagnosticoViewModel)] = CodigosDePermissao.DiagnosticoVer,
@@ -1345,7 +1344,6 @@ public sealed class JanelaViewModel : Notificavel
             new ConsultaViewModel(cliente, relogio),
             new SincronizacaoViewModel(cliente, relogio),
             new ContasViewModel(cliente, relogio),
-            new GerenciarCatracaViewModel(cliente, relogio),
             new GemeoDigitalViewModel(cliente, relogio),
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
@@ -1385,7 +1383,7 @@ public sealed class JanelaViewModel : Notificavel
             }
         };
 
-        // Etapa A.6: o detalhe da catraca, aberto pela "Gerenciar catraca" (docs/34 §7.3).
+        // Etapa A.6: o detalhe da catraca, aberto pelo "Ver em lista" da configuração (docs/34 §7.3).
         // Fica fora do menu: só faz sentido com uma catraca escolhida.
         Parametrizacao = new ParametrizacaoViewModel(cliente, relogio);
         Parametrizar = new ComandoComParametro(async parametro =>
@@ -1395,12 +1393,11 @@ public sealed class JanelaViewModel : Notificavel
                 return;
             }
 
-            // Quem já digitou o nome no Gerenciar ou no gêmeo não precisa digitar de novo.
-            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+            // Quem já digitou o nome na configuração não precisa digitar de novo.
             var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (Parametrizacao.Operador.Length == 0)
             {
-                Parametrizacao.Operador = gemeo.Central.Operador.Length > 0 ? gemeo.Central.Operador : gerenciar.Operador;
+                Parametrizacao.Operador = gemeo.Central.Operador;
             }
 
             var mesmaTela = ReferenceEquals(TelaAtual, Parametrizacao);
@@ -1416,8 +1413,9 @@ public sealed class JanelaViewModel : Notificavel
                 await Parametrizacao.AtualizarAsync().ConfigureAwait(true);
             }
         });
-        // O gêmeo é a porta principal da configuração da catraca (docs/33 §9): a Parametrização
-        // e a Gerenciar têm o atalho "Abrir no gêmeo"; o gêmeo tem "Ver em lista".
+        // O gêmeo é a porta principal da catraca (docs/33 §9): configuração, comandos e histórico
+        // numa tela só (a "Gerenciar catraca" foi fundida nela). O botão "Configurar" do cartão da
+        // catraca e a Parametrização abrem aqui; daqui, "Ver em lista" abre a Parametrização.
         AbrirNoGemeo = new ComandoComParametro(async parametro =>
         {
             if (parametro is not int inner || inner <= 0)
@@ -1428,8 +1426,7 @@ public sealed class JanelaViewModel : Notificavel
             var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (gemeo.Central.Operador.Length == 0)
             {
-                var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
-                gemeo.Central.Operador = Parametrizacao.Operador.Length > 0 ? Parametrizacao.Operador : gerenciar.Operador;
+                gemeo.Central.Operador = Parametrizacao.Operador;
             }
 
             gemeo.Catraca = inner;
@@ -1447,25 +1444,6 @@ public sealed class JanelaViewModel : Notificavel
         {
             TelaAtual = Telas.OfType<DiagnosticoViewModel>().First();
             return Task.CompletedTask;
-        });
-        Gerenciar = new ComandoComParametro(async parametro =>
-        {
-            if (parametro is not int inner)
-            {
-                return;
-            }
-
-            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
-            gerenciar.Catraca = inner;
-
-            if (ReferenceEquals(TelaAtual, gerenciar))
-            {
-                await gerenciar.AtualizarAsync().ConfigureAwait(true);
-            }
-            else
-            {
-                TelaAtual = gerenciar;
-            }
         });
         VerAcessos = new ComandoComParametro(async parametro =>
         {
@@ -1488,17 +1466,15 @@ public sealed class JanelaViewModel : Notificavel
         });
     }
 
-    /// <summary>A Parametrização da catraca (Etapa A.6), aberta pela "Gerenciar catraca".</summary>
+    /// <summary>A Parametrização da catraca (Etapa A.6), aberta pelo "Ver em lista" da configuração.</summary>
     public ParametrizacaoViewModel Parametrizacao { get; }
 
     /// <summary>Abre a Parametrização de uma catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro Parametrizar { get; }
 
-    /// <summary>Abre o gêmeo digital numa catraca, para configurá-la (parâmetro: o número do Inner).</summary>
+    /// <summary>Abre a "Configuração da catraca" (configurar, comandar e ver o histórico) numa catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro AbrirNoGemeo { get; }
 
-    /// <summary>A ação "Gerenciar" do cartão da catraca (parâmetro: o número do Inner).</summary>
-    public ComandoComParametro Gerenciar { get; }
 
     /// <summary>A ação dos cartões de catraca: ir direto ao diagnóstico.</summary>
     public ComandoAssincrono AbrirDiagnostico { get; }
@@ -1557,8 +1533,7 @@ public sealed class JanelaViewModel : Notificavel
             return;
         }
 
-        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GerenciarCatracaViewModel
-            or GemeoDigitalViewModel)
+        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GemeoDigitalViewModel)
         {
             await TelaAtual.AtualizarAsync(cancelamento).ConfigureAwait(true);
         }

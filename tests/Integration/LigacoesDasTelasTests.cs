@@ -30,7 +30,7 @@ public sealed partial class LigacoesDasTelasTests
             typeof(ContasViewModel), typeof(PrestacaoDeContas), typeof(LinhaPorCategoria), typeof(LinhaPorCatraca),
             typeof(LinhaPorHora), typeof(LinhaDeNegativa), typeof(ParDeTexto), typeof(Contracts.Edge.V1.LinhaDeNegativa),
         ],
-        ["Telas/GerenciarCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeComando), typeof(ParDeTexto)],
+        ["Telas/ComandosDaCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeComando), typeof(ParDeTexto)],
         ["Telas/Gemeo.xaml"] =
         [
             typeof(GemeoDigitalViewModel), typeof(LinhaDeCatraca), typeof(Desktop.ViewModels.GemeoDigital.FichaDaPeca),

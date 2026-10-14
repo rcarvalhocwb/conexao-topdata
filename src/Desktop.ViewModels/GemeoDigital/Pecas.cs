@@ -102,7 +102,7 @@ public sealed record FichaDaPeca(
 /// As fichas das peças da TopFit 4, com o que cada uma faz <b>neste sistema</b>.
 /// </summary>
 /// <remarks>
-/// A regra é a mesma da tela "Gerenciar catraca" (docs/32, seção 5): o que depende da
+/// A regra é a mesma dos comandos da catraca (docs/32, seção 5): o que depende da
 /// Topdata ou da bancada aparece com o selo "Aguardando confirmação" e o motivo. Um gêmeo
 /// digital que mostrasse a urna recolhendo cartão ensinaria o operador a esperar uma coisa
 /// que a catraca desta instalação ainda não faz.
@@ -149,7 +149,7 @@ public static class CatalogoDaFit4
 
     private static Dictionary<PecaDaCatraca, FichaDaPeca> Montar()
     {
-        const string gerenciar = "Gerenciar catraca";
+        const string comandos = "Comandos desta catraca, embaixo do desenho";
         const string configuracoes = "Configurações";
         const string aqui = "Aqui na configuração, no painel desta peça (salvar e aplicar valem para a catraca inteira)";
         const string nenhuma = "Não há ajuste pelo painel.";
@@ -175,7 +175,7 @@ public static class CatalogoDaFit4
                     new("Queda dos braços em emergência", SituacaoDaFuncao.AguardandoConfirmacao,
                         "Não documentada para a TopFit 4 desta instalação. O desenho não simula."),
                 ],
-                $"{aqui}: tempo de liberação e giro. A liberação manual fica em {gerenciar}"),
+                $"{aqui}: tempo de liberação e giro. A liberação manual fica em {comandos}"),
             new FichaDaPeca(
                 PecaDaCatraca.Display,
                 "Display",

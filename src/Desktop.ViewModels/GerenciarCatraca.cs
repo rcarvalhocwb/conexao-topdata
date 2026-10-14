@@ -37,8 +37,10 @@ public sealed record LinhaDeComando(
 }
 
 /// <summary>
-/// Gerenciar catraca (fase 4b/4c): o que o operador pode pedir a uma catraca, e o histórico
-/// do que foi pedido.
+/// Os comandos da catraca (fase 4b/4c): o que o operador pode pedir a uma catraca, e o histórico
+/// do que foi pedido. Já foi uma tela própria ("Gerenciar catraca"); hoje fica dentro da
+/// "Configuração da catraca" (<see cref="CentralDaCatracaViewModel.Comandos"/>), com a mesma
+/// catraca e o mesmo nome de quem pede.
 /// </summary>
 /// <remarks>
 /// Cada pedido vai ao serviço, vira auditoria na base local e é executado pelo programa da
@@ -225,7 +227,7 @@ public sealed class GerenciarCatracaViewModel : TelaBase
         ? $"Confirmar: refazer a conexão da {Selecionada?.Nome ?? $"catraca {Catraca}"}? Ela fica alguns segundos sem atender enquanto reconecta e recebe a configuração."
         : string.Empty;
 
-    public override string Titulo => "Gerenciar catraca";
+    public override string Titulo => "Comandos da catraca";
 
     /// <summary>Quanto esperar o programa da catraca executar antes de buscar o desfecho.</summary>
     public TimeSpan EsperaPeloResultado { get; }

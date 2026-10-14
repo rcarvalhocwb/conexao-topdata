@@ -127,7 +127,7 @@ public static class Roteiros
         "Um giro sem ingresso, pedido pelo operador com motivo.",
         [
             new(S(0), SinalDaCena.Liberado(),
-                "Em Gerenciar catraca, o operador pede um giro de entrada, com o nome dele e o motivo.",
+                "Em Comandos desta catraca, o operador pede um giro de entrada, com o nome dele e o motivo.",
                 PecaDaCatraca.Rotor),
             new(S(1.6), SinalDaCena.Giro(),
                 "A pessoa passa. Fica registrado como liberação manual, fora da contagem de ingressos.",

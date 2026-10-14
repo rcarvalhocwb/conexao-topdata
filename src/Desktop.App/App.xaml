@@ -136,7 +136,7 @@
               <!-- Relógio divergente não tira a catraca de operação: é um aviso, não uma falha. -->
               <TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
                          Foreground="{DynamicResource Rayzer.Warning}"
-                         Text="Relógio da catraca fora do horário: os acessos saem com hora errada. Acerte em Gerenciar.">
+                         Text="Relógio da catraca fora do horário: os acessos saem com hora errada. Acerte em Configurar.">
                 <TextBlock.Style>
                   <Style TargetType="TextBlock" BasedOn="{StaticResource Rayzer.Type.Body}">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -155,12 +155,12 @@
                     BorderBrush="{DynamicResource Rayzer.Border.Subtle}">
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
-                        AutomationProperties.Name="Gerenciar esta catraca"
-                        Command="{Binding DataContext.Gerenciar, RelativeSource={RelativeSource AncestorType=Window}}"
+                        AutomationProperties.Name="Configurar e comandar esta catraca"
+                        Command="{Binding DataContext.AbrirNoGemeo, RelativeSource={RelativeSource AncestorType=Window}}"
                         CommandParameter="{Binding Inner}">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="13" Text="{DynamicResource Rayzer.Icon.Settings}" />
-                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Gerenciar" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Configurar" />
                   </StackPanel>
                 </Button>
                 <Button Style="{StaticResource Rayzer.Button.Ghost}" MinHeight="32" MinWidth="0" Padding="10,0"
@@ -193,8 +193,9 @@
       <DataTemplate DataType="{x:Type vm:ConsultaViewModel}"><telas:Consulta /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:SincronizacaoViewModel}"><telas:Sincronizacao /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ContasViewModel}"><telas:Contas /></DataTemplate>
-      <DataTemplate DataType="{x:Type vm:GerenciarCatracaViewModel}"><telas:GerenciarCatraca /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:GemeoDigitalViewModel}"><telas:Gemeo /></DataTemplate>
+      <!-- Os comandos da catraca: dentro da "Configuração da catraca" (a antiga "Gerenciar catraca"). -->
+      <DataTemplate DataType="{x:Type vm:GerenciarCatracaViewModel}"><telas:ComandosDaCatraca /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ConfiguracoesViewModel}"><telas:Configuracoes /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:DiagnosticoViewModel}"><telas:Diagnostico /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:SimuladorViewModel}"><telas:Simulador /></DataTemplate>
@@ -202,7 +203,7 @@
       <DataTemplate DataType="{x:Type vm:CartoesNaoReconhecidosViewModel}"><telas:CartoesNaoReconhecidos /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:ParametrosDoCadastroViewModel}"><telas:ParametrosDoCadastro /></DataTemplate>
       <DataTemplate DataType="{x:Type vm:UsuariosViewModel}"><telas:Usuarios /></DataTemplate>
-      <!-- Fora do menu: aberta pela "Gerenciar catraca" (Etapa A.6). -->
+      <!-- Fora do menu: aberta pelo "Ver em lista" da "Configuração da catraca" (Etapa A.6). -->
       <DataTemplate DataType="{x:Type vm:ParametrizacaoViewModel}"><telas:Parametrizacao /></DataTemplate>
       <!-- Painel, não tela: o mapa de giro dentro do gêmeo e da aba Giro da Parametrização (D9). -->
       <DataTemplate DataType="{x:Type vm:MapaDeGiroViewModel}"><telas:MapaDeGiro /></DataTemplate>

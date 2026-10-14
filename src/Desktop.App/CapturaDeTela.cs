@@ -118,7 +118,7 @@ internal static class CapturaDeTela
             }
         }
 
-        // Etapa A.6: a Parametrização fica fora do menu (abre pela "Gerenciar catraca"), então
+        // Etapa A.6: a Parametrização fica fora do menu (abre pelo "Ver em lista" da "Configuração da catraca"), então
         // o laço acima não passa por ela e ela entra aqui, com o número que o docs/35 deu à
         // captura (as do menu não foram renumeradas).
         gravados.AddRange(await GravarParametrizacaoAsync(pasta, janela, falhas).ConfigureAwait(true));

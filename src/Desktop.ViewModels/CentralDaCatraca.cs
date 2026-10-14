@@ -15,7 +15,7 @@ namespace Desktop.ViewModels;
 /// "aplicada" só com o pedido concluído e a versão igual são os da Parametrização (Etapa A.6,
 /// <see cref="ParametrizacaoViewModel"/>), pelos mesmos RPCs. O giro é o mapa de giro (D9,
 /// <see cref="MapaDeGiroViewModel"/>), que entra na mesma versão do salvo. Os pedidos imediatos
-/// (mensagem temporária, acertar relógio, refazer conexão) são os da "Gerenciar catraca"
+/// (mensagem temporária, acertar relógio, refazer conexão) são os comandos da catraca
 /// (<see cref="GerenciarCatracaViewModel"/>). Esta classe só junta as três e diz qual parte
 /// cabe a cada peça (<see cref="ConfiguracaoPorPeca"/>).
 /// </para>
@@ -89,7 +89,7 @@ public sealed class CentralDaCatracaViewModel : TelaBase
     /// <summary>O mapa de giro desta catraca (D9), sem salvar e aplicar próprios.</summary>
     public MapaDeGiroViewModel Giro => Parametrizacao.Giro;
 
-    /// <summary>Os pedidos imediatos da "Gerenciar catraca", para a mesma catraca.</summary>
+    /// <summary>Os comandos da catraca (a antiga "Gerenciar catraca", fundida aqui), para a mesma catraca.</summary>
     public GerenciarCatracaViewModel Comandos { get; }
 
     /// <summary>Grava tudo o que mudou, em todas as peças, com o nome digitado.</summary>

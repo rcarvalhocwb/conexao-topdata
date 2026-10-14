@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 1;
+    public const int Edicao = 2;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,10 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "\"Gerenciar catraca\" agora fica dentro de \"Configuração da catraca\": a mesma tela tem o " +
+        "desenho, a configuração e, embaixo, os comandos (liberar um giro, recado no visor, relógio, " +
+        "fechar a catraca) com o histórico. No cartão da catraca, o botão passou a se chamar \"Configurar\".",
+
         "Configuração da catraca num lugar só: clique numa peça do desenho da catraca para ver e " +
         "ajustar o que ela faz, e use \"Aplicar nesta catraca\" para mandar tudo de uma vez.",
 

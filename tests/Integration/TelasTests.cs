@@ -604,7 +604,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     public async Task Janela_troca_de_tela_e_o_cabecalho_continua_atualizando()
     {
         var janela = new JanelaViewModel(Cliente());
-        Assert.Equal(15, janela.Telas.Count);
+        Assert.Equal(14, janela.Telas.Count);
         Assert.Same(janela.Painel, janela.TelaAtual);
 
         janela.TelaAtual = janela.Telas.OfType<SincronizacaoViewModel>().Single();
@@ -749,15 +749,23 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Single(tela.Historico);
     }
 
+    /// <summary>
+    /// A "Gerenciar catraca" foi fundida na "Configuração da catraca": o "Configurar" do cartão
+    /// abre a configuração naquela catraca, com os comandos dela embaixo; uma entrada só no menu.
+    /// </summary>
     [Fact]
-    public async Task Gerenciar_no_cartao_da_catraca_abre_a_tela_naquela_catraca()
+    public async Task Configurar_no_cartao_da_catraca_abre_a_configuracao_com_os_comandos_naquela_catraca()
     {
         var janela = new JanelaViewModel(Cliente());
 
-        await janela.Gerenciar.ExecutarAsync(2);
+        await janela.AbrirNoGemeo.ExecutarAsync(2);
 
-        var tela = Assert.IsType<GerenciarCatracaViewModel>(janela.TelaAtual);
-        Assert.Equal(2, tela.Catraca);
+        var tela = Assert.IsType<GemeoDigitalViewModel>(janela.TelaAtual);
+        await tela.AtualizarAsync();
+        Assert.Equal((2, 2), (tela.Catraca, tela.Central.Comandos.Catraca));
+        Assert.Equal(2, tela.Central.Comandos.Selecionada?.Inner);
+        Assert.DoesNotContain(janela.Telas, t => t is GerenciarCatracaViewModel);
+        Assert.Single(janela.TelasDoMenu, t => t is GemeoDigitalViewModel);
     }
 
     /// <summary>
@@ -1281,11 +1289,11 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task Parametrizacao_abre_pela_gerenciar_catraca_naquela_catraca_e_fica_fora_do_menu()
+    public async Task Parametrizacao_abre_pela_configuracao_da_catraca_naquela_catraca_e_fica_fora_do_menu()
     {
         var janela = new JanelaViewModel(Cliente());
-        await janela.Gerenciar.ExecutarAsync(2);
-        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana";
+        await janela.AbrirNoGemeo.ExecutarAsync(2);
+        ((GemeoDigitalViewModel)janela.TelaAtual).Central.Operador = "Ana";
 
         await janela.Parametrizar.ExecutarAsync(2);
 
@@ -1848,28 +1856,29 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
-    /// O gêmeo é a porta principal: "Abrir no gêmeo" (Gerenciar e Parametrização) leva à mesma
-    /// catraca, com o nome já digitado; "Ver em lista" leva de volta à Parametrização. Nada some.
+    /// O gêmeo é a porta principal: configuração e comandos usam a mesma catraca e o mesmo nome;
+    /// "Ver em lista" leva à Parametrização, e "Voltar à configuração" traz de volta. Nada some.
     /// </summary>
     [Fact]
     public async Task Abrir_no_gemeo_e_ver_em_lista_levam_a_mesma_catraca_com_o_nome()
     {
         var janela = new JanelaViewModel(Cliente());
-        await janela.Gerenciar.ExecutarAsync(2);
-        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana Sintética";
-
         await janela.AbrirNoGemeo.ExecutarAsync(2);
         var gemeo = Assert.IsType<GemeoDigitalViewModel>(janela.TelaAtual);
+        gemeo.Central.Operador = "Ana Sintética";
         await gemeo.AtualizarAsync();
         Assert.Equal((2, 2, "Ana Sintética"), (gemeo.Catraca, gemeo.Central.Catraca, gemeo.Central.Operador));
+        Assert.Equal((2, "Ana Sintética"), (gemeo.Central.Comandos.Catraca, gemeo.Central.Comandos.Operador));
 
         await janela.Parametrizar.ExecutarAsync(gemeo.Central.Catraca);
         var lista = Assert.IsType<ParametrizacaoViewModel>(janela.TelaAtual);
         await lista.AtualizarAsync();
         Assert.Equal((2, "Ana Sintética"), (lista.Catraca, lista.Operador));
 
-        // A Parametrização e a Gerenciar continuam existindo.
-        Assert.Contains(janela.Telas, t => t is GerenciarCatracaViewModel);
+        // De volta à configuração, na mesma catraca.
+        await janela.AbrirNoGemeo.ExecutarAsync(lista.Catraca);
+        Assert.Same(gemeo, janela.TelaAtual);
+        Assert.Equal(2, gemeo.Catraca);
         Assert.NotNull(janela.Parametrizacao);
     }
 

@@ -114,7 +114,6 @@ public sealed class TelaParaIcone : IValueConverter
             ConsultaViewModel => "\uE721",
             SincronizacaoViewModel => "\uE895",
             ContasViewModel => "\uE8A5",
-            GerenciarCatracaViewModel => "\uE90F",
             GemeoDigitalViewModel => "\uE81E",
             ConfiguracoesViewModel => "\uE713",
             DiagnosticoViewModel => "\uE9D9",

@@ -474,7 +474,7 @@ public sealed class CampoDaParametrizacao : Notificavel
 /// </summary>
 /// <remarks>
 /// <para>
-/// Entra pela "Gerenciar catraca" (é o detalhe da catraca, docs/34 §7.3), e não pelo menu.
+/// Entra pelo "Ver em lista" da "Configuração da catraca" (docs/34 §7.3), e não pelo menu.
 /// Salvar e aplicar são passos separados e explícitos: salvar grava a camada da catraca;
 /// aplicar pede o comando "Aplicar configuração" daquela catraca, que reconecta e fica alguns
 /// segundos sem atender. Os dois exigem o nome digitado (não há login, docs/27 §11).

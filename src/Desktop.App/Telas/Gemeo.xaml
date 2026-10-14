@@ -4,6 +4,7 @@
              xmlns:rz="clr-namespace:Rayzer.Design;assembly=Rayzer.Design"
              xmlns:gd="clr-namespace:Desktop.ViewModels.GemeoDigital;assembly=Desktop.ViewModels"
              xmlns:vm="clr-namespace:Desktop.ViewModels;assembly=Desktop.ViewModels"
+             xmlns:telas="clr-namespace:Desktop.App.Telas"
              AutomationProperties.Name="Configuração da catraca">
   <!--
     Gêmeo digital da TopFit 4 (docs/33). O desenho 3D é montado no código por trás, a partir
@@ -12,6 +13,8 @@
     É também a porta principal da configuração da catraca (docs/33 §9): clicar numa peça abre,
     ao lado do desenho, os parâmetros dela; um só "o que muda", um Salvar e um Aplicar valem
     para a catraca inteira. O selo DEMONSTRAÇÃO fala só dos cenários: a configuração é real.
+    Embaixo, os comandos da catraca (a antiga "Gerenciar catraca"): vão na hora, sem Salvar nem
+    Aplicar. Uma catraca, um lugar: configurar e comandar ficam na mesma tela.
   -->
   <!--
     A página inteira rola: em 1366 x 768 o desenho mantém uma altura útil em vez de encolher. A
@@ -23,10 +26,11 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
     <rz:RayzerPageHeader Titulo="Configuração da catraca"
-                         Descricao="O desenho da catraca e a configuração dela. Clique numa peça para ver o que ela faz e mudar os ajustes dela; salve e aplique a catraca inteira de uma vez. Os cenários da demonstração ficam só no desenho." />
+                         Descricao="O desenho da catraca, a configuração dela e os comandos. Clique numa peça para ver o que ela faz e mudar os ajustes dela; salve e aplique a catraca inteira de uma vez. Embaixo, os comandos que vão na hora: liberar um giro, mensagem no display, relógio, fechar a catraca e o histórico de pedidos." />
 
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
@@ -376,6 +380,15 @@
       </StackPanel>
       </ScrollViewer>
     </Grid>
+
+    <!-- Os comandos desta catraca (a antiga "Gerenciar catraca"): a mesma catraca escolhida acima
+         e o mesmo nome de quem pede. Não são configuração: vão na hora, sem Salvar nem Aplicar. -->
+    <StackPanel Grid.Row="2" Margin="0,16,0,0">
+      <rz:RayzerSectionHeader Titulo="Comandos desta catraca" />
+      <TextBlock Margin="0,0,0,10" Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap"
+                 Text="Vão na hora para a catraca escolhida acima, sem Salvar nem Aplicar. Cada pedido fica registrado com o nome digitado em &quot;Seu nome&quot; e é executado quando a catraca estiver livre, nunca no meio de uma passagem. O resultado aparece no histórico." />
+      <telas:ComandosDaCatraca DataContext="{Binding Central.Comandos}" />
+    </StackPanel>
   </Grid>
   </ScrollViewer>
 </UserControl>

@@ -131,7 +131,7 @@ public static class PorQueNegou
         [ReasonCodes.CatracaFechada] = (
             "Esta catraca está fechada pelo operador: ninguém passa até reabrir.",
             UseOutraCatraca,
-            "Reabra a catraca em Gerenciar catraca quando for o caso."),
+            "Reabra a catraca em Configuração da catraca, nos comandos, quando for o caso."),
         [ReasonCodes.CredencialBloqueada] = (
             "Este ingresso foi bloqueado pela operação do evento.",
             ProcureOAtendimento,
