@@ -26,7 +26,7 @@
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="De (data · hora)" />
           <StackPanel Orientation="Horizontal">
             <DatePicker SelectedDate="{Binding Desde}" AutomationProperties.Name="De" />
-            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
+            <TextBox Width="96" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDesde, UpdateSourceTrigger=PropertyChanged}"
                      ToolTip="hh:mm — vazio = começo do dia" AutomationProperties.Name="Hora inicial" />
           </StackPanel>
         </StackPanel>
@@ -34,7 +34,7 @@
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Até (data · hora)" />
           <StackPanel Orientation="Horizontal">
             <DatePicker SelectedDate="{Binding Ate}" AutomationProperties.Name="Até" />
-            <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
+            <TextBox Width="96" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraAte, UpdateSourceTrigger=PropertyChanged}"
                      ToolTip="hh:mm — vazio = fim do dia" AutomationProperties.Name="Hora final" />
           </StackPanel>
         </StackPanel>

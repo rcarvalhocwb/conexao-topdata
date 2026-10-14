@@ -33,7 +33,7 @@
               <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Começa em" />
               <StackPanel Orientation="Horizontal">
                 <DatePicker SelectedDate="{Binding InicioDoEvento}" AutomationProperties.Name="Data de início do evento" />
-                <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDeInicio, UpdateSourceTrigger=PropertyChanged}"
+                <TextBox Width="96" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDeInicio, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="HH:MM — vazio = começo do dia" AutomationProperties.Name="Hora de início do evento" />
               </StackPanel>
             </StackPanel>
@@ -41,13 +41,13 @@
               <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Termina em" />
               <StackPanel Orientation="Horizontal">
                 <DatePicker SelectedDate="{Binding FimDoEvento}" AutomationProperties.Name="Data de fim do evento" />
-                <TextBox Width="72" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDeFim, UpdateSourceTrigger=PropertyChanged}"
+                <TextBox Width="96" Margin="6,0,0,0" MaxLength="5" Text="{Binding HoraDeFim, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="HH:MM — vazio = fim do dia" AutomationProperties.Name="Hora de fim do evento" />
               </StackPanel>
             </StackPanel>
             <StackPanel Margin="0,0,0,8">
               <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Hora de corte do dia" />
-              <TextBox Width="72" HorizontalAlignment="Left" MaxLength="5" Text="{Binding HoraDeCorte, UpdateSourceTrigger=PropertyChanged}"
+              <TextBox Width="96" HorizontalAlignment="Left" MaxLength="5" Text="{Binding HoraDeCorte, UpdateSourceTrigger=PropertyChanged}"
                        ToolTip="Quando um dia de operação vira o seguinte nos relatórios (ex.: 06:00 para festas que passam da meia-noite)."
                        AutomationProperties.Name="Hora de corte do dia de operação" />
             </StackPanel>
