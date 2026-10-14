@@ -421,6 +421,8 @@ construtor.Services.AddGrpc(o =>
 {
     // A planilha de pessoas vai inteira num pedido (até 20 MB, docs/43 P5); o padrão do gRPC é 4 MB.
     o.MaxReceiveMessageSize = 24 * 1024 * 1024;
+    // Primeiro, para ver os erros internos de todos os RPCs (ver InterceptadorDeErros).
+    o.Interceptors.Add<InterceptadorDeErros>((Action<string>)Registrar);
     o.Interceptors.Add<InterceptadorDeToken>(token);
     o.Interceptors.Add<InterceptadorDeSessao>(usuariosDoSistema, sessoesDoPainel, (Func<DateTimeOffset>)(() => DateTimeOffset.UtcNow));
 });
