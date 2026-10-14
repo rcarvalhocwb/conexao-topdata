@@ -28,7 +28,7 @@ public sealed class CartoesNaoReconhecidosViewModel : TelaBase
     private LinhaDeLeitura? _selecionada;
     private bool _sessaoAberta;
     private string _sessaoResumo = "Nenhuma sessão de lote aberta.";
-    private string _provedor = "balcao-local";
+    private string _provedor = "bilheteria-local";
     private string _tipo = "INTEIRA";
     private string _lote = string.Empty;
     private string _usos = "1";

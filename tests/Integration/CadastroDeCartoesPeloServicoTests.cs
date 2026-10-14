@@ -13,7 +13,7 @@ namespace Integration.Tests;
 /// </summary>
 public sealed class CadastroDeCartoesPeloServicoTests : IDisposable
 {
-    private const string Balcao = "balcao-local";
+    private const string Balcao = "bilheteria-local";
     private static readonly DateTimeOffset Agora = new(2026, 11, 14, 18, 0, 0, TimeSpan.Zero);
 
     private readonly BancoTemporario _banco = new();

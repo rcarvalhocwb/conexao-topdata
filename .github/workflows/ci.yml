@@ -357,13 +357,18 @@ jobs:
           $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
                           'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
                           'Edge.Configurador.exe', 'modelo-cadastro-de-cartoes.xlsx',
-                          'verificar-ambiente.ps1', 'configurar-operador.ps1'
+                          'verificar-ambiente.ps1', 'configurar-operador.ps1', 'carregar-cartoes.ps1'
           $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
           if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
 
           # Invariante: o MSI público nunca leva a EasyInner.dll (é da Topdata; a versão com o
           # SDK sai do repositório privado, em installer/privado/).
           if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI público.' }
+          # Nem número de cartão: a carga inicial vem de arquivo do cliente, nunca do MSI (docs/57 §3).
+          # Só os modelos fictícios de installer/modelos podem ir.
+          $modelos = 'cartoes-modelo.csv', 'modelo-pessoas.csv', 'tipos-modelo.csv'
+          $csvs = $arquivos | Where-Object { $_ -like '*.csv' -and $modelos -notcontains $_ }
+          if ($csvs) { throw "O MSI público não pode levar .csv de cartões: $($csvs -join ', ')" }
           Write-Host 'Conteúdo do MSI: ok (instalador de teste, sem o SDK)'
 
       # O teste que faltava: instalar de verdade, abrir o painel instalado e desinstalar

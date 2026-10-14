@@ -17,7 +17,7 @@ namespace Integration.Tests;
 /// </summary>
 public sealed class CartoesNaoReconhecidosViewModelTests : IAsyncLifetime, IDisposable
 {
-    private const string Balcao = "balcao-local";
+    private const string Balcao = "bilheteria-local";
     private const string Codigo = "5C6D7E8F";
     private static readonly DateTimeOffset Agora = new(2026, 11, 14, 18, 0, 0, TimeSpan.Zero);
 

@@ -303,6 +303,19 @@ if (usuariosDoSistema.GarantirAdministradorPadrao(DateTimeOffset.UtcNow))
     Registrar($"login: administrador padrão criado ('{UsuariosDoSistema.LoginPadrao}'); a senha deve ser trocada no primeiro acesso.");
 }
 
+// Cartões já validados (docs/57 §3): o provedor da bilheteria local existe sempre (o cadastro por
+// leitura grava nele), e os arquivos deixados em carga-inicial entram agora. Os números nunca vêm
+// no instalador: o repositório e o instalador de teste são públicos.
+CargaInicialDeCartoes.GarantirProvedorLocal(fabrica, DateTimeOffset.UtcNow);
+try
+{
+    CargaInicialDeCartoes.CarregarDaPasta(configuracao.PastaDeDados, fabrica, DateTimeOffset.UtcNow, Registrar);
+}
+catch (Exception erro) when (erro is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+{
+    Registrar($"carga inicial: não foi feita ({erro.GetType().Name}: {erro.Message}). Os arquivos ficaram na pasta para a próxima partida.");
+}
+
 var sessoesDoPainel = new SessoesDoPainel();
 
 // Cadastro local de pessoas (docs/43): os dados pessoais são cifrados com uma chave do cofre (DPAPI, só

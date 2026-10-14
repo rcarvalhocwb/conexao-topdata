@@ -17,3 +17,10 @@ TestResults/
 coverage/
 *.coverage
 *.trx
+
+# Cartões reais (carga inicial, docs/57 §3): os números abrem a catraca e nunca entram no repositório público.
+carga-inicial/
+*-backup.csv
+cartoes-*.csv
+autorizacoes-*.csv
+!installer/modelos/*.csv

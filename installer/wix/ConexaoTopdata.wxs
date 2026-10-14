@@ -280,13 +280,17 @@
     </ComponentGroup>
 
     <!-- Scripts que o operador roda depois da instalação (runbooks RB-01 e o README do instalador).
-         Só estes dois: os de desenvolvimento (publicar, instalar-dev) não vão ao cliente. -->
+         Só estes: os de desenvolvimento (publicar, instalar-dev) não vão ao cliente. -->
     <ComponentGroup Id="Grupo_ScriptsDoOperador" Directory="INSTALLFOLDER">
       <Component Id="ScriptVerificarAmbiente" Guid="*">
         <File Id="ArqVerificarAmbiente" Source="$(var.PastaInstalador)\verificar-ambiente.ps1" KeyPath="yes" />
       </Component>
       <Component Id="ScriptConfigurarOperador" Guid="*">
         <File Id="ArqConfigurarOperador" Source="$(var.PastaInstalador)\configurar-operador.ps1" KeyPath="yes" />
+      </Component>
+      <!-- Carga dos cartões já validados (docs/57 §3). Os arquivos com os números nunca vão no MSI. -->
+      <Component Id="ScriptCarregarCartoes" Guid="*">
+        <File Id="ArqCarregarCartoes" Source="$(var.PastaInstalador)\carregar-cartoes.ps1" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
