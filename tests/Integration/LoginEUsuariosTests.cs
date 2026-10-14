@@ -319,7 +319,8 @@ public sealed class LoginEUsuariosTests : IAsyncLifetime, IDisposable
         await sessao.Entrar.ExecutarAsync();
         Assert.True(sessao.PedindoLogin);
         Assert.Equal("Usuário ou senha não conferem.", sessao.Mensagem);
-        Assert.Equal(string.Empty, sessao.Senha);
+        // A caixa de senha segue com o texto digitado: o ViewModel guarda o mesmo valor, e Entrar segue disponível.
+        Assert.Equal("errada", sessao.Senha);
 
         sessao.Login = "admin";
         sessao.Senha = "xacess";

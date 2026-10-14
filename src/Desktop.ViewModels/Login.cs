@@ -194,20 +194,20 @@ public sealed class SessaoDoUsuarioViewModel : Notificavel
         try
         {
             var resposta = await _cliente.EntrarAsync(new EntrarRequest { Login = Login.Trim(), Senha = Senha });
-            Senha = string.Empty;
             if (!resposta.Aceito)
             {
+                // A caixa de senha continua com o texto digitado: limpar só o ViewModel desabilitaria Entrar.
                 Mensagem = resposta.Mensagem;
                 return;
             }
 
+            Senha = string.Empty;
             _sessao.Token = resposta.Sessao;
             Mensagem = string.Empty;
             Aplicar(resposta.Usuario);
         }
         catch (RpcException erro)
         {
-            Senha = string.Empty;
             Mensagem = MensagemDeFalha.Para(erro);
         }
     }
