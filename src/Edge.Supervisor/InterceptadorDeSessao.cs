@@ -38,6 +38,8 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["TrocarSenha"] = null,
         ["Sair"] = null,
         ["ObterSessao"] = null,
+        ["PedirRecuperacaoPeloSuporte"] = null,
+        ["ConfirmarRecuperacaoPeloSuporte"] = null,
 
         // Operação.
         ["ListarEquipamentos"] = null,
@@ -120,7 +122,7 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
     /// bandeja mostra antes de alguém entrar (contagens, nomes e situação das catracas; nenhum dado
     /// pessoal nem código de acesso).
     /// </summary>
-    public static readonly IReadOnlySet<string> Anonimas = new HashSet<string>(StringComparer.Ordinal) { "Entrar", "ObterEstado", "ListarEquipamentos" };
+    public static readonly IReadOnlySet<string> Anonimas = new HashSet<string>(StringComparer.Ordinal) { "Entrar", "ObterEstado", "ListarEquipamentos", "PedirRecuperacaoPeloSuporte", "ConfirmarRecuperacaoPeloSuporte" };
 
     /// <summary>O que passa com a senha padrão ou redefinida.</summary>
     public static readonly IReadOnlySet<string> DuranteATroca = new HashSet<string>(StringComparer.Ordinal) { "TrocarSenha", "ObterSessao", "Sair" };

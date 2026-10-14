@@ -100,6 +100,14 @@ public sealed record EstadoDoPainel
             _ => (SaudeDoPainel.Atencao, "Estado desconhecido informado pelo serviço"),
         };
 
+        // As catracas funcionam, mas a nuvem precisa de alguém: "tudo funcionando" esconderia isso.
+        if (saude is SaudeDoPainel.Normal && resposta.SituacaoDaNuvem is SituacaoDaNuvem.ListaIncompleta
+                or SituacaoDaNuvem.FalhaDeAutenticacao or SituacaoDaNuvem.SegredoAusente)
+        {
+            saude = SaudeDoPainel.Atencao;
+            mensagem = "Catracas funcionando — a nuvem precisa de atenção (veja Sincronização)";
+        }
+
         if (resposta.SemConfiguracao)
         {
             saude = SaudeDoPainel.Acao;

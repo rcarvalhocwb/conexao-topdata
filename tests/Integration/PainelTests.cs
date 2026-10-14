@@ -222,6 +222,33 @@ public sealed class PainelTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// Teste de 14/10: a faixa dizia "Tudo funcionando" com a nuvem recebendo a lista de cartões
+    /// cortada. As catracas funcionam, mas a nuvem precisa de alguém, e a faixa diz isso.
+    /// </summary>
+    [Theory]
+    [InlineData(SituacaoDaNuvem.ListaIncompleta)]
+    [InlineData(SituacaoDaNuvem.FalhaDeAutenticacao)]
+    [InlineData(SituacaoDaNuvem.SegredoAusente)]
+    public void Nuvem_que_precisa_de_alguem_tira_o_tudo_funcionando(SituacaoDaNuvem nuvem)
+    {
+        var resposta = new ObterEstadoResponse
+        {
+            Versao = "teste",
+            Nivel = NivelDeDegradacao.T0Normal,
+            EquipamentosConectados = 2,
+            SituacaoDaNuvem = nuvem,
+        };
+
+        var estado = EstadoDoPainel.De(resposta, Agora);
+
+        Assert.Equal(SaudeDoPainel.Atencao, estado.Saude);
+        Assert.Equal("Catracas funcionando — a nuvem precisa de atenção (veja Sincronização)", estado.Mensagem);
+
+        resposta.SituacaoDaNuvem = SituacaoDaNuvem.Conectada;
+        Assert.Equal("Tudo funcionando", EstadoDoPainel.De(resposta, Agora).Mensagem);
+    }
+
+    /// <summary>
     /// Simulação nunca sai em tom de sucesso (docs/27: simulação é Atenção). A barra superior
     /// mostrava "✓ MODO SIMULAÇÃO" em verde, ao lado do cartão laranja (docs/34 §7.1, P11).
     /// </summary>

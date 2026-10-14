@@ -151,6 +151,7 @@ dígitos, com zero à esquerda).
 | Negadas | Também sobem (`authorized: false`), com o motivo em `reason` (tabela abaixo) |
 | Quem entrou de fato | `extra.giro_confirmado = true` quer dizer que a catraca **girou**. Autorizado sem giro é quem desistiu. Contar público pelo giro, não pela autorização (ADR-0007) |
 | `extra` | Guardar como veio (JSON). Novos campos podem aparecer; campos existentes não mudam de sentido |
+| `extra.simulado` | **Novo (14/10/2026):** `true` quando o PC está em modo simulação (catraca simulada, sem catraca física). A nuvem deve **separar esses eventos dos números reais** (não somar no público nem na prestação de contas). Fora da simulação o campo não vai |
 
 Valores de `reason` que o XAcess envia (os mais comuns):
 

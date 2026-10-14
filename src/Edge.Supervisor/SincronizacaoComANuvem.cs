@@ -174,7 +174,8 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         EstadoDaNuvem estado,
         Action<string> registrar,
         HttpMessageHandler? transporte = null,
-        TimeProvider? relogio = null)
+        TimeProvider? relogio = null,
+        bool simulacao = false)
     {
         ArgumentNullException.ThrowIfNull(nuvem);
         ArgumentNullException.ThrowIfNull(fabrica);
@@ -238,7 +239,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             new FilaDeSaidaSqlite(fabrica),
             // Um device_id por PC, o mesmo do segredo (decisão S10); a catraca vai em extra.catraca
             // (achado E5-3 do docs/41: antes ia "inner-N", que não bate com o segredo do equipamento).
-            [new ConectorDeTentativasDoPainel(http, nuvem.Conector, equipamentoNoPainel: _ => nuvem.Dispositivo)],
+            [new ConectorDeTentativasDoPainel(http, nuvem.Conector, equipamentoNoPainel: _ => nuvem.Dispositivo, simulacao: simulacao)],
             tentativa => TimeSpan.FromSeconds(Math.Min(300, 5 * Math.Pow(2, Math.Min(tentativa, 6)))),
             relogio);
 
@@ -277,6 +278,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
     {
         var falhas = new List<string>();
         var tipo = TipoDeFalha.Nenhuma;
+        int? listaCortadaCom = null;
 
         void Falhar(string texto, TipoDeFalha tipoDaFalha)
         {
@@ -297,6 +299,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         else if (_corte?.Recebidos is { } recebidos)
         {
             // O servidor respondeu, mas cortou a lista: o destino está de pé e a leitura é que falhou.
+            listaCortadaCom = recebidos;
             Falhar(string.Create(
                 CultureInfo.InvariantCulture,
                 $"cartões: a lista veio com {recebidos} e pode ter sido cortada pelo servidor; os que faltam não chegaram a este computador"),
@@ -340,6 +343,16 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         }
 
         var motivo = string.Join("; ", falhas);
+
+        // Só o corte da lista falhou: a nuvem respondeu, então ela está conectada, com a lista
+        // incompleta. Dizer "offline" mandaria o operador procurar defeito na internet.
+        if (listaCortadaCom is { } cortada && falhas.Count == 1)
+        {
+            _estado.RegistrarListaIncompleta(cortada, motivo, agora);
+            _registrar($"nuvem: conectada, mas com a lista de cartões incompleta ({motivo}).");
+            return false;
+        }
+
         _estado.RegistrarFalha(motivo, tipo, agora);
         _registrar($"nuvem: falhou ({motivo}).");
         return false;

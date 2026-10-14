@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ferramenta do suporte Rayzer (docs/58): gera o par de chaves e assina pedidos de recuperação de
+    senha de administrador. Roda só na máquina do desenvolvedor. Não vai no instalador: quem tem a
+    chave privada é quem pode recuperar, e ela nunca sai dessa máquina.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Rayzer.Suporte</AssemblyName>
+    <RootNamespace>Rayzer.Suporte</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Access.Infrastructure.SQLite/Access.Infrastructure.SQLite.csproj" />
+  </ItemGroup>
+
+</Project>

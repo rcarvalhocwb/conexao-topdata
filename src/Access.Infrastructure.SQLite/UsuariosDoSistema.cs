@@ -521,6 +521,43 @@ public sealed class UsuariosDoSistema
         return [];
     }
 
+    /// <summary>Quem a trilha mostra como autor de uma recuperação pelo suporte (docs/58).</summary>
+    public const string AutorDoSuporte = "suporte-rayzer";
+
+    /// <summary>
+    /// Grava a senha que a própria pessoa escolheu, depois de o suporte Rayzer assinar o pedido de
+    /// recuperação (<see cref="RecuperacaoPeloSuporte"/>). Desbloqueia a conta e fica na trilha. Quem
+    /// chama confere a assinatura antes: este método não sabe dela.
+    /// </summary>
+    public IReadOnlyList<string> GravarSenhaRecuperadaPeloSuporte(string usuarioId, string? senhaNova, DateTimeOffset agora)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(usuarioId);
+        var problemas = ProblemasNaSenha(senhaNova, null);
+        if (problemas.Count > 0)
+        {
+            return problemas;
+        }
+
+        using var conexao = _fabrica.Abrir();
+        using var transacao = conexao.BeginTransaction();
+        var (hash, sal) = Hash(senhaNova!, _iteracoes);
+        var mudou = Executar(conexao, transacao,
+            """
+            UPDATE app_user SET password_hash = $h, password_salt = $s, iterations = $it, must_change = 0,
+                failed_count = 0, locked_until = NULL, updated_at = $em
+            WHERE id = $id AND status = 'ativo';
+            """,
+            ("$h", hash), ("$s", sal), ("$it", _iteracoes), ("$em", Iso(agora)), ("$id", usuarioId));
+        if (mudou == 0)
+        {
+            return ["Usuário não encontrado ou inativo."];
+        }
+
+        Registrar(conexao, transacao, agora, AutorDoSuporte, "senha_recuperada_pelo_suporte", usuarioId, null);
+        transacao.Commit();
+        return [];
+    }
+
     /// <summary>Todos os papéis, com as permissões.</summary>
     public IReadOnlyList<PapelDoSistema> ListarPapeis()
     {

@@ -250,6 +250,24 @@ public sealed class PainelTests
     private static async Task<IReadOnlyList<RespostaDeItem>> Enviar(Servidor servidor, params ItemDeSaida[] itens) =>
         await new ConectorDeTentativasDoPainel(Http(servidor)).EnviarAsync(itens, CancellationToken.None);
 
+    /// <summary>
+    /// Em modo simulação, a passagem sobe marcada (extra.simulado), para a nuvem não somar com os
+    /// números reais; fora dela, o evento é o mesmo de sempre, sem o campo.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Passagem_do_modo_simulacao_sobe_marcada(bool simulacao)
+    {
+        var servidor = new Servidor(HttpStatusCode.OK, "{\"saved\":1,\"failed\":0}");
+
+        await new ConectorDeTentativasDoPainel(Http(servidor), simulacao: simulacao).EnviarAsync([Item("a")], CancellationToken.None);
+
+        using var pedido = System.Text.Json.JsonDocument.Parse(servidor.Pedidos[0]);
+        var extra = pedido.RootElement.GetProperty("events")[0].GetProperty("extra");
+        Assert.Equal(simulacao, extra.TryGetProperty("simulado", out var marca) && marca.GetBoolean());
+    }
+
     // 401 e 403 esperam na fila (achado E5-2 do docs/41): antes iam para cartas mortas, sem volta, e um
     // segredo errado apagava a prestação de contas da nuvem.
     [Theory]

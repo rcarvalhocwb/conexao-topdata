@@ -514,6 +514,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         NuvemMedida.SegredoAusente => SituacaoDaNuvem.SegredoAusente,
         NuvemMedida.FalhaDeAutenticacao => SituacaoDaNuvem.FalhaDeAutenticacao,
         NuvemMedida.Indisponivel => SituacaoDaNuvem.Indisponivel,
+        NuvemMedida.ListaIncompleta => SituacaoDaNuvem.ListaIncompleta,
         _ => SituacaoDaNuvem.Desconhecida,
     };
 
@@ -538,6 +539,13 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         {
             resposta.UltimoSucesso = Timestamp.FromDateTimeOffset(sucesso);
         }
+
+        if (_nuvem?.UltimoContato is { } contato)
+        {
+            resposta.UltimoContato = Timestamp.FromDateTimeOffset(contato);
+        }
+
+        resposta.ListaIncompletaCom = _nuvem?.ListaIncompletaCom ?? 0;
 
         if (_operacao is not null)
         {

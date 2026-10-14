@@ -347,7 +347,8 @@ if (configuracao.Nuvem is { } configuracaoDaNuvem)
     // configuração que eles leem ao subir. Uma falha aqui deixa a borda sem nuvem, não sem catracas.
     try
     {
-        sincronizacao = SincronizacaoComANuvem.Montar(configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar);
+        sincronizacao = SincronizacaoComANuvem.Montar(
+            configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar, simulacao: configuracao.Simulacao);
     }
     catch (Exception erro) when (erro is not OutOfMemoryException)
     {

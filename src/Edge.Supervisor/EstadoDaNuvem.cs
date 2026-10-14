@@ -33,6 +33,12 @@ public enum NuvemMedida
     /// <summary>O destino recusou a credencial desta borda.</summary>
     FalhaDeAutenticacao,
 
+    /// <summary>
+    /// O destino respondeu, mas a lista de cartões veio cortada (limite do servidor, docs/31 §3): a
+    /// conexão funciona e os cartões que vieram entraram; os que faltam, não.
+    /// </summary>
+    ListaIncompleta,
+
     /// <summary>A última tentativa recente não chegou ao destino, ou o destino está fora.</summary>
     Indisponivel,
 
@@ -83,6 +89,8 @@ public sealed class EstadoDaNuvem
     private DateTimeOffset? _ultimaTentativa;
     private TipoDeFalha _tipoDaUltimaTentativa = TipoDeFalha.Nenhuma;
     private string? _ultimaFalha;
+    private DateTimeOffset? _ultimoContato;
+    private int? _listaIncompleta;
 
     /// <summary>Se a nuvem está configurada nesta máquina.</summary>
     public bool Configurada { get; set; }
@@ -108,6 +116,21 @@ public sealed class EstadoDaNuvem
         get { lock (_trava) { return _ultimaFalha; } }
     }
 
+    /// <summary>
+    /// Última vez que o destino respondeu, mesmo com erro ou com a lista cortada: prova que a conexão
+    /// existe, o que o último sucesso sozinho não diz.
+    /// </summary>
+    public DateTimeOffset? UltimoContato
+    {
+        get { lock (_trava) { return _ultimoContato; } }
+    }
+
+    /// <summary>Quantos cartões vieram na última lista cortada; nulo se a última rodada não teve corte.</summary>
+    public int? ListaIncompletaCom
+    {
+        get { lock (_trava) { return _listaIncompleta; } }
+    }
+
     /// <summary>Quando foi a última tentativa, com sucesso ou não.</summary>
     public DateTimeOffset? UltimaTentativa
     {
@@ -129,8 +152,10 @@ public sealed class EstadoDaNuvem
         {
             _ultimoSucesso = quando;
             _ultimaTentativa = quando;
+            _ultimoContato = quando;
             _tipoDaUltimaTentativa = TipoDeFalha.Nenhuma;
             _ultimaFalha = null;
+            _listaIncompleta = null;
         }
     }
 
@@ -142,6 +167,29 @@ public sealed class EstadoDaNuvem
             _ultimaTentativa = quando;
             _tipoDaUltimaTentativa = tipo;
             _ultimaFalha = motivo;
+            _listaIncompleta = null;
+
+            // Recusa de credencial e erro de servidor são respostas do destino: houve contato.
+            if (tipo is TipoDeFalha.Autenticacao or TipoDeFalha.Servidor)
+            {
+                _ultimoContato = quando;
+            }
+        }
+    }
+
+    /// <summary>
+    /// A rodada só falhou porque a lista de cartões veio cortada: houve contato, os cartões que vieram
+    /// entraram, e a sincronização não conta como sucesso (achado E5-1 do docs/41).
+    /// </summary>
+    public void RegistrarListaIncompleta(int recebidos, string motivo, DateTimeOffset quando)
+    {
+        lock (_trava)
+        {
+            _ultimaTentativa = quando;
+            _ultimoContato = quando;
+            _tipoDaUltimaTentativa = TipoDeFalha.Servidor;
+            _ultimaFalha = motivo;
+            _listaIncompleta = recebidos;
         }
     }
 
@@ -184,6 +232,11 @@ public sealed class EstadoDaNuvem
         if (!TemTentativaRecente(agora))
         {
             return NuvemMedida.Desconhecida;
+        }
+
+        if (ListaIncompletaCom is not null)
+        {
+            return NuvemMedida.ListaIncompleta;
         }
 
         return TipoDaUltimaTentativa switch

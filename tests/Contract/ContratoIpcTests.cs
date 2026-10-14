@@ -34,7 +34,8 @@ public sealed partial class ContratoIpcTests
     [Fact]
     public void Senha_so_vai_do_painel_ao_servico_nos_pedidos_de_login()
     {
-        string[] pedidosPermitidos = ["EntrarRequest", "TrocarSenhaRequest", "GravarUsuarioRequest", "RedefinirSenhaRequest"];
+        string[] pedidosPermitidos =
+            ["EntrarRequest", "TrocarSenhaRequest", "GravarUsuarioRequest", "RedefinirSenhaRequest", "ConfirmarRecuperacaoPeloSuporteRequest"];
         var problemas = new List<string>();
 
         foreach (System.Text.RegularExpressions.Match mensagem in System.Text.RegularExpressions.Regex.Matches(

@@ -21,6 +21,10 @@ service EdgeControl {
   rpc Entrar(EntrarRequest) returns (EntrarResponse);
   rpc TrocarSenha(TrocarSenhaRequest) returns (TrocarSenhaResponse);
   rpc Sair(SairRequest) returns (SairResponse);
+  // Recuperação da senha de um administrador pelo suporte Rayzer, por desafio e resposta (docs/58).
+  // Sem login: é para quem não consegue entrar. Não existe senha mestra; o serviço nunca devolve senha.
+  rpc PedirRecuperacaoPeloSuporte(PedirRecuperacaoPeloSuporteRequest) returns (PedidoDeRecuperacao);
+  rpc ConfirmarRecuperacaoPeloSuporte(ConfirmarRecuperacaoPeloSuporteRequest) returns (ResultadoDaGravacao);
   rpc ObterSessao(ObterSessaoRequest) returns (UsuarioDaSessao);
   rpc ListarUsuarios(ListarUsuariosRequest) returns (ListarUsuariosResponse);
   rpc GravarUsuario(GravarUsuarioRequest) returns (GravarUsuarioResponse);
@@ -229,6 +233,8 @@ enum SituacaoDaNuvem {
   SITUACAO_DA_NUVEM_FALHA_DE_AUTENTICACAO = 5;
   SITUACAO_DA_NUVEM_INDISPONIVEL = 6;
   SITUACAO_DA_NUVEM_SEGREDO_AUSENTE = 7;
+  // A nuvem respondeu, mas a lista veio cortada pelo limite do servidor (docs/31 §3).
+  SITUACAO_DA_NUVEM_LISTA_INCOMPLETA = 8;
 }
 
 enum SituacaoDaFila {
@@ -397,6 +403,28 @@ message ResultadoDaGravacao {
   repeated string problemas = 2;
 }
 
+message PedirRecuperacaoPeloSuporteRequest {
+  string login = 1;
+}
+
+// O pedido que a pessoa manda ao suporte Rayzer. Vale só para esta instalação, este login e até valido_ate.
+message PedidoDeRecuperacao {
+  // Falso quando esta versão não tem a chave pública do suporte (a recuperação está desligada).
+  bool disponivel = 1;
+  // O texto do pedido, em grupos de 4 (base32).
+  string pedido = 2;
+  google.protobuf.Timestamp valido_ate = 3;
+  // Por que não há pedido, em português de portaria.
+  string motivo = 4;
+}
+
+// A resposta assinada pelo suporte e a senha nova que a própria pessoa escolheu.
+message ConfirmarRecuperacaoPeloSuporteRequest {
+  string login = 1;
+  string resposta = 2;
+  string senha_nova = 3;
+}
+
 message ObterEventoRequest {}
 
 // O evento em si (docs/57 §4). Instantes em UTC; a tela mostra no horário de Brasília.
@@ -486,6 +514,10 @@ message SituacaoDaSincronizacao {
   int64 idade_do_mais_antigo_segundos = 5;
   int64 cartas_mortas = 6;
   repeated ProvedorCadastrado provedores = 7;
+  // Última vez que a nuvem respondeu, mesmo com erro: prova que a conexão existe.
+  google.protobuf.Timestamp ultimo_contato = 8;
+  // Quantos itens vieram na última lista cortada pelo servidor; 0 se não houve corte.
+  int32 lista_incompleta_com = 9;
 }
 
 message ProvedorCadastrado {

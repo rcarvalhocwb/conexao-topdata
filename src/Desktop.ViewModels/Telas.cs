@@ -708,11 +708,29 @@ public sealed class SincronizacaoViewModel : TelaBase
                     ? Sinal.Atencao
                     : Sinal.Bom;
 
+            var contato = r.UltimoContato?.ToDateTimeOffset();
+            var nuvem = !r.Configurada
+                ? "Não configurada nesta instalação"
+                : r.ListaIncompletaCom > 0
+                    ? "Conectada, mas a lista de cartões veio incompleta"
+                    : "Configurada";
+
             Situacao =
             [
-                new ParDeTexto("Nuvem", r.Configurada ? "Configurada" : "Não configurada nesta instalação"),
-                new ParDeTexto("Última sincronização", Textos.Ha(ultima, agora)),
+                new ParDeTexto("Nuvem", nuvem),
+                new ParDeTexto("Último contato com a nuvem", r.Configurada ? Textos.Ha(contato, agora) : "—"),
+                new ParDeTexto("Última sincronização completa", Textos.Ha(ultima, agora)),
                 new ParDeTexto("Última falha", string.IsNullOrWhiteSpace(r.UltimaFalha) ? "—" : r.UltimaFalha),
+                .. r.ListaIncompletaCom > 0
+                    ? new[]
+                    {
+                        new ParDeTexto(
+                            "O que fazer",
+                            string.Create(
+                                CultureInfo.CurrentCulture,
+                                $"A nuvem mandou {r.ListaIncompletaCom} cartões e parou no limite dela. Os que vieram já valem aqui; os outros, não. Peça a quem cuida da nuvem o item P0 do docs/31 (§3): devolver todos os cartões, com contract_version 1 e total_cards. Enquanto isso, a carga inicial (carregar-cartoes.ps1) traz a lista completa.")),
+                    }
+                    : [],
                 new ParDeTexto("Aguardando envio", string.Create(CultureInfo.CurrentCulture, $"{r.Pendentes}")),
                 new ParDeTexto("Mais antigo na fila", r.Pendentes == 0 ? "—" : Textos.Ha(agora.AddSeconds(-r.IdadeDoMaisAntigoSegundos), agora)),
                 new ParDeTexto("Recusados pela nuvem", string.Create(CultureInfo.CurrentCulture, $"{r.CartasMortas}")),

@@ -45,6 +45,7 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
     private readonly HttpClient _http;
     private readonly string _caminho;
     private readonly Func<string, string> _equipamentoNoPainel;
+    private readonly bool _simulacao;
 
     /// <param name="http">Cliente já apontado para a base das funções.</param>
     /// <param name="nome">Nome do conector na outbox. O mesmo de <c>EspelhoDeTentativas</c>.</param>
@@ -53,11 +54,13 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
     /// Traduz o equipamento da borda para o <c>device_id</c> do painel. Sem tradução, vai
     /// o mesmo nome.
     /// </param>
+    /// <param name="simulacao">Serviço em modo simulação: cada evento sobe com <c>extra.simulado = true</c>.</param>
     public ConectorDeTentativasDoPainel(
         HttpClient http,
         string nome = "painel-tentativas",
         string caminho = "middleware-sync-events",
-        Func<string, string>? equipamentoNoPainel = null)
+        Func<string, string>? equipamentoNoPainel = null,
+        bool simulacao = false)
     {
         ArgumentNullException.ThrowIfNull(http);
         ArgumentException.ThrowIfNullOrWhiteSpace(nome);
@@ -67,6 +70,7 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
         Nome = nome;
         _caminho = caminho;
         _equipamentoNoPainel = equipamentoNoPainel ?? (d => d);
+        _simulacao = simulacao;
     }
 
     /// <inheritdoc />
@@ -120,7 +124,7 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
         IReadOnlyList<(ItemDeSaida Item, TentativaEspelhada Tentativa)> grupo,
         CancellationToken cancelamento)
     {
-        var eventos = grupo.Select(g => Evento(g.Tentativa)).ToList();
+        var eventos = grupo.Select(g => Evento(g.Tentativa, _simulacao)).ToList();
         var pedido = new { device_id = equipamento, events = eventos, sync_reason = "batch" };
 
         HttpResponseMessage resposta;
@@ -188,6 +192,20 @@ public sealed class ConectorDeTentativasDoPainel : IConectorDeSincronizacao
                     ? new RespostaDeItem(g.Item.Id, ResultadoDoEnvio.FalhaPermanente, "recusado pelo painel")
                     : new RespostaDeItem(g.Item.Id, ResultadoDoEnvio.Aceito));
         }
+    }
+
+    // Em modo simulação, toda passagem é de catraca simulada: sobe marcada (extra.simulado), para a
+    // nuvem separá-la dos números reais. Fora da simulação, o campo não vai (docs/31 §4: novos campos
+    // podem aparecer em extra; os existentes não mudam de sentido).
+    private static Dictionary<string, object?> Evento(TentativaEspelhada t, bool simulacao)
+    {
+        var evento = Evento(t);
+        if (simulacao)
+        {
+            ((Dictionary<string, object?>)evento["extra"]!)["simulado"] = true;
+        }
+
+        return evento;
     }
 
     private static Dictionary<string, object?> Evento(TentativaEspelhada t) => new()

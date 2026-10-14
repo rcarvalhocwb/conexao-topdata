@@ -155,10 +155,16 @@ public sealed class SincronizacaoDoServicoTests
         Assert.Null(c.Estado.UltimoSucesso);
         Assert.Contains("pode ter sido cortada", c.Estado.UltimaFalha, StringComparison.Ordinal);
 
+        // Houve contato: a nuvem não aparece como "offline", e sim conectada com a lista incompleta.
+        Assert.NotNull(c.Estado.UltimoContato);
+        Assert.Equal(1000, c.Estado.ListaIncompletaCom);
+        Assert.Equal(NuvemMedida.ListaIncompleta, c.Estado.Nuvem(c.Estado.UltimoContato!.Value));
+
         // A lista volta inteira: a rodada seguinte dá certo e o aviso some.
         c.Painel.CartoesNaLista = 1;
         Assert.True(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
         Assert.Null(c.Estado.UltimaFalha);
+        Assert.Null(c.Estado.ListaIncompletaCom);
     }
 
     /// <summary>

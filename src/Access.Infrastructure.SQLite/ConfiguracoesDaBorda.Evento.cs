@@ -156,6 +156,28 @@ public sealed partial class ConfiguracoesDaBorda
         return evento.Validar().Count == 0 ? evento : evento with { RecusarForaDoPeriodo = false };
     }
 
+    /// <summary>Identificador desta instalação (criado na primeira vez que alguém pede).</summary>
+    public const string ChaveIdDaInstalacao = "instalacao.id";
+
+    /// <summary>
+    /// O identificador aleatório desta instalação: amarra um pedido de recuperação a esta máquina
+    /// (docs/58). Criado na primeira vez e nunca mudado.
+    /// </summary>
+    public string IdDaInstalacao(DateTimeOffset agora)
+    {
+        using (var conexao = _fabrica.Abrir())
+        using (var comando = conexao.CreateCommand())
+        {
+            comando.CommandText = "INSERT OR IGNORE INTO edge_setting (key, value, updated_at, updated_by) VALUES ($k, $v, $em, 'servico');";
+            comando.Parameters.AddWithValue("$k", ChaveIdDaInstalacao);
+            comando.Parameters.AddWithValue("$v", Guid.NewGuid().ToString("N"));
+            comando.Parameters.AddWithValue("$em", agora.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+            comando.ExecuteNonQuery();
+        }
+
+        return Todos()[ChaveIdDaInstalacao];
+    }
+
     /// <summary>A última mudança das regras da bilheteria local, com quem mudou (a trilha do ajuste pelo painel).</summary>
     public const string ChaveRegrasDaBilheteria = "bilheteria.regras";
 
