@@ -85,6 +85,7 @@ Comandos usados: `git log --oneline -1`, `wc -l`, Read, Grep e `sed -n`/`grep` p
 - **Como provar:** HIL-CAP-01, que lê `ReceberVersaoFirmware` numa TopFit 4 real.
 - **Estado:** HIPÓTESE quanto ao valor real; CONFIRMADO pela leitura que o estado é terminal.
 - **Correção mínima:** linhas homologadas como chave técnica lida na subida, com registro. Depois de HIL-CAP-01, fixar o valor lido.
+- **Situação (15/10/2026): CORRIGIDO.** HIL-CAP-01 na bancada leu a Catraca Fit com `linha=19 versao=6.42.1` e a catraca parou em FirmwareIncompativel, como o achado previa. O padrão passou a {14,16,19} (`DevicePump.LinhasHomologadasPadrao`), e a chave técnica `catraca.linhas_homologadas` troca a lista sem versão nova; valor ilegível volta ao padrão com registro. Testes: `WorkerTests.Catraca_Fit_linha_19_e_aceita_pelo_padrao_e_a_chave_tecnica_manda` e `LinhasHomologadasTests`.
 
 **E1-07 | ALTO | Dígitos do cartão e do QR ficam com o padrão desconhecido da DLL**
 - **Onde:** ConfiguracoesDaBorda.cs:95; DeviceConfiguration.cs:150-176; MontadorDaConfiguracao.cs:45-47 (padrão Livre, tamanhos de 4 a 16, `QuantidadeFixaDeDigitos` nula); TopdataInnerAdapter.cs:482-497.

@@ -198,6 +198,13 @@ public sealed partial class EdgeControlService
             Chave(ConfiguracoesDaBorda.ChaveSequenciaOficial, "Sequência oficial de conexão da Topdata", c.SequenciaOficial, "INT-SM-021"),
             Chave(ConfiguracoesDaBorda.ChaveColetarBilhetes, "Coletar as marcações da memória da catraca", c.ColetarBilhetes, "INT-REC-03 e CHAOS-REC-01"),
             Chave(ConfiguracoesDaBorda.ChaveExibirTextoDoGiro, "Mostrar no visor o texto do sentido do giro", c.ExibirTextoDoGiro, "mapa de giro (D9)"),
+            Chave(
+                ConfiguracoesDaBorda.ChaveLinhasHomologadas,
+                _configuracoes.LinhasHomologadas() is ({ } linhas, _)
+                    ? $"Linhas de firmware aceitas: {string.Join(", ", linhas.Order())} (chave técnica)"
+                    : "Linhas de firmware aceitas: 14, 16 e 19 (padrão da versão)",
+                _configuracoes.LinhasHomologadas().Linhas is not null,
+                "HIL-CAP-01"),
         ]);
         return Task.FromResult(resposta);
     }

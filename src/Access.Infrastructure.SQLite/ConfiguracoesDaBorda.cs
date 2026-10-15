@@ -200,6 +200,39 @@ public sealed partial class ConfiguracoesDaBorda
     /// <summary>Chave técnica do texto do giro no display (mapa de giro, D9). Desligada.</summary>
     public const string ChaveExibirTextoDoGiro = "catraca.exibir_texto_do_giro";
 
+    /// <summary>
+    /// Linhas de firmware aceitas pelo programa das catracas, separadas por vírgula (ex.: <c>14,16,19</c>).
+    /// Vazia = o padrão da versão. Lida quando o programa das catracas sobe (achado E1-06 do docs/41): uma
+    /// linha nova ensaiada na bancada entra sem esperar outra versão.
+    /// </summary>
+    public const string ChaveLinhasHomologadas = "catraca.linhas_homologadas";
+
+    /// <summary>
+    /// As linhas de firmware da chave <see cref="ChaveLinhasHomologadas"/>; nulo = usar o padrão da versão.
+    /// Valor ilegível volta nulo, com o problema, para o worker registrar e seguir com o padrão.
+    /// </summary>
+    public (IReadOnlySet<byte>? Linhas, string? Problema) LinhasHomologadas()
+    {
+        var texto = Todos().GetValueOrDefault(ChaveLinhasHomologadas)?.Trim();
+        if (string.IsNullOrEmpty(texto))
+        {
+            return (null, null);
+        }
+
+        var linhas = new HashSet<byte>();
+        foreach (var parte in texto.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!byte.TryParse(parte, NumberStyles.None, CultureInfo.InvariantCulture, out var linha) || linha == 0)
+            {
+                return (null, $"{ChaveLinhasHomologadas} = '{texto}' não é uma lista de números de 1 a 255; vale o padrão da versão.");
+            }
+
+            linhas.Add(linha);
+        }
+
+        return (linhas, null);
+    }
+
     private readonly SqliteConnectionFactory _fabrica;
 
     public ConfiguracoesDaBorda(SqliteConnectionFactory fabrica)

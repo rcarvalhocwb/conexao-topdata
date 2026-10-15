@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 6;
+    public const int Edicao = 7;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,8 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "A Catraca Fit com firmware da linha 19 passa a ser aceita e configurada: antes ela conectava, mas ficava " +
+        "parada como \"firmware não homologado\". Agora, depois de conectar, o display dela mostra \"Aproxime o ingresso\".",
         "Diagnóstico ganhou \"Licença e atualizações\": a licença do sistema, com o vencimento, e as atualizações " +
         "automáticas. A licença nunca para as catracas: a barra avisa 30 dias antes e, vencida, há 15 dias de tolerância.",
 

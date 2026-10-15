@@ -755,7 +755,12 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
 
             linhas.Add(string.Empty);
             linhas.Add("Pré-requisitos:");
-            foreach (var pre in Edge.Worker.VerificadorDePreRequisitos.Verificar())
+            // O serviço é de 64 bits; quem carrega a EasyInner.dll é o programa das catracas (x86). Conferir
+            // o serviço dava "ARQUITETURA_X86: falta" num computador sem defeito (bancada de 15/10/2026).
+            var worker32 = _supervisor.Workers.Count > 0
+                && _supervisor.Workers.All(w => w.Executavel is { } exe && File.Exists(exe)
+                    && Instalacao.AssistenteDeConfiguracao.MaquinaDoPe(exe) is 0x014C);
+            foreach (var pre in Edge.Worker.VerificadorDePreRequisitos.Verificar(processoE64Bits: !worker32))
             {
                 linhas.Add($"  {pre.Id}: {(pre.Atendido is null ? "não conferido" : pre.Atendido is true ? "ok" : "falta")} · {pre.Mensagem}");
             }

@@ -351,6 +351,16 @@ internal static class Program
 
         var simulada = simulador is not null;
 
+        // Linhas de firmware aceitas (ADR-0010; achado E1-06 do docs/41): a chave técnica vale na subida.
+        var (linhasDaChave, problemaDasLinhas) = configuracoesDaBorda.LinhasHomologadas();
+        if (problemaDasLinhas is not null)
+        {
+            Registrar(problemaDasLinhas);
+        }
+
+        var linhasHomologadas = linhasDaChave ?? DevicePump.LinhasHomologadasPadrao;
+        Registrar($"linhas de firmware aceitas: {string.Join(", ", linhasHomologadas.Order())}{(linhasDaChave is null ? " (padrão da versão)" : " (chave técnica)")}");
+
         var sessao = new SessaoDeOperacao(
             adapter,
             inners,
@@ -374,7 +384,8 @@ internal static class Program
             gravadorDeBilhetes: gravadorDeBilhetes,
             coletaLigada: () => configuracoesDaBorda.Ler() is var (lida, ilegiveis)
                 && lida.ColetarBilhetes
-                && !ilegiveis.Contains(ConfiguracoesDaBorda.ChaveColetarBilhetes));
+                && !ilegiveis.Contains(ConfiguracoesDaBorda.ChaveColetarBilhetes),
+            linhasHomologadas: linhasHomologadas);
 
         using var cancelamento = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>

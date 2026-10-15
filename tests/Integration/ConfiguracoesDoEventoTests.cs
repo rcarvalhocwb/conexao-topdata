@@ -273,7 +273,7 @@ public sealed class ConfiguracoesDoEventoTests : IAsyncLifetime, IDisposable
         var tela = Tela();
         await tela.AtualizarAsync();
 
-        Assert.Equal(11, tela.ChavesTecnicas.Count);
+        Assert.Equal(12, tela.ChavesTecnicas.Count);
         Assert.All(tela.ChavesTecnicas, c => Assert.False(c.Ligada));
         Assert.All(tela.ChavesTecnicas, c => Assert.False(string.IsNullOrWhiteSpace(c.LiberadaPor)));
         Assert.NotEmpty(ConfiguracoesViewModel.SecoesBloqueadas);

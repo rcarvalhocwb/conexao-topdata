@@ -20,6 +20,9 @@ namespace Edge.Supervisor;
 public sealed class ProcessoDeWorker : IWorkerHost
 {
     private readonly string _executavel;
+
+    /// <inheritdoc />
+    public string? Executavel => _executavel;
     private readonly Func<DateTimeOffset> _relogio;
     private Process? _processo;
     private DateTimeOffset? _iniciadoEm;

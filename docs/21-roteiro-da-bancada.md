@@ -77,6 +77,16 @@ display da catraca deve passar a mostrar **"Aproxime o ingresso"**.
 Se ela ficar presa em `Conectar`, o problema é rede: IP, porta, firewall do Windows, ou
 número do Inner diferente do `--inner`.
 
+Se ela ficar em `FirmwareIncompativel`, o registro mostra a linha lida
+(`firmware lido: linha=… versao=…`). O programa só configura as linhas aceitas: **14, 16 e 19**
+por padrão. Uma linha nova entra pela chave técnica `catraca.linhas_homologadas` (por exemplo
+`14,16,19,21`), sem versão nova, e o registro da subida diz quais linhas valem.
+
+**HIL-CAP-01, resultado de 15/10/2026 (bancada do dono):** Catraca Fit, Inner 1, firmware
+`linha=19 versao=6.42.1 variacao=0 bio=False`. A conexão chegou ao serviço; a catraca parou em
+`FirmwareIncompativel` porque a linha 19 não estava aceita. A linha 19 entrou no padrão
+(fecha E1-06 do docs/41).
+
 ---
 
 ## 3. Descobrir o que cada leitor entrega — **o passo mais importante**

@@ -57,7 +57,8 @@ public sealed class WorkerTests
     private static (InnerSimulator Sim, DeviceGroupLoop Laco, Watchdog Cao) Montar(
         int quantidade = 1,
         Func<DateTimeOffset>? relogio = null,
-        Func<DeviceEvent, Decision>? decidir = null)
+        Func<DeviceEvent, Decision>? decidir = null,
+        IReadOnlySet<byte>? linhasHomologadas = null)
     {
         var simulador = new InnerSimulator(relogio);
         var cao = new Watchdog(TimeSpan.FromSeconds(30), relogio ?? (() => Inicio));
@@ -66,7 +67,7 @@ public sealed class WorkerTests
             simulador,
             slots,
             cao,
-            new DevicePump(simulador, relogio ?? (() => Inicio), decidir: decidir));
+            new DevicePump(simulador, relogio ?? (() => Inicio), linhasHomologadas, decidir: decidir));
 
         laco.Iniciar(3570);
         return (simulador, laco, cao);
@@ -138,6 +139,38 @@ public sealed class WorkerTests
 
         Assert.Equal(DeviceState.FirmwareIncompativel, laco.Dispositivos[0].Maquina.Current);
         Assert.Empty(sim.Dispositivo(1).ConfiguracoesRecebidas);
+    }
+
+    /// <summary>
+    /// Bancada de 15/10/2026 (HIL-CAP-01): a Catraca Fit real respondeu linha 19, firmware 6.42.1, e ficava
+    /// em FirmwareIncompativel. A 19 entrou no padrão; a chave técnica troca a lista sem nova versão (E1-06).
+    /// </summary>
+    [Fact]
+    public void Catraca_Fit_linha_19_e_aceita_pelo_padrao_e_a_chave_tecnica_manda()
+    {
+        var (sim, laco, _) = Montar();
+        using var _sim = sim;
+        sim.Dispositivo(1).Firmware = new FirmwareInfo(19, 0, 6, 42, 1, TemBiometria: false);
+
+        for (var i = 0; i < 12; i++)
+        {
+            laco.UmaVolta();
+        }
+
+        Assert.NotEqual(DeviceState.FirmwareIncompativel, laco.Dispositivos[0].Maquina.Current);
+        Assert.NotEmpty(sim.Dispositivo(1).ConfiguracoesRecebidas);
+
+        // Com a chave técnica sem a 19, a mesma catraca não é configurada.
+        var (sim2, laco2, _) = Montar(linhasHomologadas: new HashSet<byte> { 14, 16 });
+        using var _sim2 = sim2;
+        sim2.Dispositivo(1).Firmware = new FirmwareInfo(19, 0, 6, 42, 1, TemBiometria: false);
+        for (var i = 0; i < 12; i++)
+        {
+            laco2.UmaVolta();
+        }
+
+        Assert.Equal(DeviceState.FirmwareIncompativel, laco2.Dispositivos[0].Maquina.Current);
+        Assert.Empty(sim2.Dispositivo(1).ConfiguracoesRecebidas);
     }
 
     /// <summary>

@@ -47,6 +47,9 @@ public interface IWorkerHost : IDisposable
     /// <summary>Diagnóstico legível, para log e para o pacote de suporte.</summary>
     string Diagnostico { get; }
 
+    /// <summary>O executável do worker, para o diagnóstico conferir a arquitetura; nulo se não há (testes).</summary>
+    string? Executavel => null;
+
     /// <summary>Sobe o worker.</summary>
     void Iniciar();
 

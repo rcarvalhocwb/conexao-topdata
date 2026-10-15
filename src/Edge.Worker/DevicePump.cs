@@ -262,6 +262,13 @@ public sealed class DevicePump
     private readonly ITopdataInnerAdapter _adapter;
     private readonly Func<DateTimeOffset> _relogio;
     private readonly IReadOnlySet<byte> _linhasHomologadas;
+
+    /// <summary>
+    /// Linhas de firmware aceitas sem a chave técnica <c>catraca.linhas_homologadas</c> (ADR-0010).
+    /// 14 e 16 vêm da matriz do manual; a <b>19</b> foi lida numa Catraca Fit real (firmware 6.42.1,
+    /// sem biometria) na bancada de 15/10/2026 — ensaio HIL-CAP-01, achado E1-06 do docs/41.
+    /// </summary>
+    public static readonly IReadOnlySet<byte> LinhasHomologadasPadrao = new HashSet<byte> { 14, 16, 19 };
     private readonly Func<DeviceEvent, Decision>? _decidir;
     private readonly Action<DeviceEvent>? _aoReceberEvento;
     private readonly bool _acertarRelogioAoDivergir;
@@ -371,7 +378,7 @@ public sealed class DevicePump
         _aoReceberEvento = aoReceberEvento;
 
         // Nada é configurado sem que o firmware conste da matriz (ADR-0010).
-        _linhasHomologadas = linhasHomologadas ?? new HashSet<byte> { 14, 16 };
+        _linhasHomologadas = linhasHomologadas ?? LinhasHomologadasPadrao;
     }
 
     /// <summary>Executa um passo. Devolve o que foi feito, para log e métrica.</summary>
