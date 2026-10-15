@@ -1264,7 +1264,7 @@ public sealed partial class ConfiguracoesViewModel : TelaBase
 }
 
 /// <summary>Diagnóstico: o que o suporte precisa ver.</summary>
-public sealed class DiagnosticoViewModel : TelaBase
+public sealed partial class DiagnosticoViewModel : TelaBase
 {
     private Diagnostico? _diagnostico;
     private byte[]? _pacote;
@@ -1277,6 +1277,7 @@ public sealed class DiagnosticoViewModel : TelaBase
         : base(cliente, relogio)
     {
         PedirPacote = new ComandoAssincrono(PedirPacoteAsync);
+        InstalarLicenca = new ComandoAssincrono(InstalarLicencaAsync, () => !string.IsNullOrWhiteSpace(TextoDaLicenca));
     }
 
     /// <summary>Pede ao serviço o zip de diagnóstico. A tela, depois, pergunta onde salvar.</summary>
@@ -1348,6 +1349,7 @@ public sealed class DiagnosticoViewModel : TelaBase
         {
             Diagnostico = await Cliente.ObterDiagnosticoAsync(new ObterDiagnosticoRequest(), cancellationToken: cancelamento);
             (AnalisadorResumo, AnalisadorSinal, Analisador) = Textos.SaudeDoAnalisador(Diagnostico.Analisador, Relogio());
+            await AtualizarLicencaEAtualizacaoAsync(cancelamento);
             Mensagem = string.Empty;
         });
 }
@@ -1482,6 +1484,7 @@ public sealed class JanelaViewModel : Notificavel
     {
         ArgumentNullException.ThrowIfNull(cliente);
 
+        _cliente = cliente;
         Sessao = sessao;
         Painel = new PainelAoVivoViewModel(cliente, relogio);
         Telas =
@@ -1675,6 +1678,26 @@ public sealed class JanelaViewModel : Notificavel
             {
                 _ = value.AtualizarAsync();
             }
+        }
+    }
+
+    private readonly EdgeControl.EdgeControlClient _cliente;
+
+    /// <summary>
+    /// O operador finalizou o painel (bandeja → Fechar): avisa o serviço, que pode instalar uma atualização
+    /// pronta com as catracas paradas (docs/60 §2.3). Nunca lança nem segura o fechamento mais de 3 s.
+    /// </summary>
+    public async Task<bool> AvisarFinalizadoAsync()
+    {
+        try
+        {
+            var resposta = await _cliente.AvisarPainelFinalizadoAsync(
+                new AvisarPainelFinalizadoRequest(), deadline: DateTime.UtcNow.AddSeconds(3)).ConfigureAwait(false);
+            return resposta.VaiInstalar;
+        }
+        catch (Grpc.Core.RpcException)
+        {
+            return false;
         }
     }
 

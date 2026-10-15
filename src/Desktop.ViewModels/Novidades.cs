@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 5;
+    public const int Edicao = 6;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,12 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "Diagnóstico ganhou \"Licença e atualizações\": a licença do sistema, com o vencimento, e as atualizações " +
+        "automáticas. A licença nunca para as catracas: a barra avisa 30 dias antes e, vencida, há 15 dias de tolerância.",
+
+        "Atualização automática (versões de produção, quando a Rayzer ativar): o sistema baixa a versão aprovada e " +
+        "instala sozinho quando o painel é fechado pela bandeja ou de madrugada, sempre com as catracas paradas.",
+
         "Botão \"Testar conexão com a nuvem\" na tela Sincronização: fala com a nuvem na hora (baixa " +
         "a lista de cartões e envia as passagens da fila) e mostra o resultado e o que fazer.",
 

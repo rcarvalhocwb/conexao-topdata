@@ -24,7 +24,11 @@ public sealed record ChamadorDoPainel(UsuarioDoSistema Usuario, string Token, IR
 /// Com a senha padrão ou redefinida, só <c>TrocarSenha</c>, <c>ObterSessao</c> e <c>Sair</c> passam.
 /// </para>
 /// </remarks>
-public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoPainel sessoes, Func<DateTimeOffset>? relogio = null) : Interceptor
+public sealed class InterceptadorDeSessao(
+    UsuariosDoSistema usuarios,
+    SessoesDoPainel sessoes,
+    Func<DateTimeOffset>? relogio = null,
+    Func<bool>? licencaBloqueada = null) : Interceptor
 {
     /// <summary>Chave em <c>ServerCallContext.UserState</c> com o <see cref="ChamadorDoPainel"/>.</summary>
     public const string ChaveDoChamador = "chamador";
@@ -40,6 +44,7 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["ObterSessao"] = null,
         ["PedirRecuperacaoPeloSuporte"] = null,
         ["ConfirmarRecuperacaoPeloSuporte"] = null,
+        ["AvisarPainelFinalizado"] = null,
 
         // Operação.
         ["ListarEquipamentos"] = null,
@@ -69,6 +74,9 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["ObterPrestacaoDeContas"] = Permissoes.RelatoriosVer,
         ["ObterRelatorios"] = Permissoes.RelatoriosVer,
         ["ObterDiagnostico"] = Permissoes.DiagnosticoVer,
+        ["ObterLicenca"] = Permissoes.DiagnosticoVer,
+        ["InstalarLicenca"] = Permissoes.ConfiguracaoEditar,
+        ["ObterAtualizacao"] = Permissoes.DiagnosticoVer,
         ["ObterPacoteDeDiagnostico"] = Permissoes.DiagnosticoVer,
 
         // Ações.
@@ -125,7 +133,16 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
     /// bandeja mostra antes de alguém entrar (contagens, nomes e situação das catracas; nenhum dado
     /// pessoal nem código de acesso).
     /// </summary>
-    public static readonly IReadOnlySet<string> Anonimas = new HashSet<string>(StringComparer.Ordinal) { "Entrar", "ObterEstado", "ListarEquipamentos", "PedirRecuperacaoPeloSuporte", "ConfirmarRecuperacaoPeloSuporte" };
+    public static readonly IReadOnlySet<string> Anonimas = new HashSet<string>(StringComparer.Ordinal) { "Entrar", "ObterEstado", "ListarEquipamentos", "PedirRecuperacaoPeloSuporte", "ConfirmarRecuperacaoPeloSuporte", "AvisarPainelFinalizado" };
+
+    /// <summary>
+    /// O administrativo que a licença vencida além da tolerância recusa (docs/60 §1.2): relatórios e mudar o
+    /// evento. Catraca, acessos, sincronização, login e instalar a licença nunca entram aqui.
+    /// </summary>
+    public static readonly IReadOnlySet<string> RecusadasComLicencaBloqueada = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "ObterRelatorios", "ObterPrestacaoDeContas", "GravarEvento",
+    };
 
     /// <summary>O que passa com a senha padrão ou redefinida.</summary>
     public static readonly IReadOnlySet<string> DuranteATroca = new HashSet<string>(StringComparer.Ordinal) { "TrocarSenha", "ObterSessao", "Sair" };
@@ -133,6 +150,7 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
     private readonly UsuariosDoSistema _usuarios = usuarios ?? throw new ArgumentNullException(nameof(usuarios));
     private readonly SessoesDoPainel _sessoes = sessoes ?? throw new ArgumentNullException(nameof(sessoes));
     private readonly Func<DateTimeOffset> _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
+    private readonly Func<bool> _licencaBloqueada = licencaBloqueada ?? (() => false);
 
     public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
         TRequest request,
@@ -205,6 +223,13 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         {
             var nome = Permissoes.Todas.FirstOrDefault(p => p.Codigo == exigida)?.Nome ?? exigida;
             throw new RpcException(new Status(StatusCode.PermissionDenied, $"Seu papel não permite: {nome}."));
+        }
+
+        if (RecusadasComLicencaBloqueada.Contains(rpc) && _licencaBloqueada())
+        {
+            throw new RpcException(new Status(
+                StatusCode.PermissionDenied,
+                "Licença vencida: relatórios e mudanças no evento estão bloqueados até a renovação (tela Diagnóstico). As catracas seguem funcionando."));
         }
     }
 }

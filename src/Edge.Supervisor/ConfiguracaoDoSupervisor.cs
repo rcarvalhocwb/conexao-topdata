@@ -20,13 +20,20 @@ public sealed record GrupoConfigurado(string Nome, int Porta, IReadOnlyList<int>
 /// Catracas simuladas no lugar das físicas, sem EasyInner.dll. Para treinar e testar o
 /// sistema inteiro antes de ter catraca. Ver docs/23-modo-simulacao.md.
 /// </param>
+/// <param name="AtualizacaoAutomatica">
+/// Falso desliga a atualização automática nesta máquina (docs/60 §2). Ligada por padrão; só vale no canal
+/// de produção e com a chave de atualização na versão.
+/// </param>
+/// <param name="RepositorioDeAtualizacoes">De onde vêm as versões estáveis; vazio, o repositório público.</param>
 public sealed record ConfiguracaoDoSupervisor(
     string? Endereco,
     IReadOnlyList<GrupoConfigurado> Grupos,
     string? Banco = null,
     ConfiguracaoDaNuvem? Nuvem = null,
     IReadOnlyDictionary<int, string>? NomesDasCatracas = null,
-    bool Simulacao = false)
+    bool Simulacao = false,
+    bool AtualizacaoAutomatica = true,
+    string? RepositorioDeAtualizacoes = null)
 {
     /// <summary>
     /// Caminho relativo do executável é relativo à pasta do serviço, e não à pasta atual:

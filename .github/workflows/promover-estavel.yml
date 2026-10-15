@@ -1,0 +1,175 @@
+# Promover versão estável (docs/60 §2.4): o dono aprova uma versão de teste e ela vira a estável que
+# os computadores de produção baixam e instalam sozinhos.
+#
+# Como usar: aba Actions > "Promover versão estável" > Run workflow > digite a versão de teste já
+# conferida (ex.: 0.1.215). As pré-releases de teste são apagadas depois das 5 últimas: aprove dentro
+# dessa janela.
+#
+# O que ele faz:
+#   - confere que o commit da versão passou em todas as verificações do CI;
+#   - remonta o MSI e o Setup do canal de PRODUÇÃO a partir do mesmo commit, sem o SDK da Topdata
+#     (o SDK fica na máquina, guardado pelo serviço; docs/60 §2.1);
+#   - gera a ficha da versão (versao.json) e a assina com a chave de atualização dos segredos;
+#   - publica a release estável v<versão>, marcada como "latest" (é a que os computadores procuram).
+#
+# Segredos necessários (Settings > Secrets and variables > Actions), criados com a Rayzer.Suporte,
+# opção 4: CHAVE_DE_ATUALIZACAO (o .pem inteiro) e SENHA_DA_CHAVE_DE_ATUALIZACAO.
+
+name: Promover versão estável
+
+on:
+  workflow_dispatch:
+    inputs:
+      versao:
+        description: 'Versão de teste aprovada (ex.: 0.1.215)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promover-estavel
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  promover:
+    name: Promover a versão estável
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      VERSAO: ${{ inputs.versao }}
+      GH_TOKEN: ${{ github.token }}
+      CHAVE_DE_ATUALIZACAO: ${{ secrets.CHAVE_DE_ATUALIZACAO }}
+      SENHA_DA_CHAVE_DE_ATUALIZACAO: ${{ secrets.SENHA_DA_CHAVE_DE_ATUALIZACAO }}
+    steps:
+      - name: Conferir a versão pedida
+        shell: pwsh
+        run: |
+          if ($env:VERSAO -notmatch '^0\.1\.\d+$') { throw "Versão '$env:VERSAO' fora do formato 0.1.N." }
+          gh release view "v$env:VERSAO" --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "A versão estável v$env:VERSAO já existe." }
+          gh release view "teste-$env:VERSAO" --repo $env:GITHUB_REPOSITORY | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Não achei a versão de teste teste-$env:VERSAO (as antigas são apagadas depois das 5 últimas)." }
+          if (-not $env:CHAVE_DE_ATUALIZACAO -or -not $env:SENHA_DA_CHAVE_DE_ATUALIZACAO) {
+            throw 'Faltam os segredos CHAVE_DE_ATUALIZACAO e SENHA_DA_CHAVE_DE_ATUALIZACAO (docs/60 §2.5).'
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: teste-${{ inputs.versao }}
+
+      - name: Conferir que o commit passou no CI
+        shell: pwsh
+        run: |
+          $sha = (git rev-parse HEAD).Trim()
+          $linhas = @(gh api "repos/$env:GITHUB_REPOSITORY/commits/$sha/check-runs?per_page=100" --paginate --jq '.check_runs[] | "\(.name)|\(.status)|\(.conclusion)"' | Where-Object { $_ })
+          if ($linhas.Count -eq 0) { throw "Nenhuma verificação encontrada para $sha." }
+          $ruins = @($linhas | Where-Object { $_ -notmatch '\|completed\|(success|skipped)$' })
+          if ($ruins.Count -gt 0) { throw "O commit $sha não está verde:`n$($ruins -join "`n")" }
+          "SHA=$sha" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Commit $sha verde: $($linhas.Count) verificações."
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # A chave do segredo tem de ser uma das que a versão conhece; senão os computadores recusariam a ficha.
+      - name: Conferir a chave de atualização
+        shell: pwsh
+        run: |
+          $publica = (dotnet run --project src/Rayzer.Suporte -c Release -- publica-do-segredo).Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $publica) { throw 'A chave ou a senha de atualização não abrem.' }
+          $chaves = Get-Content src/Edge.Supervisor/Atualizacoes/ChavesDeAtualizacao.cs -Raw
+          if (-not $chaves.Contains($publica)) {
+            throw "A chave pública do segredo não está em ChavesDeAtualizacao.Publicas nesta versão: os computadores recusariam a ficha. Chave: $publica"
+          }
+
+      - name: Instalar o WiX
+        run: |
+          dotnet tool install --global wix --version 6.0.2
+          wix extension add --global WixToolset.BootstrapperApplications.wixext/6.0.2
+          wix extension add --global WixToolset.Util.wixext/6.0.2
+          wix extension add --global WixToolset.Firewall.wixext/6.0.2
+
+      - name: Publicar os componentes
+        shell: pwsh
+        run: |
+          dotnet publish src/Edge.Supervisor    -c Release -r win-x64 --self-contained true -p:Version=$env:VERSAO -o publicado/Servico
+          dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -p:Version=$env:VERSAO -o publicado/Painel
+          dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -p:Version=$env:VERSAO -o publicado/Worker
+          dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -p:Version=$env:VERSAO -o publicado/Configurador
+          if (Test-Path publicado/Worker/EasyInner.dll) { throw 'A EasyInner.dll não pode ir no instalador público.' }
+
+      # Canal de PRODUÇÃO: sem -d CanalDeTeste. Nome "Rayzer XAcess" e o UpgradeCode de produção.
+      - name: Construir o MSI e o Setup de produção
+        shell: pwsh
+        run: |
+          $msi = "RayzerXAcess-$env:VERSAO.msi"
+          wix build installer/wix/ConexaoTopdata.wxs -arch x64 -ext WixToolset.Util.wixext -ext WixToolset.Firewall.wixext `
+            -d Versao=$env:VERSAO `
+            -d PastaSupervisor=$((Resolve-Path publicado/Servico).Path) `
+            -d PastaPainel=$((Resolve-Path publicado/Painel).Path) `
+            -d PastaWorker=$((Resolve-Path publicado/Worker).Path) `
+            -d PastaConfigurador=$((Resolve-Path publicado/Configurador).Path) `
+            -d PastaModelos=$((Resolve-Path installer/modelos).Path) `
+            -d PastaInstalador=$((Resolve-Path installer).Path) `
+            -o $msi
+          wix build installer/wix/Setup.wxs -ext WixToolset.BootstrapperApplications.wixext `
+            -d Versao=$env:VERSAO -d Msi=$((Resolve-Path $msi).Path) -o RayzerXAcess-Setup.exe
+
+          # A tabela File não pode ter a EasyInner.dll (é da Topdata) e o canal tem de ser o de produção.
+          $instalador = New-Object -ComObject WindowsInstaller.Installer
+          $banco = $instalador.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $instalador, @((Resolve-Path $msi).Path, 0))
+          function Consultar($sql) {
+            $v = $banco.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $banco, @($sql))
+            $v.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $v, $null) | Out-Null
+            $linhas = @()
+            while ($null -ne ($l = $v.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $v, $null))) {
+              $linhas += $l.GetType().InvokeMember('StringData', 'GetProperty', $null, $l, 1)
+            }
+            $linhas
+          }
+          $arquivos = Consultar 'SELECT `FileName` FROM `File`' | ForEach-Object { ($_ -split '\|')[-1] }
+          if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI público.' }
+          $canal = Consultar "SELECT ``Value`` FROM ``Registry`` WHERE ``Name`` = 'Canal'"
+          if ($canal -ne 'producao') { throw "O MSI saiu com o canal '$canal', e não 'producao'." }
+          Write-Host "MSI de produção: $($arquivos.Count) arquivos, canal $canal."
+
+      - name: Gerar e assinar a ficha da versão
+        shell: pwsh
+        run: |
+          $msi = "RayzerXAcess-$env:VERSAO.msi"
+          $ficha = [ordered]@{
+            produto = 'rayzer-xacess'
+            canal = 'producao'
+            versao = $env:VERSAO
+            msi = $msi
+            sha256 = (Get-FileHash $msi -Algorithm SHA256).Hash.ToLowerInvariant()
+            tamanho = (Get-Item $msi).Length
+          } | ConvertTo-Json -Compress
+          [System.IO.File]::WriteAllText((Join-Path $PWD 'versao.json'), $ficha, [System.Text.UTF8Encoding]::new($false))
+          dotnet run --project src/Rayzer.Suporte -c Release -- assinar-arquivo versao.json
+          if ($LASTEXITCODE -ne 0) { throw 'Não deu para assinar a ficha.' }
+          Get-Content versao.json
+
+      - name: Publicar a versão estável
+        shell: pwsh
+        run: |
+          $msi = "RayzerXAcess-$env:VERSAO.msi"
+          Compress-Archive -Path RayzerXAcess-Setup.exe -DestinationPath "RayzerXAcess-Setup-$env:VERSAO.zip" -Force
+          $notas = @"
+          Versão estável $env:VERSAO do Rayzer XAcess, aprovada a partir da versão de teste teste-$env:VERSAO (commit $env:SHA).
+
+          Os computadores de produção baixam e instalam sozinhos: ao finalizar o painel ou de madrugada, sempre com as catracas paradas (docs/60).
+
+          Para instalar à mão: baixe RayzerXAcess-Setup-$env:VERSAO.zip, extraia e execute RayzerXAcess-Setup.exe como administrador.
+          Este instalador não leva o SDK da Topdata: na primeira instalação, use "Localizar EasyInner.dll" no Assistente de configuração.
+          "@
+          gh release create "v$env:VERSAO" "RayzerXAcess-Setup-$env:VERSAO.zip" RayzerXAcess-Setup.exe $msi versao.json versao.json.sig `
+            --target $env:SHA --latest --title "Rayzer XAcess $env:VERSAO" --notes $notas
+          Write-Host "Publicado: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/v$env:VERSAO"

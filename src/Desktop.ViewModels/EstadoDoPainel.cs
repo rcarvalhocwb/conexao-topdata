@@ -46,6 +46,12 @@ public sealed record EstadoDoPainel
     /// <summary>Instalação em modo simulação: a tela mostra o selo o tempo todo.</summary>
     public bool Simulacao { get; init; }
 
+    /// <summary>
+    /// A atualização automática vai instalar em instantes (docs/60 §2.3): o painel deixa o relançador e fecha,
+    /// para o instalador não precisar derrubá-lo.
+    /// </summary>
+    public bool AtualizacaoIminente { get; init; }
+
     public int WorkersAtivos { get; init; }
 
     /// <summary>Catracas físicas atendendo (P0-01). Nunca inclui simuladas.</summary>
@@ -108,6 +114,13 @@ public sealed record EstadoDoPainel
             mensagem = "Catracas funcionando — a nuvem precisa de atenção (veja Sincronização)";
         }
 
+        // A licença nunca para catraca (docs/60): aviso na barra só quando tudo o mais está bem.
+        if (saude is SaudeDoPainel.Normal && AvisoDaLicenca(resposta.SituacaoDaLicenca, resposta.DiasDaLicenca) is { } aviso)
+        {
+            saude = SaudeDoPainel.Atencao;
+            mensagem = aviso;
+        }
+
         if (resposta.SemConfiguracao)
         {
             saude = SaudeDoPainel.Acao;
@@ -139,6 +152,7 @@ public sealed record EstadoDoPainel
             Mensagem = mensagem,
             SugerirAssistente = resposta.SemConfiguracao,
             Simulacao = resposta.Simulacao,
+            AtualizacaoIminente = resposta.AtualizacaoIminente,
             Detalhe = string.Create(
                 CultureInfo.InvariantCulture,
                 $"versão {resposta.Versao} · nível {resposta.Nivel} · outbox {resposta.OutboxPendente}"),
@@ -149,6 +163,21 @@ public sealed record EstadoDoPainel
             AtualizadoEm = em,
         };
     }
+
+    /// <summary>A frase da barra para a licença; nulo quando não há o que avisar.</summary>
+    public static string? AvisoDaLicenca(SituacaoDaLicenca situacao, int dias) => situacao switch
+    {
+        SituacaoDaLicenca.VenceEmBreve => dias == 0
+            ? "Catracas funcionando — a licença vence hoje (veja Diagnóstico)"
+            : $"Catracas funcionando — a licença vence em {Dias(dias)} (veja Diagnóstico)",
+        SituacaoDaLicenca.EmTolerancia =>
+            $"Catracas funcionando — licença vencida: renove em até {Dias(dias)} (veja Diagnóstico)",
+        SituacaoDaLicenca.Bloqueada =>
+            "Catracas funcionando — licença vencida: relatórios e atualizações bloqueados (veja Diagnóstico)",
+        _ => null,
+    };
+
+    private static string Dias(int n) => n == 1 ? "1 dia" : string.Create(CultureInfo.InvariantCulture, $"{n} dias");
 
     /// <summary>
     /// Estado quando o serviço local não respondeu.

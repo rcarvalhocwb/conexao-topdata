@@ -290,7 +290,16 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             InternetDisponivel = internet,
             SemConfiguracao = _semConfiguracao,
             Simulacao = _simulacao is not null,
+            AtualizacaoIminente = Atualizacao?.Iminente(agora) ?? false,
         };
+
+        Atualizacao?.PainelAtivo(agora);
+
+        if (Licenca?.Estado() is { } licenca)
+        {
+            resposta.SituacaoDaLicenca = ParaProto(licenca.Situacao);
+            resposta.DiasDaLicenca = licenca.Dias;
+        }
 
         if (ultimaSincronizacao is { } quando)
         {

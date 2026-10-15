@@ -30,6 +30,7 @@
     <ProjectReference Include="../../src/Sync.Ingestao/Sync.Ingestao.csproj" />
     <ProjectReference Include="../../src/Sync.Connectors.Rest/Sync.Connectors.Rest.csproj" />
     <ProjectReference Include="../../src/Desktop.ViewModels/Desktop.ViewModels.csproj" />
+    <ProjectReference Include="../../src/Rayzer.Suporte/Rayzer.Suporte.csproj" />
   </ItemGroup>
 
   <ItemGroup>

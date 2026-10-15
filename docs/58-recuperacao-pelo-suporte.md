@@ -34,6 +34,9 @@ Cada recuperação fica na trilha de usuários como `senha_recuperada_pelo_supor
 | Chave privada (`suporte-rayzer-privada.pem`, cifrada com senha) | Só na máquina do desenvolvedor, com cópia de segurança | **Não.** Nunca no repositório, no e-mail ou no instalador |
 | Chave pública | `src/Access.Infrastructure.SQLite/ChavesDoSuporte.cs` | Sim: só confere assinatura |
 
+A mesma chave do suporte **assina as licenças** (docs/60 §1, opção 3 da ferramenta). A chave que assina
+as versões estáveis é outra, a de atualização (docs/60 §2.5), porque ela fica nos segredos do GitHub.
+
 **Enquanto `ChavesDoSuporte.Publicas` estiver vazio, a recuperação pelo suporte fica desligada** e a
 tela diz "peça a outro administrador".
 

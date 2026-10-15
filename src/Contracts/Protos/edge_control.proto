@@ -100,6 +100,14 @@ service EdgeControl {
   rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
   rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
 
+  // Licença e atualização automática (docs/60). A licença nunca para catraca: vencida além da
+  // tolerância, só recusa relatórios, atualizações e mudanças no evento.
+  rpc ObterLicenca(ObterLicencaRequest) returns (LicencaDoSistema);
+  rpc InstalarLicenca(InstalarLicencaRequest) returns (ResultadoDaGravacao);
+  rpc ObterAtualizacao(ObterAtualizacaoRequest) returns (SituacaoDaAtualizacao);
+  // O painel avisa que o operador o finalizou (bandeja → Sair): hora boa para instalar a atualização.
+  rpc AvisarPainelFinalizado(AvisarPainelFinalizadoRequest) returns (AvisarPainelFinalizadoResponse);
+
   // A7 (levantamento): pacote de diagnóstico para o suporte. Montado pelo serviço, que é quem lê a pasta
   // de dados; o painel só salva o arquivo. Sem banco, sem token e sem segredo.
   rpc ObterPacoteDeDiagnostico(ObterPacoteDeDiagnosticoRequest) returns (PacoteDeDiagnostico);
@@ -220,6 +228,67 @@ message ObterEstadoResponse {
   // Catracas por categoria (P0-01). Uma catraca conta em uma única categoria.
   int32 catracas_fisicas_conectadas = 22;
   int32 catracas_simuladas_ativas = 23;
+
+  // Licença (docs/60 §1.2). Os dias: até vencer, ou que faltam para bloquear, ou desde o bloqueio.
+  SituacaoDaLicenca situacao_da_licenca = 24;
+  int32 dias_da_licenca = 25;
+
+  // A atualização automática vai instalar em instantes: o painel deixa o relançador e fecha.
+  bool atualizacao_iminente = 26;
+}
+
+enum SituacaoDaLicenca {
+  SITUACAO_DA_LICENCA_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_LICENCA_NAO_EXIGIDA = 1;
+  SITUACAO_DA_LICENCA_VALIDA = 2;
+  SITUACAO_DA_LICENCA_VENCE_EM_BREVE = 3;
+  SITUACAO_DA_LICENCA_EM_TOLERANCIA = 4;
+  SITUACAO_DA_LICENCA_BLOQUEADA = 5;
+}
+
+message ObterLicencaRequest {}
+
+message LicencaDoSistema {
+  SituacaoDaLicenca situacao = 1;
+  // A frase para o operador.
+  string mensagem = 2;
+  string cliente = 3;
+  // Número da licença, para o suporte achar.
+  string numero = 4;
+  // Data de vencimento (aaaa-mm-dd); vazio sem licença.
+  string vence_em = 5;
+  int32 dias = 6;
+  // O identificador desta instalação, para mandar à Rayzer ao pedir a licença.
+  string instalacao = 7;
+  // Por que a licença instalada não vale; vazio se vale ou se não há.
+  string problema = 8;
+}
+
+message InstalarLicencaRequest {
+  // O texto que a Rayzer mandou (XAL1.…).
+  string texto = 1;
+}
+
+message ObterAtualizacaoRequest {}
+
+message SituacaoDaAtualizacao {
+  // Ligada: há chave de atualização nesta versão e o canal é o de produção.
+  bool ligada = 1;
+  string canal = 2;
+  string versao_instalada = 3;
+  // A última versão estável conferida (assinatura válida); vazio se nenhuma.
+  string versao_disponivel = 4;
+  // A situação em uma frase ("Baixada; instala quando o sistema for finalizado ou de madrugada").
+  string situacao = 5;
+  google.protobuf.Timestamp ultima_verificacao = 6;
+  string ultimo_resultado = 7;
+}
+
+message AvisarPainelFinalizadoRequest {}
+
+message AvisarPainelFinalizadoResponse {
+  // Verdadeiro se há uma versão pronta e ela vai ser instalada agora.
+  bool vai_instalar = 1;
 }
 
 enum SituacaoDaInternet {

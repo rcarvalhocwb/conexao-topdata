@@ -3,10 +3,14 @@ using System.Security.Cryptography;
 using System.Text;
 using Rayzer.Suporte;
 
-// Ferramenta do suporte Rayzer (docs/58). Uso:
-//   Rayzer.Suporte                          menu (dois cliques no .exe): gerar as chaves ou assinar
+// Ferramenta do suporte Rayzer (docs/58 e docs/60). Uso:
+//   Rayzer.Suporte                          menu (dois cliques no .exe)
 //   Rayzer.Suporte gerar-chaves [pasta]     cria suporte-rayzer-privada.pem e suporte-rayzer-publica.txt
 //   Rayzer.Suporte assinar [arquivo.pem]    pede o código do cliente e mostra a resposta
+//   Rayzer.Suporte emitir-licenca [arquivo.pem]   emite uma licença (docs/60 §1)
+//   Rayzer.Suporte gerar-chave-de-atualizacao [pasta]   a chave que assina as versões estáveis (docs/60 §2.5)
+//   Rayzer.Suporte assinar-arquivo <arquivo>   (CI) assina com CHAVE_DE_ATUALIZACAO e SENHA_DA_CHAVE_DE_ATUALIZACAO
+//   Rayzer.Suporte publica-do-segredo          (CI) mostra a chave pública do segredo de atualização
 Console.OutputEncoding = Encoding.UTF8;
 
 // A pasta padrão é Documentos: quem abre com dois cliques não escolhe pasta.
@@ -23,6 +27,14 @@ switch (args.FirstOrDefault())
         return GerarChaves(args.Length > 1 ? args[1] : pastaPadrao);
     case "assinar":
         return Assinar(args.Length > 1 ? args[1] : chavePadrao);
+    case "emitir-licenca":
+        return EmitirLicenca(args.Length > 1 ? args[1] : chavePadrao);
+    case "gerar-chave-de-atualizacao":
+        return GerarChaves(args.Length > 1 ? args[1] : pastaPadrao, chaveDeAtualizacao: true);
+    case "assinar-arquivo" when args.Length > 1:
+        return AssinarArquivo(args[1]);
+    case "publica-do-segredo":
+        return PublicaDoSegredo();
     case null:
         return Menu(pastaPadrao, chavePadrao);
     default:
@@ -30,6 +42,8 @@ switch (args.FirstOrDefault())
         Console.WriteLine("  (sem nada)               menu");
         Console.WriteLine("  gerar-chaves [pasta]     cria a chave privada (protegida por senha) e a pública");
         Console.WriteLine("  assinar [arquivo.pem]    assina o código de pedido que o cliente ditar");
+        Console.WriteLine("  emitir-licenca [arquivo.pem]   emite uma licença do XAcess");
+        Console.WriteLine("  gerar-chave-de-atualizacao [pasta]   a chave que assina as versões estáveis");
         return 1;
 }
 
@@ -41,8 +55,10 @@ static int Menu(string pasta, string chave)
         ? $"Chave privada encontrada: {chave}"
         : "Ainda não há chave privada neste computador.");
     Console.WriteLine();
-    Console.WriteLine("  1  Gerar as chaves (uma vez só)");
-    Console.WriteLine("  2  Responder a um pedido de recuperação");
+    Console.WriteLine("  1  Gerar as chaves do suporte (uma vez só)");
+    Console.WriteLine("  2  Responder a um pedido de recuperação de senha");
+    Console.WriteLine("  3  Emitir uma licença");
+    Console.WriteLine("  4  Gerar a chave de atualização (uma vez só, vai para o GitHub)");
     Console.WriteLine("  0  Sair");
     Console.Write("Escolha: ");
 
@@ -50,6 +66,8 @@ static int Menu(string pasta, string chave)
     {
         "1" => GerarChaves(pasta),
         "2" => Assinar(chave),
+        "3" => EmitirLicenca(chave),
+        "4" => GerarChaves(pasta, chaveDeAtualizacao: true),
         _ => 0,
     };
 
@@ -64,9 +82,10 @@ static int Menu(string pasta, string chave)
     return codigo;
 }
 
-static int GerarChaves(string pasta)
+static int GerarChaves(string pasta, bool chaveDeAtualizacao = false)
 {
-    var arquivo = Path.Combine(pasta, "suporte-rayzer-privada.pem");
+    var prefixo = chaveDeAtualizacao ? "atualizacao" : "suporte-rayzer";
+    var arquivo = Path.Combine(pasta, $"{prefixo}-privada.pem");
     if (File.Exists(arquivo))
     {
         Console.Error.WriteLine($"Já existe {arquivo}. Não sobrescrevo uma chave privada.");
@@ -83,17 +102,116 @@ static int GerarChaves(string pasta)
     var (privada, publica) = FerramentaDoSuporte.GerarChaves(senha);
     Directory.CreateDirectory(pasta);
     File.WriteAllText(arquivo, privada);
-    var arquivoPublico = Path.Combine(pasta, "suporte-rayzer-publica.txt");
+    var arquivoPublico = Path.Combine(pasta, $"{prefixo}-publica.txt");
     File.WriteAllText(arquivoPublico, publica + Environment.NewLine);
     Console.WriteLine();
     Console.WriteLine($"Chave PRIVADA: {arquivo}");
-    Console.WriteLine("  NÃO mande este arquivo a ninguém. Faça uma cópia de segurança (pen drive guardado).");
-    Console.WriteLine("  Quem tiver o arquivo e a senha recupera administradores.");
+    if (chaveDeAtualizacao)
+    {
+        Console.WriteLine("  Vai para os segredos do repositório no GitHub (Settings > Secrets and variables > Actions):");
+        Console.WriteLine("    CHAVE_DE_ATUALIZACAO = o conteúdo inteiro deste arquivo .pem");
+        Console.WriteLine("    SENHA_DA_CHAVE_DE_ATUALIZACAO = a senha que você acabou de digitar");
+        Console.WriteLine("  Depois disso, guarde o .pem num pen drive e não mande por e-mail nem mensagem.");
+    }
+    else
+    {
+        Console.WriteLine("  NÃO mande este arquivo a ninguém. Faça uma cópia de segurança (pen drive guardado).");
+        Console.WriteLine("  Quem tiver o arquivo e a senha recupera administradores e emite licenças.");
+    }
+
     Console.WriteLine();
     Console.WriteLine($"Chave PÚBLICA: {arquivoPublico}");
     Console.WriteLine("  Esta pode ser enviada: mande o arquivo .txt (ou o texto abaixo) para quem mantém o código.");
     Console.WriteLine(publica);
     return 0;
+}
+
+static int EmitirLicenca(string arquivo)
+{
+    if (!File.Exists(arquivo))
+    {
+        Console.Error.WriteLine($"Não achei {arquivo}. A licença é assinada com a chave do suporte (opção 1).");
+        return 2;
+    }
+
+    Console.Write("Cliente (aparece no painel): ");
+    var cliente = (Console.ReadLine() ?? string.Empty).Trim();
+    Console.Write("Identificador da instalação (tela Diagnóstico; * para qualquer computador): ");
+    var instalacao = (Console.ReadLine() ?? string.Empty).Trim();
+    Console.Write("Vale até (dd/mm/aaaa): ");
+    var data = (Console.ReadLine() ?? string.Empty).Trim();
+
+    if (cliente.Length == 0 || instalacao.Length == 0
+        || !DateOnly.TryParseExact(data, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var vence))
+    {
+        Console.Error.WriteLine("Faltou o cliente, a instalação, ou a data não está no formato dd/mm/aaaa. Nada foi emitido.");
+        return 2;
+    }
+
+    var senha = LerSenha("Senha da chave privada: ");
+    try
+    {
+        var licenca = FerramentaDoSuporte.EmitirLicenca(File.ReadAllText(arquivo), senha, cliente, instalacao, vence, DateTimeOffset.UtcNow);
+        var pasta = Path.GetDirectoryName(Path.GetFullPath(arquivo))!;
+        var nome = string.Concat(cliente.Split(Path.GetInvalidFileNameChars())).Replace(' ', '-');
+        var saida = Path.Combine(pasta, $"licenca-{nome}-{vence:yyyy-MM-dd}.txt");
+        File.WriteAllText(saida, licenca + Environment.NewLine);
+        Console.WriteLine();
+        Console.WriteLine($"Licença de {cliente}, válida até {vence:dd/MM/yyyy}. Mande o texto abaixo (ou o arquivo {saida}):");
+        Console.WriteLine("No XAcess: Diagnóstico > Licença > colar > Instalar licença.");
+        Console.WriteLine();
+        Console.WriteLine(licenca);
+        return 0;
+    }
+    catch (CryptographicException)
+    {
+        Console.Error.WriteLine("Senha errada ou arquivo de chave inválido.");
+        return 2;
+    }
+}
+
+// Para o CI (workflow "Promover versão estável"): a chave e a senha vêm dos segredos do repositório.
+static int AssinarArquivo(string arquivo)
+{
+    var (pem, senha) = (Environment.GetEnvironmentVariable("CHAVE_DE_ATUALIZACAO"), Environment.GetEnvironmentVariable("SENHA_DA_CHAVE_DE_ATUALIZACAO"));
+    if (string.IsNullOrWhiteSpace(pem) || senha is null || !File.Exists(arquivo))
+    {
+        Console.Error.WriteLine("Faltam os segredos CHAVE_DE_ATUALIZACAO e SENHA_DA_CHAVE_DE_ATUALIZACAO, ou o arquivo.");
+        return 2;
+    }
+
+    try
+    {
+        File.WriteAllText(arquivo + ".sig", FerramentaDoSuporte.AssinarArquivo(pem, senha, File.ReadAllBytes(arquivo)));
+        Console.WriteLine($"Assinado: {arquivo}.sig");
+        return 0;
+    }
+    catch (CryptographicException)
+    {
+        Console.Error.WriteLine("A chave ou a senha de atualização não abrem.");
+        return 2;
+    }
+}
+
+static int PublicaDoSegredo()
+{
+    var (pem, senha) = (Environment.GetEnvironmentVariable("CHAVE_DE_ATUALIZACAO"), Environment.GetEnvironmentVariable("SENHA_DA_CHAVE_DE_ATUALIZACAO"));
+    if (string.IsNullOrWhiteSpace(pem) || senha is null)
+    {
+        Console.Error.WriteLine("Faltam os segredos CHAVE_DE_ATUALIZACAO e SENHA_DA_CHAVE_DE_ATUALIZACAO.");
+        return 2;
+    }
+
+    try
+    {
+        Console.WriteLine(FerramentaDoSuporte.PublicaDe(pem, senha));
+        return 0;
+    }
+    catch (CryptographicException)
+    {
+        Console.Error.WriteLine("A chave ou a senha de atualização não abrem.");
+        return 2;
+    }
 }
 
 static int Assinar(string arquivo)

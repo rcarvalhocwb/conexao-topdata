@@ -21,9 +21,11 @@
 <?ifdef CanalDeTeste ?>
 <?define NomeDoProduto = "Rayzer XAcess (teste)" ?>
 <?define CodigoDeAtualizacao = "ef261c80-49ab-456d-a3a3-b8c91a9b2501" ?>
+<?define Canal = "teste" ?>
 <?else?>
 <?define NomeDoProduto = "Rayzer XAcess" ?>
 <?define CodigoDeAtualizacao = "5e9e2fd0-c084-4245-8c3c-556c7d5a4bd5" ?>
+<?define Canal = "producao" ?>
 <?endif?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
@@ -167,6 +169,7 @@
       <ComponentGroupRef Id="Grupo_Atalhos" />
       <ComponentGroupRef Id="Grupo_Firewall" />
       <ComponentGroupRef Id="Grupo_Bandeja" />
+      <ComponentGroupRef Id="Grupo_Canal" />
     </Feature>
 
     <ComponentGroup Id="Grupo_Servico" Directory="DIR_SUPERVISOR">
@@ -264,6 +267,16 @@
         <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
                        Name="RayzerXAcess" Type="string"
                        Value="&quot;[DIR_PAINEL]Desktop.App.exe&quot; --bandeja" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      Canal do instalador para o serviço (docs/60 §2.2): só o de produção se atualiza sozinho, e só
+      aceita a ficha de uma versão do mesmo canal.
+    -->
+    <ComponentGroup Id="Grupo_Canal" Directory="INSTALLFOLDER">
+      <Component Id="CanalDoInstalador" Guid="56f97c4c-8c2d-4b07-90f4-0150c420b4c2">
+        <RegistryValue Root="HKLM" Key="Software\Rayzer\XAcess" Name="Canal" Type="string" Value="$(var.Canal)" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
