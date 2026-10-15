@@ -8,8 +8,60 @@ namespace Desktop.ViewModels;
 /// </summary>
 public static class Textos
 {
-    /// <summary>Situação de uma catraca em uma frase curta, e a cor dela.</summary>
+    /// <summary>
+    /// Situação de uma catraca em uma frase curta, e a cor dela. Catraca simulada ganha o prefixo
+    /// "Simulada · " para nunca parecer física (P0-01).
+    /// </summary>
     public static (string Texto, Sinal Sinal) SituacaoDaCatraca(Equipamento equipamento)
+    {
+        ArgumentNullException.ThrowIfNull(equipamento);
+        var (texto, sinal) = SituacaoBase(equipamento);
+        return (equipamento.Simulacao ? "Simulada · " + texto : texto, sinal);
+    }
+
+    /// <summary>Internet em uma frase, medida pela última tentativa recente (P0-02).</summary>
+    public static string Internet(SituacaoDaInternet situacao) => situacao switch
+    {
+        SituacaoDaInternet.Disponivel => "Internet: disponível",
+        SituacaoDaInternet.Indisponivel => "Internet: fora — o acesso segue pela lista local deste computador",
+        _ => "Internet: sem medida recente",
+    };
+
+    /// <summary>Nuvem em uma frase, com a cor dela. Segredo ausente e credencial recusada são estados distintos.</summary>
+    public static (string Texto, Sinal Sinal) Nuvem(SituacaoDaNuvem situacao, DateTimeOffset? ultimaSincronizacao, DateTimeOffset agora) => situacao switch
+    {
+        SituacaoDaNuvem.Conectada => ($"Nuvem: sincronizado {Ha(ultimaSincronizacao, agora)}", Sinal.Bom),
+        SituacaoDaNuvem.FalhaDeAutenticacao => ("Nuvem: o destino recusou a credencial desta máquina — os envios aguardam na fila; avise o suporte", Sinal.Problema),
+        SituacaoDaNuvem.SegredoAusente => ("Nuvem: segredo ausente nesta máquina — nada é enviado; grave-o pelo Assistente de configuração", Sinal.Problema),
+        SituacaoDaNuvem.Indisponivel => ("Nuvem: sem conexão com o destino — o acesso segue pela lista local deste computador", Sinal.Atencao),
+        SituacaoDaNuvem.Conectando => ("Nuvem: conectando…", Sinal.Neutro),
+        SituacaoDaNuvem.NaoConfigurada => ("Nuvem: não configurada nesta máquina", Sinal.Neutro),
+        _ => ("Nuvem: sem resposta recente", Sinal.Neutro),
+    };
+
+    /// <summary>Nuvem em duas palavras, para o bloco de resumo da barra.</summary>
+    public static (string Texto, Sinal Sinal) NuvemCurta(SituacaoDaNuvem situacao) => situacao switch
+    {
+        SituacaoDaNuvem.Conectada => ("Online", Sinal.Bom),
+        SituacaoDaNuvem.FalhaDeAutenticacao => ("Credencial recusada", Sinal.Problema),
+        SituacaoDaNuvem.SegredoAusente => ("Segredo ausente", Sinal.Problema),
+        SituacaoDaNuvem.Indisponivel => ("Offline — catracas seguem", Sinal.Atencao),
+        SituacaoDaNuvem.Conectando => ("Conectando", Sinal.Neutro),
+        SituacaoDaNuvem.NaoConfigurada => ("Não configurada", Sinal.Neutro),
+        _ => ("Sem resposta recente", Sinal.Neutro),
+    };
+
+    /// <summary>Fila de envio em uma frase (P0-02).</summary>
+    public static string Fila(SituacaoDaFila situacao, long pendentes) => situacao switch
+    {
+        SituacaoDaFila.Processando => "Fila: enviando agora",
+        SituacaoDaFila.Falha => $"Fila: falhou no último envio; {pendentes} aguardando (seguem na fila)",
+        SituacaoDaFila.Pendente => $"Fila: {pendentes} aguardando envio",
+        SituacaoDaFila.Sincronizada => "Fila em dia",
+        _ => "Fila: sem medida recente",
+    };
+
+    private static (string Texto, Sinal Sinal) SituacaoBase(Equipamento equipamento)
     {
         ArgumentNullException.ThrowIfNull(equipamento);
 

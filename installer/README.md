@@ -143,6 +143,15 @@ Ainda não ensaiado numa VM sem rede (docs/41, Fase 2).
 **Sem catraca física?** Marque **Modo simulação** no passo 2 do assistente: o SDK não é
 necessário e o painel ganha a tela **Simulador**. Ver [docs/23](../docs/23-modo-simulacao.md).
 
+### Gerar o instalador à mão
+
+- **Pelo GitHub:** Actions → CI → **Run workflow** (escolha a branch). Com tudo verde, sai uma
+  pré-release "Instalador de teste 0.1.N" em Releases.
+- **Numa máquina Windows:** `.\installer\gerar-setup.ps1 -Versao 0.1.900 -InstalarWix` gera o
+  `RayzerXAcess-<versão>.msi` e o `RayzerXAcess-Setup.exe` na raiz do repositório. É o mesmo script
+  que o CI usa. Com `-SdkDir` (pasta do SDK Inner Acesso) e `-Producao`, sai o instalador com o SDK
+  embarcado; esse nunca vai para o repositório público. Detalhes em `CONTRIBUTING.md`.
+
 ### Instalador de produção com o SDK da Topdata embarcado
 
 Com autorização da Topdata, o instalador de produção sai com a `EasyInner.dll` (e as DLLs

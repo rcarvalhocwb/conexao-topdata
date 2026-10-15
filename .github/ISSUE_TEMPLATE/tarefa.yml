@@ -1,0 +1,35 @@
+name: Tarefa
+description: Uma tarefa do plano, com área e critério de pronto (CONTRIBUTING.md).
+title: "[Tarefa] "
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: O que precisa existir quando a tarefa terminar, e para quem.
+    validations:
+      required: true
+  - type: textarea
+    id: area
+    attributes:
+      label: Área (pastas e arquivos)
+      description: Onde a tarefa mexe. Duas tarefas em andamento não podem ter a mesma área sem combinar antes.
+    validations:
+      required: true
+  - type: textarea
+    id: fora
+    attributes:
+      label: Fora do escopo
+      description: O que NÃO faz parte desta tarefa (vai para outra issue).
+  - type: textarea
+    id: pronto
+    attributes:
+      label: Critério de pronto
+      description: Testes e provas que mostram que terminou.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencias
+    attributes:
+      label: Depende de
+      description: Issues que precisam estar no main antes (ex.: #12).

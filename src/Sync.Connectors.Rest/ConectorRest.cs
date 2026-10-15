@@ -128,12 +128,12 @@ public sealed class ConectorRest : IConectorDeSincronizacao
         catch (TaskCanceledException)
         {
             // Tempo esgotado do HttpClient, sem cancelamento pedido. Vale repetir.
-            return new RespostaDeItem(item.Id, ResultadoDoEnvio.FalhaTemporaria, "tempo de resposta esgotado");
+            return new RespostaDeItem(item.Id, ResultadoDoEnvio.FalhaTemporaria, "tempo de resposta esgotado", TipoDeFalha.Rede);
         }
         catch (HttpRequestException erro)
         {
             // DNS, recusa de conexão, TLS, rede fora. Sempre vale repetir.
-            return new RespostaDeItem(item.Id, ResultadoDoEnvio.FalhaTemporaria, Resumir(erro));
+            return new RespostaDeItem(item.Id, ResultadoDoEnvio.FalhaTemporaria, Resumir(erro), TipoDeFalha.Rede);
         }
     }
 
@@ -153,14 +153,22 @@ public sealed class ConectorRest : IConectorDeSincronizacao
             return new RespostaDeItem(id, ResultadoDoEnvio.Duplicado, Detalhe(status));
         }
 
-        if (ClassificacaoHttp.ValeRepetir(status))
+        // 401 e 403: a credencial desta borda foi recusada. Não é defeito do item (E5-2 do
+        // docs/41): o item fica na fila, com a espera entre tentativas, até o segredo ser
+        // corrigido. Mandá-lo às cartas mortas aqui perdia a passagem por erro de configuração.
+        if (ClassificacaoHttp.CredencialRecusada(status))
         {
-            return new RespostaDeItem(id, ResultadoDoEnvio.FalhaTemporaria, Detalhe(status));
+            return new RespostaDeItem(id, ResultadoDoEnvio.FalhaTemporaria, Detalhe(status), TipoDeFalha.Autenticacao);
         }
 
-        // Os demais 4xx são recusa de conteúdo ou de permissão: repetir não muda nada, e
-        // martelar um 401 durante horas só atrasa a fila inteira.
-        return new RespostaDeItem(id, ResultadoDoEnvio.FalhaPermanente, Detalhe(status));
+        if (ClassificacaoHttp.ValeRepetir(status))
+        {
+            return new RespostaDeItem(id, ResultadoDoEnvio.FalhaTemporaria, Detalhe(status), TipoDeFalha.Servidor);
+        }
+
+        // Os demais 4xx são recusa de conteúdo: repetir não muda nada, e martelar só atrasa
+        // a fila inteira.
+        return new RespostaDeItem(id, ResultadoDoEnvio.FalhaPermanente, Detalhe(status), TipoDeFalha.Outra);
     }
 
     private static string Detalhe(HttpStatusCode status) => ClassificacaoHttp.Detalhe(status);
