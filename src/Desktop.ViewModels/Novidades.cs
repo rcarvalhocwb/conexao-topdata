@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 4;
+    public const int Edicao = 5;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,14 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "Botão \"Testar conexão com a nuvem\" na tela Sincronização: fala com a nuvem na hora (baixa " +
+        "a lista de cartões e envia as passagens da fila) e mostra o resultado e o que fazer.",
+
+        "A lista de cartões vem inteira da nuvem a cada sincronização, mesmo acima de 1.000 cartões.",
+
+        "Boletim do dia (R1): uma nota lembra que ele conta as meias validadas na catraca; a cota " +
+        "legal de meia-entrada é apurada pelo sistema de venda.",
+
         "Prestação de contas com relatórios: R1 boletim do dia por tipo (com reentradas, pico e " +
         "negados por motivo), R2 por hora e tipo, R3 por catraca e R7 consolidado do evento. " +
         "Imprima ou salve em PDF (\"Imprimir / PDF\"), com página numerada e código de conferência.",
@@ -50,8 +58,8 @@ public static class Novidades
         "de corte), Tipos de entrada, Cartões da bilheteria, Padrão das catracas, o que ainda não dá " +
         "para configurar (com o motivo) e Avançado. Cada seção tem o próprio botão de salvar.",
 
-        "Os cartões já validados podem ser carregados de uma vez a partir dos arquivos do sistema " +
-        "anterior (carregar-cartoes.ps1, como administrador). O número fica como estava, com os zeros.",
+        "Sem nuvem (ou antes da primeira sincronização), os cartões já validados podem ser carregados " +
+        "de uma vez dos arquivos do sistema anterior (carregar-cartoes.ps1, como administrador).",
 
         "Período do evento: com a opção ligada, a catraca recusa ingressos lidos antes do início ou " +
         "depois do fim, com o motivo \"fora do período do evento\". A equipe credenciada não é afetada.",

@@ -37,23 +37,30 @@ Cada recuperação fica na trilha de usuários como `senha_recuperada_pelo_supor
 **Enquanto `ChavesDoSuporte.Publicas` estiver vazio, a recuperação pelo suporte fica desligada** e a
 tela diz "peça a outro administrador".
 
-### Para ligar (uma vez)
+### Para ligar (uma vez, uns 5 minutos)
 
-Na máquina do desenvolvedor, com o .NET 10 SDK:
+Sem instalar nada (nem o .NET):
 
-```powershell
-dotnet run --project src/Rayzer.Suporte -- gerar-chaves C:\chaves-rayzer
-```
+1. Na página de cada instalador de teste (GitHub, Releases) há o arquivo
+   **`Rayzer.Suporte-0.1.N.zip`**. Baixe, extraia e dê dois cliques em `Rayzer.Suporte.exe`.
+   Ele **não** vai para o cliente: não está no instalador e só serve com a chave privada.
+2. Escolha **1 — Gerar as chaves**. Digite uma senha forte (mínimo 12) duas vezes. Anote a senha
+   num lugar seguro: sem ela a chave não abre.
+3. A ferramenta cria a pasta **Documentos\Rayzer Suporte** com dois arquivos:
+   - `suporte-rayzer-privada.pem`: **a chave privada. Não mande a ninguém.** Faça uma cópia num
+     pen drive guardado.
+   - `suporte-rayzer-publica.txt`: **a chave pública. Esta você manda** para quem mantém o código.
+4. A chave pública entra em `ChavesDoSuporte.Publicas`, e o próximo instalador já sai com a
+   recuperação ligada.
 
-A ferramenta pede uma senha (mínimo 12), grava `suporte-rayzer-privada.pem` e mostra a chave
-pública. Cole a chave pública em `ChavesDoSuporte.Publicas` (ou mande-a para quem mantém o código),
-publique e gere o instalador. **Não mande o arquivo `.pem`.**
+Por linha de comando, para quem prefere: `Rayzer.Suporte gerar-chaves [pasta]` (ou, com o .NET 10
+SDK, `dotnet run --project src/Rayzer.Suporte -- gerar-chaves`).
 
 ### Para atender um pedido
 
-```powershell
-dotnet run --project src/Rayzer.Suporte -- assinar C:\chaves-rayzer\suporte-rayzer-privada.pem
-```
+Dois cliques em `Rayzer.Suporte.exe`, opção **2 — Responder a um pedido**. Ela acha a chave em
+Documentos\Rayzer Suporte, pede o código que o cliente ditou e a senha da chave, e mostra a
+resposta para o cliente digitar. Pedido vencido (mais de 30 minutos) é recusado: peça outro.
 
 ### Se a chave privada vazar ou se perder
 

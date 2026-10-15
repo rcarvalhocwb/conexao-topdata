@@ -4,21 +4,64 @@ using System.Text;
 using Rayzer.Suporte;
 
 // Ferramenta do suporte Rayzer (docs/58). Uso:
-//   Rayzer.Suporte gerar-chaves [pasta]     cria suporte-rayzer-privada.pem e mostra a chave pública
-//   Rayzer.Suporte assinar <arquivo.pem>     pede o código do cliente e mostra a resposta
+//   Rayzer.Suporte                          menu (dois cliques no .exe): gerar as chaves ou assinar
+//   Rayzer.Suporte gerar-chaves [pasta]     cria suporte-rayzer-privada.pem e suporte-rayzer-publica.txt
+//   Rayzer.Suporte assinar [arquivo.pem]    pede o código do cliente e mostra a resposta
 Console.OutputEncoding = Encoding.UTF8;
+
+// A pasta padrão é Documentos: quem abre com dois cliques não escolhe pasta.
+// Nunca a pasta atual: aberta de dentro de um clone do repositório, a chave privada cairia nele.
+var documentos = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+var pastaPadrao = Path.Combine(
+    string.IsNullOrEmpty(documentos) ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : documentos,
+    "Rayzer Suporte");
+var chavePadrao = Path.Combine(pastaPadrao, "suporte-rayzer-privada.pem");
 
 switch (args.FirstOrDefault())
 {
     case "gerar-chaves":
-        return GerarChaves(args.Length > 1 ? args[1] : Directory.GetCurrentDirectory());
-    case "assinar" when args.Length > 1:
-        return Assinar(args[1]);
+        return GerarChaves(args.Length > 1 ? args[1] : pastaPadrao);
+    case "assinar":
+        return Assinar(args.Length > 1 ? args[1] : chavePadrao);
+    case null:
+        return Menu(pastaPadrao, chavePadrao);
     default:
         Console.WriteLine("Rayzer.Suporte — recuperação de senha de administrador (docs/58)");
-        Console.WriteLine("  gerar-chaves [pasta]   cria a chave privada (protegida por senha) e mostra a pública");
-        Console.WriteLine("  assinar <arquivo.pem>  assina o código de pedido que o cliente ditar");
+        Console.WriteLine("  (sem nada)               menu");
+        Console.WriteLine("  gerar-chaves [pasta]     cria a chave privada (protegida por senha) e a pública");
+        Console.WriteLine("  assinar [arquivo.pem]    assina o código de pedido que o cliente ditar");
         return 1;
+}
+
+static int Menu(string pasta, string chave)
+{
+    Console.WriteLine("Rayzer.Suporte — recuperação de senha de administrador do XAcess");
+    Console.WriteLine();
+    Console.WriteLine(File.Exists(chave)
+        ? $"Chave privada encontrada: {chave}"
+        : "Ainda não há chave privada neste computador.");
+    Console.WriteLine();
+    Console.WriteLine("  1  Gerar as chaves (uma vez só)");
+    Console.WriteLine("  2  Responder a um pedido de recuperação");
+    Console.WriteLine("  0  Sair");
+    Console.Write("Escolha: ");
+
+    var codigo = (Console.ReadLine() ?? string.Empty).Trim() switch
+    {
+        "1" => GerarChaves(pasta),
+        "2" => Assinar(chave),
+        _ => 0,
+    };
+
+    if (!Console.IsInputRedirected)
+    {
+        // Aberto com dois cliques, a janela fecharia antes de dar para ler (e copiar) a resposta.
+        Console.WriteLine();
+        Console.Write("Tecle Enter para fechar.");
+        Console.ReadLine();
+    }
+
+    return codigo;
 }
 
 static int GerarChaves(string pasta)
@@ -38,12 +81,17 @@ static int GerarChaves(string pasta)
     }
 
     var (privada, publica) = FerramentaDoSuporte.GerarChaves(senha);
+    Directory.CreateDirectory(pasta);
     File.WriteAllText(arquivo, privada);
+    var arquivoPublico = Path.Combine(pasta, "suporte-rayzer-publica.txt");
+    File.WriteAllText(arquivoPublico, publica + Environment.NewLine);
     Console.WriteLine();
-    Console.WriteLine($"Chave privada: {arquivo}");
-    Console.WriteLine("Guarde-a fora do repositório, com cópia de segurança. Quem tiver o arquivo e a senha recupera administradores.");
+    Console.WriteLine($"Chave PRIVADA: {arquivo}");
+    Console.WriteLine("  NÃO mande este arquivo a ninguém. Faça uma cópia de segurança (pen drive guardado).");
+    Console.WriteLine("  Quem tiver o arquivo e a senha recupera administradores.");
     Console.WriteLine();
-    Console.WriteLine("Chave PÚBLICA (pode ir para o repositório, em src/Access.Infrastructure.SQLite/ChavesDoSuporte.cs):");
+    Console.WriteLine($"Chave PÚBLICA: {arquivoPublico}");
+    Console.WriteLine("  Esta pode ser enviada: mande o arquivo .txt (ou o texto abaixo) para quem mantém o código.");
     Console.WriteLine(publica);
     return 0;
 }

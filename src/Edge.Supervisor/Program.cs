@@ -428,7 +428,10 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     pessoas: cadastroDePessoas,
     parametrosDoCadastro: new ParametrosDoCadastro(fabrica),
     importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas),
-    cartoes: new RepositorioDeIngressos(fabrica)));
+    cartoes: new RepositorioDeIngressos(fabrica))
+{
+    RodadaDaNuvem = sincronizacao is null ? null : sincronizacao.RodarAsync,
+});
 
 // Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
 construtor.Services.AddGrpc(o =>

@@ -91,6 +91,9 @@ service EdgeControl {
   rpc GravarBilheteriaLocal(GravarBilheteriaLocalRequest) returns (ResultadoDaGravacao);
   rpc ListarChavesTecnicas(ListarChavesTecnicasRequest) returns (ListarChavesTecnicasResponse);
   rpc ObterSincronizacao(ObterSincronizacaoRequest) returns (SituacaoDaSincronizacao);
+  // Botão "Testar conexão com a nuvem": roda agora uma rodada (a lista desce, as passagens sobem) e
+  // diz o que aconteceu. A mesma rodada do laço automático, não um ping à parte.
+  rpc TestarNuvem(TestarNuvemRequest) returns (ResultadoDoTesteDaNuvem);
   rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
   // Relatórios R1 (boletim do dia), R2 (por hora e tipo), R3 (por catraca) e R7 (consolidado), docs/25.
   rpc ObterRelatorios(ObterRelatoriosRequest) returns (RelatoriosDoEvento);
@@ -520,6 +523,30 @@ message SituacaoDaSincronizacao {
   google.protobuf.Timestamp ultimo_contato = 8;
   // Quantos itens vieram na última lista cortada pelo servidor; 0 se não houve corte.
   int32 lista_incompleta_com = 9;
+}
+
+message TestarNuvemRequest {}
+
+message ResultadoDoTesteDaNuvem {
+  // Falso: a nuvem não está configurada neste computador (nada foi tentado).
+  bool configurada = 1;
+  // A nuvem respondeu, mesmo que com erro: a conexão existe.
+  bool respondeu = 2;
+  // Tudo certo: lista completa e nenhuma passagem adiada.
+  bool completo = 3;
+  // Quantos vieram numa lista cortada pelo servidor; 0 se não houve corte.
+  int32 lista_incompleta_com = 4;
+  // O que mudou na lista local nesta rodada.
+  int32 novos = 5;
+  int32 atualizados = 6;
+  // Passagens que subiram e que ficaram na fila.
+  int32 enviadas = 7;
+  int32 adiadas = 8;
+  // O que dizer ao operador, em português; vazio se deu tudo certo.
+  string orientacao = 9;
+  // O motivo técnico, para o suporte; nunca tem segredo nem corpo de resposta.
+  string detalhe = 10;
+  int64 duracao_ms = 11;
 }
 
 message ProvedorCadastrado {

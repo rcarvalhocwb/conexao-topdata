@@ -26,12 +26,20 @@ public sealed class SincronizacaoDoServicoTests
 
         public int CartoesNaLista { get; set; } = 1;
 
+        /// <summary>Simula o cabo fora: nenhuma resposta, como DNS ou conexão recusada.</summary>
+        public bool SemRede { get; set; }
+
         public List<(string Caminho, string? Autorizacao, string Corpo)> Pedidos { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var corpo = await request.Content!.ReadAsStringAsync(cancellationToken);
             Pedidos.Add((request.RequestUri!.AbsolutePath, request.Headers.Authorization?.ToString(), corpo));
+
+            if (SemRede)
+            {
+                throw new HttpRequestException("sem rota até o destino");
+            }
 
             if (Situacao != HttpStatusCode.OK)
             {
@@ -217,6 +225,65 @@ public sealed class SincronizacaoDoServicoTests
         c.Painel.Situacao = HttpStatusCode.OK;
         Assert.True(await c.Sincronizacao.UmaRodadaAsync(CancellationToken.None));
         Assert.Null(c.Estado.UltimaFalha);
+    }
+
+    /// <summary>
+    /// Botão "Testar conexão com a nuvem": a mesma rodada do laço, com o que ela fez, e o que dizer ao
+    /// operador em cada caso (pedido do dono em 15/10/2026).
+    /// </summary>
+    [Fact]
+    public async Task Testar_conexao_diz_o_que_veio_e_o_que_fazer_em_cada_falha()
+    {
+        using var c = new Cenario();
+        c.Painel.CartoesNaLista = 3;
+
+        var ok = await c.Sincronizacao.RodarAsync(CancellationToken.None);
+        Assert.True(ok.Sucesso);
+        Assert.True(ok.Respondeu);
+        Assert.Equal((3, 0), (ok.Novos, ok.Atualizados));
+        Assert.Null(ok.Motivo);
+
+        c.Painel.SemRede = true;
+        var semRede = await c.Sincronizacao.RodarAsync(CancellationToken.None);
+        Assert.False(semRede.Respondeu);
+        Assert.Contains("confira a internet", EdgeControlService.Orientacao(semRede), StringComparison.Ordinal);
+
+        c.Painel.SemRede = false;
+        c.Painel.Situacao = HttpStatusCode.Unauthorized;
+        var recusado = await c.Sincronizacao.RodarAsync(CancellationToken.None);
+        Assert.True(recusado.Respondeu);
+        Assert.Contains("recusou o segredo", EdgeControlService.Orientacao(recusado), StringComparison.Ordinal);
+
+        c.Painel.Situacao = HttpStatusCode.OK;
+        c.Painel.CartoesNaLista = 1000;
+        var cortada = await c.Sincronizacao.RodarAsync(CancellationToken.None);
+        Assert.True(cortada.Respondeu);
+        Assert.Equal(1000, cortada.ListaIncompletaCom);
+        Assert.Contains("mandou só 1000", EdgeControlService.Orientacao(cortada), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Testar_conexao_espera_a_rodada_automatica_e_nunca_roda_duas_ao_mesmo_tempo()
+    {
+        using var c = new Cenario();
+
+        var rodadas = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => c.Sincronizacao.RodarAsync(CancellationToken.None)));
+
+        Assert.All(rodadas, r => Assert.True(r.Sucesso));
+        // Uma rodada por vez: só a primeira traz o cartão como novo; as outras o acham lá.
+        Assert.Equal(1, rodadas.Sum(r => r.Novos));
+    }
+
+    [Fact]
+    public async Task Testar_conexao_sem_segredo_diz_onde_gravar()
+    {
+        using var c = new Cenario(comSegredo: false);
+
+        var r = await c.Sincronizacao.RodarAsync(CancellationToken.None);
+
+        Assert.False(r.Respondeu);
+        Assert.Empty(c.Painel.Pedidos);
+        Assert.Contains("Assistente de configuração", EdgeControlService.Orientacao(r), StringComparison.Ordinal);
     }
 
     [Theory]

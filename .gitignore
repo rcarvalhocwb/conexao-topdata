@@ -24,3 +24,7 @@ carga-inicial/
 cartoes-*.csv
 autorizacoes-*.csv
 !installer/modelos/*.csv
+
+# Chave do suporte Rayzer (docs/58): a privada nunca entra no repositório.
+*.pem
+Rayzer Suporte/

@@ -647,11 +647,82 @@ public sealed class SincronizacaoViewModel : TelaBase
 
     private long _cartasMortas;
     private string _operador = string.Empty;
+    private string _resultadoDoTeste = string.Empty;
+    private string _orientacaoDoTeste = string.Empty;
+    private Sinal _sinalDoTeste;
+    private bool _testando;
 
     public SincronizacaoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
     {
         ReenviarCartasMortas = new ComandoAssincrono(ReenviarCartasMortasAsync, () => CartasMortas > 0);
+        TestarConexao = new ComandoAssincrono(TestarConexaoAsync);
+    }
+
+    /// <summary>
+    /// "Testar conexão com a nuvem": o serviço roda agora a mesma rodada que faz sozinho (a lista desce,
+    /// as passagens sobem) e diz o que aconteceu, sem esperar o próximo intervalo.
+    /// </summary>
+    public ComandoAssincrono TestarConexao { get; }
+
+    /// <summary>Verdadeiro enquanto o teste roda: a tela mostra "Testando…".</summary>
+    public bool Testando { get => _testando; private set => Definir(ref _testando, value); }
+
+    /// <summary>A primeira linha do resultado do teste; vazio antes do primeiro teste.</summary>
+    public string ResultadoDoTeste { get => _resultadoDoTeste; private set => Definir(ref _resultadoDoTeste, value); }
+
+    /// <summary>O que fazer, quando o teste não deu tudo certo.</summary>
+    public string OrientacaoDoTeste { get => _orientacaoDoTeste; private set => Definir(ref _orientacaoDoTeste, value); }
+
+    public Sinal SinalDoTeste { get => _sinalDoTeste; private set => Definir(ref _sinalDoTeste, value); }
+
+    private async Task TestarConexaoAsync()
+    {
+        Testando = true;
+        ResultadoDoTeste = string.Empty;
+        OrientacaoDoTeste = string.Empty;
+        try
+        {
+            await Tentar(async () =>
+            {
+                var r = await Cliente.TestarNuvemAsync(new TestarNuvemRequest());
+                (SinalDoTeste, ResultadoDoTeste, OrientacaoDoTeste) = DescreverTeste(r);
+                await AtualizarAsync();
+            });
+        }
+        finally
+        {
+            Testando = false;
+        }
+    }
+
+    /// <summary>O resultado do teste em português de operador: o que houve, os números, e o que fazer.</summary>
+    public static (Sinal Sinal, string Resultado, string Orientacao) DescreverTeste(ResultadoDoTesteDaNuvem r)
+    {
+        ArgumentNullException.ThrowIfNull(r);
+
+        if (!r.Configurada)
+        {
+            return (Sinal.Neutro, "A nuvem não está configurada neste computador.", r.Orientacao);
+        }
+
+        var segundos = (r.DuracaoMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture);
+        var lista = r.Novos + r.Atualizados == 0
+            ? "lista de cartões sem mudanças"
+            : string.Create(CultureInfo.CurrentCulture, $"{r.Novos} cartão(ões) novo(s) e {r.Atualizados} atualizado(s)");
+        var passagens = r.Adiadas > 0
+            ? string.Create(CultureInfo.CurrentCulture, $"{r.Enviadas} passagem(ns) enviada(s), {r.Adiadas} na fila")
+            : string.Create(CultureInfo.CurrentCulture, $"{r.Enviadas} passagem(ns) enviada(s)");
+
+        if (r.Completo)
+        {
+            return (Sinal.Bom, $"Conexão com a nuvem OK ({segundos} s): {lista}; {passagens}.", string.Empty);
+        }
+
+        var orientacao = string.IsNullOrWhiteSpace(r.Detalhe) ? r.Orientacao : $"{r.Orientacao} Detalhe: {r.Detalhe}";
+        return r.Respondeu
+            ? (Sinal.Atencao, $"A nuvem respondeu, mas com problema ({segundos} s).", orientacao)
+            : (Sinal.Problema, $"Sem conexão com a nuvem ({segundos} s). As catracas seguem com a lista local.", orientacao);
     }
 
     public override string Titulo => "Sincronização";
@@ -728,7 +799,7 @@ public sealed class SincronizacaoViewModel : TelaBase
                             "O que fazer",
                             string.Create(
                                 CultureInfo.CurrentCulture,
-                                $"A nuvem mandou {r.ListaIncompletaCom} cartões e parou no limite dela. Os que vieram já valem aqui; os outros, não. Peça a quem cuida da nuvem o item P0 do docs/31 (§3): devolver todos os cartões, com contract_version 1 e total_cards. Enquanto isso, a carga inicial (carregar-cartoes.ps1) traz a lista completa.")),
+                                $"A nuvem mandou {r.ListaIncompletaCom} cartões e parou no limite dela. Os que vieram já valem aqui; os outros, não. Toque em Testar conexão com a nuvem; se continuar, avise quem cuida da nuvem (a lista tem de vir completa, docs/31 §3).")),
                     }
                     : [],
                 new ParDeTexto("Aguardando envio", string.Create(CultureInfo.CurrentCulture, $"{r.Pendentes}")),
@@ -833,7 +904,6 @@ public sealed partial class ContasViewModel : TelaBase
         new("R6 · Ocorrências e auditoria", "Em construção: negativas repetidas, liberações manuais e comandos, com quem fez."),
         new("R8 · Saúde da operação", "Em construção: quedas de catraca, do serviço e da sincronização, com duração."),
         new("Fechar o corte (congelar os números)", "Em construção. Hoje cada relatório já traz o código de conferência (SHA-256): o mesmo período e os mesmos dados dão o mesmo código."),
-        new("Cota de meia-entrada", "Aguardando decisão (E10): a cota se mede sobre a venda, que é do sistema de venda. O R1 já separa as meias validadas."),
     ];
 
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)

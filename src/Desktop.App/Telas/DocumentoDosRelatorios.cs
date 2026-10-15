@@ -49,6 +49,7 @@ internal static class DocumentoDosRelatorios
                 ["Tipo", "Validados", "Participação", "Sem passagem"],
                 contas.LinhasDoBoletim(dia.Boletim).Select(l => new[] { l.Tipo, Numero(l.Validados), l.Participacao, Numero(l.SemPassagem) })));
             documento.Blocks.Add(Texto(ContasViewModel.ResumoDe(dia.Boletim), 10));
+            documento.Blocks.Add(Texto(ContasViewModel.NotaDaMeiaEntrada, 8.5));
 
             var negados = ContasViewModel.NegadosDe(dia.Boletim);
             if (negados.Count > 0)

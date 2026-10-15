@@ -51,6 +51,8 @@ public sealed class InterceptadorDeSessao(UsuariosDoSistema usuarios, SessoesDoP
         ["ObterBilheteriaLocal"] = Permissoes.OperacaoVer,
         ["ListarChavesTecnicas"] = Permissoes.OperacaoVer,
         ["ObterSincronizacao"] = Permissoes.OperacaoVer,
+        // Testar não muda nada: é a mesma rodada que o serviço faz sozinho a cada intervalo.
+        ["TestarNuvem"] = Permissoes.OperacaoVer,
         ["ListarUsosSemPassagem"] = Permissoes.OperacaoVer,
         ["ListarComandos"] = Permissoes.OperacaoVer,
         ["ObterConfiguracaoDaCatraca"] = Permissoes.OperacaoVer,

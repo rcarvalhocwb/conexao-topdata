@@ -494,6 +494,10 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.Contains(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith("R3 · Tempo fora do ar", StringComparison.Ordinal));
         Assert.All(contas.AindaNaoDisponivel, i => Assert.False(string.IsNullOrWhiteSpace(i.Valor)));
+
+        // E10 decidido (15/10): a cota é do sistema de venda; o R1 traz a nota, e o item sai da lista.
+        Assert.DoesNotContain(contas.AindaNaoDisponivel, i => i.Rotulo.Contains("meia", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("sistema de venda", ContasViewModel.NotaDaMeiaEntrada, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -952,6 +956,19 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         using var consulta = leitura.CreateCommand();
         consulta.CommandText = "SELECT reprocessed_by FROM dead_letter;";
         Assert.Equal("Ana", consulta.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task Testar_conexao_sem_nuvem_configurada_diz_onde_configurar()
+    {
+        var tela = new SincronizacaoViewModel(Cliente());
+
+        await tela.TestarConexao.ExecutarAsync();
+
+        Assert.False(tela.Testando);
+        Assert.Equal(Sinal.Neutro, tela.SinalDoTeste);
+        Assert.Equal("A nuvem não está configurada neste computador.", tela.ResultadoDoTeste);
+        Assert.Contains("Assistente de configuração", tela.OrientacaoDoTeste, StringComparison.Ordinal);
     }
 
     /// <summary>

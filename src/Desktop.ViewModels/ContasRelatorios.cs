@@ -89,6 +89,15 @@ public sealed partial class ContasViewModel
     /// <summary>R1 do dia escolhido em uma frase.</summary>
     public string ResumoDoBoletim => DiaEscolhido?.Boletim is { } dia ? ResumoDe(dia) : string.Empty;
 
+    /// <summary>
+    /// Decisão E10 (15/10/2026): o XAcess conta as meias validadas na catraca; a cota legal se mede sobre
+    /// a venda e é do sistema de venda. Vai junto do R1 na tela, no CSV e no PDF, para ninguém ler a
+    /// participação das meias como a cota.
+    /// </summary>
+    public const string NotaDaMeiaEntrada =
+        "Meia-entrada: este boletim conta as meias validadas na catraca (quantidade e participação). " +
+        "A cota legal (Lei 12.933/2013 e Decreto 8.537/2015) se mede sobre os ingressos vendidos e é apurada pelo sistema de venda.";
+
     /// <summary>R1 do dia escolhido: os negados, por motivo.</summary>
     public IReadOnlyList<LinhaDeContagem> NegadosDoDia => DiaEscolhido?.Boletim is { } dia ? NegadosDe(dia) : [];
 
@@ -215,6 +224,8 @@ public sealed partial class ContasViewModel
                 csv.AppendLine(string.Create(Cultura, $"{Celula(string.IsNullOrEmpty(n.Descricao) ? n.Chave : n.Descricao)};{n.Quantidade}"));
             }
         }
+
+        csv.AppendLine(string.Create(Cultura, $"Nota do R1;{Celula(NotaDaMeiaEntrada)}"));
 
         csv.AppendLine();
         csv.AppendLine("R2 · Fluxo por hora e tipo");

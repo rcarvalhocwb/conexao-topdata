@@ -38,6 +38,12 @@ Regras que valem para todas:
 Os três arquivos exportados do sistema anterior (cartões, cartões autorizados, autorizações da
 catraca) são o mesmo conjunto: 2.243 cartões, INTEIRA 1.038, MEIA 603, SOCIAL 602, 1 inativo.
 
+**Com a nuvem ligada, a lista vem dela** (15/10/2026): a função `middleware-sync-cards` devolve todos
+os cartões ativos, paginados, com `contract_version: 1` e `total_cards` (docs/31 §3). A carga abaixo
+é a reserva: instalação sem nuvem, ou para a catraca já ter a lista antes da primeira sincronização.
+Os dois usam o mesmo provedor (`bilheteria-local`) e a mesma referência (o número normalizado): a
+nuvem atualiza o mesmo cartão, sem duplicar.
+
 **Os números não entram no repositório nem no instalador.** Os dois são públicos, e o número
 de um cartão abre a catraca. Em vez disso:
 
