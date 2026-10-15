@@ -364,6 +364,7 @@ public sealed class DecisorDeIngresso
         MotivoDoUso.Consumido => ReasonCodes.Autorizado,
         MotivoDoUso.Desconhecido => ReasonCodes.CredencialDesconhecida,
         MotivoDoUso.UsosEsgotados => ReasonCodes.UsosEsgotados,
+        MotivoDoUso.CadastradoNoLote => ReasonCodes.CadastradoNoLote,
         MotivoDoUso.Cancelado => ReasonCodes.IngressoCancelado,
         MotivoDoUso.Bloqueado => ReasonCodes.CredencialBloqueada,
         MotivoDoUso.ForaDaJanela => ReasonCodes.ForaDaJanela,
