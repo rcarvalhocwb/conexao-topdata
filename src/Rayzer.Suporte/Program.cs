@@ -49,7 +49,9 @@ switch (args.FirstOrDefault())
 
 static int Menu(string pasta, string chave)
 {
-    Console.WriteLine("Rayzer.Suporte — recuperação de senha de administrador do XAcess");
+    Console.WriteLine("Rayzer.Suporte — chaves, licenças e recuperação de senha do XAcess");
+    Console.WriteLine();
+    Console.WriteLine("Digite o número da opção e tecle Enter. Ao digitar uma senha, aparece um * por letra.");
     Console.WriteLine();
     Console.WriteLine(File.Exists(chave)
         ? $"Chave privada encontrada: {chave}"
@@ -62,7 +64,8 @@ static int Menu(string pasta, string chave)
     Console.WriteLine("  0  Sair");
     Console.Write("Escolha: ");
 
-    var codigo = (Console.ReadLine() ?? string.Empty).Trim() switch
+    var escolha = (Console.ReadLine() ?? string.Empty).Trim();
+    var codigo = escolha switch
     {
         "1" => GerarChaves(pasta),
         "2" => Assinar(chave),
@@ -70,6 +73,19 @@ static int Menu(string pasta, string chave)
         "4" => GerarChaves(pasta, chaveDeAtualizacao: true),
         _ => 0,
     };
+
+    if (codigo == 0 && escolha is "1" or "3" or "4" && OperatingSystem.IsWindows() && !Console.IsInputRedirected)
+    {
+        // Mostra os arquivos criados: o .txt público é o que vai por e-mail ou mensagem.
+        try
+        {
+            using var _ = System.Diagnostics.Process.Start("explorer.exe", $"\"{pasta}\"");
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // Sem o Explorer: o caminho já está escrito na tela.
+        }
+    }
 
     if (!Console.IsInputRedirected)
     {
@@ -92,10 +108,17 @@ static int GerarChaves(string pasta, bool chaveDeAtualizacao = false)
         return 2;
     }
 
-    var senha = LerSenha("Senha para proteger a chave privada (mínimo 12): ");
-    if (senha.Length < 12 || senha != LerSenha("Repita a senha: "))
+    Console.WriteLine("Crie uma senha para proteger a chave (12 letras ou mais; anote num lugar seguro).");
+    var senha = LerSenha("Senha: ");
+    if (senha.Length < 12)
     {
-        Console.Error.WriteLine("Senhas diferentes ou curtas demais. Nada foi criado.");
+        Console.Error.WriteLine($"A senha tem {senha.Length} letra(s); precisa de 12 ou mais. Nada foi criado: escolha a opção de novo.");
+        return 2;
+    }
+
+    if (senha != LerSenha("Repita a mesma senha: "))
+    {
+        Console.Error.WriteLine("As duas senhas ficaram diferentes. Nada foi criado: escolha a opção de novo.");
         return 2;
     }
 
@@ -264,13 +287,16 @@ static string LerSenha(string pergunta)
     var senha = new StringBuilder();
     for (var tecla = Console.ReadKey(intercept: true); tecla.Key != ConsoleKey.Enter; tecla = Console.ReadKey(intercept: true))
     {
+        // Um asterisco por letra: sem eco nenhum, quem digita acha que a janela travou.
         if (tecla.Key == ConsoleKey.Backspace && senha.Length > 0)
         {
             senha.Length--;
+            Console.Write("\b \b");
         }
         else if (!char.IsControl(tecla.KeyChar))
         {
             senha.Append(tecla.KeyChar);
+            Console.Write('*');
         }
     }
 
