@@ -138,8 +138,28 @@ public partial class JanelaDoAssistente : Window
 
         try
         {
-            var destino = AssistenteDeConfiguracao.CopiarEasyInner(dialogo.FileName, PastaDoWorker);
-            TextoDoAmbiente.Text = $"EasyInner.dll copiada para {destino}.";
+            if (AssistenteDeConfiguracao.EasyInnerJaInstalada(dialogo.FileName, PastaDoWorker))
+            {
+                TextoDoAmbiente.Text = "Esta EasyInner.dll já está na pasta das catracas, e o programa das catracas já a usa. Nada a copiar.";
+            }
+            else
+            {
+                // A DLL antiga fica presa enquanto o programa das catracas roda: para a operação, troca e
+                // volta. As catracas ficam alguns segundos sem atendimento do sistema.
+                var parou = ControleDaOperacao.Rodando() && ControleDaOperacao.Parar() == ControleDaOperacao.Ok;
+                try
+                {
+                    var destino = AssistenteDeConfiguracao.CopiarEasyInner(dialogo.FileName, PastaDoWorker);
+                    TextoDoAmbiente.Text = $"EasyInner.dll copiada para {destino}.";
+                }
+                finally
+                {
+                    if (parou)
+                    {
+                        ControleDaOperacao.Iniciar();
+                    }
+                }
+            }
         }
         catch (Exception erro) when (erro is ArgumentException or IOException or UnauthorizedAccessException)
         {

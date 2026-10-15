@@ -279,10 +279,53 @@ public static class AssistenteDeConfiguracao
     /// </remarks>
     /// <returns>O caminho da cópia.</returns>
     /// <exception cref="ArgumentException">Não é a EasyInner.dll de 32 bits.</exception>
+    /// <exception cref="IOException">
+    /// A da pasta é outra e está em uso pelo programa das catracas (pare a operação antes; ver
+    /// <see cref="EasyInnerJaInstalada"/>).
+    /// </exception>
     public static string CopiarEasyInner(string origem, string pastaDoWorker)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(origem);
+        ConferirEasyInner(origem);
+
+        Directory.CreateDirectory(pastaDoWorker);
+        var destino = Path.Combine(pastaDoWorker, "EasyInner.dll");
+        File.Copy(origem, destino, overwrite: true);
+        return destino;
+    }
+
+    /// <summary>
+    /// Verdadeiro quando a pasta das catracas já tem exatamente esta EasyInner.dll (mesmo conteúdo).
+    /// </summary>
+    /// <remarks>
+    /// A DLL fica presa enquanto o programa das catracas roda: sobrescrever a mesma DLL dava
+    /// "The process cannot access the file" (bancada de 15/10/2026), quando não havia nada a fazer.
+    /// </remarks>
+    /// <exception cref="ArgumentException">Não é a EasyInner.dll de 32 bits.</exception>
+    public static bool EasyInnerJaInstalada(string origem, string pastaDoWorker)
+    {
+        ConferirEasyInner(origem);
         ArgumentException.ThrowIfNullOrWhiteSpace(pastaDoWorker);
+
+        var destino = Path.Combine(pastaDoWorker, "EasyInner.dll");
+        if (!File.Exists(destino))
+        {
+            return false;
+        }
+
+        if (string.Equals(Path.GetFullPath(origem), Path.GetFullPath(destino), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        using var a = new FileStream(origem, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var b = new FileStream(destino, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return a.Length == b.Length
+            && System.Security.Cryptography.SHA256.HashData(a).AsSpan().SequenceEqual(System.Security.Cryptography.SHA256.HashData(b));
+    }
+
+    private static void ConferirEasyInner(string origem)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(origem);
 
         if (!string.Equals(Path.GetFileName(origem), "EasyInner.dll", StringComparison.OrdinalIgnoreCase))
         {
@@ -294,11 +337,6 @@ public static class AssistenteDeConfiguracao
             throw new ArgumentException(
                 "Esta EasyInner.dll não é de 32 bits. Use a do SDK Inner Acesso para Windows 32 bits.", nameof(origem));
         }
-
-        Directory.CreateDirectory(pastaDoWorker);
-        var destino = Path.Combine(pastaDoWorker, "EasyInner.dll");
-        File.Copy(origem, destino, overwrite: true);
-        return destino;
     }
 
     /// <summary>O campo "Machine" do cabeçalho PE; nulo se o arquivo não é um executável do Windows.</summary>

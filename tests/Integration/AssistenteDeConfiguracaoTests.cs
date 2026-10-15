@@ -203,6 +203,34 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
         Assert.Throws<ArgumentException>(() => AssistenteDeConfiguracao.CopiarEasyInner(texto, Path.Combine(_pasta, "Worker")));
     }
 
+    /// <summary>
+    /// Bancada de 15/10/2026: escolher a mesma EasyInner.dll que já está na pasta dava "The process cannot
+    /// access the file" (o programa das catracas a usa). Agora o assistente reconhece que é a mesma.
+    /// </summary>
+    [Fact]
+    public void A_mesma_EasyInner_ja_na_pasta_e_reconhecida_e_uma_diferente_nao()
+    {
+        var origem = Directory.CreateDirectory(Path.Combine(_pasta, "sdk-igual")).FullName;
+        var worker = Path.Combine(_pasta, "Worker");
+        var dll = Path.Combine(origem, "EasyInner.dll");
+        File.WriteAllBytes(dll, Pe(0x014C));
+
+        Assert.False(AssistenteDeConfiguracao.EasyInnerJaInstalada(dll, worker));
+        AssistenteDeConfiguracao.CopiarEasyInner(dll, worker);
+
+        // Com a DLL da pasta aberta (como o programa das catracas a mantém), a conferência ainda lê.
+        using (new FileStream(Path.Combine(worker, "EasyInner.dll"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            Assert.True(AssistenteDeConfiguracao.EasyInnerJaInstalada(dll, worker));
+        }
+
+        var bytes = Pe(0x014C);
+        bytes[^1] = 0x7F;
+        var diferente = Path.Combine(Directory.CreateDirectory(Path.Combine(_pasta, "sdk-nova")).FullName, "EasyInner.dll");
+        File.WriteAllBytes(diferente, bytes);
+        Assert.False(AssistenteDeConfiguracao.EasyInnerJaInstalada(diferente, worker));
+    }
+
     // Cabeçalho PE mínimo: "MZ", o ponteiro em 0x3C, "PE\0\0" e o campo Machine.
     private static byte[] Pe(ushort maquina)
     {
