@@ -95,3 +95,10 @@ Ver `docs/64-manual-catracas4-rev17.md`. Decisões confirmadas pelo dono:
   Server. O SDK aceita de 0 a 50 s.
 - **D-A (relé 1, 5 s ou 15 s) deixa de ser uma correção.** Passa a ser um parâmetro do operador. O
   prazo efetivo ainda soma a margem de 3 s do `MargemDoGiro`, que precisa de decisão (ver `docs/64`, §9).
+
+## 8. Engenharia reversa do middleware antigo
+
+Ver `docs/65-engenharia-reversa-middleware-antigo.md`. Ela traz a ordem exata de configuração (§1), o
+catálogo de mensagens do display (§3) e a tabela de diferenças com a situação de cada uma (§4). Três
+itens novos pedem bancada ou decisão antes de qualquer mudança: o tipo de leitor (2 no antigo, 8 no nosso),
+o número da função do relé 1 (1 no antigo, 2 no nosso) e o rearme depois de sinal em `Polling`.
