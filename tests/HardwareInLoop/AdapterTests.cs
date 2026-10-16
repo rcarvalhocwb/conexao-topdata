@@ -47,6 +47,36 @@ public sealed class AdapterTests
         Assert.Equal(["DefinirTipoConexao", "AbrirPortaComunicacao"], costura.Chamadas);
     }
 
+    /// <summary>
+    /// Revisão do sistema: o display do Inner aceita só ASCII (manual de desenvolvimento, mensagens on-line).
+    /// Acento vira a letra base; o que não é ASCII some; o limite de 32 caracteres vale depois.
+    /// </summary>
+    [Fact]
+    public void Mensagem_para_o_display_sai_em_ascii_sem_acento()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.EnviarMensagemPadrao(1, "Não é ação: vá à entrada 🚪 ok");
+
+        var (_, argumentos) = costura.ChamadasComArgumentos.Single(c => c.Funcao == "EnviarMensagemPadraoOnLine");
+        var enviada = (string)argumentos[2];
+        Assert.Equal("Nao e acao: va a entrada  ok", enviada);
+        Assert.All(enviada, c => Assert.InRange(c, ' ', '~'));
+    }
+
+    [Fact]
+    public void Mensagem_longa_para_o_display_corta_em_32_depois_de_sanear()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.EnviarMensagemPadrao(1, new string('ç', 40));
+
+        var (_, argumentos) = costura.ChamadasComArgumentos.Single(c => c.Funcao == "EnviarMensagemPadraoOnLine");
+        Assert.Equal(new string('c', 32), (string)argumentos[2]);
+    }
+
     /// <summary>Se o tipo de conexão falha, não se abre porta nenhuma.</summary>
     [Fact]
     public void Tipo_de_conexao_recusado_impede_a_abertura()

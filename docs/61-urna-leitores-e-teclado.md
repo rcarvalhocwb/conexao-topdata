@@ -67,7 +67,9 @@ DesabilitarRele2 (fecha a urna) antes de liberar ou negar, e de novo antes de re
 ```
 
 - **Relé 2 ligado por padrão quando a urna está ligada:** função **3** e **15 s**, os valores do
-  middleware que operou em 2025 numa TopFit4 com a urna na entrada (§7). Urna desligada nas
+  middleware que operou em 2025 numa TopFit4 com a urna na entrada (§7). Atenção: o manual lista a
+  função 3 como "aciona ao registrar saída", o que não bate com urna na entrada. O código mantém o
+  valor de produção; a confirmação é o teste U1 (§5) e a pergunta à Topdata. Urna desligada nas
   configurações → relé 2 desligado junto (sem leitor da fenda a urna nunca abriria).
 - **Fechar a urna:** `DesabilitarRele2` antes de liberar o giro ou negar, e de novo ao rearmar o leitor
   (como o middleware; sem isso a urna fica aberta e o próximo cartão não é lido). Falha nesse comando é

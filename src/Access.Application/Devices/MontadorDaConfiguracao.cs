@@ -20,7 +20,9 @@ namespace Access.Application.Devices;
 /// <item>Tipo de leitor <b>8</b> por padrão (QR por letras). A Topdata fala em "serial barcode",
 /// que no SDK pode ser o <b>5</b> — o ensaio decide (NOVO-HIL-QR-02, T25). <c>A_CONFIRMAR</c>.</item>
 /// <item><b>Relé 2 (urna) = 3, 15 s</b> — o exemplo oficial em C# do SDK 6.0.2.0 (catraca com urna) e o
-/// middleware que operou em produção em 2025 na Catraca 4 com a urna na entrada. Com ele, a leitura
+/// middleware que operou em produção em 2025 na Catraca 4 com a urna na entrada. O manual descreve o 3
+/// como "aciona ao registrar saída", o que conflita com a urna na entrada: a Topdata confirma (docs/61, U1).
+/// Com ele, a leitura
 /// aprovada na fenda abre a urna e o giro só sai depois da origem 7; o laço fecha a guia
 /// (<c>DesabilitarRele2</c>) depois (docs/61). Até 15/10/2026 ficava desligado e a catraca liberava o giro
 /// com o cartão na mão da pessoa. A chave técnica <c>catraca.funcao_do_rele_da_urna</c> troca sem versão
@@ -52,7 +54,7 @@ public static class PadroesDeFabrica
         OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorSomenteEntrada,
         FuncaoDoAcionamento1 = 2,
         TempoDoAcionamento1 = 5,
-        FuncaoDoAcionamento2 = MontadorDaConfiguracao.ReleDaUrnaNaEntrada,
+        FuncaoDoAcionamento2 = MontadorDaConfiguracao.FuncaoPadraoDoReleDaUrna,
         TempoDoAcionamento2 = MontadorDaConfiguracao.TempoPadraoDaUrna,
         Online = true,
         TecladoHabilitado = false,
@@ -247,9 +249,10 @@ public static class MontadorDaConfiguracao
     /// <summary>
     /// <c>ConfigurarAcionamento2</c>: 3 = "aciona ao registrar uma saída / catraca saída" (manual de
     /// desenvolvimento). É o valor do exemplo oficial em C# do SDK 6.0.2.0 para a catraca com urna e o que o
-    /// middleware de produção de 2025 usou na Catraca 4 com a urna na <b>entrada</b> (docs/61).
+    /// middleware de produção de 2025 usou na Catraca 4 com a urna na <b>entrada</b>. A descrição do manual e
+    /// o uso de produção não batem; o valor fica como estava até a confirmação na bancada (docs/61, U1).
     /// </summary>
-    public const byte ReleDaUrnaNaEntrada = 3;
+    public const byte FuncaoPadraoDoReleDaUrna = 3;
 
     /// <summary>Tempo do relé 2 do middleware de produção de 2025 (subiu de 5 para 15 s); a guia fecha antes, pelo laço.</summary>
     public const byte TempoPadraoDaUrna = 15;

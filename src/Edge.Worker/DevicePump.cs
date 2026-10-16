@@ -140,6 +140,12 @@ public sealed class DeviceSlot
     /// </remarks>
     public DateTimeOffset? UltimaProvaDeVida { get; internal set; }
 
+    /// <summary>Quando saiu o último PingOnLine (keep-alive, manual de desenvolvimento, passo 11). Nulo até o primeiro.</summary>
+    public DateTimeOffset? UltimoPingOnLine { get; internal set; }
+
+    /// <summary>PingOnLine sem resposta seguidos. Ao chegar em <see cref="DevicePump.LimiteDeFalhasDePingOnLine"/>, reconecta.</summary>
+    public int FalhasDePingOnLine { get; internal set; }
+
     /// <summary>Identidade lida do equipamento, quando já conhecida.</summary>
     public FirmwareInfo? Firmware { get; internal set; }
 
@@ -262,6 +268,12 @@ internal sealed class ComandoEmCurso(ComandoDeCatraca comando, DateTimeOffset in
 /// </remarks>
 public sealed class DevicePump
 {
+    /// <summary>Intervalo do PingOnLine no polling (manual de desenvolvimento, passo 11).</summary>
+    public static readonly TimeSpan IntervaloPadraoDoPingOnLine = TimeSpan.FromSeconds(3);
+
+    /// <summary>PingOnLine sem resposta seguidos antes de reconectar (manual de desenvolvimento, passo 12).</summary>
+    public const int LimiteDeFalhasDePingOnLine = 6;
+
     /// <summary>Acima disto o relógio da catraca é dado como divergente (docs/24 §1).</summary>
     public static readonly TimeSpan LimiteDeDivergenciaDoRelogio = TimeSpan.FromSeconds(30);
 
@@ -307,7 +319,7 @@ public sealed class DevicePump
     private readonly Action<string>? _aoDesistirDoGiro;
     private readonly Action<string, string>? _aoFalharALiberacao;
     private readonly Action<string, string>? _aoDesistirDaUrna;
-    private readonly TimeSpan _sondaDeVida;
+    private readonly TimeSpan _intervaloDoPingOnLine;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -355,13 +367,10 @@ public sealed class DevicePump
     /// C1). O decisor encerra a tentativa pendente sem giro, como faria com a origem 5: um giro
     /// que chegue depois não é da pessoa liberada, e confirmá-la com ele daria a passagem a outro.
     /// </param>
-    /// <param name="sondaDeVida">
-    /// Silêncio máximo em espera de leitura antes de testar a conexão (achado E1-01 do docs/41).
-    /// Com o cabo puxado ou o socket morto, a DLL pode seguir devolvendo "sem eventos", e a catraca
-    /// apareceria "Atendendo" sem atender. Depois deste tempo sem evento, um passo faz o teste de
-    /// conexão no lugar da espera (uma chamada nativa por passo, como sempre); sem resposta, a
-    /// catraca vai para reconexão e o painel deixa de mostrá-la em operação. Padrão: 10 s. Se testar
-    /// a conexão com a catraca em operação a atrapalha é <c>A_CONFIRMAR_COM_TOPDATA</c> (HIL-EVT-01).
+    /// <param name="intervaloDoPingOnLine">
+    /// Intervalo do PingOnLine enquanto a catraca espera leitura (keep-alive). O manual de desenvolvimento
+    /// manda a cada 3 s (passo 11); com a DLL em silêncio, o ping é a prova de que a conexão ainda vive
+    /// (achado E1-01 do docs/41). Padrão: <see cref="IntervaloPadraoDoPingOnLine"/>.
     /// </param>
     /// <param name="aoFalharALiberacao">
     /// Chamado com o id do equipamento e a causa, logo antes de <paramref name="aoDesistirDoGiro"/>,
@@ -387,7 +396,7 @@ public sealed class DevicePump
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         bool exibirTextoDoGiro = false,
         Action<string>? aoDesistirDoGiro = null,
-        TimeSpan? sondaDeVida = null,
+        TimeSpan? intervaloDoPingOnLine = null,
         Action<string, string>? aoFalharALiberacao = null,
         Action<string, string>? aoDesistirDaUrna = null)
     {
@@ -395,7 +404,7 @@ public sealed class DevicePump
         _aoDesistirDaUrna = aoDesistirDaUrna;
         _aoDesistirDoGiro = aoDesistirDoGiro;
         _aoFalharALiberacao = aoFalharALiberacao;
-        _sondaDeVida = sondaDeVida ?? TimeSpan.FromSeconds(10);
+        _intervaloDoPingOnLine = intervaloDoPingOnLine ?? IntervaloPadraoDoPingOnLine;
         _sequenciaOficial = sequenciaOficial;
         _exibirTextoDoGiro = exibirTextoDoGiro;
         _gravadorDeBilhetes = gravadorDeBilhetes;
@@ -549,6 +558,8 @@ public sealed class DevicePump
             d.TentativasDeReconexao = 0;
             d.EsperarAte = null;
             d.UltimaProvaDeVida = agora;
+            d.UltimoPingOnLine = agora;
+            d.FalhasDePingOnLine = 0;
             d.UrnaPorFechar = false;
             d.CicloDeUrna = false;
 
@@ -658,9 +669,9 @@ public sealed class DevicePump
     private string Aguardar(DeviceSlot d, DateTimeOffset agora, TimeSpan limite)
     {
         // Só em espera de leitura: durante o giro, nada pode atrasar a origem 5 ou 6.
-        if (d.Maquina.Current is DeviceState.Polling && SondarVida(d, agora) is { } sonda)
+        if (d.Maquina.Current is DeviceState.Polling && ManterOnline(d, agora) is { } keepAlive)
         {
-            return sonda;
+            return keepAlive;
         }
 
         var (resultado, evento) = _adapter.AguardarEvento(d.Inner, limite);
@@ -1447,32 +1458,48 @@ public sealed class DevicePump
     }
 
     /// <summary>
-    /// Sonda de vida: depois de <see cref="_sondaDeVida"/> sem nenhum sinal da catraca, este passo
-    /// testa a conexão no lugar da espera por evento. Nulo quando ainda não é hora.
+    /// Keep-alive do polling (manual de desenvolvimento, passos 11 e 12): a cada
+    /// <see cref="_intervaloDoPingOnLine"/> manda PingOnLine à catraca. Sem resposta, tenta de novo no
+    /// passo seguinte; depois de <see cref="LimiteDeFalhasDePingOnLine"/> falhas seguidas, reconecta.
+    /// Quando não é hora, ou a catraca respondeu, devolve nulo e o passo segue para a leitura.
     /// </summary>
-    private string? SondarVida(DeviceSlot d, DateTimeOffset agora)
+    /// <remarks>
+    /// Antes este teste era o <c>Ping</c> (teste de conexão) a cada 10 s. O manual recomenda o PingOnLine
+    /// justamente para a conexão TCP e para manter a catraca on-line (sem ele, a mudança automática
+    /// manda a catraca para off-line). Uma chamada nativa por passo, como sempre.
+    /// </remarks>
+    private string? ManterOnline(DeviceSlot d, DateTimeOffset agora)
     {
-        d.UltimaProvaDeVida ??= agora;
-        if (agora - d.UltimaProvaDeVida.Value < _sondaDeVida)
+        if (d.UltimoPingOnLine is { } ultimo && agora - ultimo < _intervaloDoPingOnLine)
         {
             return null;
         }
 
-        var resultado = _adapter.TestarConexao(d.Inner);
+        d.UltimoPingOnLine = agora;
+        var resultado = _adapter.Ping(d.Inner);
         if (resultado.IsOk)
         {
+            d.FalhasDePingOnLine = 0;
             d.UltimaProvaDeVida = agora;
-            return "sem eventos";
+            return null;
         }
 
         if (resultado.Status is AdapterStatus.FalhaDeDependencia)
         {
             Disparar(d, DeviceTrigger.DependenciaFatal, agora);
-            return $"falha de dependência na sonda de vida ({resultado}) — worker inutilizável";
+            return $"falha de dependência no PingOnLine ({resultado}) — worker inutilizável";
         }
 
+        d.FalhasDePingOnLine++;
+        if (d.FalhasDePingOnLine < LimiteDeFalhasDePingOnLine)
+        {
+            return null;
+        }
+
+        var falhas = d.FalhasDePingOnLine;
+        d.FalhasDePingOnLine = 0;
         Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
-        return $"catraca não respondeu à sonda de vida depois de {Segundos(agora - d.UltimaProvaDeVida.Value)} s sem evento ({resultado}) — reconectando";
+        return $"catraca não respondeu a {falhas} PingOnLine seguidos ({resultado}) — reconectando";
     }
 
     /// <summary>

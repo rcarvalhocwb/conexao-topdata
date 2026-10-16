@@ -38,7 +38,7 @@ public sealed class MontadorDaConfiguracaoTests
         OperacaoDoLeitor2 = leitorDaUrna ? (byte)1 : (byte)0,
         FuncaoDoAcionamento1 = 2,
         TempoDoAcionamento1 = 5,
-        FuncaoDoAcionamento2 = leitorDaUrna ? MontadorDaConfiguracao.ReleDaUrnaNaEntrada : (byte)0,
+        FuncaoDoAcionamento2 = leitorDaUrna ? MontadorDaConfiguracao.FuncaoPadraoDoReleDaUrna : (byte)0,
         TempoDoAcionamento2 = leitorDaUrna ? MontadorDaConfiguracao.TempoPadraoDaUrna : (byte)0,
         Online = true,
         TecladoHabilitado = false,

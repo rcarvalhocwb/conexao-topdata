@@ -19,7 +19,8 @@ namespace HardwareInLoop.Tests;
 /// </para>
 /// <para>
 /// O que fica fora, sem linha na matriz FUN: mensagens off-line e <c>EnviarMensagensOffLine</c>,
-/// entradas e mensagens da mudança, e o <c>PingOnLine</c> periódico (T24). A chave não liga a
+/// entradas e mensagens da mudança, e a contingência que depende do <c>PingOnLine</c> (T24). O ping de
+/// 3 s que mantém a conexão on-line já roda no <c>DevicePump</c>, fora desta chave. A chave não liga a
 /// contingência: a mudança automática vai com o valor da configuração, 0 no padrão (D8).
 /// </para>
 /// </remarks>
