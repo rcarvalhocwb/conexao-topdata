@@ -63,17 +63,16 @@ leitura na fenda (origem 3) ─ aprovada ─▶ "Deposite o cartao" ─▶ Acion
                      origem 20 (cheia)   ─▶ "Urna cheia. Procure a equipe" ──────┤ uso devolvido
                      prazo de 7 s        ─▶ como a origem 5 ────────────────────┘ uso devolvido
 
-DesabilitarRele2 (fecha a urna) antes de liberar ou negar, e de novo antes de rearmar o leitor.
+Sem `DesabilitarRele2` (decisão D5: o manual proíbe o comando nas catracas). A guia fecha sozinha pelo tempo do relé 2.
 ```
 
 - **Relé 2 ligado por padrão quando a urna está ligada:** função **3** e **15 s**, os valores do
-  middleware que operou em 2025 numa TopFit4 com a urna na entrada (§7). Atenção: o manual lista a
-  função 3 como "aciona ao registrar saída", o que não bate com urna na entrada. O código mantém o
-  valor de produção; a confirmação é o teste U1 (§5) e a pergunta à Topdata. Urna desligada nas
+  middleware que operou em 2025 numa TopFit4 com a urna na entrada (§7). O manual lista a função 3
+  como "aciona ao registrar saída"; o dono confirmou que a função 3 é a da urna (U1). Urna desligada nas
   configurações → relé 2 desligado junto (sem leitor da fenda a urna nunca abriria).
-- **Fechar a urna:** `DesabilitarRele2` antes de liberar o giro ou negar, e de novo ao rearmar o leitor
-  (como o middleware; sem isso a urna fica aberta e o próximo cartão não é lido). Falha nesse comando é
-  registrada e o fluxo segue.
+- **Fechar a urna:** o produto não chama mais `DesabilitarRele2` (o manual proíbe nas catracas; decisão
+  D5, seguindo o manual à risca). A guia fecha pelo tempo do relé 2 (15 s). Risco a medir na bancada (U8):
+  se o próximo cartão só for lido depois desse tempo, a fila sente o atraso.
 - **Espera pelo depósito: 7 s** (`DeviceStateMachine.EsperaPeloDeposito`), o prazo do middleware.
 - **Estados novos** na máquina: `AcionarUrna` e `MonitoraUrna`, com os nomes do manual. O giro só sai
   com a origem 7. Uma leitura nova com a urna aberta fica registrada e não é decidida.
@@ -131,13 +130,13 @@ por cima. Quem precisar fixar a forma à mão ainda tem a chave `catraca.enviar_
 | # | Pergunta | Como ver | Se falhar |
 |---|---|---|---|
 | U0 | **Antes de tudo:** a pasta do programa das catracas tem **EasyInner.dll e Inner.dll**? Sem a Inner.dll a porta não abre (retorno 11) e o painel diz "falta a Inner.dll". Copiar pelo Assistente (Localizar EasyInner.dll, pasta "Porta Fixa" do SDK) | Painel: a catraca aparece ao conectar; registro: "porta aberta" | Se o painel mostrar a causa, copiar a DLL que ela nomear |
-| U1 | Com o relé 2 em **(3, 15 s)**, `AcionarRele2` abre a guia e o cartão cai? | Cartão do evento na fenda: o display pede o depósito, ouve-se o solenoide, o cartão cai, o braço libera | Trocar `catraca.funcao_do_rele_da_urna` para **2** e depois **1**; anotar qual abre |
+| U1 | Decidido pelo dono: a função 3 é a da urna. Na bancada, com o relé 2 em **(3, 15 s)**, `AcionarRele2` abre a guia e o cartão cai? | Cartão do evento na fenda: o display pede o depósito, ouve-se o solenoide, o cartão cai, o braço libera | Trocar `catraca.funcao_do_rele_da_urna` para **2** e depois **1**; anotar qual abre |
 | U2 | A origem 7 chega depois que o cartão cai? | Registro do worker: "cartão recolhido pela urna (origem 7) — liberando o giro" | Se não chegar, o prazo nega e devolve; conferir o jumper ST3 e o cabo do sensor 3 (artigo do suporte, §1) |
 | U3 | Sem depositar (puxar o cartão de volta): vem a origem 5 e nada libera? | Display "Cartao nao caiu…", painel com a tentativa estornada | — |
 | U4 | Crachá na fenda é recusado sem abrir a urna? | "Use o leitor da frente" | — |
 | U5 | Frente "Só a equipe": cartão do evento na tampa nega; crachá passa | Painel ao vivo | — |
 | U6 | Teclado desligado: a catraca não aceita digitação | Teclas sem eco nem leitura no registro | Se aceitar, o software ainda nega com "Leitor desligado"; anotar |
-| U8 | Depois de um ciclo de urna, o cartão seguinte é lido? | Segunda pessoa na fenda logo depois | Se não ler, o `DesabilitarRele2` não fechou: anotar o registro "urna fechada" |
+| U8 | Depois de um ciclo de urna, o cartão seguinte é lido? | Segunda pessoa na fenda logo depois | Se não ler logo depois do giro, a guia ainda não fechou: medir o tempo até a próxima leitura (sem `DesabilitarRele2`, só o tempo do relé 2 fecha) |
 | U7 | A catraca libera sozinha depois que o cartão cai, além do nosso `LiberarCatraca`? | Dois giros possíveis com um cartão? | Se o firmware já liberar, o nosso comando é redundante e inofensivo; anotar para a Topdata |
 
 ## 6. Limites conhecidos
@@ -159,7 +158,7 @@ as três dúvidas que a documentação deixava abertas, e o produto passou a faz
 | Ponto | Antes desta versão | Middleware de 2025 = agora |
 |---|---|---|
 | Relé 2 (função, tempo) | (2, 5 s), pelo Web Server | **(3, 15 s)** |
-| Fechar a urna | não fechava | `DesabilitarRele2` antes de liberar/negar e depois do giro |
+| Fechar a urna | não fechava | pelo tempo do relé 2 (sem `DesabilitarRele2`, decisão D5) |
 | Espera pelo cartão | tempo do relé 2 + 3 s | **7 s** |
 | Forma de entrada on-line | 7 (teclado + leitores) | **6** (leitores, sem teclado) quando o teclado está desligado |
 | Sequência | aciona → espera 7 → libera | igual: `AcionarRele2` → "DEPOSITE O CARTAO" → origem 7 → libera |

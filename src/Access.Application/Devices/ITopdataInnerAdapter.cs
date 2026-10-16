@@ -301,9 +301,6 @@ public interface ITopdataInnerAdapter : IDisposable
     /// </remarks>
     AdapterResult AcionarReleDaUrna(int inner);
 
-    /// <summary>Fecha a guia da urna (<c>DesabilitarRele2</c>): depois do cartão cair, da desistência e do giro (docs/61).</summary>
-    AdapterResult FecharReleDaUrna(int inner);
-
     /// <summary>
     /// Coleta um bilhete, que é <b>removido da memória do equipamento</b>.
     /// </summary>

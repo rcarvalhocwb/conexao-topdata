@@ -170,8 +170,6 @@ internal sealed class CosturaFalsa : IEasyInnerNative
 
     public byte AcionarRele2(int inner) => Registrar(nameof(AcionarRele2), inner);
 
-    public byte DesabilitarRele2(int inner) => Registrar(nameof(DesabilitarRele2), inner);
-
     public byte AcionarBipCurto(int inner) => Registrar(nameof(AcionarBipCurto), inner);
 
     public byte AcionarBipLongo(int inner) => Registrar(nameof(AcionarBipLongo), inner);

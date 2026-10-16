@@ -21,10 +21,9 @@ namespace Access.Application.Devices;
 /// que no SDK pode ser o <b>5</b> — o ensaio decide (NOVO-HIL-QR-02, T25). <c>A_CONFIRMAR</c>.</item>
 /// <item><b>Relé 2 (urna) = 3, 15 s</b> — o exemplo oficial em C# do SDK 6.0.2.0 (catraca com urna) e o
 /// middleware que operou em produção em 2025 na Catraca 4 com a urna na entrada. O manual descreve o 3
-/// como "aciona ao registrar saída", o que conflita com a urna na entrada: a Topdata confirma (docs/61, U1).
-/// Com ele, a leitura
-/// aprovada na fenda abre a urna e o giro só sai depois da origem 7; o laço fecha a guia
-/// (<c>DesabilitarRele2</c>) depois (docs/61). Até 15/10/2026 ficava desligado e a catraca liberava o giro
+/// como "aciona ao registrar saída"; o dono confirmou que a função 3 é a da urna (docs/61, U1).
+/// Com ele, a leitura aprovada na fenda abre a urna e o giro só sai depois da origem 7. A guia fecha
+/// sozinha pelo tempo configurado, sem <c>DesabilitarRele2</c>, como manda o manual (docs/61). Até 15/10/2026 ficava desligado e a catraca liberava o giro
 /// com o cartão na mão da pessoa. A chave técnica <c>catraca.funcao_do_rele_da_urna</c> troca sem versão
 /// nova, e 0 volta ao comportamento antigo.</item>
 /// <item>Mudança automática on-line/off-line <b>desligada</b>: a catraca só funciona com o
@@ -250,7 +249,7 @@ public static class MontadorDaConfiguracao
     /// <c>ConfigurarAcionamento2</c>: 3 = "aciona ao registrar uma saída / catraca saída" (manual de
     /// desenvolvimento). É o valor do exemplo oficial em C# do SDK 6.0.2.0 para a catraca com urna e o que o
     /// middleware de produção de 2025 usou na Catraca 4 com a urna na <b>entrada</b>. A descrição do manual e
-    /// o uso de produção não batem; o valor fica como estava até a confirmação na bancada (docs/61, U1).
+    /// o uso de produção não batem; o dono confirmou que 3 é a função da urna (docs/61, U1).
     /// </summary>
     public const byte FuncaoPadraoDoReleDaUrna = 3;
 

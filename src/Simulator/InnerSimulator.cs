@@ -334,19 +334,6 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
         });
     }
 
-    /// <summary>Fecha a guia da urna; desconectado, falha como a DLL falharia.</summary>
-    public AdapterResult FecharReleDaUrna(int inner) =>
-        ComDispositivo(inner, d =>
-        {
-            if (d.Desconectado)
-            {
-                return 1;
-            }
-
-            d.RegistrarFechamentoDaUrna();
-            return 0;
-        });
-
     public (AdapterResult Resultado, Bilhete? Bilhete) ColetarBilhete(int inner)
     {
         var dispositivo = Dispositivo(inner);

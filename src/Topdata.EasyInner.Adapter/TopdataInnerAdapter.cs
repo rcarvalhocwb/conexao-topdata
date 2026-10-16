@@ -377,9 +377,6 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     public AdapterResult AcionarReleDaUrna(int inner) =>
         Medir(nameof(IEasyInnerNative.AcionarRele2), () => _nativo.AcionarRele2(inner));
 
-    public AdapterResult FecharReleDaUrna(int inner) =>
-        Medir(nameof(IEasyInnerNative.DesabilitarRele2), () => _nativo.DesabilitarRele2(inner));
-
     public (AdapterResult Resultado, Bilhete? Bilhete) ColetarBilhete(int inner)
     {
         byte tipo = 0, dia = 0, mes = 0, ano = 0, hora = 0, minuto = 0;

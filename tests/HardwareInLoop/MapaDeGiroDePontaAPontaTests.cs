@@ -76,17 +76,14 @@ public sealed class MapaDeGiroDePontaAPontaTests
         }
 
         Ate(laco, catraca, DeviceState.LiberarCatraca);
-        if (origem is KnownEventOrigin.Leitor2)
-        {
-            // Com o cartão na urna, o primeiro passo em LiberarCatraca fecha a guia (DesabilitarRele2).
-            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
-            Assert.Equal(["DesabilitarRele2"], costura.Chamadas.TakeLast(1));
-        }
-
         costura.Chamadas.Clear();
 
         laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
         Assert.Equal(DeviceState.MonitoraGiroCatraca, catraca.Maquina.Current);
+
+        // Manual de desenvolvimento: DesabilitarRele2 não deve ser usado nas catracas. A guia fecha
+        // sozinha pelo tempo configurado do relé 2 (docs/61).
+        Assert.DoesNotContain("DesabilitarRele2", costura.Chamadas);
         return [.. costura.Chamadas];
     }
 
@@ -162,7 +159,6 @@ public sealed class MapaDeGiroDePontaAPontaTests
         Ate(laco, catraca, DeviceState.MonitoraUrna);
         costura.OrigemADevolver = (byte)KnownEventOrigin.CartaoRecolhidoUrna;
         Ate(laco, catraca, DeviceState.LiberarCatraca);
-        laco.Passo(catraca, TimeSpan.FromMilliseconds(10)); // fecha a guia da urna
         costura.Chamadas.Clear();
         costura.ChamadasComArgumentos.Clear();
 
