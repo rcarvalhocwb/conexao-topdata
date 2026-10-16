@@ -101,4 +101,5 @@ Ver `docs/64-manual-catracas4-rev17.md`. Decisões confirmadas pelo dono:
 Ver `docs/65-engenharia-reversa-middleware-antigo.md`. Ela traz a ordem exata de configuração (§1), o
 catálogo de mensagens do display (§3) e a tabela de diferenças com a situação de cada uma (§4). Três
 itens novos pedem bancada ou decisão antes de qualquer mudança: o tipo de leitor (2 no antigo, 8 no nosso),
-o número da função do relé 1 (1 no antigo, 2 no nosso) e o rearme depois de sinal em `Polling`.
+e o número da função do relé 1 (1 no antigo, 2 no nosso). O rearme depois de sinal em `Polling` não é
+lacuna: a decisão F4 o mantém de fora, coberta por teste (ver `docs/65`, item 14).
