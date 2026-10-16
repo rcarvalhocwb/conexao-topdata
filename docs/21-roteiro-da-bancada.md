@@ -467,8 +467,9 @@ nem a vazão (cada chamada a mais no caminho da passagem custa tempo, docs/34 §
 O roteiro completo está no [docs/61 §5](61-urna-leitores-e-teclado.md) (U1 a U7). O essencial: em
 Configurações › Padrão das catracas, leitor da frente = **Só a equipe**, urna **ligada**, teclado
 **Desligado**, **Aplicar agora nas catracas**. Cartão do evento na fenda: o display pede o depósito, a
-guia abre, o cartão cai e só então o braço libera. Se a guia não abrir, troque a chave técnica
-`catraca.funcao_do_rele_da_urna` para 1 e depois 3 e anote qual abre.
+guia abre, o cartão cai e só então o braço libera. O relé 2 vai como (3, 15 s), o ajuste do middleware
+que operou em 2025. Se a guia não abrir, troque a chave técnica `catraca.funcao_do_rele_da_urna` para 2
+e depois 1 e anote qual abre. Teclado desligado: a catraca nem aceita a digitação (forma de entrada 6).
 
 ## 6J. Prazo do giro (`NOVO-HIL-GIRO-04`, Etapa I.1b)
 

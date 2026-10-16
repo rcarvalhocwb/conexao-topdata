@@ -19,10 +19,15 @@
 | SDK EasyInner 6.0.2.0, exemplo oficial em **C#** (`FrmOnlineController.cs`) | Catraca com urna: `ConfigurarAcionamento2(ACIONA_REGISTRO_SAIDA, 5)` (urna na saída), leitor 2 só saída; mesmos estados `ENVIAR_MSG_URNA` → `MONITORA_URNA` → `LIBERAR_CATRACA` | FONTE_PRIMARIA |
 | SDK 6.0.2.0, `Enumeradores.cs` dos exemplos | `EnviarFormasEntradasOnLine` (formas de entrada on-line): 0 nenhuma · 1 teclado · 2 leitor 1 · 3 leitor 2 · 4 teclado+L1 · 5 teclado+L2 · 6 L1+L2 · **7 teclado+L1+L2** · 10–14 e 100–105 com biometria | FONTE_PRIMARIA (fecha a T26) |
 | Manual do Web Server da Catraca 4, §7.1.3 e §7.1.6 "Possui urna" | Leitores 1 e 2 configuráveis como Desabilitado/Entrada/Saída; "Acionamento 2 é utilizado quando a catraca utilizar urna"; com urna, "o acesso somente será liberado se ocorrer o recolhimento do cartão, que é realizado através da configuração do Acionamento 2"; teclado tem opção "Habilitado" | FONTE_PRIMARIA |
+| **Manual de Desenvolvimento EasyInner** (178 páginas, dentro do SDK em `vendor/topdata`) | `ConfigurarAcionamento1/2`: 0 não utilizado · 1 entrada/saída · 2 entrada (catraca entrada) · 3 saída (catraca saída) · 4 sirene · 5 revista · 6–9 catraca liberada. `AcionarRele2`: "Este comando **não deve ser utilizado nas catracas**". `DesabilitarRele2` existe. `HabilitarTeclado` só vale no off-line | FONTE_PRIMARIA (contradiz o exemplo Java, ver §7) |
+| **Diagrama oficial "Catraca Com Urna"** (no SDK) | Validar Acesso → Valida Urna Cheia → Envia Msg Urna → Monitora Urna (origem 7) → Liberar Catraca → Monitora Giro | FONTE_PRIMARIA |
+| **Middleware que operou em 2025** (`Middleware_topdata_supabase`, TopFit4, urna na **entrada**) | Leitor 1 e 2 = 1; Acionamento 1 = (1, 15); **Acionamento 2 = (3, 15)**; forma de entrada on-line **6** (sem teclado); `AcionarRele2` → "DEPOSITE O CARTAO" → espera a origem 7 por **7 s** → `DesabilitarRele2` + `LiberarCatracaEntrada`; depois do giro, `DesabilitarRele2` de novo e rearme. Checklist da equipe: "se o Relé2 ficar acionado, a urna fica aberta e o próximo cartão não é lido" | EVIDENCIA_DE_CAMPO (funcionou num evento real) |
 | Suporte Topdata, "catraca Revolution com urna… mecanismo não volta" | Após a leitura liberada, o **solenoide da guia** abre; o cartão cai, passa pelo **sensor 3** (óptico) e a placa fecha a guia | FONTE_PRIMARIA |
 
-Os arquivos do SDK foram lidos fora do repositório (extração local do instalador, sem executar nada).
-Nada da Topdata entra no código ou no instalador público.
+O **Manual de Integração** que está em `vendor/topdata` é o mesmo documento do portal do integrador
+(mesmo conteúdo, conferido seção por seção). Os arquivos do SDK foram lidos sem executar nada. Decisão
+do dono do produto (16/10/2026): os arquivos da Topdata ficam em `vendor/topdata` e o SDK vai direto no
+instalador (próxima etapa; hoje o CI ainda recusa a DLL no instalador público, docs/60).
 
 ## 2. Diagnóstico
 
@@ -56,12 +61,18 @@ leitura na fenda (origem 3) ─ aprovada ─▶ "Deposite o cartao" ─▶ Acion
                      origem 7 (caiu) ─▶ LiberarCatraca ─▶ origem 6 (passou) ─────┤
                      origem 5 (não caiu) ─▶ "Cartao nao caiu. Tente de novo" ────┤ uso devolvido
                      origem 20 (cheia)   ─▶ "Urna cheia. Procure a equipe" ──────┤ uso devolvido
-                     prazo (relé 2 + 3 s) ─▶ como a origem 5 ────────────────────┘ uso devolvido
+                     prazo de 7 s        ─▶ como a origem 5 ────────────────────┘ uso devolvido
+
+DesabilitarRele2 (fecha a urna) antes de liberar ou negar, e de novo antes de rearmar o leitor.
 ```
 
-- **Relé 2 ligado por padrão quando a urna está ligada:** função **2** ("aciona ao registrar entrada",
-  o "Libera para entrada" do Web Server — a urna está na entrada) e **5 s** (padrão do Web Server).
-  Urna desligada nas configurações → relé 2 desligado junto (sem leitor da fenda a urna nunca abriria).
+- **Relé 2 ligado por padrão quando a urna está ligada:** função **3** e **15 s**, os valores do
+  middleware que operou em 2025 numa TopFit4 com a urna na entrada (§7). Urna desligada nas
+  configurações → relé 2 desligado junto (sem leitor da fenda a urna nunca abriria).
+- **Fechar a urna:** `DesabilitarRele2` antes de liberar o giro ou negar, e de novo ao rearmar o leitor
+  (como o middleware; sem isso a urna fica aberta e o próximo cartão não é lido). Falha nesse comando é
+  registrada e o fluxo segue.
+- **Espera pelo depósito: 7 s** (`DeviceStateMachine.EsperaPeloDeposito`), o prazo do middleware.
 - **Estados novos** na máquina: `AcionarUrna` e `MonitoraUrna`, com os nomes do manual. O giro só sai
   com a origem 7. Uma leitura nova com a urna aberta fica registrada e não é decidida.
 - **Desistência devolve o uso:** a catraca não liberou o braço, ninguém passou, o cartão continua com a
@@ -93,13 +104,14 @@ com "Use a urna".
 desligado"): leitor da frente = **Só a equipe**, urna = **Ligada**, teclado = **Desligado**. Depois
 **Aplicar agora nas catracas**.
 
-### 3.3 Teclado no nível da catraca (o que ainda é bancada)
+### 3.3 Teclado e leitores no nível da catraca
 
-A negação do teclado é garantida pelo software. Para a catraca **não aceitar nem a digitação**, o rearme
-on-line precisa mandar a forma **6** (leitor 1 + leitor 2) em vez da **7**. A tabela agora é fonte
-primária (§1), mas a troca mexe no rearme de todo ciclo e fica atrás da chave que já existe:
-`catraca.enviar_formas_de_entrada` = 1 e, em Configuração da catraca › Parametrização (modo técnico),
-"Rearme do leitor" com a forma 6. Ensaio INT-SM-032 no docs/21.
+O rearme on-line (`EnviarFormasEntradasOnLine`) agora manda a forma **calculada pelas entradas
+ligadas** (tabela oficial, §1): leitor 1, leitor 2 e teclado. Padrão (frente ligada, urna ligada,
+teclado desligado) = forma **6**, a mesma do middleware de 2025: a catraca **nem aceita a digitação**.
+Teclado "Só a equipe" → 7; frente desligada → 3 (só a urna). A negação pelo software continua valendo
+por cima. Quem precisar fixar a forma à mão ainda tem a chave `catraca.enviar_formas_de_entrada` = 1 e
+"Rearme do leitor" na Parametrização (modo técnico).
 
 ## 4. Testes
 
@@ -116,12 +128,13 @@ primária (§1), mas a troca mexe no rearme de todo ciclo e fica atrás da chave
 
 | # | Pergunta | Como ver | Se falhar |
 |---|---|---|---|
-| U1 | Com o relé 2 em **2**, `AcionarRele2` abre a guia e o cartão cai? | Cartão do evento na fenda: o display pede o depósito, ouve-se o solenoide, o cartão cai, o braço libera | Trocar `catraca.funcao_do_rele_da_urna` para **1** e depois **3** (o exemplo C# usa 3 com a urna na saída); anotar qual abre |
+| U1 | Com o relé 2 em **(3, 15 s)**, `AcionarRele2` abre a guia e o cartão cai? | Cartão do evento na fenda: o display pede o depósito, ouve-se o solenoide, o cartão cai, o braço libera | Trocar `catraca.funcao_do_rele_da_urna` para **2** e depois **1**; anotar qual abre |
 | U2 | A origem 7 chega depois que o cartão cai? | Registro do worker: "cartão recolhido pela urna (origem 7) — liberando o giro" | Se não chegar, o prazo nega e devolve; conferir o jumper ST3 e o cabo do sensor 3 (artigo do suporte, §1) |
 | U3 | Sem depositar (puxar o cartão de volta): vem a origem 5 e nada libera? | Display "Cartao nao caiu…", painel com a tentativa estornada | — |
 | U4 | Crachá na fenda é recusado sem abrir a urna? | "Use o leitor da frente" | — |
 | U5 | Frente "Só a equipe": cartão do evento na tampa nega; crachá passa | Painel ao vivo | — |
-| U6 | Teclado desligado: digitar e confirmar nega | "Leitor desligado" | Ligar a forma 6 (§3.3) e repetir |
+| U6 | Teclado desligado: a catraca não aceita digitação | Teclas sem eco nem leitura no registro | Se aceitar, o software ainda nega com "Leitor desligado"; anotar |
+| U8 | Depois de um ciclo de urna, o cartão seguinte é lido? | Segunda pessoa na fenda logo depois | Se não ler, o `DesabilitarRele2` não fechou: anotar o registro "urna fechada" |
 | U7 | A catraca libera sozinha depois que o cartão cai, além do nosso `LiberarCatraca`? | Dois giros possíveis com um cartão? | Se o firmware já liberar, o nosso comando é redundante e inofensivo; anotar para a Topdata |
 
 ## 6. Limites conhecidos
@@ -130,5 +143,25 @@ primária (§1), mas a troca mexe no rearme de todo ciclo e fica atrás da chave
   (janela de segundos), lá ele fica. A tentativa local diz "estornado" com a causa.
 - **Cartão caiu e o aviso se perdeu** (queda de rede no instante): o uso é devolvido e o cartão está na
   urna. A conferência da urna (docs/04 §6) mostra a diferença.
+- **`AcionarRele2` em catraca:** o Manual de Desenvolvimento diz para não usar; o exemplo Java e o
+  middleware de 2025 usaram e funcionou. Seguimos a evidência de campo; U1 confirma.
 - **Origem 20 fora da urna aberta** (catraca em repouso) é registrada como sinal e marca "urna cheia" no
   slot; o alerta no painel é o próximo passo.
+
+## 7. O que veio do middleware que operou em 2025
+
+O dono do produto enviou o middleware antigo ("o que estava funcionando no ano passado"). Ele resolve
+as três dúvidas que a documentação deixava abertas, e o produto passou a fazer igual:
+
+| Ponto | Antes desta versão | Middleware de 2025 = agora |
+|---|---|---|
+| Relé 2 (função, tempo) | (2, 5 s), pelo Web Server | **(3, 15 s)** |
+| Fechar a urna | não fechava | `DesabilitarRele2` antes de liberar/negar e depois do giro |
+| Espera pelo cartão | tempo do relé 2 + 3 s | **7 s** |
+| Forma de entrada on-line | 7 (teclado + leitores) | **6** (leitores, sem teclado) quando o teclado está desligado |
+| Sequência | aciona → espera 7 → libera | igual: `AcionarRele2` → "DEPOSITE O CARTAO" → origem 7 → libera |
+
+Uma lição do código antigo: a origem 7 pode chegar logo depois do `AcionarRele2`; o laço já aceita a
+origem 7 em qualquer momento da espera. Nada de configuração, chave ou dado do middleware (inclusive a
+chave do Supabase) foi copiado para o produto.
+

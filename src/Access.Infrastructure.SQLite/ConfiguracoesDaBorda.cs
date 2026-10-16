@@ -146,6 +146,7 @@ public sealed record ConfiguracaoDaOperacao(
         FuncaoDoReleDaUrna = FuncaoDoReleDaUrna,
         TempoDaUrna = TempoDaUrna,
         LeitorDaFrente = UsoDaFrente != UsoDasEntradas.Desligada,
+        TecladoHabilitado = UsoDoTeclado == UsoDasEntradas.SoEquipe,
         EnviarDataHoraNoEventoOnLine = EnviarDataHoraNoEvento,
         RegistrarAcessoNegado = RegistrarAcessoNegado,
         EnviarTipoDeLista = EnviarTipoDeLista,

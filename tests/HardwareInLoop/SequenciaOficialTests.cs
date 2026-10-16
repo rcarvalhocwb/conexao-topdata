@@ -46,7 +46,7 @@ public sealed class SequenciaOficialTests
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5),
-        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)2, (byte)5),
+        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15),
         Chamada(nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0),
     ];
 
@@ -81,7 +81,7 @@ public sealed class SequenciaOficialTests
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5),
-        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)2, (byte)5),
+        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15),
         Chamada(nameof(IEasyInnerNative.ConfigurarInnerOnLine)),
         Chamada(nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0),
         Chamada(nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine), (byte)0, (byte)10),
@@ -98,7 +98,7 @@ public sealed class SequenciaOficialTests
     /// <summary>8 entradas on-line (o rearme de sempre) e 9 mensagem padrão.</summary>
     private static readonly object[][] RearmarEMensagem =
     [
-        Chamada(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), Inner, (byte)0, (byte)0, (byte)7, (byte)0, (byte)0),
+        Chamada(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), Inner, (byte)0, (byte)0, (byte)6, (byte)0, (byte)0),
         Chamada(nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine), Inner, (byte)0, "Aproxime o ingresso"),
     ];
 
@@ -222,7 +222,7 @@ public sealed class SequenciaOficialTests
             Chamada(nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1),
             Chamada(nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1),
             Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5),
-            Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)2, (byte)5),
+            Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15),
             Chamada(nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0),
             Chamada(nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores), (byte)0, (byte)0),
             Chamada(nameof(IEasyInnerNative.RegistrarAcessoNegado), (byte)1),

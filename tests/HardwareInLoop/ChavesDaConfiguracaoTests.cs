@@ -239,14 +239,16 @@ public sealed class ChavesDaConfiguracaoTests
     }
 
     /// <summary>
-    /// O rearme do leitor: sem configuração ou com a chave desligada, as constantes de sempre;
+    /// O rearme do leitor: sem configuração, as constantes de sempre; com a chave desligada, as
+    /// constantes com a forma de entrada das entradas ligadas (docs/61: só o leitor 1, sem teclado, é 2);
     /// com a chave, os valores do modelo.
     /// </summary>
     [Fact]
     public void Formas_de_entrada_so_saem_do_modelo_com_a_chave()
     {
         var outras = new FormasDeEntradaOnLine(4, 1, 10, 5, 2);
-        object[] deSempre = [Inner, (byte)0, (byte)0, (byte)7, (byte)0, (byte)0];
+        object[] semConfiguracao = [Inner, (byte)0, (byte)0, (byte)7, (byte)0, (byte)0];
+        object[] deSempre = [Inner, (byte)0, (byte)0, (byte)2, (byte)0, (byte)0];
 
         object[] Rearmar(DeviceConfiguration? configuracao)
         {
@@ -256,7 +258,7 @@ public sealed class ChavesDaConfiguracaoTests
             return Assert.Single(costura.ChamadasComArgumentos).Argumentos;
         }
 
-        Assert.Equal(deSempre, Rearmar(null));
+        Assert.Equal(semConfiguracao, Rearmar(null));
         Assert.Equal(deSempre, Rearmar(Configuracao() with { FormasDeEntradaOnLine = outras }));
         Assert.Equal(
             [Inner, (byte)4, (byte)1, (byte)10, (byte)5, (byte)2],

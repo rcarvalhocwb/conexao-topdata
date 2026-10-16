@@ -19,13 +19,12 @@ namespace Access.Application.Devices;
 /// <item>Acionamento 1 = <b>2, "registro entrada"</b>, 5 s — matriz de funções, SDK 6.0.2.0.</item>
 /// <item>Tipo de leitor <b>8</b> por padrão (QR por letras). A Topdata fala em "serial barcode",
 /// que no SDK pode ser o <b>5</b> — o ensaio decide (NOVO-HIL-QR-02, T25). <c>A_CONFIRMAR</c>.</item>
-/// <item><b>Relé 2 (urna) = 2, "aciona ao registrar entrada", 5 s</b> — manual do SDK, seção 5.3
-/// ("Configuração da Urna via SDK": o relé 2 com uma função que acione a urna e o tempo de abertura)
-/// e Web Server da Catraca 4 (urna na entrada = "Libera para entrada", 5 s). Com ele, a leitura
-/// aprovada na fenda abre a urna e o giro só sai depois da origem 7 (docs/61). Até 15/10/2026 ficava
-/// desligado e a catraca liberava o giro com o cartão na mão da pessoa. A função exata confere-se na
-/// bancada (HIL-URNA-01); a chave técnica <c>catraca.funcao_do_rele_da_urna</c> troca sem versão nova,
-/// e 0 volta ao comportamento antigo.</item>
+/// <item><b>Relé 2 (urna) = 3, 15 s</b> — o exemplo oficial em C# do SDK 6.0.2.0 (catraca com urna) e o
+/// middleware que operou em produção em 2025 na Catraca 4 com a urna na entrada. Com ele, a leitura
+/// aprovada na fenda abre a urna e o giro só sai depois da origem 7; o laço fecha a guia
+/// (<c>DesabilitarRele2</c>) depois (docs/61). Até 15/10/2026 ficava desligado e a catraca liberava o giro
+/// com o cartão na mão da pessoa. A chave técnica <c>catraca.funcao_do_rele_da_urna</c> troca sem versão
+/// nova, e 0 volta ao comportamento antigo.</item>
 /// <item>Mudança automática on-line/off-line <b>desligada</b>: a catraca só funciona com o
 /// sistema rodando, para que tudo que acontece passe por ele (sequência oficial: Etapa A.7).</item>
 /// <item>Liberação por <c>LiberarCatracaEntrada</c>, como sempre foi. A catraca instalada à
@@ -123,6 +122,9 @@ public sealed record SobreposicoesDoEvento
     /// padrão de fábrica. <c>entrada.frente</c>.
     /// </summary>
     public bool? LeitorDaFrente { get; init; }
+
+    /// <summary>Teclado aceito (uso "só a equipe", docs/61). Nulo = o padrão de fábrica (desligado). <c>entrada.teclado</c>.</summary>
+    public bool? TecladoHabilitado { get; init; }
 
     // Etapa A.2: o docs/34 não põe nenhum campo novo nas mãos do operador (anexo 02: só tipo
     // de leitor, urna, tempo e mensagem "vêm do operador"). O evento só liga ou desliga, por
@@ -243,13 +245,14 @@ public static class MontadorDaConfiguracao
     public const byte LeitorSomenteEntrada = 1;
 
     /// <summary>
-    /// <c>ConfigurarAcionamento2</c>: 2 = "aciona ao registrar entrada" (manual do SDK, 4.1.5) — a urna
-    /// na entrada, como o "Libera para entrada" do Web Server da Catraca 4.
+    /// <c>ConfigurarAcionamento2</c>: 3 = "aciona ao registrar uma saída / catraca saída" (manual de
+    /// desenvolvimento). É o valor do exemplo oficial em C# do SDK 6.0.2.0 para a catraca com urna e o que o
+    /// middleware de produção de 2025 usou na Catraca 4 com a urna na <b>entrada</b> (docs/61).
     /// </summary>
-    public const byte ReleDaUrnaNaEntrada = 2;
+    public const byte ReleDaUrnaNaEntrada = 3;
 
-    /// <summary>Tempo padrão do relé 2: o do Web Server da Catraca 4 (5 s).</summary>
-    public const byte TempoPadraoDaUrna = 5;
+    /// <summary>Tempo do relé 2 do middleware de produção de 2025 (subiu de 5 para 15 s); a guia fecha antes, pelo laço.</summary>
+    public const byte TempoPadraoDaUrna = 15;
 
     /// <summary>
     /// Aplica as sobreposições do evento e da catraca ao padrão de fábrica, e o mapa de giro da
@@ -295,6 +298,7 @@ public static class MontadorDaConfiguracao
         {
             TipoDeLeitor = evento.TipoDeLeitor ?? padraoDeFabrica.TipoDeLeitor,
             OperacaoDoLeitor1 = evento.LeitorDaFrente is false ? LeitorDesabilitado : padraoDeFabrica.OperacaoDoLeitor1,
+            TecladoHabilitado = evento.TecladoHabilitado ?? padraoDeFabrica.TecladoHabilitado,
             OperacaoDoLeitor2 = evento.LeitorDaUrna switch
             {
                 true => LeitorSomenteEntrada,

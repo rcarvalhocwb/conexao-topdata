@@ -163,6 +163,15 @@ public sealed class DeviceSlot
     /// </summary>
     internal DeviceEvent? LeituraEmCurso { get; set; }
 
+    /// <summary>A guia da urna foi aberta e ainda não foi fechada: fecha antes de liberar ou negar.</summary>
+    internal bool UrnaPorFechar { get; set; }
+
+    /// <summary>
+    /// Este ciclo passou pela urna: fecha a guia de novo antes de rearmar o leitor, como o middleware de
+    /// produção fazia depois do giro (docs/61).
+    /// </summary>
+    internal bool CicloDeUrna { get; set; }
+
     /// <summary>"Deposite o cartao" já foi ao display nesta urna: o próximo passo abre a urna.</summary>
     internal bool PedidoDeDepositoExibido { get; set; }
 
@@ -481,6 +490,12 @@ public sealed class DevicePump
             }
         }
 
+        // A guia da urna se fecha num passo próprio (uma chamada), antes de liberar, negar ou rearmar.
+        if (FecharUrnaSePreciso(dispositivo, agora) is { } fechou)
+        {
+            return fechou;
+        }
+
         // A coleta é de vários passos, um bilhete por vez: o prazo do estado (10 min) corta
         // antes de pedir o próximo, nunca entre a coleta e a gravação (R-68, tratada acima).
         if (dispositivo.Maquina.Current is DeviceState.ColetarBilhetes
@@ -534,6 +549,8 @@ public sealed class DevicePump
             d.TentativasDeReconexao = 0;
             d.EsperarAte = null;
             d.UltimaProvaDeVida = agora;
+            d.UrnaPorFechar = false;
+            d.CicloDeUrna = false;
 
             // A cada conexão, o relógio é acertado assim que a catraca chegar a Polling —
             // o fluxo oficial acerta na passagem para on-line (manual 4.6.1).
@@ -958,6 +975,8 @@ public sealed class DevicePump
 
         if (resultado.IsOk)
         {
+            d.UrnaPorFechar = true;
+            d.CicloDeUrna = true;
             Disparar(d, DeviceTrigger.UrnaAcionada, agora);
             return "urna aberta — esperando o cartão cair (origem 7) para liberar o giro";
         }
@@ -999,6 +1018,35 @@ public sealed class DevicePump
                 Disparar(d, DeviceTrigger.SinalDaCatraca, agora);
                 return $"{evento.Origin} com a urna aberta — registrado, esperando o cartão cair";
         }
+    }
+
+    /// <summary>
+    /// Fecha a guia da urna (<c>DesabilitarRele2</c>) quando ela ficou aberta: antes de liberar o giro (cartão
+    /// caiu), antes da negação (não caiu, urna cheia, prazo) e de novo antes de rearmar o leitor depois do
+    /// giro. É o que o middleware de produção de 2025 fazia: com o relé 2 acionado, a urna fica aberta e o
+    /// próximo cartão não é lido. Falha ao fechar não prende a catraca: registra e segue.
+    /// </summary>
+    private string? FecharUrnaSePreciso(DeviceSlot d, DateTimeOffset agora)
+    {
+        var estado = d.Maquina.Current;
+        var antesDeLiberarOuNegar = d.UrnaPorFechar && estado is DeviceState.LiberarCatraca or DeviceState.EnviarMsgAcessoNegado;
+        var antesDeRearmar = d.CicloDeUrna && estado is DeviceState.ConfigurarEntradasOnline;
+        if (!antesDeLiberarOuNegar && !antesDeRearmar)
+        {
+            return null;
+        }
+
+        d.UrnaPorFechar = false;
+        if (antesDeRearmar)
+        {
+            d.CicloDeUrna = false;
+        }
+
+        var resultado = _adapter.FecharReleDaUrna(d.Inner);
+        _ = agora;
+        return resultado.IsOk
+            ? (antesDeRearmar ? "urna fechada antes de rearmar o leitor" : "urna fechada")
+            : $"falha ao fechar a urna ({resultado}) — segue";
     }
 
     /// <summary>A urna terminou sem o cartão cair: conta e avisa o decisor para devolver o uso.</summary>

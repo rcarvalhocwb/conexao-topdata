@@ -278,9 +278,9 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     {
         // Só com a chave catraca.enviar_formas_de_entrada os valores vêm do modelo (Etapa A.2);
         // desligada, são as constantes de sempre. O significado de cada FormaEntrada é T26.
-        var formas = configuracao is { EnviarFormasDeEntradaOnLine: true }
-            ? configuracao.FormasDeEntradaOnLine
-            : FormasDeEntradaDeSempre;
+        // Com a configuração, a forma de entrada sai das entradas ligadas (docs/61): sem teclado, o teclado não
+        // aceita digitação. Sem configuração (ferramentas), os valores de sempre.
+        var formas = configuracao?.FormasDeEntradaEfetivas ?? FormasDeEntradaDeSempre;
 
         return Medir(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), () =>
             // É este passo que rearma o leitor para a próxima leitura. Sem ele, a pista para de
@@ -376,6 +376,9 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
 
     public AdapterResult AcionarReleDaUrna(int inner) =>
         Medir(nameof(IEasyInnerNative.AcionarRele2), () => _nativo.AcionarRele2(inner));
+
+    public AdapterResult FecharReleDaUrna(int inner) =>
+        Medir(nameof(IEasyInnerNative.DesabilitarRele2), () => _nativo.DesabilitarRele2(inner));
 
     public (AdapterResult Resultado, Bilhete? Bilhete) ColetarBilhete(int inner)
     {

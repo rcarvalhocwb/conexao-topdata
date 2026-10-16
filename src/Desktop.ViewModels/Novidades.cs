@@ -37,9 +37,10 @@ public static class Novidades
     public static IReadOnlyList<string> Itens { get; } =
     [
         "Urna: o cartão do evento colocado na fenda agora cai na urna antes de liberar a passagem. O visor pede " +
-        "\"Deposite o cartao\"; se o cartão não cair, nada libera e o uso volta para o cartão (a pessoa tenta de novo).",
+        "\"Deposite o cartao\"; se o cartão não cair em 7 segundos, nada libera e o uso volta para o cartão (a pessoa tenta de novo). " +
+        "A urna usa os mesmos ajustes do sistema que operou no evento de 2025.",
         "Configurações › Padrão das catracas ganhou o uso de cada entrada: leitor da frente (equipe e ingressos, só a " +
-        "equipe ou desligado) e teclado (desligado ou só a equipe). Crachá da equipe colocado na urna é recusado para não ser recolhido.",
+        "equipe ou desligado) e teclado (desligado ou só a equipe). Teclado desligado: a catraca nem aceita digitação. Crachá da equipe colocado na urna é recusado para não ser recolhido.",
         "O visor da catraca explica a recusa: \"Use a urna\", \"Use o leitor da frente\", \"Leitor so para equipe\", " +
         "\"Urna cheia\" — em vez de só \"Acesso nao autorizado\".",
         "A Catraca Fit com firmware da linha 19 passa a ser aceita e configurada: antes ela conectava, mas ficava " +

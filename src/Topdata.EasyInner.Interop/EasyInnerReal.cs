@@ -140,6 +140,9 @@ public sealed class EasyInnerReal : IEasyInnerNative
 
     public byte AcionarRele2(int inner) => EasyInnerNative.AcionarRele2(inner);
 
+    // A declaração mora no arquivo gerado do SDK (EasyInnerGerada.cs), que não se edita à mão.
+    public byte DesabilitarRele2(int inner) => EasyInnerGerada.DesabilitarRele2(inner);
+
     public byte AcionarBipCurto(int inner) => EasyInnerNative.AcionarBipCurto(inner);
 
     public byte AcionarBipLongo(int inner) => EasyInnerNative.AcionarBipLongo(inner);

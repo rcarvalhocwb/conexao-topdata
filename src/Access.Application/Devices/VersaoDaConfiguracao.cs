@@ -97,6 +97,8 @@ public static class VersaoDaConfiguracao
     /// <summary>Propriedades que ficam fora da versão, e por quê.</summary>
     public static IReadOnlyDictionary<string, string> CamposForaDaVersao { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        [nameof(DeviceConfiguration.FormasDeEntradaEfetivas)] =
+            "não é campo: é calculado das formas, da chave, dos leitores e do teclado, que entram",
         [nameof(DeviceConfiguration.RecolheNaUrna)] =
             "não é campo: é calculado do leitor 2 e do relé 2, que entram",
         [nameof(DeviceConfiguration.ModoDeDigitos)] =
@@ -163,7 +165,7 @@ public static class VersaoDaConfiguracao
 
         // Depois de EnviarConfiguracoes, nos passos próprios do laço: o rearme
         // (EnviarFormasEntradasOnLine, EI-032) e a mensagem padrão (EnviarMensagemPadraoOnLine).
-        var formas = c.EnviarFormasDeEntradaOnLine ? c.FormasDeEntradaOnLine : FormasDeEntradaOnLine.DeHoje;
+        var formas = c.FormasDeEntradaEfetivas;
         Linha("formas_de_entrada_online", string.Join(',', new[]
         {
             formas.QtdeDigitosTeclado, formas.EcoTeclado, formas.FormaEntrada, formas.TempoTeclado, formas.PosicaoCursorTeclado,

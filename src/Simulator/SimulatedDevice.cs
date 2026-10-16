@@ -250,6 +250,11 @@ public sealed class SimulatedDevice : IDisposable
     /// </summary>
     public bool CartaoCaiNaUrna { get; set; } = true;
 
+    /// <summary>Quantas vezes a guia da urna foi fechada (<c>DesabilitarRele2</c>).</summary>
+    public int FechamentosDaUrna { get; private set; }
+
+    internal void RegistrarFechamentoDaUrna() => FechamentosDaUrna++;
+
     /// <summary>A urna abre e a catraca não manda nada: nem origem 7, nem 5 (para o prazo do laço).</summary>
     public bool UrnaMuda { get; set; }
 

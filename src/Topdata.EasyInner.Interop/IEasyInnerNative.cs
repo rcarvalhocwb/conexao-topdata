@@ -187,6 +187,13 @@ public interface IEasyInnerNative
     byte AcionarRele2(int inner);
 
     /// <summary>
+    /// Desliga o relé 2 (fecha a guia da urna). O middleware que operou em produção em 2025 chamava depois
+    /// da origem 7, da desistência e do giro: "se o relé 2 ficar acionado, a urna fica aberta e o próximo
+    /// cartão não é lido" (docs/61).
+    /// </summary>
+    byte DesabilitarRele2(int inner);
+
+    /// <summary>
     /// EI-048 — bip curto. Só o Inner (manual 4.6.2; SDK <c>byte AcionarBipCurto(int Inner)</c>).
     /// Comando manual do operador, atrás da chave <c>comando.bip_curto</c> (Etapa A.8, docs/35).
     /// </summary>

@@ -328,6 +328,19 @@ public sealed record DeviceConfiguration
     public bool EnviarFormasDeEntradaOnLine { get; init; }
 
     /// <summary>
+    /// O que o rearme do leitor manda de fato. Com a chave técnica, <see cref="FormasDeEntradaOnLine"/>; sem
+    /// ela, os valores de sempre com a forma de entrada calculada das entradas ligadas
+    /// (<see cref="FormasDeEntradaOnLine.PelasEntradas"/>): os dois leitores sem teclado é 6, como o middleware
+    /// de produção de 2025 — o teclado só aceita digitação quando o uso dele pede (docs/61).
+    /// </summary>
+    public FormasDeEntradaOnLine FormasDeEntradaEfetivas => EnviarFormasDeEntradaOnLine
+        ? FormasDeEntradaOnLine
+        : FormasDeEntradaOnLine.DeHoje with
+        {
+            FormaEntrada = FormasDeEntradaOnLine.PelasEntradas(OperacaoDoLeitor1 != 0, OperacaoDoLeitor2 != 0, TecladoHabilitado),
+        };
+
+    /// <summary>
     /// O cartão master (<c>DefinirNumeroCartaoMaster</c>, EI-023). Nulo = não enviado.
     /// </summary>
     /// <remarks>

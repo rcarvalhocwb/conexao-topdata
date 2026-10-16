@@ -85,11 +85,11 @@ public sealed class CoberturaDaConfiguracaoTests
 
         [nameof(DeviceConfiguration.FuncaoDoAcionamento2)] = new(
             c => c with { FuncaoDoAcionamento2 = 4 },
-            nameof(IEasyInnerNative.ConfigurarAcionamento2), [(byte)4, (byte)5]),
+            nameof(IEasyInnerNative.ConfigurarAcionamento2), [(byte)4, (byte)15]),
 
         [nameof(DeviceConfiguration.TempoDoAcionamento2)] = new(
             c => c with { TempoDoAcionamento2 = 6 },
-            nameof(IEasyInnerNative.ConfigurarAcionamento2), [(byte)2, (byte)6]),
+            nameof(IEasyInnerNative.ConfigurarAcionamento2), [(byte)3, (byte)6]),
 
         // Não é argumento: escolhe entre ConfigurarInnerOnLine e ConfigurarInnerOffLine.
         [nameof(DeviceConfiguration.Online)] = new(
@@ -154,6 +154,8 @@ public sealed class CoberturaDaConfiguracaoTests
     /// </summary>
     private static readonly Dictionary<string, string> NaoEnviados = new(StringComparer.Ordinal)
     {
+        [nameof(DeviceConfiguration.FormasDeEntradaEfetivas)] =
+            "calculado; é o que vai em EnviarFormasEntradasOnLine (formas, chave, leitores e teclado, docs/61)",
         [nameof(DeviceConfiguration.RecolheNaUrna)] =
             "calculado do leitor 2 e do relé 2 (que vão em ConfigurarLeitor2 e ConfigurarAcionamento2); decide o fluxo da urna no laço (docs/61)",
         [nameof(DeviceConfiguration.EnviarDigitosVariaveis)] =
@@ -316,7 +318,7 @@ public sealed class CoberturaDaConfiguracaoTests
             [nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1],
             [nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1],
             [nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5],
-            [nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)2, (byte)5],
+            [nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15],
             [nameof(IEasyInnerNative.ConfigurarInnerOnLine)],
             [nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0],
             [nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine), (byte)0, (byte)10],
@@ -393,6 +395,6 @@ public sealed class CoberturaDaConfiguracaoTests
         Assert.DoesNotContain(daMudada, c => novas.Contains(c.Funcao));
         Assert.All(
             daMudada.Where(c => c.Funcao == nameof(IEasyInnerNative.EnviarFormasEntradasOnLine)),
-            c => Assert.Equal([Inner, (byte)0, (byte)0, (byte)7, (byte)0, (byte)0], c.Argumentos));
+            c => Assert.Equal([Inner, (byte)0, (byte)0, (byte)6, (byte)0, (byte)0], c.Argumentos));
     }
 }

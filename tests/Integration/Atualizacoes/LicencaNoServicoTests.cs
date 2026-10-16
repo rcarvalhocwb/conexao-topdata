@@ -16,7 +16,10 @@ namespace Integration.Tests.Atualizacoes;
 /// </summary>
 public sealed class LicencaNoServicoTests : IAsyncLifetime, IDisposable
 {
-    private static readonly DateTimeOffset Inicio = new(2026, 10, 15, 15, 0, 0, TimeSpan.Zero);
+    // A sessão do painel é conferida pelo relógio de verdade (12 h de inatividade): uma data fixa aqui
+    // vence sozinha com o passar dos dias.
+    private static readonly DateTimeOffset Inicio = DateTimeOffset.UtcNow;
+    private static readonly DateOnly Vencimento = DateOnly.FromDateTime(Inicio.AddYears(1).UtcDateTime);
 
     private readonly BancoTemporario _banco = new();
     private readonly ECDsa _chave = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -126,18 +129,18 @@ public sealed class LicencaNoServicoTests : IAsyncLifetime, IDisposable
         Assert.Equal(32, licenca.Instalacao.Length);
 
         // Licença de outro computador: recusada com o motivo.
-        var outra = Licencas.Emitir(new DadosDaLicenca("L-9", "Evento de Teste", new string('f', 32), new DateOnly(2027, 6, 30), _agora), _chave);
+        var outra = Licencas.Emitir(new DadosDaLicenca("L-9", "Evento de Teste", new string('f', 32), Vencimento, _agora), _chave);
         var recusada = await cliente.InstalarLicencaAsync(new InstalarLicencaRequest { Texto = outra });
         Assert.False(recusada.Gravada);
         Assert.Contains("outro computador", Assert.Single(recusada.Problemas), StringComparison.Ordinal);
 
         // A licença desta instalação libera na hora.
-        var texto = Licencas.Emitir(new DadosDaLicenca("L-10", "Evento de Teste", licenca.Instalacao, new DateOnly(2027, 6, 30), _agora), _chave);
+        var texto = Licencas.Emitir(new DadosDaLicenca("L-10", "Evento de Teste", licenca.Instalacao, Vencimento, _agora), _chave);
         Assert.True((await cliente.InstalarLicencaAsync(new InstalarLicencaRequest { Texto = texto })).Gravada);
         Assert.Null(await Recusa(relatorios));
 
         var depois = await cliente.ObterLicencaAsync(new ObterLicencaRequest());
-        Assert.Equal((SituacaoDaLicenca.Valida, "Evento de Teste", "2027-06-30"), (depois.Situacao, depois.Cliente, depois.VenceEm));
+        Assert.Equal((SituacaoDaLicenca.Valida, "Evento de Teste", Vencimento.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)), (depois.Situacao, depois.Cliente, depois.VenceEm));
     }
 
     [Fact]

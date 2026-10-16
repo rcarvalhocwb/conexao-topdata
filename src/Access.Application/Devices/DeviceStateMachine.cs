@@ -56,6 +56,13 @@ public sealed class DeviceStateMachine
     public static readonly TimeSpan MargemDoGiro = TimeSpan.FromSeconds(3);
 
     /// <summary>
+    /// Quanto o laço espera o cartão cair na urna (origem 7) antes de negar e devolver o uso: 7 s, o valor
+    /// que o middleware de produção de 2025 usou na Catraca 4 com urna na entrada (subiu de 5 para 7 depois
+    /// de operar). Não depende do tempo do relé 2: a guia é fechada pelo laço (docs/61).
+    /// </summary>
+    public static readonly TimeSpan EsperaPeloDeposito = TimeSpan.FromSeconds(7);
+
+    /// <summary>
     /// Prazo de cada estado, medido desde a <b>entrada</b> nele (<see cref="EstadoAtualDesde"/>).
     /// </summary>
     /// <remarks>
@@ -80,7 +87,7 @@ public sealed class DeviceStateMachine
         [DeviceState.LiberarCatraca] = TimeSpan.FromSeconds(5),
         [DeviceState.MonitoraGiroCatraca] = TimeSpan.FromSeconds(8),
         [DeviceState.AcionarUrna] = TimeSpan.FromSeconds(5),
-        [DeviceState.MonitoraUrna] = TimeSpan.FromSeconds(8),
+        [DeviceState.MonitoraUrna] = EsperaPeloDeposito,
         [DeviceState.ColetarBilhetes] = TimeSpan.FromMinutes(10),
     }.ToFrozenDictionary();
 
@@ -155,14 +162,12 @@ public sealed class DeviceStateMachine
         ArgumentNullException.ThrowIfNull(configuracao);
 
         var daTabela = TimeoutFor(estado);
-        if (estado is not (DeviceState.MonitoraGiroCatraca or DeviceState.MonitoraUrna) || daTabela is not { } tabela)
+        if (estado is not DeviceState.MonitoraGiroCatraca || daTabela is not { } tabela)
         {
             return daTabela;
         }
 
-        // Na urna vale o relé 2: é o tempo em que a guia fica aberta para o cartão cair.
-        var segundos = estado is DeviceState.MonitoraUrna ? configuracao.TempoDoAcionamento2 : configuracao.TempoDoAcionamento1;
-        var doRele = TimeSpan.FromSeconds(segundos) + MargemDoGiro;
+        var doRele = TimeSpan.FromSeconds(configuracao.TempoDoAcionamento1) + MargemDoGiro;
         return doRele > tabela ? doRele : tabela;
     }
 
