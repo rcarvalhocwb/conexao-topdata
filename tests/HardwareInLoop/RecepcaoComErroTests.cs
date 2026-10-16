@@ -129,8 +129,12 @@ public sealed class RecepcaoComErroTests
     /// vira "sem eventos" e a catraca seguia em Polling para sempre, aparecendo "Atendendo" com o cabo
     /// puxado. A sonda de vida testa a conexão depois de 10 s sem sinal; sem resposta, reconecta.
     /// </summary>
+    /// <summary>
+    /// Keep-alive (manual de desenvolvimento, passos 11 e 12): a catraca que para de responder ao PingOnLine
+    /// só é reconectada depois de 6 falhas seguidas, uma a cada 3 s, e não na primeira.
+    /// </summary>
     [Fact]
-    public void Catraca_muda_em_polling_e_detectada_pela_sonda_de_vida_e_vai_para_reconexao()
+    public void Catraca_muda_em_polling_e_detectada_pelo_PingOnLine_so_reconecta_na_sexta_falha()
     {
         var agora = new DateTimeOffset(2026, 9, 24, 22, 0, 0, TimeSpan.Zero);
         var costura = new CosturaFalsa { OrigemADevolver = 0 };
@@ -145,28 +149,70 @@ public sealed class RecepcaoComErroTests
 
         laco.Passo(catraca, TimeSpan.FromMilliseconds(10)); // acerto do relógio
 
-        // Cabo puxado: a espera devolve ≠ 0 (que vira "sem eventos") e o teste de conexão falha.
+        // Cabo puxado: a espera devolve ≠ 0 (que vira "sem eventos") e o PingOnLine falha.
         costura.Retornos["ReceberDadosOnLine"] = 1;
-        costura.Retornos["Ping"] = 1;
+        costura.Retornos["PingOnLine"] = 1;
 
-        agora += TimeSpan.FromSeconds(9);
-        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
-        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
-        Assert.DoesNotContain("Ping", costura.Chamadas.Skip(costura.Chamadas.LastIndexOf("EnviarRelogio")));
+        for (var falha = 1; falha < DevicePump.LimiteDeFalhasDePingOnLine; falha++)
+        {
+            agora += DevicePump.IntervaloPadraoDoPingOnLine;
+            costura.Chamadas.Clear();
+            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
 
-        agora += TimeSpan.FromSeconds(1);
+            Assert.Equal(["PingOnLine", "ReceberDadosOnLine"], costura.Chamadas);
+            Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+            Assert.Equal(falha, catraca.FalhasDePingOnLine);
+        }
+
+        agora += DevicePump.IntervaloPadraoDoPingOnLine;
         costura.Chamadas.Clear();
         var feito = laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
 
-        Assert.Equal(["Ping"], costura.Chamadas);
         Assert.Equal(DeviceState.Reconectar, catraca.Maquina.Current);
-        Assert.Contains("não respondeu à sonda de vida", feito, StringComparison.Ordinal);
+        Assert.Contains("PingOnLine seguidos", feito, StringComparison.Ordinal);
         Assert.Equal(1, catraca.Disjuntor.FalhasSeguidas);
     }
 
-    /// <summary>A catraca que responde à sonda segue atendendo, e a sonda só volta depois de mais 10 s.</summary>
+    /// <summary>Uma resposta do PingOnLine zera a contagem: a catraca que volta não é reconectada à toa.</summary>
     [Fact]
-    public void Catraca_que_responde_a_sonda_segue_em_polling_sem_sondar_a_cada_volta()
+    public void Uma_resposta_ao_PingOnLine_zera_as_falhas_seguidas()
+    {
+        var agora = new DateTimeOffset(2026, 9, 24, 22, 0, 0, TimeSpan.Zero);
+        var costura = new CosturaFalsa { OrigemADevolver = 0 };
+        using var adapter = new TopdataInnerAdapter(costura);
+        var laco = new DevicePump(adapter, () => agora, new HashSet<byte> { 4 });
+        var catraca = new DeviceSlot(1, Configuracao(), () => agora);
+
+        for (var i = 0; i < 40 && catraca.Maquina.Current != DeviceState.Polling; i++)
+        {
+            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        }
+
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+
+        costura.Retornos["PingOnLine"] = 1;
+        for (var falha = 0; falha < 3; falha++)
+        {
+            agora += DevicePump.IntervaloPadraoDoPingOnLine;
+            laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+        }
+
+        Assert.Equal(3, catraca.FalhasDePingOnLine);
+
+        costura.Retornos["PingOnLine"] = 0;
+        agora += DevicePump.IntervaloPadraoDoPingOnLine;
+        laco.Passo(catraca, TimeSpan.FromMilliseconds(10));
+
+        Assert.Equal(0, catraca.FalhasDePingOnLine);
+        Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
+    }
+
+    /// <summary>
+    /// A catraca que responde ao PingOnLine segue em polling; o ping sai uma vez a cada 3 s, e a leitura segue
+    /// a cada volta (o keep-alive não substitui a espera por evento).
+    /// </summary>
+    [Fact]
+    public void Catraca_que_responde_ao_PingOnLine_segue_em_polling_com_ping_a_cada_3_segundos()
     {
         var agora = new DateTimeOffset(2026, 9, 24, 22, 0, 0, TimeSpan.Zero);
         var costura = new CosturaFalsa { OrigemADevolver = 0 };
@@ -189,8 +235,9 @@ public sealed class RecepcaoComErroTests
         }
 
         Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
-        Assert.Equal(2, costura.Chamadas.Count(c => c == "Ping"));
-        Assert.Equal(23, costura.Chamadas.Count(c => c == "ReceberDadosOnLine"));
+        Assert.Equal(8, costura.Chamadas.Count(c => c == "PingOnLine"));
+        Assert.Equal(25, costura.Chamadas.Count(c => c == "ReceberDadosOnLine"));
+        Assert.DoesNotContain("Ping", costura.Chamadas);
     }
 
     /// <summary>O 8 continua sendo falha de dependência: insistir não adianta.</summary>

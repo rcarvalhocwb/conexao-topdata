@@ -314,7 +314,7 @@ antes (os testes congelados da A.1 passam sem mudança).
 | 6 cfg on-line | `ConfigurarInnerOnLine` (ou `OffLine`, pelo regime alvo = `Online`) + os **mesmos** campos comuns → `EnviarConfiguracoes` (estado `EnviarCfgOnline`) | se `HabilitarMudancaOnLineOffLine` for aplicada pelo `EnviarConfiguracoes` (T13), este envio a devolve ao padrão da DLL: é o que o INT-SM-021 confere |
 | 7 relógio | no primeiro passo em `Polling`, como sempre | relógio e comandos só em `Polling` (regra do docs/35); o anexo 01 §3.3 dá as duas posições como equivalentes |
 | 8, 9 | `EnviarFormasEntradasOnLine` → `EnviarMensagemPadraoOnLine`, como sempre | — |
-| 10 | `ReceberDadosOnLine`; **sem** `PingOnLine` periódico | o intervalo e a unidade do tempo da mudança são T24, e a mudança 2 não tem origem em configuração nenhuma (nem evento nem catraca); a metade da regra 5 do §4.2 fica com ele |
+| 10 | `ReceberDadosOnLine`; `PingOnLine` periódico (keep-alive de 3 s, 6 falhas para reconectar, passo 11–12 do manual) entrou depois no `DevicePump` e foi validado pelo dono (D2); a contingência com mudança 2 continua sem | o intervalo e a unidade do tempo da mudança são T24, e a mudança 2 não tem origem em configuração nenhuma (nem evento nem catraca); a metade da regra 5 do §4.2 fica com ele |
 
 Cada etapa é **uma** chamada ao adapter (`ITopdataInnerAdapter.EnviarEtapaDaSequenciaOficial`)
 por passo do `DevicePump`, com nada com Inner entre a montagem e o enviador (ADR-0006); a máquina

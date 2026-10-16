@@ -111,4 +111,19 @@ public enum DeviceTrigger
     /// (defeito F4, docs/34 §2). O evento em si vai inteiro para quem o registra.
     /// </remarks>
     SinalDaCatraca,
+
+    /// <summary>
+    /// A decisão foi favorável para uma leitura feita na fenda da urna, numa catraca que recolhe o
+    /// cartão (manual do SDK, fluxo 8): primeiro a urna, depois o giro.
+    /// </summary>
+    AcessoPermitidoNaUrna,
+
+    /// <summary><c>AcionarRele2</c> retornou 0: a urna abriu para o cartão cair.</summary>
+    UrnaAcionada,
+
+    /// <summary>Origem 7: o sensor da urna viu o cartão cair. Só agora o giro é liberado.</summary>
+    CartaoRecolhido,
+
+    /// <summary>Origem 20: a urna está cheia.</summary>
+    UrnaCheia,
 }

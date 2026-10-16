@@ -2,7 +2,7 @@ using Contracts.Edge.V1;
 
 namespace Desktop.ViewModels.GemeoDigital;
 
-/// <summary>Um pedido imediato à catraca que o painel de uma peça oferece (os da "Gerenciar catraca").</summary>
+/// <summary>Um pedido imediato à catraca que o painel de uma peça oferece (os comandos da catraca).</summary>
 public enum ComandoDaPeca
 {
     /// <summary>Mensagem temporária no display (até 32 letras, 1 a 60 s).</summary>
@@ -40,7 +40,7 @@ public sealed record MarcaDaPeca(PecaDaCatraca Peca, TipoDeMarca Tipo, string Te
 
 /// <summary>
 /// O que o painel de configuração de uma peça mostra: os campos da Parametrização (Etapa A.6),
-/// a parte do mapa de giro (D9) e os pedidos imediatos da "Gerenciar catraca" que tratam
+/// a parte do mapa de giro (D9) e os pedidos imediatos (os comandos da catraca) que tratam
 /// daquela peça.
 /// </summary>
 /// <param name="Peca">A peça.</param>

@@ -140,6 +140,12 @@ public sealed class DeviceSlot
     /// </remarks>
     public DateTimeOffset? UltimaProvaDeVida { get; internal set; }
 
+    /// <summary>Quando saiu o último PingOnLine (keep-alive, manual de desenvolvimento, passo 11). Nulo até o primeiro.</summary>
+    public DateTimeOffset? UltimoPingOnLine { get; internal set; }
+
+    /// <summary>PingOnLine sem resposta seguidos. Ao chegar em <see cref="DevicePump.LimiteDeFalhasDePingOnLine"/>, reconecta.</summary>
+    public int FalhasDePingOnLine { get; internal set; }
+
     /// <summary>Identidade lida do equipamento, quando já conhecida.</summary>
     public FirmwareInfo? Firmware { get; internal set; }
 
@@ -156,6 +162,24 @@ public sealed class DeviceSlot
 
     /// <summary>Última decisão tomada para este equipamento.</summary>
     public Decision? UltimaDecisao { get; internal set; }
+
+    /// <summary>
+    /// A leitura que está sendo atendida. Na urna, o último evento passa a ser a origem 7 (cartão
+    /// recolhido), e é esta leitura que diz de qual leitor veio, para o mapa de giro.
+    /// </summary>
+    internal DeviceEvent? LeituraEmCurso { get; set; }
+
+    /// <summary>"Deposite o cartao" já foi ao display nesta urna: o próximo passo abre a urna.</summary>
+    internal bool PedidoDeDepositoExibido { get; set; }
+
+    /// <summary>O texto da próxima negação no display; nulo = "Acesso nao autorizado".</summary>
+    internal string? MensagemDeNegacao { get; set; }
+
+    /// <summary>Urnas abertas que terminaram sem o cartão cair (origem 5, prazo ou erro).</summary>
+    public long UrnasSemRecolhimento { get; internal set; }
+
+    /// <summary>A catraca avisou urna cheia (origem 20). Fica até a próxima urna que recolher.</summary>
+    public bool UrnaCheia { get; internal set; }
 
     /// <summary>Quando acertar o relógio da catraca. Marcado a cada conexão.</summary>
     public DateTimeOffset? AcertarRelogioEm { get; internal set; }
@@ -235,6 +259,12 @@ internal sealed class ComandoEmCurso(ComandoDeCatraca comando, DateTimeOffset in
 /// </remarks>
 public sealed class DevicePump
 {
+    /// <summary>Intervalo do PingOnLine no polling (manual de desenvolvimento, passo 11).</summary>
+    public static readonly TimeSpan IntervaloPadraoDoPingOnLine = TimeSpan.FromSeconds(3);
+
+    /// <summary>PingOnLine sem resposta seguidos antes de reconectar (manual de desenvolvimento, passo 12).</summary>
+    public const int LimiteDeFalhasDePingOnLine = 6;
+
     /// <summary>Acima disto o relógio da catraca é dado como divergente (docs/24 §1).</summary>
     public static readonly TimeSpan LimiteDeDivergenciaDoRelogio = TimeSpan.FromSeconds(30);
 
@@ -262,6 +292,13 @@ public sealed class DevicePump
     private readonly ITopdataInnerAdapter _adapter;
     private readonly Func<DateTimeOffset> _relogio;
     private readonly IReadOnlySet<byte> _linhasHomologadas;
+
+    /// <summary>
+    /// Linhas de firmware aceitas sem a chave técnica <c>catraca.linhas_homologadas</c> (ADR-0010).
+    /// 14 e 16 vêm da matriz do manual; a <b>19</b> foi lida numa Catraca Fit real (firmware 6.42.1,
+    /// sem biometria) na bancada de 15/10/2026 — ensaio HIL-CAP-01, achado E1-06 do docs/41.
+    /// </summary>
+    public static readonly IReadOnlySet<byte> LinhasHomologadasPadrao = new HashSet<byte> { 14, 16, 19 };
     private readonly Func<DeviceEvent, Decision>? _decidir;
     private readonly Action<DeviceEvent>? _aoReceberEvento;
     private readonly bool _acertarRelogioAoDivergir;
@@ -272,7 +309,8 @@ public sealed class DevicePump
     private readonly bool _exibirTextoDoGiro;
     private readonly Action<string>? _aoDesistirDoGiro;
     private readonly Action<string, string>? _aoFalharALiberacao;
-    private readonly TimeSpan _sondaDeVida;
+    private readonly Action<string, string>? _aoDesistirDaUrna;
+    private readonly TimeSpan _intervaloDoPingOnLine;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
     /// <param name="relogio">Relógio da borda.</param>
@@ -320,19 +358,21 @@ public sealed class DevicePump
     /// C1). O decisor encerra a tentativa pendente sem giro, como faria com a origem 5: um giro
     /// que chegue depois não é da pessoa liberada, e confirmá-la com ele daria a passagem a outro.
     /// </param>
-    /// <param name="sondaDeVida">
-    /// Silêncio máximo em espera de leitura antes de testar a conexão (achado E1-01 do docs/41).
-    /// Com o cabo puxado ou o socket morto, a DLL pode seguir devolvendo "sem eventos", e a catraca
-    /// apareceria "Atendendo" sem atender. Depois deste tempo sem evento, um passo faz o teste de
-    /// conexão no lugar da espera (uma chamada nativa por passo, como sempre); sem resposta, a
-    /// catraca vai para reconexão e o painel deixa de mostrá-la em operação. Padrão: 10 s. Se testar
-    /// a conexão com a catraca em operação a atrapalha é <c>A_CONFIRMAR_COM_TOPDATA</c> (HIL-EVT-01).
+    /// <param name="intervaloDoPingOnLine">
+    /// Intervalo do PingOnLine enquanto a catraca espera leitura (keep-alive). O manual de desenvolvimento
+    /// manda a cada 3 s (passo 11); com a DLL em silêncio, o ping é a prova de que a conexão ainda vive
+    /// (achado E1-01 do docs/41). Padrão: <see cref="IntervaloPadraoDoPingOnLine"/>.
     /// </param>
     /// <param name="aoFalharALiberacao">
     /// Chamado com o id do equipamento e a causa, logo antes de <paramref name="aoDesistirDoGiro"/>,
     /// quando a liberação de um ingresso não saiu ou a comunicação caiu esperando o giro (achado E1-05
     /// do docs/41). O decisor grava a causa na tentativa, que fica consumida e aparece no painel para o
     /// operador estornar.
+    /// </param>
+    /// <param name="aoDesistirDaUrna">
+    /// Chamado com o id do equipamento e a causa quando a urna foi aberta e o cartão não caiu (origem 5,
+    /// urna cheia, prazo ou erro): a catraca não liberou o braço, ninguém passou, e o cartão continua com
+    /// a pessoa. O decisor devolve o uso (manual do SDK, fluxo 8: "NaoRegistrarAcesso").
     /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
@@ -347,13 +387,15 @@ public sealed class DevicePump
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         bool exibirTextoDoGiro = false,
         Action<string>? aoDesistirDoGiro = null,
-        TimeSpan? sondaDeVida = null,
-        Action<string, string>? aoFalharALiberacao = null)
+        TimeSpan? intervaloDoPingOnLine = null,
+        Action<string, string>? aoFalharALiberacao = null,
+        Action<string, string>? aoDesistirDaUrna = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
+        _aoDesistirDaUrna = aoDesistirDaUrna;
         _aoDesistirDoGiro = aoDesistirDoGiro;
         _aoFalharALiberacao = aoFalharALiberacao;
-        _sondaDeVida = sondaDeVida ?? TimeSpan.FromSeconds(10);
+        _intervaloDoPingOnLine = intervaloDoPingOnLine ?? IntervaloPadraoDoPingOnLine;
         _sequenciaOficial = sequenciaOficial;
         _exibirTextoDoGiro = exibirTextoDoGiro;
         _gravadorDeBilhetes = gravadorDeBilhetes;
@@ -371,7 +413,7 @@ public sealed class DevicePump
         _aoReceberEvento = aoReceberEvento;
 
         // Nada é configurado sem que o firmware conste da matriz (ADR-0010).
-        _linhasHomologadas = linhasHomologadas ?? new HashSet<byte> { 14, 16 };
+        _linhasHomologadas = linhasHomologadas ?? LinhasHomologadasPadrao;
     }
 
     /// <summary>Executa um passo. Devolve o que foi feito, para log e métrica.</summary>
@@ -471,7 +513,9 @@ public sealed class DevicePump
             DeviceState.SincronizandoDadosOffline => SincronizarDadosOffline(dispositivo, agora),
             DeviceState.ConfigurarEntradasOnline => ConfigurarEntradas(dispositivo, agora),
             DeviceState.EnviarMsgPadrao => EnviarMensagemPadrao(dispositivo, agora),
-            DeviceState.Polling or DeviceState.MonitoraGiroCatraca => Aguardar(dispositivo, agora, limiteDeEspera),
+            DeviceState.Polling or DeviceState.MonitoraGiroCatraca or DeviceState.MonitoraUrna =>
+                Aguardar(dispositivo, agora, limiteDeEspera),
+            DeviceState.AcionarUrna => AbrirUrna(dispositivo, agora),
             DeviceState.ValidarAcesso => Decidir(dispositivo, agora),
             DeviceState.LiberarCatraca => Liberar(dispositivo, agora),
             DeviceState.EnviarMsgAcessoNegado => ExibirNegado(dispositivo, agora),
@@ -491,7 +535,9 @@ public sealed class DevicePump
             Disparar(d, DeviceTrigger.EquipamentoApareceu, agora);
         }
 
-        var resultado = _adapter.TestarConexao(d.Inner);
+        // PingOnLine, como o middleware que operou em 2025 e como o manual indica para TCP/IP. O Ping (teste
+        // de presença) não é o teste de conexão que o produto usava antes.
+        var resultado = _adapter.Ping(d.Inner);
 
         if (resultado.IsOk)
         {
@@ -499,6 +545,8 @@ public sealed class DevicePump
             d.TentativasDeReconexao = 0;
             d.EsperarAte = null;
             d.UltimaProvaDeVida = agora;
+            d.UltimoPingOnLine = agora;
+            d.FalhasDePingOnLine = 0;
 
             // A cada conexão, o relógio é acertado assim que a catraca chegar a Polling —
             // o fluxo oficial acerta na passagem para on-line (manual 4.6.1).
@@ -606,9 +654,9 @@ public sealed class DevicePump
     private string Aguardar(DeviceSlot d, DateTimeOffset agora, TimeSpan limite)
     {
         // Só em espera de leitura: durante o giro, nada pode atrasar a origem 5 ou 6.
-        if (d.Maquina.Current is DeviceState.Polling && SondarVida(d, agora) is { } sonda)
+        if (d.Maquina.Current is DeviceState.Polling && ManterOnline(d, agora) is { } keepAlive)
         {
-            return sonda;
+            return keepAlive;
         }
 
         var (resultado, evento) = _adapter.AguardarEvento(d.Inner, limite);
@@ -623,6 +671,19 @@ public sealed class DevicePump
                 if (evento.Origin.ConfirmaPassagemFisica && d.EmCurso is { Liberou: true } manual)
                 {
                     manual.Girou = true;
+                }
+
+                if (evento.Origin.Known is KnownEventOrigin.UrnaCheia)
+                {
+                    d.UrnaCheia = true;
+                }
+
+                // Urna aberta (fluxo 8 do manual): a resposta é a origem 7. Sem ela, a desistência vai
+                // para o decisor ANTES do evento, porque a origem 5 encerra a tentativa lá sem devolver o
+                // uso — e aqui ninguém passou: a catraca nem liberou o braço.
+                if (d.Maquina.Current is DeviceState.MonitoraUrna)
+                {
+                    return EventoNaUrna(d, evento, agora);
                 }
 
                 // Todo evento vai inteiro para quem registra, leitura ou não (ADR-0018).
@@ -665,7 +726,8 @@ public sealed class DevicePump
                 // Prazo do giro (C1, docs/36): só depois de uma espera que voltou vazia. Um giro
                 // ou uma origem 5 que já esteja na fila da DLL sai antes, por mais que a volta
                 // tenha demorado; o prazo nunca corta o que a catraca já mandou.
-                if (d.Maquina.Current is DeviceState.MonitoraGiroCatraca && PrazoEstourado(d, agora) is { } prazo)
+                if (d.Maquina.Current is DeviceState.MonitoraGiroCatraca or DeviceState.MonitoraUrna
+                    && PrazoEstourado(d, agora) is { } prazo)
                 {
                     var desistiu = EsgotarPrazo(d, agora, prazo);
                     return erroDeRecepcao is null ? desistiu : $"{desistiu} · {erroDeRecepcao}";
@@ -808,10 +870,22 @@ public sealed class DevicePump
 
         var decisao = _decidir(evento);
         d.UltimaDecisao = decisao;
+        d.LeituraEmCurso = evento;
+        d.MensagemDeNegacao = decisao.ShouldRelease ? null : MensagensDaCatraca.ParaNegacao(decisao.Reason);
 
         // Uma liberação nova começa sem texto exibido, mesmo que a anterior tenha sido
         // interrompida entre o texto e a liberação.
         d.TextoDoGiroExibido = false;
+
+        // Cartão na fenda de uma catraca que recolhe (manual do SDK, fluxo 8 e seção 5.3): primeiro a
+        // urna, e o giro só depois da origem 7. Antes, o giro era liberado na hora e a pessoa passava
+        // levando o cartão (bancada de 15/10/2026).
+        if (decisao.ShouldRelease && evento.Origin.Known is KnownEventOrigin.Leitor2 && d.Configuracao.RecolheNaUrna)
+        {
+            d.PedidoDeDepositoExibido = false;
+            Disparar(d, DeviceTrigger.AcessoPermitidoNaUrna, agora);
+            return $"decisão {decisao.Outcome} ({decisao.Reason}) — abrindo a urna";
+        }
 
         Disparar(d, decisao.ShouldRelease ? DeviceTrigger.AcessoPermitido : DeviceTrigger.AcessoNegado, agora);
         return $"decisão {decisao.Outcome} ({decisao.Reason})";
@@ -830,7 +904,7 @@ public sealed class DevicePump
         {
             TipoDeComando.LiberarSaida or TipoDeComando.LiberarDoisSentidos => null,
             TipoDeComando.LiberacaoManual => perfil.Resolver(OrigemDoGiro.LiberacaoManual),
-            _ => d.UltimoEvento is { } leitura && MapaDeGiro.DaLeitura(leitura.Origin) is { } origem
+            _ => (d.LeituraEmCurso ?? d.UltimoEvento) is { } leitura && MapaDeGiro.DaLeitura(leitura.Origin) is { } origem
                 ? perfil.Resolver(origem)
                 : null,
         };
@@ -876,12 +950,85 @@ public sealed class DevicePump
         return $"falha ao liberar giro ({resultado})";
     }
 
-    private string ExibirNegado(DeviceSlot d, DateTimeOffset agora)
+    /// <summary>
+    /// Pede o depósito no display e abre a urna (relé 2), em dois passos de uma chamada cada — como o
+    /// exemplo oficial em Java do SDK 6.0.2.0 (<c>PASSO_ESTADO_ENVIA_MSG_URNA</c>: mensagem
+    /// "DEPOSITE O CARTAO" e <c>AcionarRele2</c>, depois <c>ESTADO_MONITORA_URNA</c>).
+    /// </summary>
+    private string AbrirUrna(DeviceSlot d, DateTimeOffset agora)
     {
-        var resultado = _adapter.ExibirMensagemTemporaria(d.Inner, "Acesso nao autorizado", TimeSpan.FromSeconds(3));
+        if (!d.PedidoDeDepositoExibido)
+        {
+            // Falha aqui não impede a urna: a mensagem só ajuda quem está na frente da catraca.
+            d.PedidoDeDepositoExibido = true;
+            var exibido = _adapter.ExibirMensagemTemporaria(
+                d.Inner, MensagensDaCatraca.DepositeOCartao, TimeSpan.FromSeconds(Math.Max((byte)1, d.Configuracao.TempoDoAcionamento2)));
+            return exibido.IsOk ? "pedindo o depósito do cartão no display" : $"pedido de depósito não exibido ({exibido}); a urna abre a seguir";
+        }
+
+        d.PedidoDeDepositoExibido = false;
+        var resultado = _adapter.AcionarReleDaUrna(d.Inner);
 
         if (resultado.IsOk)
         {
+            Disparar(d, DeviceTrigger.UrnaAcionada, agora);
+            return "urna aberta — esperando o cartão cair (origem 7) para liberar o giro";
+        }
+
+        DesistirDaUrna(d, $"a urna não abriu ({resultado})");
+        Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
+        return $"falha ao abrir a urna ({resultado}) — giro não liberado";
+    }
+
+    /// <summary>Um evento com a urna aberta: origem 7 libera o giro; 5 e 20 negam e devolvem o uso.</summary>
+    private string EventoNaUrna(DeviceSlot d, DeviceEvent evento, DateTimeOffset agora)
+    {
+        switch (evento.Origin.Known)
+        {
+            case KnownEventOrigin.CartaoRecolhidoUrna:
+                d.UrnaCheia = false;
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.CartaoRecolhido, agora);
+                return "cartão recolhido pela urna (origem 7) — liberando o giro";
+
+            case KnownEventOrigin.FimTempoAcionamento:
+                DesistirDaUrna(d, "o cartão não caiu na urna no tempo do relé 2 (origem 5)");
+                d.MensagemDeNegacao = MensagensDaCatraca.CartaoNaoRecolhido;
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.TempoDeAcionamentoEsgotado, agora);
+                return "o cartão não caiu na urna (origem 5) — giro não liberado, uso devolvido";
+
+            case KnownEventOrigin.UrnaCheia:
+                DesistirDaUrna(d, "urna cheia (origem 20)");
+                d.MensagemDeNegacao = MensagensDaCatraca.UrnaCheia;
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.UrnaCheia, agora);
+                return "urna cheia (origem 20) — giro não liberado, uso devolvido; esvazie a urna";
+
+            default:
+                // Outra leitura ou sinal com a urna aberta: fica registrado e a espera continua. A leitura
+                // nova não é decidida — a vez é de quem está com o cartão na fenda.
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.SinalDaCatraca, agora);
+                return $"{evento.Origin} com a urna aberta — registrado, esperando o cartão cair";
+        }
+    }
+
+    /// <summary>A urna terminou sem o cartão cair: conta e avisa o decisor para devolver o uso.</summary>
+    private void DesistirDaUrna(DeviceSlot d, string causa)
+    {
+        d.UrnasSemRecolhimento++;
+        _aoDesistirDaUrna?.Invoke(d.Maquina.DeviceId, causa);
+    }
+
+    private string ExibirNegado(DeviceSlot d, DateTimeOffset agora)
+    {
+        var texto = d.MensagemDeNegacao ?? MensagensDaCatraca.AcessoNaoAutorizado;
+        var resultado = _adapter.ExibirMensagemTemporaria(d.Inner, texto, TimeSpan.FromSeconds(3));
+
+        if (resultado.IsOk)
+        {
+            d.MensagemDeNegacao = null;
             Disparar(d, DeviceTrigger.MensagemExibida, agora);
             return "mensagem de negação exibida";
         }
@@ -1223,7 +1370,22 @@ public sealed class DevicePump
     private string EsgotarPrazo(DeviceSlot d, DateTimeOffset agora, TimeSpan prazo)
     {
         var estado = d.Maquina.Current;
+
+        if (estado is DeviceState.MonitoraUrna or DeviceState.AcionarUrna)
+        {
+            // A urna não respondeu: ninguém passou (o braço não foi liberado), o uso volta.
+            DesistirDaUrna(d, estado is DeviceState.MonitoraUrna
+                ? $"o cartão não caiu na urna no prazo de {Segundos(prazo)} s, sem origem 5 nem 7"
+                : $"a urna não abriu no prazo de {Segundos(prazo)} s");
+            d.MensagemDeNegacao = MensagensDaCatraca.CartaoNaoRecolhido;
+        }
+
         Disparar(d, DeviceTrigger.TempoEsgotado, agora);
+
+        if (estado is DeviceState.MonitoraUrna)
+        {
+            return $"prazo de {Segundos(prazo)} s esperando o cartão cair na urna — giro não liberado, uso devolvido";
+        }
 
         if (estado is not DeviceState.MonitoraGiroCatraca)
         {
@@ -1250,32 +1412,48 @@ public sealed class DevicePump
     }
 
     /// <summary>
-    /// Sonda de vida: depois de <see cref="_sondaDeVida"/> sem nenhum sinal da catraca, este passo
-    /// testa a conexão no lugar da espera por evento. Nulo quando ainda não é hora.
+    /// Keep-alive do polling (manual de desenvolvimento, passos 11 e 12): a cada
+    /// <see cref="_intervaloDoPingOnLine"/> manda PingOnLine à catraca. Sem resposta, tenta de novo no
+    /// passo seguinte; depois de <see cref="LimiteDeFalhasDePingOnLine"/> falhas seguidas, reconecta.
+    /// Quando não é hora, ou a catraca respondeu, devolve nulo e o passo segue para a leitura.
     /// </summary>
-    private string? SondarVida(DeviceSlot d, DateTimeOffset agora)
+    /// <remarks>
+    /// Antes este teste era o <c>Ping</c> (teste de conexão) a cada 10 s. O manual recomenda o PingOnLine
+    /// justamente para a conexão TCP e para manter a catraca on-line (sem ele, a mudança automática
+    /// manda a catraca para off-line). Uma chamada nativa por passo, como sempre.
+    /// </remarks>
+    private string? ManterOnline(DeviceSlot d, DateTimeOffset agora)
     {
-        d.UltimaProvaDeVida ??= agora;
-        if (agora - d.UltimaProvaDeVida.Value < _sondaDeVida)
+        if (d.UltimoPingOnLine is { } ultimo && agora - ultimo < _intervaloDoPingOnLine)
         {
             return null;
         }
 
-        var resultado = _adapter.TestarConexao(d.Inner);
+        d.UltimoPingOnLine = agora;
+        var resultado = _adapter.Ping(d.Inner);
         if (resultado.IsOk)
         {
+            d.FalhasDePingOnLine = 0;
             d.UltimaProvaDeVida = agora;
-            return "sem eventos";
+            return null;
         }
 
         if (resultado.Status is AdapterStatus.FalhaDeDependencia)
         {
             Disparar(d, DeviceTrigger.DependenciaFatal, agora);
-            return $"falha de dependência na sonda de vida ({resultado}) — worker inutilizável";
+            return $"falha de dependência no PingOnLine ({resultado}) — worker inutilizável";
         }
 
+        d.FalhasDePingOnLine++;
+        if (d.FalhasDePingOnLine < LimiteDeFalhasDePingOnLine)
+        {
+            return null;
+        }
+
+        var falhas = d.FalhasDePingOnLine;
+        d.FalhasDePingOnLine = 0;
         Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
-        return $"catraca não respondeu à sonda de vida depois de {Segundos(agora - d.UltimaProvaDeVida.Value)} s sem evento ({resultado}) — reconectando";
+        return $"catraca não respondeu a {falhas} PingOnLine seguidos ({resultado}) — reconectando";
     }
 
     /// <summary>
@@ -1286,6 +1464,14 @@ public sealed class DevicePump
     /// </summary>
     private void DesistirDoGiroEmCurso(DeviceSlot d)
     {
+        if (d.Maquina.Current is DeviceState.MonitoraUrna)
+        {
+            // O braço não foi liberado: ninguém passou. Se o cartão caiu e o aviso se perdeu, ele está na
+            // urna e a contagem dela mostra a diferença (docs/04 §6).
+            DesistirDaUrna(d, "a comunicação caiu esperando o cartão cair na urna");
+            return;
+        }
+
         if (d.Maquina.Current is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
         {
             _aoFalharALiberacao?.Invoke(

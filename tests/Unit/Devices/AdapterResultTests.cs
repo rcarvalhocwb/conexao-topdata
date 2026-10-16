@@ -44,9 +44,11 @@ public sealed class AdapterResultTests
     [Theory]
     [InlineData(2, AdapterStatus.ErroDeComunicacao, "porta não aberta")]
     [InlineData(3, AdapterStatus.PortaJaAberta, "porta já aberta")]
-    [InlineData(4, AdapterStatus.FalhaDeDependencia, "DLL de apoio ausente")]
-    [InlineData(5, AdapterStatus.FalhaDeDependencia, "DLL de apoio ausente")]
-    [InlineData(6, AdapterStatus.FalhaDeDependencia, "DLL de apoio ausente")]
+    [InlineData(4, AdapterStatus.FalhaDeDependencia, "falta a Inner2K.dll")]
+    [InlineData(5, AdapterStatus.FalhaDeDependencia, "falta a InnerTCP.dll")]
+    [InlineData(6, AdapterStatus.FalhaDeDependencia, "falta a InnerTCPLib.dll")]
+    [InlineData(10, AdapterStatus.FalhaDeDependencia, "falta a InnerPendrive.dll")]
+    [InlineData(11, AdapterStatus.FalhaDeDependencia, "falta a Inner.dll (DLL de apoio da versão 6.x)")]
     [InlineData(8, AdapterStatus.FalhaDeDependencia, null)]
     public void Retornos_de_abrir_a_porta_seguem_a_matriz(int retorno, AdapterStatus esperado, string? significado)
     {

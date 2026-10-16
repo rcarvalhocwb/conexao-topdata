@@ -71,6 +71,26 @@ public sealed record FormasDeEntradaOnLine(
     /// </summary>
     public static FormasDeEntradaOnLine DeHoje { get; } = new(0, 0, 7, 0, 0);
 
+    /// <summary>
+    /// A forma de entrada para o que está ligado na catraca, pelo enum <c>EnviarFormasEntradasOnLine</c> dos
+    /// exemplos do SDK 6.0.2.0: 0 nenhuma · 1 teclado · 2 leitor 1 · 3 leitor 2 · 4 teclado+L1 · 5 teclado+L2
+    /// · 6 L1+L2 · 7 teclado+L1+L2. O middleware de produção de 2025 rearmava com 6 (sem teclado) — docs/61.
+    /// </summary>
+    /// <param name="leitor1">Leitor da frente ligado.</param>
+    /// <param name="leitor2">Leitor da fenda (urna) ligado.</param>
+    /// <param name="teclado">Teclado aceito.</param>
+    public static byte PelasEntradas(bool leitor1, bool leitor2, bool teclado) => (leitor1, leitor2, teclado) switch
+    {
+        (false, false, false) => 0,
+        (false, false, true) => 1,
+        (true, false, false) => 2,
+        (false, true, false) => 3,
+        (true, false, true) => 4,
+        (false, true, true) => 5,
+        (true, true, false) => 6,
+        (true, true, true) => 7,
+    };
+
     /// <summary>Faixa de <see cref="FormaEntrada"/> documentada na matriz (FUN:33).</summary>
     public static bool FormaEntradaDocumentada(byte forma) =>
         forma is <= 7 or (>= 10 and <= 14) or (>= 100 and <= 105);

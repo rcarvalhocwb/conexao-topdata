@@ -5,7 +5,7 @@
              AutomationProperties.Name="Parametrização da catraca">
   <!--
     Parametrização da catraca (Etapa A.6 do docs/35; layout do docs/34-anexos/04 §4.2).
-    O detalhe de uma catraca, aberto pela "Gerenciar catraca". À esquerda, as abas com os campos
+    O detalhe de uma catraca, aberto pelo "Ver em lista" da "Configuração da catraca". À esquerda, as abas com os campos
     (validação no campo); à direita, "o que muda (atual → novo)" antes de salvar e o aplicar com
     confirmação, com o resultado vindo do histórico de comandos.
     Modo guiado: só os campos do operador, com as palavras dele. Modo técnico: todos, com os
@@ -25,16 +25,11 @@
     <StackPanel>
       <rz:RayzerPageHeader Titulo="Parametrização da catraca"
                            Descricao="O que esta catraca usa de diferente do evento. Salvar grava; a catraca só passa a usar depois de &quot;Aplicar nesta catraca&quot;, que pede confirmação.">
-        <StackPanel Orientation="Horizontal">
-          <!-- O gêmeo é a porta principal da configuração (docs/33 §9); esta é a mesma, em lista. -->
-          <Button Style="{StaticResource Rayzer.Button.Ghost}" Margin="0,0,8,0" Content="Abrir a confi_guração"
-                  Command="{Binding DataContext.AbrirNoGemeo, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding Catraca}" AutomationProperties.Name="Abrir a configuração desta catraca"
-                  ToolTip="A mesma configuração, peça por peça, no desenho da catraca." />
-          <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Voltar a _Gerenciar catraca"
-                  Command="{Binding DataContext.Gerenciar, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding Catraca}" AutomationProperties.Name="Voltar a Gerenciar catraca" />
-        </StackPanel>
+        <!-- O gêmeo é a porta principal da configuração (docs/33 §9); esta é a mesma, em lista. -->
+        <Button Style="{StaticResource Rayzer.Button.Ghost}" Content="Voltar à confi_guração da catraca"
+                Command="{Binding DataContext.AbrirNoGemeo, RelativeSource={RelativeSource AncestorType=Window}}"
+                CommandParameter="{Binding Catraca}" AutomationProperties.Name="Voltar à configuração da catraca"
+                ToolTip="A mesma configuração, peça por peça, no desenho da catraca, com os comandos e o histórico." />
       </rz:RayzerPageHeader>
 
       <!-- Qual catraca, quem está mudando, o modo, e se o salvo já está na catraca. -->

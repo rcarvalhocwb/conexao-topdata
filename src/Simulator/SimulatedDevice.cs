@@ -74,8 +74,42 @@ public sealed class SimulatedDevice : IDisposable
     /// <remarks>Use 8 para reproduzir o GPF documentado.</remarks>
     public int? RetornoForcado { get; set; }
 
+    private bool _desconectado;
+
     /// <summary>Simula cabo removido ou equipamento desligado.</summary>
-    public bool Desconectado { get; set; }
+    public bool Desconectado
+    {
+        get => _desconectado;
+        set
+        {
+            _desconectado = value;
+            if (value)
+            {
+                ConexaoPendente = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verdadeiro desde uma queda (ou desde o início da sessão) até a primeira resposta depois dela: é a
+    /// "conexão nova". Começa verdadeiro porque um processo que reinicia também conecta de novo.
+    /// </summary>
+    internal bool ConexaoPendente { get; private set; } = true;
+
+    /// <summary>
+    /// Marca a conexão nova na primeira resposta depois de uma queda. O keep-alive (PingOnLine a cada 3 s)
+    /// passa por aqui sem efeito depois que a conexão já voltou.
+    /// </summary>
+    internal void MarcarConexaoNovaSePreciso()
+    {
+        if (!ConexaoPendente)
+        {
+            return;
+        }
+
+        ConexaoPendente = false;
+        AoConectar();
+    }
 
     /// <summary>
     /// Simula o laço bloqueante travado: <c>AguardarEvento</c> fica preso, segurando o
@@ -244,7 +278,26 @@ public sealed class SimulatedDevice : IDisposable
 
     internal void RegistrarBip(TipoDeBip bip) => BipsAcionados.Add(bip);
 
-    internal void RegistrarAcionamentoDaUrna() => AcionamentosDaUrna++;
+    /// <summary>
+    /// O que acontece quando a urna abre (relé 2): o cartão cai e a catraca manda a origem 7 (o padrão),
+    /// ou ninguém deposita e vem a origem 5, como no fim do tempo do relé (manual do SDK, seção 5.3).
+    /// </summary>
+    public bool CartaoCaiNaUrna { get; set; } = true;
+
+    /// <summary>A urna abre e a catraca não manda nada: nem origem 7, nem 5 (para o prazo do laço).</summary>
+    public bool UrnaMuda { get; set; }
+
+    internal void RegistrarAcionamentoDaUrna()
+    {
+        AcionamentosDaUrna++;
+        if (UrnaMuda)
+        {
+            return;
+        }
+
+        Roteirizar(new ScriptedEvent(EventOrigin.From(
+            CartaoCaiNaUrna ? KnownEventOrigin.CartaoRecolhidoUrna : KnownEventOrigin.FimTempoAcionamento)));
+    }
 
     internal void RegistrarReabilitacaoDoLeitor() => ReabilitacoesDoLeitor++;
 

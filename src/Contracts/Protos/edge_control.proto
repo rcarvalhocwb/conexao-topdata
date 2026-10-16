@@ -21,6 +21,10 @@ service EdgeControl {
   rpc Entrar(EntrarRequest) returns (EntrarResponse);
   rpc TrocarSenha(TrocarSenhaRequest) returns (TrocarSenhaResponse);
   rpc Sair(SairRequest) returns (SairResponse);
+  // Recuperação da senha de um administrador pelo suporte Rayzer, por desafio e resposta (docs/58).
+  // Sem login: é para quem não consegue entrar. Não existe senha mestra; o serviço nunca devolve senha.
+  rpc PedirRecuperacaoPeloSuporte(PedirRecuperacaoPeloSuporteRequest) returns (PedidoDeRecuperacao);
+  rpc ConfirmarRecuperacaoPeloSuporte(ConfirmarRecuperacaoPeloSuporteRequest) returns (ResultadoDaGravacao);
   rpc ObterSessao(ObterSessaoRequest) returns (UsuarioDaSessao);
   rpc ListarUsuarios(ListarUsuariosRequest) returns (ListarUsuariosResponse);
   rpc GravarUsuario(GravarUsuarioRequest) returns (GravarUsuarioResponse);
@@ -52,6 +56,13 @@ service EdgeControl {
   rpc ListarImportacoesDePessoas(ListarImportacoesDePessoasRequest) returns (ListarImportacoesDePessoasResponse);
   rpc DesfazerImportacaoDePessoas(DesfazerImportacaoDePessoasRequest) returns (ResultadoDoCadastroDePessoas);
 
+  // Cadastro de cartões na operação (migração 026). Nenhum RPC devolve o código do cartão: só máscara.
+  rpc AbrirSessaoDeCadastro(AbrirSessaoDeCadastroRequest) returns (ResultadoDaSessaoDeCadastroResponse);
+  rpc FecharSessaoDeCadastro(FecharSessaoDeCadastroRequest) returns (ResultadoDaSessaoDeCadastroResponse);
+  rpc ObterSessaoDeCadastro(ObterSessaoDeCadastroRequest) returns (ResultadoDaSessaoDeCadastroResponse);
+  rpc ListarLeiturasDesconhecidas(ListarLeiturasDesconhecidasRequest) returns (ListarLeiturasDesconhecidasResponse);
+  rpc CadastrarLeituraDesconhecida(CadastrarLeituraDesconhecidaRequest) returns (ResultadoDoRegistroResponse);
+
   // Catraca fechada pelo operador: ninguém passa até reabrir (docs/43 §6.6).
   rpc ListarCatracasFechadas(ListarCatracasFechadasRequest) returns (ListarCatracasFechadasResponse);
   rpc FecharCatraca(FecharCatracaRequest) returns (ResultadoDoCadastroDePessoas);
@@ -70,10 +81,32 @@ service EdgeControl {
   rpc ListarAcessos(ListarAcessosRequest) returns (ListarAcessosResponse);
   rpc ObterConfiguracao(ObterConfiguracaoRequest) returns (ConfiguracaoDoEvento);
   rpc GravarConfiguracao(GravarConfiguracaoRequest) returns (GravarConfiguracaoResponse);
+  // Configurações do evento em seções (docs/57): o evento em si, os tipos de entrada, as regras da
+  // bilheteria local e as chaves técnicas (só leitura). O autor de cada gravação é o usuário do login.
+  rpc ObterEvento(ObterEventoRequest) returns (DadosDoEvento);
+  rpc GravarEvento(GravarEventoRequest) returns (ResultadoDaGravacao);
+  rpc ListarTiposDeEntrada(ListarTiposDeEntradaRequest) returns (ListarTiposDeEntradaResponse);
+  rpc GravarTipoDeEntrada(GravarTipoDeEntradaRequest) returns (ResultadoDaGravacao);
+  rpc ObterBilheteriaLocal(ObterBilheteriaLocalRequest) returns (RegrasDaBilheteria);
+  rpc GravarBilheteriaLocal(GravarBilheteriaLocalRequest) returns (ResultadoDaGravacao);
+  rpc ListarChavesTecnicas(ListarChavesTecnicasRequest) returns (ListarChavesTecnicasResponse);
   rpc ObterSincronizacao(ObterSincronizacaoRequest) returns (SituacaoDaSincronizacao);
+  // Botão "Testar conexão com a nuvem": roda agora uma rodada (a lista desce, as passagens sobem) e
+  // diz o que aconteceu. A mesma rodada do laço automático, não um ping à parte.
+  rpc TestarNuvem(TestarNuvemRequest) returns (ResultadoDoTesteDaNuvem);
   rpc ObterPrestacaoDeContas(ObterPrestacaoDeContasRequest) returns (PrestacaoDeContas);
+  // Relatórios R1 (boletim do dia), R2 (por hora e tipo), R3 (por catraca) e R7 (consolidado), docs/25.
+  rpc ObterRelatorios(ObterRelatoriosRequest) returns (RelatoriosDoEvento);
   rpc ConsultarCodigo(ConsultarCodigoRequest) returns (ConsultarCodigoResponse);
   rpc ObterDiagnostico(ObterDiagnosticoRequest) returns (Diagnostico);
+
+  // Licença e atualização automática (docs/60). A licença nunca para catraca: vencida além da
+  // tolerância, só recusa relatórios, atualizações e mudanças no evento.
+  rpc ObterLicenca(ObterLicencaRequest) returns (LicencaDoSistema);
+  rpc InstalarLicenca(InstalarLicencaRequest) returns (ResultadoDaGravacao);
+  rpc ObterAtualizacao(ObterAtualizacaoRequest) returns (SituacaoDaAtualizacao);
+  // O painel avisa que o operador o finalizou (bandeja → Sair): hora boa para instalar a atualização.
+  rpc AvisarPainelFinalizado(AvisarPainelFinalizadoRequest) returns (AvisarPainelFinalizadoResponse);
 
   // A7 (levantamento): pacote de diagnóstico para o suporte. Montado pelo serviço, que é quem lê a pasta
   // de dados; o painel só salva o arquivo. Sem banco, sem token e sem segredo.
@@ -185,6 +218,118 @@ message ObterEstadoResponse {
   // Giros confirmados pelo rótulo do mapa de giro (D9). Sem regra no mapa, conta como entrada.
   int64 entradas = 17;
   int64 saidas = 18;
+
+  // Situação de cada parte, medida pela última tentativa recente (P0-02). Não é
+  // inferida do último sucesso antigo. Ver Edge.Supervisor/EstadoDaNuvem.cs.
+  SituacaoDaInternet situacao_da_internet = 19;
+  SituacaoDaNuvem situacao_da_nuvem = 20;
+  SituacaoDaFila situacao_da_fila = 21;
+
+  // Catracas por categoria (P0-01). Uma catraca conta em uma única categoria.
+  int32 catracas_fisicas_conectadas = 22;
+  int32 catracas_simuladas_ativas = 23;
+
+  // Licença (docs/60 §1.2). Os dias: até vencer, ou que faltam para bloquear, ou desde o bloqueio.
+  SituacaoDaLicenca situacao_da_licenca = 24;
+  int32 dias_da_licenca = 25;
+
+  // A atualização automática vai instalar em instantes: o painel deixa o relançador e fecha.
+  bool atualizacao_iminente = 26;
+
+  // Por que o programa das catracas não está atendendo, em uma frase, quando um worker caiu com erro
+  // (ex.: a DLL que falta). Vazio enquanto o programa das catracas roda ou sem erro registrado.
+  string motivo_da_catraca = 27;
+
+  // IPv4 deste PC, nas interfaces ativas, privados primeiro. É o IP que o operador digita na catraca
+  // como "IP do servidor" (docs/62).
+  repeated string enderecos_do_pc = 28;
+
+  // IPs com conexão estabelecida nas portas das catracas agora: a catraca alcançou este PC e veio
+  // deste endereço. Não é varredura da rede.
+  repeated string ips_conectados_na_porta = 29;
+}
+
+enum SituacaoDaLicenca {
+  SITUACAO_DA_LICENCA_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_LICENCA_NAO_EXIGIDA = 1;
+  SITUACAO_DA_LICENCA_VALIDA = 2;
+  SITUACAO_DA_LICENCA_VENCE_EM_BREVE = 3;
+  SITUACAO_DA_LICENCA_EM_TOLERANCIA = 4;
+  SITUACAO_DA_LICENCA_BLOQUEADA = 5;
+}
+
+message ObterLicencaRequest {}
+
+message LicencaDoSistema {
+  SituacaoDaLicenca situacao = 1;
+  // A frase para o operador.
+  string mensagem = 2;
+  string cliente = 3;
+  // Número da licença, para o suporte achar.
+  string numero = 4;
+  // Data de vencimento (aaaa-mm-dd); vazio sem licença.
+  string vence_em = 5;
+  int32 dias = 6;
+  // O identificador desta instalação, para mandar à Rayzer ao pedir a licença.
+  string instalacao = 7;
+  // Por que a licença instalada não vale; vazio se vale ou se não há.
+  string problema = 8;
+}
+
+message InstalarLicencaRequest {
+  // O texto que a Rayzer mandou (XAL1.…).
+  string texto = 1;
+}
+
+message ObterAtualizacaoRequest {}
+
+message SituacaoDaAtualizacao {
+  // Ligada: há chave de atualização nesta versão e o canal é o de produção.
+  bool ligada = 1;
+  string canal = 2;
+  string versao_instalada = 3;
+  // A última versão estável conferida (assinatura válida); vazio se nenhuma.
+  string versao_disponivel = 4;
+  // A situação em uma frase ("Baixada; instala quando o sistema for finalizado ou de madrugada").
+  string situacao = 5;
+  google.protobuf.Timestamp ultima_verificacao = 6;
+  string ultimo_resultado = 7;
+}
+
+message AvisarPainelFinalizadoRequest {}
+
+message AvisarPainelFinalizadoResponse {
+  // Verdadeiro se há uma versão pronta e ela vai ser instalada agora.
+  bool vai_instalar = 1;
+}
+
+enum SituacaoDaInternet {
+  SITUACAO_DA_INTERNET_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_INTERNET_DESCONHECIDA = 1;
+  SITUACAO_DA_INTERNET_DISPONIVEL = 2;
+  SITUACAO_DA_INTERNET_INDISPONIVEL = 3;
+}
+
+enum SituacaoDaNuvem {
+  SITUACAO_DA_NUVEM_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_NUVEM_DESCONHECIDA = 1;
+  SITUACAO_DA_NUVEM_NAO_CONFIGURADA = 2;
+  SITUACAO_DA_NUVEM_CONECTANDO = 3;
+  SITUACAO_DA_NUVEM_CONECTADA = 4;
+  SITUACAO_DA_NUVEM_FALHA_DE_AUTENTICACAO = 5;
+  SITUACAO_DA_NUVEM_INDISPONIVEL = 6;
+  SITUACAO_DA_NUVEM_SEGREDO_AUSENTE = 7;
+  // A nuvem respondeu, mas a lista veio cortada pelo limite do servidor (docs/31 §3).
+  SITUACAO_DA_NUVEM_LISTA_INCOMPLETA = 8;
+}
+
+enum SituacaoDaFila {
+  SITUACAO_DA_FILA_NAO_ESPECIFICADO = 0;
+  SITUACAO_DA_FILA_DESCONHECIDA = 1;
+  SITUACAO_DA_FILA_PROCESSANDO = 2;
+  SITUACAO_DA_FILA_FALHA = 3;
+  SITUACAO_DA_FILA_PENDENTE = 4;
+  SITUACAO_DA_FILA_SINCRONIZADA = 5;
 }
 
 message ListarEquipamentosRequest {}
@@ -320,6 +465,10 @@ message ConfiguracaoDoEvento {
   string mensagem_padrao = 4;
   bool nuvem_ligada = 5;                   // só leitura: vem da instalação
   int32 espera_pelo_giro_segundos = 6;
+  // Uso das entradas (docs/61). Leitor da frente: "equipe_e_ingressos", "equipe" ou "desligada".
+  // Teclado: "desligado" ou "equipe". A urna aceita só o do evento. Vazio ao gravar = mantém.
+  string uso_da_frente = 7;
+  string uso_do_teclado = 8;
 }
 
 message GravarConfiguracaoRequest {
@@ -338,6 +487,113 @@ message GravarConfiguracaoResponse {
   bool exige_reinicio = 3;
 }
 
+// Resultado comum das gravações das seções do evento (docs/57).
+message ResultadoDaGravacao {
+  bool gravada = 1;
+  repeated string problemas = 2;
+}
+
+message PedirRecuperacaoPeloSuporteRequest {
+  string login = 1;
+}
+
+// O pedido que a pessoa manda ao suporte Rayzer. Vale só para esta instalação, este login e até valido_ate.
+message PedidoDeRecuperacao {
+  // Falso quando esta versão não tem a chave pública do suporte (a recuperação está desligada).
+  bool disponivel = 1;
+  // O texto do pedido, em grupos de 4 (base32).
+  string pedido = 2;
+  google.protobuf.Timestamp valido_ate = 3;
+  // Por que não há pedido, em português de portaria.
+  string motivo = 4;
+}
+
+// A resposta assinada pelo suporte e a senha nova que a própria pessoa escolheu.
+message ConfirmarRecuperacaoPeloSuporteRequest {
+  string login = 1;
+  string resposta = 2;
+  string senha_nova = 3;
+}
+
+message ObterEventoRequest {}
+
+// O evento em si (docs/57 §4). Instantes em UTC; a tela mostra no horário de Brasília.
+message DadosDoEvento {
+  string nome = 1;
+  // Ausente = sem início (ou sem fim) definido.
+  google.protobuf.Timestamp inicio = 2;
+  google.protobuf.Timestamp fim = 3;
+  // "HH:mm", horário de Brasília: quando um dia de operação vira o seguinte (E9).
+  string hora_de_corte = 4;
+  // Nega ingresso lido fora do período (motivo EVENTO_FORA_DO_PERIODO). Pessoas credenciadas não.
+  bool recusar_fora_do_periodo = 5;
+  // Só leitura: quem gravou por último e quando.
+  string alterado_por = 6;
+  google.protobuf.Timestamp alterado_em = 7;
+}
+
+message GravarEventoRequest {
+  DadosDoEvento evento = 1;
+}
+
+message ListarTiposDeEntradaRequest {}
+
+// Um tipo de entrada (INTEIRA, MEIA, SOCIAL…). O código não muda depois de criado.
+message TipoDeEntrada {
+  string codigo = 1;
+  string nome = 2;
+  int32 ordem = 3;
+  bool ativo = 4;
+  // Só leitura: quantos ingressos usam o tipo.
+  int32 em_uso = 5;
+}
+
+message ListarTiposDeEntradaResponse {
+  repeated TipoDeEntrada tipos = 1;
+}
+
+message GravarTipoDeEntradaRequest {
+  TipoDeEntrada tipo = 1;
+}
+
+message ObterBilheteriaLocalRequest {}
+
+// As regras dos ingressos da bilheteria local (provedor bilheteria-local, docs/57 §5).
+message RegrasDaBilheteria {
+  // Falso até a primeira partida do serviço criar o provedor.
+  bool existe = 1;
+  int32 intervalo_de_reuso_segundos = 2;
+  bool somente_na_urna = 3;
+  // Com a nuvem ligada, a nuvem manda: as regras não mudam pelo painel.
+  bool definida_pela_nuvem = 4;
+  // Só leitura: quantos ingressos a bilheteria tem, e quantos estão desativados.
+  int32 ingressos = 5;
+  int32 desativados = 6;
+  // Só leitura: a última carga de arquivos (vazio se nunca houve).
+  google.protobuf.Timestamp ultima_carga_em = 7;
+  int32 ultima_carga_quantidade = 8;
+}
+
+message GravarBilheteriaLocalRequest {
+  int32 intervalo_de_reuso_segundos = 1;
+  bool somente_na_urna = 2;
+}
+
+message ListarChavesTecnicasRequest {}
+
+// Uma chave técnica da catraca (docs/34 §4.1): só leitura no painel.
+message ChaveTecnica {
+  string chave = 1;
+  string descricao = 2;
+  bool ligada = 3;
+  // O ensaio da bancada que libera ligar (docs/21).
+  string liberada_por = 4;
+}
+
+message ListarChavesTecnicasResponse {
+  repeated ChaveTecnica chaves = 1;
+}
+
 message ObterSincronizacaoRequest {}
 
 message SituacaoDaSincronizacao {
@@ -348,6 +604,34 @@ message SituacaoDaSincronizacao {
   int64 idade_do_mais_antigo_segundos = 5;
   int64 cartas_mortas = 6;
   repeated ProvedorCadastrado provedores = 7;
+  // Última vez que a nuvem respondeu, mesmo com erro: prova que a conexão existe.
+  google.protobuf.Timestamp ultimo_contato = 8;
+  // Quantos itens vieram na última lista cortada pelo servidor; 0 se não houve corte.
+  int32 lista_incompleta_com = 9;
+}
+
+message TestarNuvemRequest {}
+
+message ResultadoDoTesteDaNuvem {
+  // Falso: a nuvem não está configurada neste computador (nada foi tentado).
+  bool configurada = 1;
+  // A nuvem respondeu, mesmo que com erro: a conexão existe.
+  bool respondeu = 2;
+  // Tudo certo: lista completa e nenhuma passagem adiada.
+  bool completo = 3;
+  // Quantos vieram numa lista cortada pelo servidor; 0 se não houve corte.
+  int32 lista_incompleta_com = 4;
+  // O que mudou na lista local nesta rodada.
+  int32 novos = 5;
+  int32 atualizados = 6;
+  // Passagens que subiram e que ficaram na fila.
+  int32 enviadas = 7;
+  int32 adiadas = 8;
+  // O que dizer ao operador, em português; vazio se deu tudo certo.
+  string orientacao = 9;
+  // O motivo técnico, para o suporte; nunca tem segredo nem corpo de resposta.
+  string detalhe = 10;
+  int64 duracao_ms = 11;
 }
 
 message ProvedorCadastrado {
@@ -383,6 +667,76 @@ message PrestacaoDeContas {
   // Giros pelo rótulo do mapa de giro (D9); sem rótulo, entrada.
   int64 entradas = 11;
   int64 saidas = 12;
+}
+
+message ObterRelatoriosRequest {
+  google.protobuf.Timestamp desde = 1;
+  google.protobuf.Timestamp ate = 2;
+}
+
+// Os relatórios do período (docs/25 §3 e §4). Agregados: nenhum número de cartão nem nome de titular.
+message RelatoriosDoEvento {
+  string nome_do_evento = 1;
+  // "HH:mm", horário de Brasília: começo de cada dia de operação.
+  string hora_de_corte = 2;
+  google.protobuf.Timestamp periodo_desde = 3;
+  google.protobuf.Timestamp periodo_ate = 4;
+  google.protobuf.Timestamp gerado_em = 5;
+  string gerado_por = 6;
+  string versao = 7;
+  // Os tipos de entrada na ordem cadastrada, com o nome.
+  repeated TipoNoRelatorio tipos = 8;
+  // R1, um por dia de operação. O R7 (consolidado) é a soma deles.
+  repeated BoletimDoDiaDeOperacao dias = 9;
+  // R2.
+  repeated ValidadosPorHoraETipo por_hora = 10;
+  // R3.
+  repeated MovimentoPorCatraca por_catraca = 11;
+  // SHA-256 dos números (16 dígitos): o mesmo período e os mesmos dados dão o mesmo código.
+  string conferencia = 12;
+}
+
+message TipoNoRelatorio {
+  string tipo = 1;
+  string nome = 2;
+}
+
+message QuantidadePorChave {
+  // Tipo de entrada ou motivo (MotivoDoUso).
+  string chave = 1;
+  int64 quantidade = 2;
+  // Para motivo: o texto em português de portaria.
+  string descricao = 3;
+}
+
+message BoletimDoDiaDeOperacao {
+  google.protobuf.Timestamp inicio = 1;
+  // Liberou e girou (entrada), por tipo.
+  repeated QuantidadePorChave validados = 2;
+  // Liberou e a pessoa não passou, por tipo.
+  repeated QuantidadePorChave sem_passagem = 3;
+  // Negados por motivo.
+  repeated QuantidadePorChave negados = 4;
+  // Ingressos e credenciais distintos validados: o total menos este número são reentradas.
+  int64 distintos = 5;
+  google.protobuf.Timestamp primeiro = 6;
+  google.protobuf.Timestamp ultimo = 7;
+  google.protobuf.Timestamp hora_de_pico = 8;
+  int64 no_pico = 9;
+}
+
+message ValidadosPorHoraETipo {
+  google.protobuf.Timestamp hora = 1;
+  string tipo = 2;
+  int64 quantidade = 3;
+}
+
+message MovimentoPorCatraca {
+  int32 inner = 1;
+  string nome = 2;
+  int64 validados = 3;
+  int64 sem_passagem = 4;
+  int64 negados = 5;
 }
 
 message LinhaPorCategoria {
@@ -1469,4 +1823,84 @@ message ListarImportacoesDePessoasResponse {
 
 message DesfazerImportacaoDePessoasRequest {
   string lote_id = 1;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cadastro de cartões na operação (migração 026).
+// ---------------------------------------------------------------------------------------------
+
+message AbrirSessaoDeCadastroRequest {
+  string provedor_id = 1;
+  string categoria = 2;
+  string lote = 3;
+  int32 usos = 4;
+}
+
+message FecharSessaoDeCadastroRequest {}
+
+message ObterSessaoDeCadastroRequest {}
+
+message SessaoDeCadastro {
+  string id = 1;
+  string provedor_id = 2;
+  string categoria = 3;
+  string lote = 4;
+  int32 usos = 5;
+  string operador = 6;
+  google.protobuf.Timestamp aberta_em = 7;
+  int32 cadastrados = 8;
+}
+
+enum ResultadoDaSessaoDeCadastro {
+  RESULTADO_DA_SESSAO_DE_CADASTRO_NAO_ESPECIFICADO = 0;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_ABERTA = 1;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_JA_ABERTA = 2;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_PROVEDOR_DESCONHECIDO = 3;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_PROVEDOR_NAO_REUTILIZAVEL = 4;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_DADOS_INVALIDOS = 5;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_FECHADA = 6;
+  RESULTADO_DA_SESSAO_DE_CADASTRO_NENHUMA_ABERTA = 7;
+}
+
+message ResultadoDaSessaoDeCadastroResponse {
+  ResultadoDaSessaoDeCadastro resultado = 1;
+  // Presente quando há (ou acabou de haver) uma sessão.
+  SessaoDeCadastro sessao = 2;
+}
+
+message LeituraDesconhecida {
+  string tentativa_id = 1;
+  string codigo_mascarado = 2;
+  int32 vezes = 3;
+  google.protobuf.Timestamp ultima_vez = 4;
+}
+
+message ListarLeiturasDesconhecidasRequest {
+  int32 limite = 1;
+}
+
+message ListarLeiturasDesconhecidasResponse {
+  repeated LeituraDesconhecida cartoes = 1;
+}
+
+message CadastrarLeituraDesconhecidaRequest {
+  string tentativa_id = 1;
+  string provedor_id = 2;
+  string categoria = 3;
+  string lote = 4;
+  int32 usos = 5;
+}
+
+enum ResultadoDoRegistro {
+  RESULTADO_DO_REGISTRO_NAO_ESPECIFICADO = 0;
+  RESULTADO_DO_REGISTRO_CADASTRADO = 1;
+  RESULTADO_DO_REGISTRO_JA_CADASTRADO = 2;
+  RESULTADO_DO_REGISTRO_TENTATIVA_NAO_ENCONTRADA = 3;
+  RESULTADO_DO_REGISTRO_PROVEDOR_DESCONHECIDO = 4;
+  RESULTADO_DO_REGISTRO_PROVEDOR_NAO_REUTILIZAVEL = 5;
+  RESULTADO_DO_REGISTRO_DADOS_INVALIDOS = 6;
+}
+
+message ResultadoDoRegistroResponse {
+  ResultadoDoRegistro resultado = 1;
 }

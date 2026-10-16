@@ -77,6 +77,16 @@ display da catraca deve passar a mostrar **"Aproxime o ingresso"**.
 Se ela ficar presa em `Conectar`, o problema é rede: IP, porta, firewall do Windows, ou
 número do Inner diferente do `--inner`.
 
+Se ela ficar em `FirmwareIncompativel`, o registro mostra a linha lida
+(`firmware lido: linha=… versao=…`). O programa só configura as linhas aceitas: **14, 16 e 19**
+por padrão. Uma linha nova entra pela chave técnica `catraca.linhas_homologadas` (por exemplo
+`14,16,19,21`), sem versão nova, e o registro da subida diz quais linhas valem.
+
+**HIL-CAP-01, resultado de 15/10/2026 (bancada do dono):** Catraca Fit, Inner 1, firmware
+`linha=19 versao=6.42.1 variacao=0 bio=False`. A conexão chegou ao serviço; a catraca parou em
+`FirmwareIncompativel` porque a linha 19 não estava aceita. A linha 19 entrou no padrão
+(fecha E1-06 do docs/41).
+
 ---
 
 ## 3. Descobrir o que cada leitor entrega — **o passo mais importante**
@@ -451,6 +461,15 @@ Ensaio aprovado: em cada catraca, toda função usada no mapa tem a conferência
 anotado bate com a seta (ou a função foi trocada), e entradas e saídas no painel batem com o que
 se passou. A chave `catraca.exibir_texto_do_giro` só é ligada se o passo 10 não atrapalhar o giro
 nem a vazão (cada chamada a mais no caminho da passagem custa tempo, docs/34 §8).
+
+## 6K. Urna, leitor da frente e teclado (docs/61)
+
+O roteiro completo está no [docs/61 §5](61-urna-leitores-e-teclado.md) (U1 a U7). O essencial: em
+Configurações › Padrão das catracas, leitor da frente = **Só a equipe**, urna **ligada**, teclado
+**Desligado**, **Aplicar agora nas catracas**. Cartão do evento na fenda: o display pede o depósito, a
+guia abre, o cartão cai e só então o braço libera. O relé 2 vai como (3, 15 s), o ajuste do middleware
+que operou em 2025. Se a guia não abrir, troque a chave técnica `catraca.funcao_do_rele_da_urna` para 2
+e depois 1 e anote qual abre. Teclado desligado: a catraca nem aceita a digitação (forma de entrada 6).
 
 ## 6J. Prazo do giro (`NOVO-HIL-GIRO-04`, Etapa I.1b)
 

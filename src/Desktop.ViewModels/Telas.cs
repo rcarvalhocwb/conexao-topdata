@@ -184,31 +184,33 @@ public sealed class PainelAoVivoViewModel : TelaBase
             Giros = estado.Giros;
             LiberadosUltimos5Minutos = estado.LiberadosUltimos5Minutos;
             PendentesDeEnvio = estado.OutboxPendente;
-            Catracas = [.. lista.Equipamentos.Select(e => Linha(e, agora))];
-            Resumo = string.Create(
-                CultureInfo.CurrentCulture,
-                $"{estado.EquipamentosConectados} de {estado.EquipamentosCadastrados} catraca(s) atendendo");
-            Internet = estado.InternetDisponivel
-                ? $"Nuvem: sincronizado {Textos.Ha(estado.UltimaSincronizacao?.ToDateTimeOffset(), agora)}"
-                : estado.UltimaSincronizacao is null
-                    ? "Nuvem: sem sincronização — o acesso segue pela lista local deste computador"
-                    : $"Nuvem: sem internet desde {Textos.Ha(estado.UltimaSincronizacao.ToDateTimeOffset(), agora)} — o acesso segue pela lista local deste computador";
+            Catracas = [.. lista.Equipamentos.Select(e => Linha(e, agora, estado.EnderecosDoPc))];
+            // Físicas e simuladas em contagens separadas: uma simulada nunca vira "atendendo" de catraca real.
+            var simuladas = estado.CatracasSimuladasAtivas;
+            Resumo = simuladas > 0
+                ? string.Create(CultureInfo.CurrentCulture, $"{estado.EquipamentosConectados} física(s) atendendo · {simuladas} simulada(s) ativa(s)")
+                : string.Create(CultureInfo.CurrentCulture, $"{estado.EquipamentosConectados} de {estado.EquipamentosCadastrados} catraca(s) atendendo");
+            var nuvem = Textos.Nuvem(estado.SituacaoDaNuvem, estado.UltimaSincronizacao?.ToDateTimeOffset(), agora);
+            Internet = $"{Textos.Internet(estado.SituacaoDaInternet)} · {nuvem.Texto} · {Textos.Fila(estado.SituacaoDaFila, estado.OutboxPendente)}";
             Mensagem = string.Empty;
+
+            if (Textos.AvisoDeConexaoSemCatraca(estado.IpsConectadosNaPorta, lista.Equipamentos.Any(e => e.EmOperacao)) is { } aviso)
+            {
+                Mensagem = aviso;
+            }
 
             ServicoResumo = "Operacional";
             ServicoSinal = Sinal.Bom;
-            (CatracasResumo, CatracasSinal) = (estado.EquipamentosCadastrados, estado.EquipamentosConectados) switch
-            {
-                (0, _) => ("Nenhuma cadastrada", Sinal.Neutro),
-                (var total, var conectadas) when conectadas >= total => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Bom),
-                (var total, 0) => (string.Create(CultureInfo.InvariantCulture, $"0/{total} online"), Sinal.Problema),
-                (var total, var conectadas) => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Atencao),
-            };
-            (NuvemResumo, NuvemSinal) = estado.InternetDisponivel
-                ? ("Online", Sinal.Bom)
-                : estado.UltimaSincronizacao is null
-                    ? ("Sem sincronização", Sinal.Neutro)
-                    : ("Offline — catracas seguem", Sinal.Atencao);
+            (CatracasResumo, CatracasSinal) = simuladas > 0 && estado.EquipamentosConectados == 0
+                ? (string.Create(CultureInfo.InvariantCulture, $"{simuladas} simulada(s) ativa(s)"), Sinal.Atencao)
+                : (estado.EquipamentosCadastrados, estado.EquipamentosConectados) switch
+                {
+                    (0, _) => ("Nenhuma cadastrada", Sinal.Neutro),
+                    (var total, var conectadas) when conectadas >= total => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Bom),
+                    (var total, 0) => (string.Create(CultureInfo.InvariantCulture, $"0/{total} online"), Sinal.Problema),
+                    (var total, var conectadas) => (string.Create(CultureInfo.InvariantCulture, $"{conectadas}/{total} online"), Sinal.Atencao),
+                };
+            (NuvemResumo, NuvemSinal) = Textos.NuvemCurta(estado.SituacaoDaNuvem);
 
             // Lista vazia com acesso já contado: completa pelo que está gravado, sem esperar o
             // fluxo ao vivo conectar (ou sem ele, como na captura das telas).
@@ -374,7 +376,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
         }
     }
 
-    internal static LinhaDeCatraca Linha(Equipamento e, DateTimeOffset agora)
+    internal static LinhaDeCatraca Linha(Equipamento e, DateTimeOffset agora, IReadOnlyList<string>? enderecosDoPc = null)
     {
         var (texto, sinal) = Textos.SituacaoDaCatraca(e);
         var (relogio, relogioDivergente) = Textos.Relogio(e, agora);
@@ -397,7 +399,8 @@ public sealed class PainelAoVivoViewModel : TelaBase
             e.TentativasDeReconexao,
             relogio,
             relogioDivergente,
-            e.Simulacao);
+            e.Simulacao,
+            Textos.ComoConectar(e.Inner, enderecosDoPc ?? [], e.Porta, e.EmOperacao));
     }
 }
 
@@ -414,6 +417,11 @@ public sealed class CatracasViewModel : TelaBase
     public override string Titulo => "Catracas";
 
     public IReadOnlyList<LinhaDeCatraca> Catracas { get => _catracas; private set => Definir(ref _catracas, value); }
+
+    private string _redeDaPorta = string.Empty;
+
+    /// <summary>O IP deste PC, a porta e de onde já chegou conexão: o que o operador precisa para conectar (docs/62).</summary>
+    public string RedeDaPorta { get => _redeDaPorta; private set => Definir(ref _redeDaPorta, value); }
 
     private bool _servicoRespondeu = true;
 
@@ -439,10 +447,14 @@ public sealed class CatracasViewModel : TelaBase
     {
         ServicoRespondeu = await Tentar(async () =>
         {
+            var estado = await Cliente.ObterEstadoAsync(new ObterEstadoRequest(), cancellationToken: cancelamento);
             var lista = await Cliente.ListarEquipamentosAsync(new ListarEquipamentosRequest(), cancellationToken: cancelamento);
             var agora = Relogio();
-            Catracas = [.. lista.Equipamentos.Select(e => PainelAoVivoViewModel.Linha(e, agora))];
-            Mensagem = Catracas.Count == 0 ? "Nenhuma catraca cadastrada na instalação." : string.Empty;
+            Catracas = [.. lista.Equipamentos.Select(e => PainelAoVivoViewModel.Linha(e, agora, estado.EnderecosDoPc))];
+            RedeDaPorta = Textos.ResumoDaRede(estado.EnderecosDoPc, estado.IpsConectadosNaPorta, [.. lista.Equipamentos.Select(e => e.Porta).Distinct()]);
+            Mensagem = Catracas.Count == 0
+                ? "Nenhuma catraca cadastrada na instalação."
+                : Textos.AvisoDeConexaoSemCatraca(estado.IpsConectadosNaPorta, lista.Equipamentos.Any(e => e.EmOperacao)) ?? string.Empty;
         }).ConfigureAwait(true);
 
         if (!ServicoRespondeu)
@@ -650,11 +662,82 @@ public sealed class SincronizacaoViewModel : TelaBase
 
     private long _cartasMortas;
     private string _operador = string.Empty;
+    private string _resultadoDoTeste = string.Empty;
+    private string _orientacaoDoTeste = string.Empty;
+    private Sinal _sinalDoTeste;
+    private bool _testando;
 
     public SincronizacaoViewModel(EdgeControl.EdgeControlClient cliente, Func<DateTimeOffset>? relogio = null)
         : base(cliente, relogio)
     {
         ReenviarCartasMortas = new ComandoAssincrono(ReenviarCartasMortasAsync, () => CartasMortas > 0);
+        TestarConexao = new ComandoAssincrono(TestarConexaoAsync);
+    }
+
+    /// <summary>
+    /// "Testar conexão com a nuvem": o serviço roda agora a mesma rodada que faz sozinho (a lista desce,
+    /// as passagens sobem) e diz o que aconteceu, sem esperar o próximo intervalo.
+    /// </summary>
+    public ComandoAssincrono TestarConexao { get; }
+
+    /// <summary>Verdadeiro enquanto o teste roda: a tela mostra "Testando…".</summary>
+    public bool Testando { get => _testando; private set => Definir(ref _testando, value); }
+
+    /// <summary>A primeira linha do resultado do teste; vazio antes do primeiro teste.</summary>
+    public string ResultadoDoTeste { get => _resultadoDoTeste; private set => Definir(ref _resultadoDoTeste, value); }
+
+    /// <summary>O que fazer, quando o teste não deu tudo certo.</summary>
+    public string OrientacaoDoTeste { get => _orientacaoDoTeste; private set => Definir(ref _orientacaoDoTeste, value); }
+
+    public Sinal SinalDoTeste { get => _sinalDoTeste; private set => Definir(ref _sinalDoTeste, value); }
+
+    private async Task TestarConexaoAsync()
+    {
+        Testando = true;
+        ResultadoDoTeste = string.Empty;
+        OrientacaoDoTeste = string.Empty;
+        try
+        {
+            await Tentar(async () =>
+            {
+                var r = await Cliente.TestarNuvemAsync(new TestarNuvemRequest());
+                (SinalDoTeste, ResultadoDoTeste, OrientacaoDoTeste) = DescreverTeste(r);
+                await AtualizarAsync();
+            });
+        }
+        finally
+        {
+            Testando = false;
+        }
+    }
+
+    /// <summary>O resultado do teste em português de operador: o que houve, os números, e o que fazer.</summary>
+    public static (Sinal Sinal, string Resultado, string Orientacao) DescreverTeste(ResultadoDoTesteDaNuvem r)
+    {
+        ArgumentNullException.ThrowIfNull(r);
+
+        if (!r.Configurada)
+        {
+            return (Sinal.Neutro, "A nuvem não está configurada neste computador.", r.Orientacao);
+        }
+
+        var segundos = (r.DuracaoMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture);
+        var lista = r.Novos + r.Atualizados == 0
+            ? "lista de cartões sem mudanças"
+            : string.Create(CultureInfo.CurrentCulture, $"{r.Novos} cartão(ões) novo(s) e {r.Atualizados} atualizado(s)");
+        var passagens = r.Adiadas > 0
+            ? string.Create(CultureInfo.CurrentCulture, $"{r.Enviadas} passagem(ns) enviada(s), {r.Adiadas} na fila")
+            : string.Create(CultureInfo.CurrentCulture, $"{r.Enviadas} passagem(ns) enviada(s)");
+
+        if (r.Completo)
+        {
+            return (Sinal.Bom, $"Conexão com a nuvem OK ({segundos} s): {lista}; {passagens}.", string.Empty);
+        }
+
+        var orientacao = string.IsNullOrWhiteSpace(r.Detalhe) ? r.Orientacao : $"{r.Orientacao} Detalhe: {r.Detalhe}";
+        return r.Respondeu
+            ? (Sinal.Atencao, $"A nuvem respondeu, mas com problema ({segundos} s).", orientacao)
+            : (Sinal.Problema, $"Sem conexão com a nuvem ({segundos} s). As catracas seguem com a lista local.", orientacao);
     }
 
     public override string Titulo => "Sincronização";
@@ -711,11 +794,29 @@ public sealed class SincronizacaoViewModel : TelaBase
                     ? Sinal.Atencao
                     : Sinal.Bom;
 
+            var contato = r.UltimoContato?.ToDateTimeOffset();
+            var nuvem = !r.Configurada
+                ? "Não configurada nesta instalação"
+                : r.ListaIncompletaCom > 0
+                    ? "Conectada, mas a lista de cartões veio incompleta"
+                    : "Configurada";
+
             Situacao =
             [
-                new ParDeTexto("Nuvem", r.Configurada ? "Configurada" : "Não configurada nesta instalação"),
-                new ParDeTexto("Última sincronização", Textos.Ha(ultima, agora)),
+                new ParDeTexto("Nuvem", nuvem),
+                new ParDeTexto("Último contato com a nuvem", r.Configurada ? Textos.Ha(contato, agora) : "—"),
+                new ParDeTexto("Última sincronização completa", Textos.Ha(ultima, agora)),
                 new ParDeTexto("Última falha", string.IsNullOrWhiteSpace(r.UltimaFalha) ? "—" : r.UltimaFalha),
+                .. r.ListaIncompletaCom > 0
+                    ? new[]
+                    {
+                        new ParDeTexto(
+                            "O que fazer",
+                            string.Create(
+                                CultureInfo.CurrentCulture,
+                                $"A nuvem mandou {r.ListaIncompletaCom} cartões e parou no limite dela. Os que vieram já valem aqui; os outros, não. Toque em Testar conexão com a nuvem; se continuar, avise quem cuida da nuvem (a lista tem de vir completa, docs/31 §3).")),
+                    }
+                    : [],
                 new ParDeTexto("Aguardando envio", string.Create(CultureInfo.CurrentCulture, $"{r.Pendentes}")),
                 new ParDeTexto("Mais antigo na fila", r.Pendentes == 0 ? "—" : Textos.Ha(agora.AddSeconds(-r.IdadeDoMaisAntigoSegundos), agora)),
                 new ParDeTexto("Recusados pela nuvem", string.Create(CultureInfo.CurrentCulture, $"{r.CartasMortas}")),
@@ -739,7 +840,7 @@ public sealed class SincronizacaoViewModel : TelaBase
 /// são da fase 6: aparecem em <see cref="AindaNaoDisponivel"/>, desabilitados e com o motivo.
 /// </para>
 /// </remarks>
-public sealed class ContasViewModel : TelaBase
+public sealed partial class ContasViewModel : TelaBase
 {
     private DateTime? _desde;
     private DateTime? _ate;
@@ -812,19 +913,18 @@ public sealed class ContasViewModel : TelaBase
     /// </summary>
     public IReadOnlyList<ParDeTexto> AindaNaoDisponivel { get; } =
     [
-        new("R1 · Boletim do dia (PDF)", "Fase 6. Depende da hora de corte do dia de operação (E9) e da regra da meia-entrada (E10), e dos tipos cadastrados (fase 3). Hoje: o resumo \"Por categoria\" abaixo."),
-        new("R2 · Fluxo por hora e por tipo", "Fase 6. Hoje: \"Por hora\" abaixo, no total, sem separar por tipo."),
-        new("R3 · Por catraca e disponibilidade", "Fase 6. Hoje: \"Por catraca\" abaixo, sem o tempo fora do ar."),
-        new("R4 · Por origem do ingresso", "Fase 6: validados por provedor (bilheteria, venda online, cortesia)."),
-        new("R5 · Conciliação (cadastrado × usado)", "Fase 6: depende do cadastro de cartões (fase 3)."),
-        new("R6 · Ocorrências e auditoria", "Fase 6: negativas repetidas, liberações manuais e comandos. As liberações manuais ainda não entram nos números."),
-        new("R7 · Consolidado do evento", "Fase 6: depende da hora de corte do dia de operação (E9)."),
-        new("R8 · Saúde da operação", "Fase 6: quedas de catraca, do serviço e da sincronização, com duração."),
-        new("Fechar o corte com código de conferência", "Fase 6: números congelados com SHA-256 (docs/25 §4)."),
+        new("R3 · Tempo fora do ar de cada catraca", "Em construção: entra com o R8 (quedas com duração). O R3 acima já traz validados, sem passagem e negados por catraca."),
+        new("R4 · Por origem do ingresso", "Em construção: validados por provedor (bilheteria, venda online, cortesia)."),
+        new("R5 · Conciliação (cadastrado × usado)", "Em construção: cartões cadastrados, usados e nunca usados, por tipo."),
+        new("R6 · Ocorrências e auditoria", "Em construção: negativas repetidas, liberações manuais e comandos, com quem fez."),
+        new("R8 · Saúde da operação", "Em construção: quedas de catraca, do serviço e da sincronização, com duração."),
+        new("Fechar o corte (congelar os números)", "Em construção. Hoje cada relatório já traz o código de conferência (SHA-256): o mesmo período e os mesmos dados dão o mesmo código."),
     ];
 
     public override async Task AtualizarAsync(CancellationToken cancelamento = default)
     {
+        await AplicarDiaDeOperacaoAsync(cancelamento).ConfigureAwait(true);
+
         if (!LerPeriodo(Desde, HoraDesde, Ate, HoraAte, out var inicio, out var fim))
         {
             return;
@@ -841,8 +941,45 @@ public sealed class ContasViewModel : TelaBase
             };
 
             Contas = await Cliente.ObterPrestacaoDeContasAsync(pedido, cancellationToken: cancelamento);
+            Relatorios = await Cliente.ObterRelatoriosAsync(
+                new ObterRelatoriosRequest { Desde = pedido.Desde, Ate = pedido.Ate }, cancellationToken: cancelamento);
             Mensagem = Contas.Liberados + Contas.Negados == 0 ? "Nenhuma tentativa no período." : string.Empty;
         }).ConfigureAwait(true);
+    }
+
+    private bool _diaDeOperacaoAplicado;
+
+    /// <summary>
+    /// Na primeira vez, com a hora de corte do evento definida (E9, docs/57 §4) e o período ainda como
+    /// a tela abriu, o período passa a ser o dia de operação de agora: do corte ao corte do dia seguinte.
+    /// </summary>
+    private async Task AplicarDiaDeOperacaoAsync(CancellationToken cancelamento)
+    {
+        if (_diaDeOperacaoAplicado)
+        {
+            return;
+        }
+
+        _diaDeOperacaoAplicado = true;
+        if (Desde != HojeNoEvento() || HoraDesde.Length > 0 || Ate is not null || HoraAte.Length > 0)
+        {
+            return;
+        }
+
+        var evento = new DadosDoEvento();
+        if (!await Tentar(async () => evento = await Cliente.ObterEventoAsync(new ObterEventoRequest(), cancellationToken: cancelamento)).ConfigureAwait(true)
+            || !TimeSpan.TryParseExact(evento.HoraDeCorte, @"hh\:mm", CultureInfo.InvariantCulture, out var corte)
+            || corte == TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var agora = FusoDoEvento.NoEvento(Relogio());
+        var dia = agora.TimeOfDay < corte ? agora.Date.AddDays(-1) : agora.Date;
+        Desde = dia;
+        HoraDesde = corte.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+        Ate = dia.AddDays(1);
+        HoraAte = corte.Subtract(TimeSpan.FromMinutes(1)).ToString(@"hh\:mm", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -895,6 +1032,7 @@ public sealed class ContasViewModel : TelaBase
             csv.AppendLine(string.Create(cultura, $"{Celula(l.Mensagem)};{l.Quantidade}"));
         }
 
+        AcrescentarRelatorios(csv);
         return csv.ToString();
     }
 
@@ -951,11 +1089,16 @@ public sealed class ContasViewModel : TelaBase
     }
 }
 
-/// <summary>Configurações do evento que valem para todas as catracas.</summary>
-public sealed class ConfiguracoesViewModel : TelaBase
+/// <summary>
+/// Configurações do evento, em seções (docs/57): o evento, os tipos de entrada, os cartões da
+/// bilheteria, o padrão das catracas (esta parte), o que espera decisão e o avançado.
+/// </summary>
+public sealed partial class ConfiguracoesViewModel : TelaBase
 {
     private int _tipoDeLeitor = 8;
     private bool _leitorDaUrna = true;
+    private string _usoDaFrente = "equipe_e_ingressos";
+    private string _usoDoTeclado = "desligado";
     private int _tempo = 5;
     private string _mensagemPadrao = string.Empty;
     private int _espera = 10;
@@ -985,6 +1128,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
             ConfirmandoAplicacao = false;
             return Task.CompletedTask;
         }, () => ConfirmandoAplicacao);
+        IniciarSecoes();
     }
 
     private bool _confirmandoAplicacao;
@@ -1029,12 +1173,69 @@ public sealed class ConfiguracoesViewModel : TelaBase
 
     public ComandoAssincrono Salvar { get; }
 
-    /// <summary>Quem está operando, gravado junto da mudança.</summary>
-    public string Operador { get; set; } = string.Empty;
+    private string _operador = string.Empty;
+
+    /// <summary>Quem está operando, gravado junto da mudança. Vem preenchido com o usuário do login.</summary>
+    public string Operador { get => _operador; set => Definir(ref _operador, value ?? string.Empty); }
 
     public int TipoDeLeitor { get => _tipoDeLeitor; set => Definir(ref _tipoDeLeitor, value); }
 
+    /// <summary>O tipo de leitor escolhido na lista, com o nome (a lista grava o número).</summary>
+    public OpcaoDaLista? TipoDeLeitorEscolhido
+    {
+        get => TiposDeLeitor.FirstOrDefault(t => t.Valor == TipoDeLeitor);
+        set
+        {
+            if (value is not null)
+            {
+                TipoDeLeitor = value.Valor;
+                Avisar();
+            }
+        }
+    }
+
     public bool LeitorDaUrna { get => _leitorDaUrna; set => Definir(ref _leitorDaUrna, value); }
+
+    /// <summary>Para que serve o leitor da frente (docs/61). O valor é o do contrato (<c>uso_da_frente</c>).</summary>
+    public static IReadOnlyList<OpcaoDeTexto> UsosDaFrente { get; } =
+    [
+        new("equipe_e_ingressos", "Equipe e ingressos (QR); cartão do evento vai na urna"),
+        new("equipe", "Só a equipe (crachás do cadastro de pessoas)"),
+        new("desligada", "Desligado"),
+    ];
+
+    /// <summary>Para que serve o teclado (docs/61). O valor é o do contrato (<c>uso_do_teclado</c>).</summary>
+    public static IReadOnlyList<OpcaoDeTexto> UsosDoTeclado { get; } =
+    [
+        new("desligado", "Desligado"),
+        new("equipe", "Só a equipe (código digitado do cadastro de pessoas)"),
+    ];
+
+    public OpcaoDeTexto? UsoDaFrente
+    {
+        get => UsosDaFrente.FirstOrDefault(o => o.Valor == _usoDaFrente);
+        set
+        {
+            if (value is not null && value.Valor != _usoDaFrente)
+            {
+                _usoDaFrente = value.Valor;
+                Avisar();
+            }
+        }
+    }
+
+    public OpcaoDeTexto? UsoDoTeclado
+    {
+        get => UsosDoTeclado.FirstOrDefault(o => o.Valor == _usoDoTeclado);
+        set
+        {
+            if (value is not null && value.Valor != _usoDoTeclado)
+            {
+                _usoDoTeclado = value.Valor;
+                Avisar();
+            }
+        }
+    }
 
     public int TempoDeAcionamento { get => _tempo; set => Definir(ref _tempo, value); }
 
@@ -1051,13 +1252,19 @@ public sealed class ConfiguracoesViewModel : TelaBase
         {
             var c = await Cliente.ObterConfiguracaoAsync(new ObterConfiguracaoRequest(), cancellationToken: cancelamento);
             TipoDeLeitor = c.TipoDeLeitor;
+            Avisar(nameof(TipoDeLeitorEscolhido));
             LeitorDaUrna = c.LeitorDaUrna;
+            _usoDaFrente = string.IsNullOrEmpty(c.UsoDaFrente) ? "equipe_e_ingressos" : c.UsoDaFrente;
+            _usoDoTeclado = string.IsNullOrEmpty(c.UsoDoTeclado) ? "desligado" : c.UsoDoTeclado;
+            Avisar(nameof(UsoDaFrente));
+            Avisar(nameof(UsoDoTeclado));
             TempoDeAcionamento = c.TempoDeAcionamentoSegundos;
             MensagemPadrao = c.MensagemPadrao;
             EsperaPeloGiro = c.EsperaPeloGiroSegundos;
             _esperaGravada = c.EsperaPeloGiroSegundos;
             NuvemLigada = c.NuvemLigada;
             Problemas = [];
+            await AtualizarSecoesAsync(cancelamento).ConfigureAwait(true);
         });
 
     private async Task SalvarAsync() =>
@@ -1070,6 +1277,8 @@ public sealed class ConfiguracoesViewModel : TelaBase
                 {
                     TipoDeLeitor = TipoDeLeitor,
                     LeitorDaUrna = LeitorDaUrna,
+                    UsoDaFrente = _usoDaFrente,
+                    UsoDoTeclado = _usoDoTeclado,
                     TempoDeAcionamentoSegundos = TempoDeAcionamento,
                     MensagemPadrao = MensagemPadrao,
                     EsperaPeloGiroSegundos = EsperaPeloGiro,
@@ -1107,7 +1316,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
 
             Problemas = [.. r.Problemas];
             Mensagem = r.Aceito
-                ? $"Pedido a {r.Ids.Count} catraca(s). Cada uma reconecta e fica alguns segundos sem atender. Acompanhe em Gerenciar catraca."
+                ? $"Pedido a {r.Ids.Count} catraca(s). Cada uma reconecta e fica alguns segundos sem atender. Acompanhe em Configuração da catraca."
                 : "Não foi pedido. Corrija os itens abaixo.";
 
             // Só some a confirmação quando o pedido saiu: um nome faltando não obriga a começar de novo.
@@ -1119,7 +1328,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
 }
 
 /// <summary>Diagnóstico: o que o suporte precisa ver.</summary>
-public sealed class DiagnosticoViewModel : TelaBase
+public sealed partial class DiagnosticoViewModel : TelaBase
 {
     private Diagnostico? _diagnostico;
     private byte[]? _pacote;
@@ -1132,6 +1341,7 @@ public sealed class DiagnosticoViewModel : TelaBase
         : base(cliente, relogio)
     {
         PedirPacote = new ComandoAssincrono(PedirPacoteAsync);
+        InstalarLicenca = new ComandoAssincrono(InstalarLicencaAsync, () => !string.IsNullOrWhiteSpace(TextoDaLicenca));
     }
 
     /// <summary>Pede ao serviço o zip de diagnóstico. A tela, depois, pergunta onde salvar.</summary>
@@ -1203,6 +1413,7 @@ public sealed class DiagnosticoViewModel : TelaBase
         {
             Diagnostico = await Cliente.ObterDiagnosticoAsync(new ObterDiagnosticoRequest(), cancellationToken: cancelamento);
             (AnalisadorResumo, AnalisadorSinal, Analisador) = Textos.SaudeDoAnalisador(Diagnostico.Analisador, Relogio());
+            await AtualizarLicencaEAtualizacaoAsync(cancelamento);
             Mensagem = string.Empty;
         });
 }
@@ -1317,7 +1528,6 @@ public sealed class JanelaViewModel : Notificavel
         [typeof(ConsultaViewModel)] = CodigosDePermissao.CodigosConsultar,
         [typeof(SincronizacaoViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(ContasViewModel)] = CodigosDePermissao.RelatoriosVer,
-        [typeof(GerenciarCatracaViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(GemeoDigitalViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(ConfiguracoesViewModel)] = CodigosDePermissao.OperacaoVer,
         [typeof(DiagnosticoViewModel)] = CodigosDePermissao.DiagnosticoVer,
@@ -1325,6 +1535,7 @@ public sealed class JanelaViewModel : Notificavel
         [typeof(PessoasViewModel)] = CodigosDePermissao.PessoasVer,
         [typeof(ParametrosDoCadastroViewModel)] = CodigosDePermissao.CadastroParametros,
         [typeof(UsuariosViewModel)] = CodigosDePermissao.UsuariosGerenciar,
+        [typeof(CartoesNaoReconhecidosViewModel)] = CodigosDePermissao.CartoesCadastrar,
     };
 
     /// <param name="cliente">O cliente do serviço.</param>
@@ -1337,6 +1548,7 @@ public sealed class JanelaViewModel : Notificavel
     {
         ArgumentNullException.ThrowIfNull(cliente);
 
+        _cliente = cliente;
         Sessao = sessao;
         Painel = new PainelAoVivoViewModel(cliente, relogio);
         Telas =
@@ -1347,7 +1559,6 @@ public sealed class JanelaViewModel : Notificavel
             new ConsultaViewModel(cliente, relogio),
             new SincronizacaoViewModel(cliente, relogio),
             new ContasViewModel(cliente, relogio),
-            new GerenciarCatracaViewModel(cliente, relogio),
             new GemeoDigitalViewModel(cliente, relogio),
             new ConfiguracoesViewModel(cliente, relogio),
             new DiagnosticoViewModel(cliente, relogio),
@@ -1355,6 +1566,7 @@ public sealed class JanelaViewModel : Notificavel
             new PessoasViewModel(cliente, relogio),
             new ParametrosDoCadastroViewModel(cliente, relogio),
             new UsuariosViewModel(cliente, relogio),
+            new CartoesNaoReconhecidosViewModel(cliente, relogio),
         ];
         _telaAtual = Painel;
 
@@ -1362,6 +1574,22 @@ public sealed class JanelaViewModel : Notificavel
         {
             Sessao.SessaoMudou += (_, _) =>
             {
+                // Quem entrou não precisa digitar o nome de novo onde ele fica registrado (docs/51).
+                if (Sessao.Logado)
+                {
+                    var configuracoes = Telas.OfType<ConfiguracoesViewModel>().First();
+                    if (configuracoes.Operador.Length == 0)
+                    {
+                        configuracoes.Operador = Sessao.Nome;
+                    }
+
+                    var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
+                    if (gemeo.Central.Operador.Length == 0)
+                    {
+                        gemeo.Central.Operador = Sessao.Nome;
+                    }
+                }
+
                 Avisar(nameof(TelasDoMenu));
                 if (!TelasDoMenu.Contains(TelaAtual) && TelasDoMenu.Count > 0)
                 {
@@ -1386,7 +1614,7 @@ public sealed class JanelaViewModel : Notificavel
             }
         };
 
-        // Etapa A.6: o detalhe da catraca, aberto pela "Gerenciar catraca" (docs/34 §7.3).
+        // Etapa A.6: o detalhe da catraca, aberto pelo "Ver em lista" da configuração (docs/34 §7.3).
         // Fica fora do menu: só faz sentido com uma catraca escolhida.
         Parametrizacao = new ParametrizacaoViewModel(cliente, relogio);
         Parametrizar = new ComandoComParametro(async parametro =>
@@ -1396,12 +1624,11 @@ public sealed class JanelaViewModel : Notificavel
                 return;
             }
 
-            // Quem já digitou o nome no Gerenciar ou no gêmeo não precisa digitar de novo.
-            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
+            // Quem já digitou o nome na configuração não precisa digitar de novo.
             var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (Parametrizacao.Operador.Length == 0)
             {
-                Parametrizacao.Operador = gemeo.Central.Operador.Length > 0 ? gemeo.Central.Operador : gerenciar.Operador;
+                Parametrizacao.Operador = gemeo.Central.Operador;
             }
 
             var mesmaTela = ReferenceEquals(TelaAtual, Parametrizacao);
@@ -1417,8 +1644,9 @@ public sealed class JanelaViewModel : Notificavel
                 await Parametrizacao.AtualizarAsync().ConfigureAwait(true);
             }
         });
-        // O gêmeo é a porta principal da configuração da catraca (docs/33 §9): a Parametrização
-        // e a Gerenciar têm o atalho "Abrir no gêmeo"; o gêmeo tem "Ver em lista".
+        // O gêmeo é a porta principal da catraca (docs/33 §9): configuração, comandos e histórico
+        // numa tela só (a "Gerenciar catraca" foi fundida nela). O botão "Configurar" do cartão da
+        // catraca e a Parametrização abrem aqui; daqui, "Ver em lista" abre a Parametrização.
         AbrirNoGemeo = new ComandoComParametro(async parametro =>
         {
             if (parametro is not int inner || inner <= 0)
@@ -1429,8 +1657,7 @@ public sealed class JanelaViewModel : Notificavel
             var gemeo = Telas.OfType<GemeoDigitalViewModel>().First();
             if (gemeo.Central.Operador.Length == 0)
             {
-                var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
-                gemeo.Central.Operador = Parametrizacao.Operador.Length > 0 ? Parametrizacao.Operador : gerenciar.Operador;
+                gemeo.Central.Operador = Parametrizacao.Operador;
             }
 
             gemeo.Catraca = inner;
@@ -1448,25 +1675,6 @@ public sealed class JanelaViewModel : Notificavel
         {
             TelaAtual = Telas.OfType<DiagnosticoViewModel>().First();
             return Task.CompletedTask;
-        });
-        Gerenciar = new ComandoComParametro(async parametro =>
-        {
-            if (parametro is not int inner)
-            {
-                return;
-            }
-
-            var gerenciar = Telas.OfType<GerenciarCatracaViewModel>().First();
-            gerenciar.Catraca = inner;
-
-            if (ReferenceEquals(TelaAtual, gerenciar))
-            {
-                await gerenciar.AtualizarAsync().ConfigureAwait(true);
-            }
-            else
-            {
-                TelaAtual = gerenciar;
-            }
         });
         VerAcessos = new ComandoComParametro(async parametro =>
         {
@@ -1489,17 +1697,15 @@ public sealed class JanelaViewModel : Notificavel
         });
     }
 
-    /// <summary>A Parametrização da catraca (Etapa A.6), aberta pela "Gerenciar catraca".</summary>
+    /// <summary>A Parametrização da catraca (Etapa A.6), aberta pelo "Ver em lista" da configuração.</summary>
     public ParametrizacaoViewModel Parametrizacao { get; }
 
     /// <summary>Abre a Parametrização de uma catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro Parametrizar { get; }
 
-    /// <summary>Abre o gêmeo digital numa catraca, para configurá-la (parâmetro: o número do Inner).</summary>
+    /// <summary>Abre a "Configuração da catraca" (configurar, comandar e ver o histórico) numa catraca (parâmetro: o número do Inner).</summary>
     public ComandoComParametro AbrirNoGemeo { get; }
 
-    /// <summary>A ação "Gerenciar" do cartão da catraca (parâmetro: o número do Inner).</summary>
-    public ComandoComParametro Gerenciar { get; }
 
     /// <summary>A ação dos cartões de catraca: ir direto ao diagnóstico.</summary>
     public ComandoAssincrono AbrirDiagnostico { get; }
@@ -1539,6 +1745,26 @@ public sealed class JanelaViewModel : Notificavel
         }
     }
 
+    private readonly EdgeControl.EdgeControlClient _cliente;
+
+    /// <summary>
+    /// O operador finalizou o painel (bandeja → Fechar): avisa o serviço, que pode instalar uma atualização
+    /// pronta com as catracas paradas (docs/60 §2.3). Nunca lança nem segura o fechamento mais de 3 s.
+    /// </summary>
+    public async Task<bool> AvisarFinalizadoAsync()
+    {
+        try
+        {
+            var resposta = await _cliente.AvisarPainelFinalizadoAsync(
+                new AvisarPainelFinalizadoRequest(), deadline: DateTime.UtcNow.AddSeconds(3)).ConfigureAwait(false);
+            return resposta.VaiInstalar;
+        }
+        catch (Grpc.Core.RpcException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Atualização periódica: o cabeçalho sempre; a tela atual só se ela mostra coisa que
     /// muda sozinha (formulários e consultas não são recarregados por cima do operador).
@@ -1558,8 +1784,7 @@ public sealed class JanelaViewModel : Notificavel
             return;
         }
 
-        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GerenciarCatracaViewModel
-            or GemeoDigitalViewModel)
+        if (TelaAtual is CatracasViewModel or SincronizacaoViewModel or DiagnosticoViewModel or GemeoDigitalViewModel)
         {
             await TelaAtual.AtualizarAsync(cancelamento).ConfigureAwait(true);
         }

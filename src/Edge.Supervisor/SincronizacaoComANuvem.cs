@@ -96,6 +96,29 @@ public sealed class SuspeitaDeCorte
     public int? Recebidos { get; set; }
 }
 
+/// <summary>O que uma rodada com a nuvem fez: o botão "Testar conexão com a nuvem" mostra isto.</summary>
+/// <param name="Sucesso">Tudo certo: lista de cartões completa e nada adiado no envio.</param>
+/// <param name="Respondeu">A nuvem respondeu, mesmo que com erro: a conexão existe.</param>
+/// <param name="TipoDaFalha">O tipo mais grave de falha da rodada; <see cref="TipoDeFalha.Nenhuma"/> se não houve.</param>
+/// <param name="ListaIncompletaCom">Quantos cartões vieram numa lista cortada; nulo se não houve corte.</param>
+/// <param name="Novos">Cartões que entraram na base nesta rodada.</param>
+/// <param name="Atualizados">Cartões que mudaram nesta rodada.</param>
+/// <param name="Enviadas">Passagens que subiram.</param>
+/// <param name="Adiadas">Passagens que ficaram na fila para a próxima vez.</param>
+/// <param name="Motivo">O motivo da falha, sem segredo nem corpo de resposta; nulo se deu certo.</param>
+/// <param name="Duracao">Quanto a rodada levou.</param>
+public sealed record ResultadoDaRodada(
+    bool Sucesso,
+    bool Respondeu,
+    TipoDeFalha TipoDaFalha,
+    int? ListaIncompletaCom,
+    int Novos,
+    int Atualizados,
+    int Enviadas,
+    int Adiadas,
+    string? Motivo,
+    TimeSpan Duracao);
+
 /// <summary>
 /// Sincroniza com o painel na nuvem, em segundo plano: cartões descem, tentativas sobem.
 /// </summary>
@@ -119,6 +142,10 @@ public sealed class SincronizacaoComANuvem : BackgroundService
     private readonly Action<string> _registrar;
     private readonly Func<bool> _temSegredo;
     private readonly SuspeitaDeCorte? _corte;
+
+    // Uma rodada por vez: o teste pedido pelo painel espera a rodada automática terminar, e
+    // vice-versa. Duas ao mesmo tempo puxariam a mesma lista e mandariam a mesma passagem duas vezes.
+    private readonly SemaphoreSlim _umaPorVez = new(1, 1);
 
     /// <param name="cartoes">O laço que traz os cartões da nuvem.</param>
     /// <param name="tentativas">O drenador que sobe as tentativas.</param>
@@ -156,6 +183,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         _temSegredo = temSegredo ?? (() => true);
         _corte = corte;
         _estado.Configurada = true;
+        _estado.Intervalo = intervalo;
     }
 
     /// <summary>O que o painel mostra quando falta o segredo da nuvem.</summary>
@@ -173,7 +201,8 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         EstadoDaNuvem estado,
         Action<string> registrar,
         HttpMessageHandler? transporte = null,
-        TimeProvider? relogio = null)
+        TimeProvider? relogio = null,
+        bool simulacao = false)
     {
         ArgumentNullException.ThrowIfNull(nuvem);
         ArgumentNullException.ThrowIfNull(fabrica);
@@ -237,7 +266,7 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             new FilaDeSaidaSqlite(fabrica),
             // Um device_id por PC, o mesmo do segredo (decisão S10); a catraca vai em extra.catraca
             // (achado E5-3 do docs/41: antes ia "inner-N", que não bate com o segredo do equipamento).
-            [new ConectorDeTentativasDoPainel(http, nuvem.Conector, equipamentoNoPainel: _ => nuvem.Dispositivo)],
+            [new ConectorDeTentativasDoPainel(http, nuvem.Conector, equipamentoNoPainel: _ => nuvem.Dispositivo, simulacao: simulacao)],
             tentativa => TimeSpan.FromSeconds(Math.Min(300, 5 * Math.Pow(2, Math.Min(tentativa, 6)))),
             relogio);
 
@@ -247,16 +276,61 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             corte: corte);
     }
 
-    /// <summary>Uma rodada: cartões, depois tentativas. Devolve se as duas deram certo.</summary>
-    public async Task<bool> UmaRodadaAsync(CancellationToken cancelamento)
-    {
-        if (!_temSegredo())
-        {
-            _estado.RegistrarFalha(FaltaOSegredo);
-            return false;
-        }
+    /// <summary>
+    /// Uma rodada: cartões, depois tentativas. Devolve se as duas deram certo.
+    /// Sem o segredo, nada é tentado e o estado diz isso (<see cref="EstadoDaNuvem.SegredoAusente"/>).
+    /// </summary>
+    public async Task<bool> UmaRodadaAsync(CancellationToken cancelamento) =>
+        (await RodarAsync(cancelamento).ConfigureAwait(false)).Sucesso;
 
+    /// <summary>
+    /// Uma rodada agora, com o que ela fez. É o botão "Testar conexão com a nuvem": a mesma rodada do
+    /// laço, não um ping à parte, para o teste provar o caminho que os cartões e as passagens fazem.
+    /// Se a rodada automática estiver em andamento, espera ela terminar.
+    /// </summary>
+    public async Task<ResultadoDaRodada> RodarAsync(CancellationToken cancelamento)
+    {
+        await _umaPorVez.WaitAsync(cancelamento).ConfigureAwait(false);
+        try
+        {
+            var inicio = _relogio.GetTimestamp();
+            if (!_temSegredo())
+            {
+                _estado.SegredoAusente = true;
+                _estado.RegistrarFalha(FaltaOSegredo, TipoDeFalha.Outra, _relogio.GetUtcNow());
+                return new ResultadoDaRodada(
+                    Sucesso: false, Respondeu: false, TipoDeFalha.Outra, ListaIncompletaCom: null,
+                    Novos: 0, Atualizados: 0, Enviadas: 0, Adiadas: 0, FaltaOSegredo, TimeSpan.Zero);
+            }
+
+            _estado.SegredoAusente = false;
+            _estado.EmAndamento = true;
+            try
+            {
+                return await FazerRodadaAsync(inicio, cancelamento).ConfigureAwait(false);
+            }
+            finally
+            {
+                _estado.EmAndamento = false;
+            }
+        }
+        finally
+        {
+            _umaPorVez.Release();
+        }
+    }
+
+    private async Task<ResultadoDaRodada> FazerRodadaAsync(long inicio, CancellationToken cancelamento)
+    {
         var falhas = new List<string>();
+        var tipo = TipoDeFalha.Nenhuma;
+        int? listaCortadaCom = null;
+
+        void Falhar(string texto, TipoDeFalha tipoDaFalha)
+        {
+            falhas.Add(texto);
+            tipo = TipoDeFalhaHttp.MaisGrave(tipo, tipoDaFalha);
+        }
 
         if (_corte is not null)
         {
@@ -266,13 +340,16 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         var cartoes = await _cartoes.PuxarAsync(cancelamento).ConfigureAwait(false);
         if (cartoes.Interrompido)
         {
-            falhas.Add($"cartões: {cartoes.Erro}");
+            Falhar($"cartões: {cartoes.Erro}", cartoes.Causa is { } causa ? TipoDeFalhaHttp.DeExcecao(causa) : TipoDeFalha.Outra);
         }
         else if (_corte?.Recebidos is { } recebidos)
         {
-            falhas.Add(string.Create(
+            // O servidor respondeu, mas cortou a lista: o destino está de pé e a leitura é que falhou.
+            listaCortadaCom = recebidos;
+            Falhar(string.Create(
                 CultureInfo.InvariantCulture,
-                $"cartões: a lista veio com {recebidos} e pode ter sido cortada pelo servidor; os que faltam não chegaram a este computador"));
+                $"cartões: a lista veio com {recebidos} e pode ter sido cortada pelo servidor; os que faltam não chegaram a este computador"),
+                TipoDeFalha.Servidor);
         }
         else if (cartoes.TeveTrabalho)
         {
@@ -291,9 +368,10 @@ public sealed class SincronizacaoComANuvem : BackgroundService
         var envio = await _tentativas.DrenarUmaVezAsync(cancelamento).ConfigureAwait(false);
         if (envio.Adiados > 0 && envio.Enviados == 0)
         {
-            falhas.Add(envio.UltimoErro is { } erroDoEnvio
+            Falhar(envio.UltimoErro is { } erroDoEnvio
                 ? string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s): {erroDoEnvio}")
-                : string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s)"));
+                : string.Create(CultureInfo.InvariantCulture, $"tentativas: {envio.Adiados} adiada(s)"),
+                envio.TipoDoUltimoErro);
         }
 
         if (envio.CartasMortas > 0)
@@ -303,16 +381,37 @@ public sealed class SincronizacaoComANuvem : BackgroundService
                 $"nuvem: {envio.CartasMortas} tentativa(s) recusada(s) pelo painel foram para cartas mortas."));
         }
 
+        var agora = _relogio.GetUtcNow();
+
+        // A nuvem respondeu se a lista de cartões chegou, se alguma passagem subiu, ou se a falha foi
+        // uma resposta dela (credencial recusada, erro do servidor).
+        var respondeu = !cartoes.Interrompido || envio.Enviados > 0
+                        || tipo is TipoDeFalha.Autenticacao or TipoDeFalha.Servidor;
+
+        ResultadoDaRodada Resultado(bool sucesso, string? motivo) => new(
+            sucesso, respondeu, tipo, listaCortadaCom, cartoes.Inseridos, cartoes.Atualizados,
+            envio.Enviados, envio.Adiados, motivo, _relogio.GetElapsedTime(inicio));
+
         if (falhas.Count == 0)
         {
-            _estado.RegistrarSucesso(_relogio.GetUtcNow());
-            return true;
+            _estado.RegistrarSucesso(agora);
+            return Resultado(sucesso: true, motivo: null);
         }
 
         var motivo = string.Join("; ", falhas);
-        _estado.RegistrarFalha(motivo);
+
+        // Só o corte da lista falhou: a nuvem respondeu, então ela está conectada, com a lista
+        // incompleta. Dizer "offline" mandaria o operador procurar defeito na internet.
+        if (listaCortadaCom is { } cortada && falhas.Count == 1)
+        {
+            _estado.RegistrarListaIncompleta(cortada, motivo, agora);
+            _registrar($"nuvem: conectada, mas com a lista de cartões incompleta ({motivo}).");
+            return Resultado(sucesso: false, motivo);
+        }
+
+        _estado.RegistrarFalha(motivo, tipo, agora);
         _registrar($"nuvem: falhou ({motivo}).");
-        return false;
+        return Resultado(sucesso: false, motivo);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -333,10 +432,16 @@ public sealed class SincronizacaoComANuvem : BackgroundService
             {
                 // Base ocupada ou algo inesperado: a próxima rodada tenta de novo. Nunca
                 // derruba o serviço — ele é quem supervisiona as catracas.
-                _estado.RegistrarFalha(erro.GetType().Name);
+                _estado.RegistrarFalha(erro.GetType().Name, TipoDeFalha.Outra, _relogio.GetUtcNow());
                 _registrar($"nuvem: erro inesperado ({erro.GetType().Name}).");
             }
         }
         while (await temporizador.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
+    }
+
+    public override void Dispose()
+    {
+        _umaPorVez.Dispose();
+        base.Dispose();
     }
 }

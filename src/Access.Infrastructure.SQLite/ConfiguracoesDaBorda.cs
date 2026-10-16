@@ -1,5 +1,6 @@
 using System.Globalization;
 using Access.Application.Devices;
+using Access.Domain.Ticketing;
 
 namespace Access.Infrastructure.SQLite;
 
@@ -84,6 +85,21 @@ namespace Access.Infrastructure.SQLite;
 /// a mensagem no meio da liberação atrapalha o giro é <c>A_CONFIRMAR_COM_TOPDATA</c>. É do laço:
 /// muda no próximo início do worker.
 /// </param>
+/// <param name="FuncaoDoReleDaUrna">
+/// Função do relé 2 da urna (EI-017; docs/61). Nula (chave vazia) = a do padrão de fábrica, 2 (aciona ao
+/// registrar entrada; manual do SDK 5.3 e Web Server da Catraca 4). 0 desliga o recolhimento: a fenda lê e o
+/// giro sai na hora, como antes. Chave técnica <c>catraca.funcao_do_rele_da_urna</c>, conferida na bancada
+/// (HIL-URNA-01).
+/// </param>
+/// <param name="TempoDaUrna">
+/// Segundos que a urna fica aberta para o cartão cair (1 a 50); nula = o padrão de fábrica, 5. Chave técnica
+/// <c>catraca.tempo_da_urna</c>.
+/// </param>
+/// <param name="UsoDaFrente">
+/// Para que serve o leitor da frente (docs/61): equipe e ingressos (o padrão), só equipe, ou desligado
+/// (vai à catraca como leitor 1 desabilitado). <c>entrada.frente</c>.
+/// </param>
+/// <param name="UsoDoTeclado">Teclado desligado (o padrão) ou só equipe (docs/61). <c>entrada.teclado</c>.</param>
 public sealed record ConfiguracaoDaOperacao(
     byte TipoDeLeitor = 8,
     bool LeitorDaUrna = true,
@@ -101,7 +117,11 @@ public sealed record ConfiguracaoDaOperacao(
     bool EnviarFormasDeEntrada = false,
     bool SequenciaOficial = false,
     bool ColetarBilhetes = false,
-    bool ExibirTextoDoGiro = false)
+    bool ExibirTextoDoGiro = false,
+    byte? FuncaoDoReleDaUrna = null,
+    byte? TempoDaUrna = null,
+    string UsoDaFrente = UsoDasEntradas.EquipeEIngressos,
+    string UsoDoTeclado = UsoDasEntradas.TecladoDesligado)
 {
     /// <summary>Espelho ligado?</summary>
     public bool EspelhoLigado => !string.IsNullOrWhiteSpace(ConectorDoEspelho);
@@ -123,6 +143,10 @@ public sealed record ConfiguracaoDaOperacao(
         TempoDeAcionamento = TempoDeAcionamento,
         MensagemPadrao = MensagemPadrao,
         EnviarDigitosVariaveis = EnviarDigitosVariaveis,
+        FuncaoDoReleDaUrna = FuncaoDoReleDaUrna,
+        TempoDaUrna = TempoDaUrna,
+        LeitorDaFrente = UsoDaFrente != UsoDasEntradas.Desligada,
+        TecladoHabilitado = UsoDoTeclado == UsoDasEntradas.SoEquipe,
         EnviarDataHoraNoEventoOnLine = EnviarDataHoraNoEvento,
         RegistrarAcessoNegado = RegistrarAcessoNegado,
         EnviarTipoDeLista = EnviarTipoDeLista,
@@ -151,6 +175,26 @@ public sealed record ConfiguracaoDaOperacao(
             problemas.Add("A mensagem do display precisa ter de 1 a 32 caracteres.");
         }
 
+        if (!UsoDasEntradas.DaFrente.Contains(UsoDaFrente))
+        {
+            problemas.Add("O uso do leitor da frente é equipe e ingressos, só equipe ou desligado.");
+        }
+
+        if (!UsoDasEntradas.DoTeclado.Contains(UsoDoTeclado))
+        {
+            problemas.Add("O uso do teclado é desligado ou só equipe.");
+        }
+
+        if (FuncaoDoReleDaUrna > 9)
+        {
+            problemas.Add("A função do relé da urna vai de 0 a 9.");
+        }
+
+        if (TempoDaUrna is { } tempoDaUrna && tempoDaUrna is < 1 or > 50)
+        {
+            problemas.Add("O tempo da urna vai de 1 a 50 segundos.");
+        }
+
         // A faixa da função (FUN:22). Recusar aqui evita que o worker monte uma configuração
         // que o adapter recusaria.
         if (RegistrarAcessoNegado is > 3)
@@ -170,7 +214,7 @@ public sealed record ConfiguracaoDaOperacao(
 /// também — e é devolvido como problema, para o painel mostrar, em vez de derrubar o
 /// worker na hora de subir.
 /// </remarks>
-public sealed class ConfiguracoesDaBorda
+public sealed partial class ConfiguracoesDaBorda
 {
     public const string ChaveTipoDeLeitor = "leitor.tipo";
     public const string ChaveLeitorDaUrna = "leitor.urna";
@@ -199,6 +243,51 @@ public sealed class ConfiguracoesDaBorda
 
     /// <summary>Chave técnica do texto do giro no display (mapa de giro, D9). Desligada.</summary>
     public const string ChaveExibirTextoDoGiro = "catraca.exibir_texto_do_giro";
+
+    /// <summary>Função do relé 2 da urna (docs/61); vazia = 2. 0 desliga o recolhimento.</summary>
+    public const string ChaveFuncaoDoReleDaUrna = "catraca.funcao_do_rele_da_urna";
+
+    /// <summary>Segundos que a urna fica aberta (docs/61); vazia = 5.</summary>
+    public const string ChaveTempoDaUrna = "catraca.tempo_da_urna";
+
+    /// <summary>Uso do leitor da frente (docs/61): <c>equipe_e_ingressos</c>, <c>equipe</c> ou <c>desligada</c>.</summary>
+    public const string ChaveUsoDaFrente = "entrada.frente";
+
+    /// <summary>Uso do teclado (docs/61): <c>desligado</c> ou <c>equipe</c>.</summary>
+    public const string ChaveUsoDoTeclado = "entrada.teclado";
+
+    /// <summary>
+    /// Linhas de firmware aceitas pelo programa das catracas, separadas por vírgula (ex.: <c>14,16,19</c>).
+    /// Vazia = o padrão da versão. Lida quando o programa das catracas sobe (achado E1-06 do docs/41): uma
+    /// linha nova ensaiada na bancada entra sem esperar outra versão.
+    /// </summary>
+    public const string ChaveLinhasHomologadas = "catraca.linhas_homologadas";
+
+    /// <summary>
+    /// As linhas de firmware da chave <see cref="ChaveLinhasHomologadas"/>; nulo = usar o padrão da versão.
+    /// Valor ilegível volta nulo, com o problema, para o worker registrar e seguir com o padrão.
+    /// </summary>
+    public (IReadOnlySet<byte>? Linhas, string? Problema) LinhasHomologadas()
+    {
+        var texto = Todos().GetValueOrDefault(ChaveLinhasHomologadas)?.Trim();
+        if (string.IsNullOrEmpty(texto))
+        {
+            return (null, null);
+        }
+
+        var linhas = new HashSet<byte>();
+        foreach (var parte in texto.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!byte.TryParse(parte, NumberStyles.None, CultureInfo.InvariantCulture, out var linha) || linha == 0)
+            {
+                return (null, $"{ChaveLinhasHomologadas} = '{texto}' não é uma lista de números de 1 a 255; vale o padrão da versão.");
+            }
+
+            linhas.Add(linha);
+        }
+
+        return (linhas, null);
+    }
 
     private readonly SqliteConnectionFactory _fabrica;
 
@@ -264,6 +353,22 @@ public sealed class ConfiguracoesDaBorda
             return null;
         }
 
+        string Opcao(string chave, IReadOnlyList<string> aceitas, string atual)
+        {
+            if (!valores.TryGetValue(chave, out var texto))
+            {
+                return atual;
+            }
+
+            if (aceitas.Contains(texto))
+            {
+                return texto;
+            }
+
+            ilegiveis.Add(chave);
+            return atual;
+        }
+
         bool Logico(string chave, bool atual)
         {
             if (!valores.TryGetValue(chave, out var texto))
@@ -300,7 +405,11 @@ public sealed class ConfiguracoesDaBorda
             EnviarFormasDeEntrada: Logico(ChaveEnviarFormasDeEntrada, padrao.EnviarFormasDeEntrada),
             SequenciaOficial: Logico(ChaveSequenciaOficial, padrao.SequenciaOficial),
             ColetarBilhetes: Logico(ChaveColetarBilhetes, padrao.ColetarBilhetes),
-            ExibirTextoDoGiro: Logico(ChaveExibirTextoDoGiro, padrao.ExibirTextoDoGiro));
+            ExibirTextoDoGiro: Logico(ChaveExibirTextoDoGiro, padrao.ExibirTextoDoGiro),
+            FuncaoDoReleDaUrna: ByteOpcional(ChaveFuncaoDoReleDaUrna),
+            TempoDaUrna: ByteOpcional(ChaveTempoDaUrna),
+            UsoDaFrente: Opcao(ChaveUsoDaFrente, UsoDasEntradas.DaFrente, padrao.UsoDaFrente),
+            UsoDoTeclado: Opcao(ChaveUsoDoTeclado, UsoDasEntradas.DoTeclado, padrao.UsoDoTeclado));
 
         return (configuracao, ilegiveis);
     }
@@ -336,8 +445,16 @@ public sealed class ConfiguracoesDaBorda
             [ChaveSequenciaOficial] = configuracao.SequenciaOficial ? "1" : "0",
             [ChaveColetarBilhetes] = configuracao.ColetarBilhetes ? "1" : "0",
             [ChaveExibirTextoDoGiro] = configuracao.ExibirTextoDoGiro ? "1" : "0",
+            [ChaveUsoDaFrente] = configuracao.UsoDaFrente,
+            [ChaveUsoDoTeclado] = configuracao.UsoDoTeclado,
         };
 
+        GravarPares(pares, agora, quem);
+    }
+
+    // Grava as chaves numa transação só; a que não mudou fica com o autor e a data de antes.
+    private void GravarPares(IReadOnlyDictionary<string, string> pares, DateTimeOffset agora, string? quem)
+    {
         using var conexao = _fabrica.Abrir();
         using var transacao = conexao.BeginTransaction();
 

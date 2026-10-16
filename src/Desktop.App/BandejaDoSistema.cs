@@ -37,10 +37,10 @@ internal sealed class BandejaDoSistema : IDisposable
         var menu = new Forms.ContextMenuStrip();
         var abrir = menu.Items.Add("Abrir o painel", null, (_, _) => _janela.Mostrar());
         abrir.Font = new System.Drawing.Font(abrir.Font, System.Drawing.FontStyle.Bold);
-        menu.Items.Add("Gerenciar catraca", null, (_, _) =>
+        menu.Items.Add("Configuração da catraca", null, (_, _) =>
         {
             _janela.Mostrar();
-            _janela.Janela.TelaAtual = _janela.Janela.Telas.OfType<GerenciarCatracaViewModel>().First();
+            _janela.Janela.TelaAtual = _janela.Janela.Telas.OfType<GemeoDigitalViewModel>().First();
         });
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Iniciar a operação", null, async (_, _) => await ControlarAsync(parar: false).ConfigureAwait(true));

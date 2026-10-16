@@ -23,6 +23,7 @@ public static class ReasonCodes
     public static readonly ReasonCode SetorNaoPermitido = new("SETOR_NAO_PERMITIDO");
     public static readonly ReasonCode GateNaoPermitido = new("GATE_NAO_PERMITIDO");
     public static readonly ReasonCode UsosEsgotados = new("USOS_ESGOTADOS");
+    public static readonly ReasonCode CadastradoNoLote = new("CADASTRADO_NO_LOTE");
     public static readonly ReasonCode LotacaoAtingida = new("LOTACAO_ATINGIDA");
     public static readonly ReasonCode AntiPassback = new("ANTI_PASSBACK");
     public static readonly ReasonCode BloqueioEmergencial = new("BLOQUEIO_EMERGENCIAL");
@@ -53,6 +54,9 @@ public static class ReasonCodes
     /// <summary>O tipo de entrada do ingresso está desativado (docs/26 §1; docs/35 B.2).</summary>
     public static readonly ReasonCode TipoInativo = new("TIPO_INATIVO");
 
+    /// <summary>Ingresso lido fora do período do evento, com a recusa ligada (docs/57 §4).</summary>
+    public static readonly ReasonCode ForaDoPeriodoDoEvento = new("EVENTO_FORA_DO_PERIODO");
+
     // --- Cadastro local de pessoas (docs/43, ADR-0026) ---
     public static readonly ReasonCode PessoaBloqueada = new("PESSOA_BLOQUEADA");
     public static readonly ReasonCode PessoaInativa = new("PESSOA_INATIVA");
@@ -62,6 +66,17 @@ public static class ReasonCodes
     public static readonly ReasonCode PortaoNaoPermitido = new("PORTAO_NAO_PERMITIDO");
     public static readonly ReasonCode CredencialInativa = new("CREDENCIAL_INATIVA");
     public static readonly ReasonCode PessoaForaDaValidade = new("PESSOA_FORA_DA_VALIDADE");
+
+    // --- Uso de cada entrada da catraca (docs/61) ---
+
+    /// <summary>Ingresso no leitor da frente ou no teclado, reservados à equipe.</summary>
+    public static readonly ReasonCode SomenteEquipe = new("ENTRADA_SO_EQUIPE");
+
+    /// <summary>Crachá de pessoa na fenda da urna, que recolheria o cartão.</summary>
+    public static readonly ReasonCode CredencialNaUrna = new("CREDENCIAL_NA_URNA");
+
+    /// <summary>A entrada usada está desligada.</summary>
+    public static readonly ReasonCode EntradaDesligada = new("ENTRADA_DESLIGADA");
 
     // --- Operação ---
     public static readonly ReasonCode LiberacaoManual = new("LIBERACAO_MANUAL");

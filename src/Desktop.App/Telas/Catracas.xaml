@@ -8,6 +8,9 @@
                          Descricao="Cada catraca com a sua situação, o último evento e a linha técnica. Para incluir ou tirar catracas, use o Assistente de configuração (passo 2)." />
     <rz:RayzerAlert DockPanel.Dock="Top" Style="{StaticResource Pagina.Mensagem}" Titulo="{Binding Mensagem}"
                     Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" />
+    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" TextWrapping="Wrap" Style="{StaticResource Rayzer.Type.Body}"
+               Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{Binding RedeDaPorta}"
+               AutomationProperties.Name="Endereço deste PC para as catracas" />
     <Grid>
       <ScrollViewer VerticalScrollBarVisibility="Auto">
         <ItemsControl ItemsSource="{Binding Catracas}" ItemTemplate="{StaticResource Cartao.Catraca}" AutomationProperties.Name="Catracas">

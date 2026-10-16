@@ -75,9 +75,11 @@ internal static class Program
 
             if (abertura.Status is AdapterStatus.FalhaDeDependencia && abertura.Significado is { } dependencia)
             {
-                // Retornos 4 a 6 de AbrirPortaComunicacao (EI-002): DLL de apoio ausente.
+                // Retornos 4, 5, 6, 10 e 11 de AbrirPortaComunicacao (EI-002): DLL de apoio ausente. A primeira
+                // linha de erro vai ao painel como motivo, então diz o que fazer, em português e sem jargão.
                 Console.Error.WriteLine(
-                    $"Retorno {abertura.NativeReturn} ({dependencia}). Rode installer/verificar-ambiente.ps1.");
+                    $"Retorno {abertura.NativeReturn}: {dependencia}. Copie a DLL que falta para a pasta do " +
+                    "programa das catracas (Assistente de configuração, Localizar EasyInner.dll, pasta \"Porta Fixa\" do SDK).");
                 return 2;
             }
 
@@ -92,7 +94,8 @@ internal static class Program
 
             if (abertura.Status is not AdapterStatus.Ok)
             {
-                Console.Error.WriteLine("A porta não abriu. O worker não sobe sem ela.");
+                // Porta ocupada (3) ou erro de comunicação (2): a frase diz o caso e o que fazer (DiagnosticoDaPorta).
+                Console.Error.WriteLine(DiagnosticoDaPorta.Mensagem(abertura.Status, porta) ?? "A porta não abriu. O worker não sobe sem ela.");
                 return 1;
             }
 
@@ -351,6 +354,16 @@ internal static class Program
 
         var simulada = simulador is not null;
 
+        // Linhas de firmware aceitas (ADR-0010; achado E1-06 do docs/41): a chave técnica vale na subida.
+        var (linhasDaChave, problemaDasLinhas) = configuracoesDaBorda.LinhasHomologadas();
+        if (problemaDasLinhas is not null)
+        {
+            Registrar(problemaDasLinhas);
+        }
+
+        var linhasHomologadas = linhasDaChave ?? DevicePump.LinhasHomologadasPadrao;
+        Registrar($"linhas de firmware aceitas: {string.Join(", ", linhasHomologadas.Order())}{(linhasDaChave is null ? " (padrão da versão)" : " (chave técnica)")}");
+
         var sessao = new SessaoDeOperacao(
             adapter,
             inners,
@@ -374,7 +387,8 @@ internal static class Program
             gravadorDeBilhetes: gravadorDeBilhetes,
             coletaLigada: () => configuracoesDaBorda.Ler() is var (lida, ilegiveis)
                 && lida.ColetarBilhetes
-                && !ilegiveis.Contains(ConfiguracoesDaBorda.ChaveColetarBilhetes));
+                && !ilegiveis.Contains(ConfiguracoesDaBorda.ChaveColetarBilhetes),
+            linhasHomologadas: linhasHomologadas);
 
         using var cancelamento = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>

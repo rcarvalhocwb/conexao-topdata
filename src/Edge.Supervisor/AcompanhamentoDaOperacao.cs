@@ -119,6 +119,7 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
         {
             "Desconhecido" => "Negado · código não cadastrado",
             "UsosEsgotados" => "Negado · já utilizado",
+            "CadastradoNoLote" => "Negado · cartão registrado no lote de cadastro",
             "Cancelado" => "Negado · cancelado",
             "Bloqueado" => "Negado · bloqueado",
             "ForaDaJanela" => "Negado · fora do horário de validade",
@@ -133,6 +134,10 @@ public sealed class AcompanhamentoDaOperacao : BackgroundService
             "PortaoNaoPermitido" => "Negado · catraca não permitida",
             "LimiteDiario" => "Negado · entradas do dia esgotadas",
             "CatracaFechada" => "Negado · catraca fechada pelo operador",
+            "ForaDoPeriodoDoEvento" => "Negado · fora do período do evento",
+            "SomenteEquipe" => "Negado · leitor só para a equipe (use a urna)",
+            "CredencialNaUrna" => "Negado · crachá na urna (use o leitor da frente)",
+            "EntradaDesligada" => "Negado · entrada desligada nesta catraca",
             "CredencialInativa" => "Negado · credencial bloqueada ou perdida",
             "ForaDaValidade" => "Negado · fora da validade do cadastro",
             _ => $"Negado · {t.Motivo}",

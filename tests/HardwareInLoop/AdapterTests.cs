@@ -44,7 +44,39 @@ public sealed class AdapterTests
         var resultado = adapter.AbrirPorta(3570);
 
         Assert.Equal(AdapterStatus.Ok, resultado.Status);
-        Assert.Equal(["DefinirTipoConexao", "AbrirPortaComunicacao"], costura.Chamadas);
+
+        // Como o middleware que operou em 2025: fecha a porta que sobrou antes de abrir (sem isso a DLL devolve 3).
+        Assert.Equal(["DefinirTipoConexao", "FecharPortaComunicacao", "AbrirPortaComunicacao"], costura.Chamadas);
+    }
+
+    /// <summary>
+    /// Revisão do sistema: o display do Inner aceita só ASCII (manual de desenvolvimento, mensagens on-line).
+    /// Acento vira a letra base; o que não é ASCII some; o limite de 32 caracteres vale depois.
+    /// </summary>
+    [Fact]
+    public void Mensagem_para_o_display_sai_em_ascii_sem_acento()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.EnviarMensagemPadrao(1, "Não é ação: vá à entrada 🚪 ok");
+
+        var (_, argumentos) = costura.ChamadasComArgumentos.Single(c => c.Funcao == "EnviarMensagemPadraoOnLine");
+        var enviada = (string)argumentos[2];
+        Assert.Equal("Nao e acao: va a entrada  ok", enviada);
+        Assert.All(enviada, c => Assert.InRange(c, ' ', '~'));
+    }
+
+    [Fact]
+    public void Mensagem_longa_para_o_display_corta_em_32_depois_de_sanear()
+    {
+        var costura = new CosturaFalsa();
+        using var adapter = new TopdataInnerAdapter(costura);
+
+        adapter.EnviarMensagemPadrao(1, new string('ç', 40));
+
+        var (_, argumentos) = costura.ChamadasComArgumentos.Single(c => c.Funcao == "EnviarMensagemPadraoOnLine");
+        Assert.Equal(new string('c', 32), (string)argumentos[2]);
     }
 
     /// <summary>Se o tipo de conexão falha, não se abre porta nenhuma.</summary>
@@ -711,6 +743,7 @@ public sealed class AdapterTests
         adapter.Dispose();
         adapter.Dispose();
 
-        Assert.Single(costura.Chamadas, c => c == "FecharPortaComunicacao");
+        // Uma vez antes de abrir (a porta que sobrou) e uma vez no Dispose; o segundo Dispose não fecha de novo.
+        Assert.Equal(2, costura.Chamadas.Count(c => c == "FecharPortaComunicacao"));
     }
 }

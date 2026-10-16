@@ -19,7 +19,8 @@ namespace HardwareInLoop.Tests;
 /// </para>
 /// <para>
 /// O que fica fora, sem linha na matriz FUN: mensagens off-line e <c>EnviarMensagensOffLine</c>,
-/// entradas e mensagens da mudança, e o <c>PingOnLine</c> periódico (T24). A chave não liga a
+/// entradas e mensagens da mudança, e a contingência que depende do <c>PingOnLine</c> (T24). O ping de
+/// 3 s que mantém a conexão on-line já roda no <c>DevicePump</c>, fora desta chave. A chave não liga a
 /// contingência: a mudança automática vai com o valor da configuração, 0 no padrão (D8).
 /// </para>
 /// </remarks>
@@ -46,7 +47,7 @@ public sealed class SequenciaOficialTests
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5),
-        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)0, (byte)0),
+        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15),
         Chamada(nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0),
     ];
 
@@ -81,7 +82,7 @@ public sealed class SequenciaOficialTests
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1),
         Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5),
-        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)0, (byte)0),
+        Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15),
         Chamada(nameof(IEasyInnerNative.ConfigurarInnerOnLine)),
         Chamada(nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0),
         Chamada(nameof(IEasyInnerNative.HabilitarMudancaOnLineOffLine), (byte)0, (byte)10),
@@ -91,14 +92,14 @@ public sealed class SequenciaOficialTests
     /// <summary>1 conectar e 2 identidade, antes da configuração.</summary>
     private static readonly object[][] ConectarEIdentificar =
     [
-        Chamada(nameof(IEasyInnerNative.Ping), Inner),
+        Chamada(nameof(IEasyInnerNative.PingOnLine), Inner),
         Chamada(nameof(IEasyInnerNative.ReceberVersaoFirmware), Inner),
     ];
 
     /// <summary>8 entradas on-line (o rearme de sempre) e 9 mensagem padrão.</summary>
     private static readonly object[][] RearmarEMensagem =
     [
-        Chamada(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), Inner, (byte)0, (byte)0, (byte)7, (byte)0, (byte)0),
+        Chamada(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), Inner, (byte)0, (byte)0, (byte)6, (byte)0, (byte)0),
         Chamada(nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine), Inner, (byte)0, "Aproxime o ingresso"),
     ];
 
@@ -222,7 +223,7 @@ public sealed class SequenciaOficialTests
             Chamada(nameof(IEasyInnerNative.ConfigurarLeitor1), (byte)1),
             Chamada(nameof(IEasyInnerNative.ConfigurarLeitor2), (byte)1),
             Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento1), (byte)2, (byte)5),
-            Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)0, (byte)0),
+            Chamada(nameof(IEasyInnerNative.ConfigurarAcionamento2), (byte)3, (byte)15),
             Chamada(nameof(IEasyInnerNative.HabilitarTeclado), (byte)0, (byte)0),
             Chamada(nameof(IEasyInnerNative.ConfigurarWiegandDoisLeitores), (byte)0, (byte)0),
             Chamada(nameof(IEasyInnerNative.RegistrarAcessoNegado), (byte)1),
@@ -281,7 +282,8 @@ public sealed class SequenciaOficialTests
         Assert.Equal(
             [nameof(IEasyInnerNative.EnviarRelogio), nameof(IEasyInnerNative.ReceberDadosOnLine)],
             costura.Chamadas.Skip(antes));
-        Assert.DoesNotContain(nameof(IEasyInnerNative.PingOnLine), costura.Chamadas);
+        // O PingOnLine do Conectar já passou antes desta janela; a janela de 20 ms não chega ao próximo keep-alive (3 s).
+        Assert.DoesNotContain(nameof(IEasyInnerNative.PingOnLine), costura.Chamadas.Skip(antes));
         Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
     }
 

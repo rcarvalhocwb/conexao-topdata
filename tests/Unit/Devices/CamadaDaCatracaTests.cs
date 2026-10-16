@@ -129,10 +129,16 @@ public sealed class CamadaDaCatracaTests
     {
         var campo = Campos[nome];
 
+        // A única dependência entre campos: desligar o leitor da fenda desliga o relé 2 da urna junto
+        // (docs/61; sem leitor, a urna nunca abriria, regra do manual 7.2.5).
+        string[] ignorar = nome == "leitor-2-urna"
+            ? [campo.Propriedade, nameof(DeviceConfiguration.FuncaoDoAcionamento2), nameof(DeviceConfiguration.TempoDoAcionamento2), nameof(DeviceConfiguration.RecolheNaUrna), nameof(DeviceConfiguration.FormasDeEntradaEfetivas)]
+            : [campo.Propriedade];
+
         CampoACampo(
             Montar(campo.Evento, SobreposicoesDaCatraca.Nenhuma),
             Montar(campo.Evento, campo.Catraca),
-            campo.Propriedade);
+            ignorar);
     }
 
     /// <summary>Com a catraca vazia, o resultado é, campo a campo, o da camada do evento.</summary>

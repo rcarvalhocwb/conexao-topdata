@@ -7,19 +7,18 @@ namespace Unit.Tests.Devices;
 /// "Aplicar agora" falhar; problema de leitura na subida é só aviso, no aplicar é falha.
 /// </summary>
 /// <remarks>
-/// A camada inválida vem de um padrão de fábrica com o relé 2 configurado (função ≠ 0; o
-/// valor é só sintético, nenhum significado de função é assumido): a catraca gravada "sem
-/// leitor 2" (válida contra o padrão de quando foi gravada) passa a quebrar a regra 3 do
-/// docs/34 §4.2. É o caso que a A.4 cobre: a combinação muda depois da gravação. Dados
-/// sintéticos.
+/// A camada inválida guarda um valor fora da faixa (leitor 1 = 9), como uma linha gravada por
+/// uma versão antiga ou à mão. Até 15/10/2026 o caso era "sem leitor 2" contra um relé 2
+/// configurado; desde o docs/61 o montador desliga o relé 2 junto com o leitor da fenda, e essa
+/// combinação não quebra mais. Dados sintéticos.
 /// </remarks>
 public sealed class ConfiguracaoComRecuoTests
 {
-    private static DeviceConfiguration ComReleDois => PadroesDeFabrica.TopFit4 with { FuncaoDoAcionamento2 = 3, TempoDoAcionamento2 = 5 };
+    private static DeviceConfiguration ComReleDois => PadroesDeFabrica.TopFit4;
 
     private static readonly SobreposicoesDaCatraca SemLeitor2 = new()
     {
-        OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorDesabilitado,
+        OperacaoDoLeitor1 = 9,
         MensagemPadrao = "Portao sintetico 2",
     };
 
@@ -54,7 +53,7 @@ public sealed class ConfiguracaoComRecuoTests
         Assert.Equal("Evento sintetico", configuracao.MensagemPadrao);
         var aviso = Assert.Single(avisos);
         Assert.StartsWith("Catraca 2: configuração própria recusada, subindo com o padrão dela", aviso, StringComparison.Ordinal);
-        Assert.Contains("leitor 2 está desabilitado", aviso, StringComparison.Ordinal);
+        Assert.Contains("OperacaoDoLeitor1 deve estar entre 0 e 4", aviso, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,7 +94,7 @@ public sealed class ConfiguracaoComRecuoTests
 
         Assert.Null(configuracao);
         var problema = Assert.Single(problemas);
-        Assert.StartsWith("Catraca 2: O relé 2 está configurado (urna)", problema, StringComparison.Ordinal);
+        Assert.StartsWith("Catraca 2: OperacaoDoLeitor1 deve estar entre 0 e 4", problema, StringComparison.Ordinal);
     }
 
     [Fact]

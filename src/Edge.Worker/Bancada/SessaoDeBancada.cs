@@ -79,7 +79,8 @@ public sealed class SessaoDeBancada
             decidir: DecidirMostrando,
             aoReceberEvento: ReceberMostrando,
             aoDesistirDoGiro: decisor.DescartarPendente,
-            aoFalharALiberacao: decisor.RegistrarCausaSemGiro);
+            aoFalharALiberacao: decisor.RegistrarCausaSemGiro,
+            aoDesistirDaUrna: decisor.DevolverNaUrna);
 
         _laco = new DeviceGroupLoop(
             adapter,

@@ -60,6 +60,20 @@ internal static class ControleDaOperacao
     /// <summary>Inicia o serviço.</summary>
     public static int Iniciar() => Mudar(ServiceControllerStatus.Running, s => s.Start());
 
+    /// <summary>Se o serviço está rodando agora; falso se parado ou não instalado.</summary>
+    public static bool Rodando()
+    {
+        try
+        {
+            using var servico = new ServiceController(NomeDoServico);
+            return servico.Status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Se a regra de entrada das catracas existe. Nulo se não deu para conferir.</summary>
     public static bool? FirewallLiberado()
     {

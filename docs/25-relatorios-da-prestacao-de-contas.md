@@ -128,13 +128,32 @@ aconteceu, de que tipo e quando, e a conciliação com o que foi vendido ou cada
 
 ## 6. A confirmar
 
-- **Meia-entrada.** A Lei 12.933/2013 e o Decreto 8.537/2015 tratam da meia-entrada e da
-  cota destinada a ela. O R1 separa as meias validadas, mas a cota se mede sobre a
-  **venda**, que é do sistema de venda. Se o evento está sujeito à regra e que número
-  precisa ser entregue são perguntas para o contador ou o jurídico do evento.
-  `A_CONFIRMAR`.
+- **Meia-entrada: decidido em 15/10/2026 (E10).** A Lei 12.933/2013 e o Decreto 8.537/2015
+  tratam da meia-entrada e da cota destinada a ela. A cota se mede sobre a **venda**, e quem
+  vende é o sistema de venda: é ele que apura e informa a cota. O XAcess informa o que a
+  catraca vê: as meias **validadas** (quantidade e participação no R1, por dia de operação, e
+  no R7). O R1 traz essa nota na tela, no CSV e no PDF, para ninguém ler a participação das
+  meias validadas como a cota legal.
 - **Público simultâneo (lotação).** Só é possível se houver contagem de saída. A TopFit 4
   distingue o sentido do giro? `A_CONFIRMAR_COM_TOPDATA`, a verificar em teste de bancada.
   Sem isso, o sistema informa entradas, não lotação.
 - **Hora de corte** do dia de operação: o padrão proposto é 06:00, e a organização
   confirma.
+
+## 7. Situação (15/10/2026)
+
+| Relatório | Situação |
+|---|---|
+| R1 · Boletim do dia | **Feito**: por dia de operação (hora de corte), validados por tipo com participação, sem passagem, negados por motivo (sem o registro de cartões em lote), distintos e reentradas, primeiro e último acesso, hora de pico |
+| R2 · Fluxo por hora e tipo | **Feito** (por hora; a cada 15 min fica para depois) |
+| R3 · Por catraca | **Feito**: validados, sem passagem e negados. Falta o tempo fora do ar, que entra com o R8 |
+| R7 · Consolidado | **Feito**: dia × tipo, total por tipo, total geral, média por dia, maior dia e maior hora |
+| Cabeçalho do §4 | **Feito**: evento, período, fuso, gerado em, por quem, versão, Rayzer |
+| Código de conferência | **Feito**: SHA-256 dos números, mesmo período e dados dão o mesmo código. "Fechar o corte" (congelar) ainda não |
+| Exportação | **Feito**: CSV com as seções; PDF pela impressora "Microsoft Print to PDF", página "X de N" e campo de assinatura no R1 e no R7 |
+| R4, R5, R6, R8 | Em construção |
+| Meia-entrada (E10) | **Decidido (15/10)**: o XAcess informa as meias validadas (R1 e R7); a cota legal é apurada pelo sistema de venda. Nota no R1 (tela, CSV, PDF) |
+
+Código: `GeradorDeRelatorios` (base), `ObterRelatorios` (serviço), `ContasRelatorios.cs` (painel),
+`DocumentoDosRelatorios.cs` (papel). Testes: `RelatoriosDoEventoTests`, `TelasTests`.
+

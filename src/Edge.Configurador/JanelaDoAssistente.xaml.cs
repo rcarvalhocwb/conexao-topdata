@@ -108,12 +108,16 @@ public partial class JanelaDoAssistente : Window
 
     private void VerificarAmbiente(object sender, RoutedEventArgs e)
     {
+        var porta = int.TryParse(CampoPorta.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var digitada) ? digitada : 3570;
         var itens = AssistenteDeConfiguracao.VerificarAmbiente(
             File.Exists,
             Net35Instalado(),
             PastaDoWorker,
             CaixaSimulacao.IsChecked == true,
-            ControleDaOperacao.FirewallLiberado());
+            ControleDaOperacao.FirewallLiberado(),
+            RedeDoPc.EnderecosAgora(),
+            RedeDoPc.PortaLivre(porta),
+            porta);
 
         ListaDoAmbiente.ItemsSource = itens.Select(i => i.Ok switch
         {
@@ -138,8 +142,37 @@ public partial class JanelaDoAssistente : Window
 
         try
         {
-            var destino = AssistenteDeConfiguracao.CopiarEasyInner(dialogo.FileName, PastaDoWorker);
-            TextoDoAmbiente.Text = $"EasyInner.dll copiada para {destino}.";
+            // A Inner.dll (apoio da versão 6.x) vem na mesma pasta da EasyInner.dll no SDK: copia-se as duas
+            // juntas, senão a catraca não conecta (retorno 11 ao abrir a porta).
+            var origem = dialogo.FileName;
+            var precisaEasyInner = !AssistenteDeConfiguracao.EasyInnerJaInstalada(origem, PastaDoWorker);
+            var apoioPendente = AssistenteDeConfiguracao.DllsDeApoioPendentes(origem, PastaDoWorker);
+
+            if (!precisaEasyInner && apoioPendente.Count == 0)
+            {
+                TextoDoAmbiente.Text = "A EasyInner.dll e as DLLs de apoio já estão na pasta das catracas, e o programa das catracas já as usa. Nada a copiar.";
+            }
+            else
+            {
+                // As DLLs antigas ficam presas enquanto o programa das catracas roda: para a operação, troca e
+                // volta. As catracas ficam alguns segundos sem atendimento do sistema.
+                var parou = ControleDaOperacao.Rodando() && ControleDaOperacao.Parar() == ControleDaOperacao.Ok;
+                try
+                {
+                    var destino = AssistenteDeConfiguracao.CopiarEasyInner(origem, PastaDoWorker);
+                    var apoio = AssistenteDeConfiguracao.CopiarDllsDeApoio(origem, PastaDoWorker);
+                    TextoDoAmbiente.Text = apoio.Count == 0
+                        ? $"EasyInner.dll copiada para {destino}. Não há DLL de apoio ao lado dela: a Inner.dll não foi copiada."
+                        : $"EasyInner.dll e {string.Join(", ", apoio)} copiadas para {PastaDoWorker}.";
+                }
+                finally
+                {
+                    if (parou)
+                    {
+                        ControleDaOperacao.Iniciar();
+                    }
+                }
+            }
         }
         catch (Exception erro) when (erro is ArgumentException or IOException or UnauthorizedAccessException)
         {

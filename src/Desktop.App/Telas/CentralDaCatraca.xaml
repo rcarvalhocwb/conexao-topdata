@@ -10,7 +10,7 @@
     origem e situação; o que aguarda confirmação aparece desabilitado, com o selo e o motivo.
     Peça sem parâmetro diz "nada a configurar nesta peça". O "o que muda", o Salvar e o Aplicar
     da catraca inteira ficam embaixo do desenho (Gemeo.xaml), visíveis de qualquer peça.
-    Os campos, as regras e os pedidos são os da Parametrização e da Gerenciar catraca.
+    Os campos, as regras e os pedidos são os da Parametrização e dos comandos da catraca.
   -->
   <UserControl.Resources>
     <ResourceDictionary>
@@ -89,7 +89,7 @@
             </TextBlock>
           </StackPanel>
 
-          <!-- Pedidos imediatos (os da Gerenciar catraca): vão agora, sem Salvar nem Aplicar. -->
+          <!-- Pedidos imediatos (os comandos da catraca): vão agora, sem Salvar nem Aplicar. -->
           <StackPanel Margin="0,12,0,0" Visibility="{Binding MostraMensagemTemporaria, Converter={StaticResource BoolParaVisibilidade}}">
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Mensagem temporária (pedido imediato)" />
             <TextBlock Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"

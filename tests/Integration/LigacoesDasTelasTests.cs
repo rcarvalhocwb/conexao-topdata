@@ -29,8 +29,9 @@ public sealed partial class LigacoesDasTelasTests
         [
             typeof(ContasViewModel), typeof(PrestacaoDeContas), typeof(LinhaPorCategoria), typeof(LinhaPorCatraca),
             typeof(LinhaPorHora), typeof(LinhaDeNegativa), typeof(ParDeTexto), typeof(Contracts.Edge.V1.LinhaDeNegativa),
+            typeof(LinhaDoBoletim), typeof(LinhaDeContagem), typeof(LinhaDaCatracaNoRelatorio), typeof(DiaDeOperacaoNaLista),
         ],
-        ["Telas/GerenciarCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeCatraca), typeof(LinhaDeComando), typeof(ParDeTexto)],
+        ["Telas/ComandosDaCatraca.xaml"] = [typeof(GerenciarCatracaViewModel), typeof(LinhaDeComando), typeof(ParDeTexto)],
         ["Telas/Gemeo.xaml"] =
         [
             typeof(GemeoDigitalViewModel), typeof(LinhaDeCatraca), typeof(Desktop.ViewModels.GemeoDigital.FichaDaPeca),
@@ -38,7 +39,7 @@ public sealed partial class LigacoesDasTelasTests
             typeof(Desktop.ViewModels.GemeoDigital.LinhaDaNarracao), typeof(ParDeTexto), typeof(Desktop.ViewModels.GemeoDigital.MarcaDaPeca),
             typeof(LinhaDeMudanca),
         ],
-        ["Telas/Configuracoes.xaml"] = [typeof(ConfiguracoesViewModel)],
+        ["Telas/Configuracoes.xaml"] = [typeof(ConfiguracoesViewModel), typeof(Contracts.Edge.V1.TipoDeEntrada), typeof(Contracts.Edge.V1.ChaveTecnica), typeof(OpcaoDaLista), typeof(SecaoBloqueada)],
         ["Telas/Parametrizacao.xaml"] =
         [
             typeof(ParametrizacaoViewModel), typeof(LinhaDeCatraca), typeof(CampoDaParametrizacao), typeof(OpcaoDoCampo),

@@ -30,6 +30,20 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
+        <!-- O mesmo caminho da rodada automática: a lista desce e as passagens sobem, agora. -->
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+          <Button Content="Testar conexão com a nuvem" Command="{Binding TestarConexao}" Style="{StaticResource Rayzer.Button.Primary}"
+                  AutomationProperties.Name="Testar conexão com a nuvem"
+                  ToolTip="Fala com a nuvem agora: baixa a lista de cartões, envia as passagens que estão na fila e mostra o resultado. As catracas não param." />
+          <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" VerticalAlignment="Center" Margin="12,0,0,0"
+                     Text="Testando a conexão com a nuvem…"
+                     Visibility="{Binding Testando, Converter={StaticResource BoolParaVisibilidade}}" />
+        </StackPanel>
+        <rz:RayzerAlert Margin="0,12,0,0" Tom="{Binding SinalDoTeste, Converter={StaticResource SinalParaTom}}"
+                        Titulo="{Binding ResultadoDoTeste}" Texto="{Binding OrientacaoDoTeste}"
+                        AutomationProperties.Name="Resultado do teste da nuvem"
+                        Visibility="{Binding ResultadoDoTeste, Converter={StaticResource VazioSome}}" />
+
         <!-- Achado E5-2 do docs/41: o que a nuvem recusou volta para a fila a pedido do operador. -->
         <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
                     Visibility="{Binding CartasMortas, Converter={StaticResource ZeroParaVisivel}, ConverterParameter=inverso}">

@@ -2,6 +2,7 @@ using System.Globalization;
 using Access.Infrastructure.SQLite;
 using Contracts;
 using Edge.Supervisor;
+using Edge.Supervisor.Atualizacoes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -234,6 +235,30 @@ DateTimeOffset? UltimaNoticiaDoGrupo(IReadOnlyList<int> inners) =>
         .DefaultIfEmpty()
         .Max();
 
+// SDK da Topdata (docs/60 §2.1): o instalador público não leva a EasyInner.dll. Antes de as catracas
+// subirem, repõe a cópia guardada se a DLL sumiu (uma atualização apagou), e guarda a que estiver lá.
+var pastaDaGuardaDoSdk = Path.Combine(configuracao.PastaDeDados, "sdk");
+var pastaDasCatracas = configuracao.Grupos.Count == 0
+    ? null
+    : Path.GetDirectoryName(ConfiguracaoDoSupervisor.ResolverExecutavel(configuracao.Grupos[0].Executavel));
+string? avisoDoSdk = null;
+if (pastaDasCatracas is not null && !configuracao.Simulacao)
+{
+    try
+    {
+        if (GuardaDoSdk.Repor(pastaDasCatracas, pastaDaGuardaDoSdk) is > 0 and var repostos)
+        {
+            avisoDoSdk = $"SDK da Topdata reposto na pasta das catracas ({repostos} arquivo(s)), depois de uma atualização.";
+        }
+
+        GuardaDoSdk.Guardar(pastaDasCatracas, pastaDaGuardaDoSdk);
+    }
+    catch (Exception erro) when (erro is IOException or UnauthorizedAccessException)
+    {
+        avisoDoSdk = $"SDK da Topdata: não deu para guardar ou repor a cópia ({erro.GetType().Name}).";
+    }
+}
+
 var workers = configuracao.Grupos
     .Select(g => new ProcessoDeWorker(
         g.Nome,
@@ -282,6 +307,10 @@ foreach (var falha in falhasDaRestricao)
 }
 
 Registrar($"partida {sessaoDoServico} · contenção dos workers: {contencao.Descricao}");
+if (avisoDoSdk is not null)
+{
+    Registrar(avisoDoSdk);
+}
 
 // Antes de subir os workers desta partida: encerrar os que uma partida anterior deixou órfãos.
 // Só os desta instalação (mesmo executável, caminho completo) cujo pai não existe mais.
@@ -301,6 +330,19 @@ var usuariosDoSistema = new UsuariosDoSistema(fabrica);
 if (usuariosDoSistema.GarantirAdministradorPadrao(DateTimeOffset.UtcNow))
 {
     Registrar($"login: administrador padrão criado ('{UsuariosDoSistema.LoginPadrao}'); a senha deve ser trocada no primeiro acesso.");
+}
+
+// Cartões já validados (docs/57 §3): o provedor da bilheteria local existe sempre (o cadastro por
+// leitura grava nele), e os arquivos deixados em carga-inicial entram agora. Os números nunca vêm
+// no instalador: o repositório e o instalador de teste são públicos.
+CargaInicialDeCartoes.GarantirProvedorLocal(fabrica, DateTimeOffset.UtcNow);
+try
+{
+    CargaInicialDeCartoes.CarregarDaPasta(configuracao.PastaDeDados, fabrica, DateTimeOffset.UtcNow, Registrar);
+}
+catch (Exception erro) when (erro is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+{
+    Registrar($"carga inicial: não foi feita ({erro.GetType().Name}: {erro.Message}). Os arquivos ficaram na pasta para a próxima partida.");
 }
 
 var sessoesDoPainel = new SessoesDoPainel();
@@ -334,7 +376,8 @@ if (configuracao.Nuvem is { } configuracaoDaNuvem)
     // configuração que eles leem ao subir. Uma falha aqui deixa a borda sem nuvem, não sem catracas.
     try
     {
-        sincronizacao = SincronizacaoComANuvem.Montar(configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar);
+        sincronizacao = SincronizacaoComANuvem.Montar(
+            configuracaoDaNuvem, fabrica, cofre, nuvem, Registrar, simulacao: configuracao.Simulacao);
     }
     catch (Exception erro) when (erro is not OutOfMemoryException)
     {
@@ -381,6 +424,35 @@ construtor.Services.AddSingleton(nuvem);
 var configuracoesDaBorda = new ConfiguracoesDaBorda(fabrica);
 construtor.Services.AddSingleton(configuracoesDaBorda);
 
+// Licença (docs/60 §1): só decide o administrativo; nunca para catraca.
+var licenca = new ControleDeLicenca(configuracoesDaBorda);
+
+// Atualização automática (docs/60 §2): só no canal de produção e com a chave de atualização na versão.
+var versaoInstalada = FichaDaVersao.VersaoDe(typeof(EdgeControlService).Assembly.GetName().Version?.ToString(3)) ?? new Version(0, 0, 0);
+var atualizacao = new AtualizacaoAutomatica(
+    new OpcoesDaAtualizacao(
+        string.IsNullOrWhiteSpace(configuracao.RepositorioDeAtualizacoes) ? OpcoesDaAtualizacao.RepositorioPadrao : configuracao.RepositorioDeAtualizacoes,
+        configuracao.AtualizacaoAutomatica ? CanalDoInstalador.Ler() : "desligada",
+        versaoInstalada,
+        Path.Combine(configuracao.PastaDeDados, "atualizacoes"),
+        ChavesDeAtualizacao.Publicas,
+        PrimeiraVerificacao: TimeSpan.FromMinutes(10),
+        Intervalo: TimeSpan.FromHours(6)),
+    configuracoesDaBorda,
+    licenca,
+    () => AtividadeDasCatracas.UltimaLeitura(fabrica, DateTimeOffset.UtcNow),
+    Registrar,
+    new InstaladorPorTarefaAgendada(),
+    antesDeInstalar: () =>
+    {
+        // Cópia da base antes de tudo: se não der, não instala (a cópia lança).
+        new CopiaDeSeguranca(fabrica, Path.Combine(configuracao.PastaDeDados, "copias", "antes-da-atualizacao")).Criar(DateTimeOffset.UtcNow);
+        if (pastaDasCatracas is not null)
+        {
+            GuardaDoSdk.Guardar(pastaDasCatracas, pastaDaGuardaDoSdk);
+        }
+    });
+
 // Camada inteligente (Etapa I.0 do docs/36): o Analisador lê acesso.db só para leitura e grava só
 // em telemetria.db, ao lado. Desligado por padrão (chave inteligencia.ligada, lida na partida);
 // uma exceção ou um ciclo travado dele não derruba o serviço nem toca no worker.
@@ -413,15 +485,24 @@ construtor.Services.AddSingleton(_ => new EdgeControlService(
     sessoes: sessoesDoPainel,
     pessoas: cadastroDePessoas,
     parametrosDoCadastro: new ParametrosDoCadastro(fabrica),
-    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas)));
+    importacaoDePessoas: cadastroDePessoas is null ? null : new ImportacaoDePessoas(fabrica, cadastroDePessoas),
+    cartoes: new RepositorioDeIngressos(fabrica))
+{
+    RodadaDaNuvem = sincronizacao is null ? null : sincronizacao.RodarAsync,
+    Licenca = licenca,
+    Atualizacao = atualizacao,
+});
 
 // Token da instalação primeiro (ADR-0004), depois a sessão do usuário e a permissão de cada RPC (ADR-0026).
 construtor.Services.AddGrpc(o =>
 {
     // A planilha de pessoas vai inteira num pedido (até 20 MB, docs/43 P5); o padrão do gRPC é 4 MB.
     o.MaxReceiveMessageSize = 24 * 1024 * 1024;
+    // Primeiro, para ver os erros internos de todos os RPCs (ver InterceptadorDeErros).
+    o.Interceptors.Add<InterceptadorDeErros>((Action<string>)Registrar);
     o.Interceptors.Add<InterceptadorDeToken>(token);
-    o.Interceptors.Add<InterceptadorDeSessao>(usuariosDoSistema, sessoesDoPainel, (Func<DateTimeOffset>)(() => DateTimeOffset.UtcNow));
+    o.Interceptors.Add<InterceptadorDeSessao>(
+        usuariosDoSistema, sessoesDoPainel, (Func<DateTimeOffset>)(() => DateTimeOffset.UtcNow), (Func<bool>)(() => licenca.Bloqueada));
 });
 construtor.Services.AddHostedService<LacoDeSupervisao>();
 construtor.Services.AddHostedService<ImpedirSuspensao>();
@@ -436,6 +517,7 @@ construtor.Services.AddHostedService(sp => new ZeladorDeRegistrosServico(
     Path.Combine(configuracao.PastaDeDados, "registros"),
     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ZeladorDeRegistrosServico>>()));
 construtor.Services.AddHostedService(_ => analisador);
+construtor.Services.AddHostedService(_ => atualizacao);
 
 if (sincronizacao is not null)
 {

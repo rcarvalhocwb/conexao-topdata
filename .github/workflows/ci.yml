@@ -173,6 +173,10 @@ jobs:
           dotnet publish src/Desktop.App        -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Painel
           dotnet publish src/Edge.Worker.X86    -c Release -r win-x86 --self-contained true -p:Version=$versao -o publicado/Worker
           dotnet publish src/Edge.Configurador  -c Release -r win-x64 --self-contained true -p:Version=$versao -o publicado/Configurador
+          # A ferramenta do suporte (docs/58) sai à parte, num .exe só, e nunca entra no MSI: ela não
+          # tem segredo nenhum (só funciona com a chave privada, que fica na máquina do suporte).
+          dotnet publish src/Rayzer.Suporte     -c Release -r win-x64 --self-contained true -p:Version=$versao `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publicado/Suporte
 
       # Abre as janelas de verdade, publicadas como vão para o Setup, e percorre cada tela
       # e cada passo. Compilar não prova que a tela abre: o painel subia sem janela (App.xaml
@@ -357,13 +361,18 @@ jobs:
           $obrigatorios = 'Edge.Supervisor.exe', 'Desktop.App.exe', 'Edge.Worker.X86.exe',
                           'Edge.Worker.X86.dll', 'e_sqlite3.dll', 'bancada.exemplo.json',
                           'Edge.Configurador.exe', 'modelo-cadastro-de-cartoes.xlsx',
-                          'verificar-ambiente.ps1', 'configurar-operador.ps1'
+                          'verificar-ambiente.ps1', 'configurar-operador.ps1', 'carregar-cartoes.ps1'
           $faltando = $obrigatorios | Where-Object { $arquivos -notcontains $_ }
           if ($faltando) { throw "Faltam no MSI: $($faltando -join ', ')" }
 
           # Invariante: o MSI público nunca leva a EasyInner.dll (é da Topdata; a versão com o
           # SDK sai do repositório privado, em installer/privado/).
           if ($arquivos -contains 'EasyInner.dll') { throw 'A EasyInner.dll não pode ir no MSI público.' }
+          # Nem número de cartão: a carga inicial vem de arquivo do cliente, nunca do MSI (docs/57 §3).
+          # Só os modelos fictícios de installer/modelos podem ir.
+          $modelos = 'cartoes-modelo.csv', 'modelo-pessoas.csv', 'tipos-modelo.csv'
+          $csvs = $arquivos | Where-Object { $_ -like '*.csv' -and $modelos -notcontains $_ }
+          if ($csvs) { throw "O MSI público não pode levar .csv de cartões: $($csvs -join ', ')" }
           Write-Host 'Conteúdo do MSI: ok (instalador de teste, sem o SDK)'
 
       # O teste que faltava: instalar de verdade, abrir o painel instalado e desinstalar
@@ -607,6 +616,10 @@ jobs:
           Compress-Archive -Path RayzerXAcess-Setup.exe -DestinationPath "RayzerXAcess-Setup-$versao.zip" -Force
           Compress-Archive -Path $msi -DestinationPath "RayzerXAcess-MSI-$versao.zip" -Force
           $arquivos = @("RayzerXAcess-Setup-$versao.zip", 'RayzerXAcess-Setup.exe', "RayzerXAcess-MSI-$versao.zip")
+          if (Test-Path publicado\Suporte\Rayzer.Suporte.exe) {
+            Compress-Archive -Path publicado\Suporte\Rayzer.Suporte.exe -DestinationPath "Rayzer.Suporte-$versao.zip" -Force
+            $arquivos += "Rayzer.Suporte-$versao.zip"
+          }
           if (Test-Path capturas\*.png) {
             Compress-Archive -Path capturas\*.png -DestinationPath capturas-das-telas.zip -Force
             $arquivos += 'capturas-das-telas.zip'
@@ -620,6 +633,7 @@ jobs:
 
           - RayzerXAcess-MSI-$versao.zip: o mesmo sistema, instalado pelo MSI direto (sem a tela de boas-vindas).
           - capturas-das-telas.zip: as telas do painel nos temas claro e escuro.
+          - Rayzer.Suporte-$versao.zip: só para o suporte Rayzer (docs/58), não para o cliente. Gera as chaves da recuperação de senha de administrador e responde aos pedidos.
 
           O Windows pode mostrar "O Windows protegeu o computador": clique em "Mais informações" e "Executar assim mesmo". Isso acontece porque o instalador ainda não tem certificado de assinatura.
           "@

@@ -51,11 +51,14 @@ public static class RetornosDocumentados
         Recusa("DefinirTipoConexao", 9, "tipo de conexão inválido", "EI-001");
         t.Add(("AbrirPortaComunicacao", 2), new(AdapterStatus.ErroDeComunicacao, "porta não aberta", "EI-002"));
         t.Add(("AbrirPortaComunicacao", 3), new(AdapterStatus.PortaJaAberta, "porta já aberta", "EI-002"));
-        for (var r = 4; r <= 6; r++)
-        {
-            // DLL de apoio ausente: como o 8, insistir não adianta; é instalação.
-            t.Add(("AbrirPortaComunicacao", r), new(AdapterStatus.FalhaDeDependencia, "DLL de apoio ausente", "EI-002"));
-        }
+        // DLL de apoio ausente: como o 8, insistir não adianta; é instalação. Cada código aponta a DLL
+        // que faltou (manual de desenvolvimento, retornos gerais). A 11 é a Inner.dll, obrigatória na
+        // versão 6.x: sem ela o worker não abre a porta e a catraca nunca conecta (docs/61, plano Fase 1).
+        t.Add(("AbrirPortaComunicacao", 4), new(AdapterStatus.FalhaDeDependencia, "falta a Inner2K.dll", "EI-002"));
+        t.Add(("AbrirPortaComunicacao", 5), new(AdapterStatus.FalhaDeDependencia, "falta a InnerTCP.dll", "EI-002"));
+        t.Add(("AbrirPortaComunicacao", 6), new(AdapterStatus.FalhaDeDependencia, "falta a InnerTCPLib.dll", "EI-002"));
+        t.Add(("AbrirPortaComunicacao", 10), new(AdapterStatus.FalhaDeDependencia, "falta a InnerPendrive.dll", "EI-002"));
+        t.Add(("AbrirPortaComunicacao", 11), new(AdapterStatus.FalhaDeDependencia, "falta a Inner.dll (DLL de apoio da versão 6.x)", "EI-002"));
 
         // Montagem da configuração (buffer global; só vale com EnviarConfiguracoes).
         Recusa("DefinirPadraoCartao", 128, "padrão inválido", "EI-010");

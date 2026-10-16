@@ -277,7 +277,7 @@ Na ordem:
 Na ordem:
 
 1. **HIL-STACK-01:** carregar a DLL no worker x86 com .NET 10. Fecha a capacidade 1.
-2. **HIL-CAP-01:** firmware real (fecha E1-06).
+2. **HIL-CAP-01:** firmware real (fecha E1-06). **Feito em 15/10/2026:** Catraca Fit, linha 19, FW 6.42.1; a linha 19 entrou no padrão e a chave técnica `catraca.linhas_homologadas` foi criada.
 3. **HIL-EVT-01:** retorno com cabo puxado, T2 (fecha a severidade de E1-01).
 4. **HIL-CARD-02 e T25:** dígitos e tipo de leitor (E1-07, capacidade 3).
 5. **HIL-DIR:** sentido físico de cada função (capacidade 5).

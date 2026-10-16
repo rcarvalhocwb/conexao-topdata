@@ -27,6 +27,71 @@
       </UniformGrid>
     </Border>
 
+    <!-- docs/60: a licença (nunca para catraca) e a atualização automática. -->
+    <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" AutomationProperties.Name="Licença e atualizações">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="24" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" Text="Licença" />
+            <rz:RayzerStatus Grid.Column="1" VerticalAlignment="Center"
+                             Tom="{Binding LicencaSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding LicencaResumo}" />
+          </Grid>
+          <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Licenca}" AutomationProperties.Name="Detalhes da licença">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,2,0,0" TextWrapping="Wrap">
+                  <Run Text="{Binding Rotulo, Mode=OneWay}" /><Run Text=": " /><Run FontWeight="SemiBold" Text="{Binding Valor, Mode=OneWay}" />
+                </TextBlock>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Margin="0,8,0,0" Visibility="{Binding IdDaInstalacao, Converter={StaticResource VazioSome}}">
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,0,0,2" Text="Identificador desta instalação (mande à Rayzer ao pedir a licença)" />
+            <TextBox IsReadOnly="True" FontFamily="{DynamicResource Rayzer.Font.Mono}" Text="{Binding IdDaInstalacao, Mode=OneWay}"
+                     AutomationProperties.Name="Identificador desta instalação" />
+            <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,8,0,2" Text="Licença nova (cole o texto que a Rayzer mandou)" />
+            <TextBox Text="{Binding TextoDaLicenca, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Height="56"
+                     VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Texto da licença nova" />
+            <Button Margin="0,8,0,0" HorizontalAlignment="Left" Content="Instalar licença" Command="{Binding InstalarLicenca}"
+                    AutomationProperties.Name="Instalar licença" />
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource Rayzer.Type.Section}" Margin="0" Text="Atualizações automáticas" />
+            <rz:RayzerStatus Grid.Column="1" VerticalAlignment="Center"
+                             Tom="{Binding AtualizacaoSinal, Converter={StaticResource SinalParaTom}}" Texto="{Binding AtualizacaoResumo}" />
+          </Grid>
+          <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Atualizacao}" AutomationProperties.Name="Detalhes da atualização">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" Margin="0,2,0,0" TextWrapping="Wrap">
+                  <Run Text="{Binding Rotulo, Mode=OneWay}" /><Run Text=": " /><Run FontWeight="SemiBold" Text="{Binding Valor, Mode=OneWay}" />
+                </TextBlock>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Style="{StaticResource Rayzer.Type.Caption}" Margin="0,8,0,0" TextWrapping="Wrap"
+                     Text="Instala sozinha, em silêncio, quando o painel é fechado pela bandeja ou de madrugada (3h às 5h), sempre com as catracas paradas." />
+        </StackPanel>
+      </Grid>
+    </Border>
+
     <!-- Etapa I.0 (docs/36): a saúde do Analisador da camada inteligente. Desligada é o normal. -->
     <Border DockPanel.Dock="Top" Style="{StaticResource Rayzer.Card}" Margin="0,0,0,12" AutomationProperties.Name="Camada inteligente">
       <StackPanel>

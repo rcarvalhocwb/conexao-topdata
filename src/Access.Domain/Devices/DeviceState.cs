@@ -88,4 +88,16 @@ public enum DeviceState
 
     /// <summary>Nosso: dependência ausente ou DLL inutilizável. Falha terminal.</summary>
     FalhaFatalDeDependencia,
+
+    /// <summary>
+    /// Manual (fluxo 8, seção 5.3): acesso permitido com urna. Abre a urna (<c>AcionarRele2</c>) para o
+    /// cartão lido na fenda cair. O giro <b>não</b> é liberado aqui.
+    /// </summary>
+    AcionarUrna,
+
+    /// <summary>
+    /// Manual (<c>ESTADO_MONITORA_URNA</c>): aguardar a origem 7 (cartão recolhido). Só com ela o giro é
+    /// liberado; origem 5 (ninguém depositou) ou 20 (urna cheia) negam e devolvem o uso.
+    /// </summary>
+    MonitoraUrna,
 }

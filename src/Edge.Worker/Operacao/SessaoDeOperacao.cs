@@ -43,6 +43,8 @@ public sealed class SessaoDeOperacao
         DeviceState.EnviarMsgAcessoNegado,
         DeviceState.LiberarCatraca,
         DeviceState.MonitoraGiroCatraca,
+        DeviceState.AcionarUrna,
+        DeviceState.MonitoraUrna,
         DeviceState.ColetarBilhetes,
     };
 
@@ -182,6 +184,9 @@ public sealed class SessaoDeOperacao
     /// Chave técnica <c>catraca.exibir_texto_do_giro</c> (ver <see cref="DevicePump"/>). Desligada por padrão.
     /// </param>
     /// <param name="coletor">Coletor mínimo (Etapa I.1). Nulo por padrão.</param>
+    /// <param name="linhasHomologadas">
+    /// Linhas de firmware aceitas (chave técnica <c>catraca.linhas_homologadas</c>); nulo, o padrão da versão.
+    /// </param>
     public SessaoDeOperacao(
         ITopdataInnerAdapter adapter,
         IEnumerable<int> inners,
@@ -198,7 +203,8 @@ public sealed class SessaoDeOperacao
         IGravadorDeBilhetes? gravadorDeBilhetes = null,
         Func<bool>? coletaLigada = null,
         bool exibirTextoDoGiro = false,
-        ColetorDeTelemetria? coletor = null)
+        ColetorDeTelemetria? coletor = null,
+        IReadOnlySet<byte>? linhasHomologadas = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
         ArgumentNullException.ThrowIfNull(inners);
@@ -239,6 +245,7 @@ public sealed class SessaoDeOperacao
         var bomba = new DevicePump(
             adapter,
             _relogio,
+            linhasHomologadas: linhasHomologadas,
             decidir: Decidir,
             aoReceberEvento: Receber,
             acertarRelogioAoDivergir: acertarRelogioAoDivergir,
@@ -248,7 +255,8 @@ public sealed class SessaoDeOperacao
             gravadorDeBilhetes: gravadorDeBilhetes,
             exibirTextoDoGiro: exibirTextoDoGiro,
             aoDesistirDoGiro: decisor.DescartarPendente,
-            aoFalharALiberacao: decisor.RegistrarCausaSemGiro);
+            aoFalharALiberacao: decisor.RegistrarCausaSemGiro,
+            aoDesistirDaUrna: decisor.DevolverNaUrna);
 
         _laco = new DeviceGroupLoop(
             adapter,

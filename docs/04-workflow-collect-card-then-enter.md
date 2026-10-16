@@ -1,5 +1,10 @@
 # 04 — Workflow `CollectCardThenEnter`
 
+> **16/10/2026:** implementado no laço da catraca conforme o manual do SDK (§5.3, fluxo 8) e os
+> exemplos oficiais do SDK 6.0.2.0 — ver [docs/61](61-urna-leitores-e-teclado.md). Diferenças em
+> relação a este desenho: a reserva é o próprio consumo, devolvido se o cartão não cair; T2 é 7 s (o mesmo
+> do middleware que operou em 2025); a confirmação de bancada está no docs/61 §5.
+
 > **Recolher o cartão para liberar a ENTRADA.**
 > Uso invertido em relação ao típico da urna Topdata (que é saída).
 

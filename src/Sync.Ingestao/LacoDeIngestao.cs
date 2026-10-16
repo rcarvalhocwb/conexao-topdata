@@ -11,6 +11,7 @@ namespace Sync.Ingestao;
 /// <param name="ProvedorDesconhecido">Recusados por provedor não cadastrado.</param>
 /// <param name="Interrompido">A rodada parou antes de esgotar o que havia.</param>
 /// <param name="Erro">Motivo da interrupção, quando houve.</param>
+/// <param name="Causa">A exceção que parou a leitura, para quem chama classificar (rede, credencial, destino).</param>
 public sealed record ResumoDaIngestao(
     int Paginas,
     int Inseridos,
@@ -18,7 +19,8 @@ public sealed record ResumoDaIngestao(
     IReadOnlyList<ColisaoDeQr> Colisoes,
     int ProvedorDesconhecido,
     bool Interrompido = false,
-    string? Erro = null)
+    string? Erro = null,
+    Exception? Causa = null)
 {
     /// <summary>Rodada em que não havia nada.</summary>
     public static ResumoDaIngestao Vazia { get; } = new(0, 0, 0, [], 0);
@@ -168,7 +170,7 @@ public sealed class LacoDeIngestao
                 Observar(new OcorrenciaDeIngestao(_fonte.Provedor, fluxo, "falha_na_fonte", 0, Resumir(erro)));
                 return new ResumoDaIngestao(
                     paginas, inseridos, atualizados, colisoes, provedorDesconhecido,
-                    Interrompido: true, Erro: Resumir(erro));
+                    Interrompido: true, Erro: Resumir(erro), Causa: erro);
             }
 
             if (pagina.Itens.Count > 0)

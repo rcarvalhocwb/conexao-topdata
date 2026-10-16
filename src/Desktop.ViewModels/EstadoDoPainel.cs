@@ -46,9 +46,19 @@ public sealed record EstadoDoPainel
     /// <summary>Instalação em modo simulação: a tela mostra o selo o tempo todo.</summary>
     public bool Simulacao { get; init; }
 
+    /// <summary>
+    /// A atualização automática vai instalar em instantes (docs/60 §2.3): o painel deixa o relançador e fecha,
+    /// para o instalador não precisar derrubá-lo.
+    /// </summary>
+    public bool AtualizacaoIminente { get; init; }
+
     public int WorkersAtivos { get; init; }
 
+    /// <summary>Catracas físicas atendendo (P0-01). Nunca inclui simuladas.</summary>
     public int EquipamentosConectados { get; init; }
+
+    /// <summary>Catracas simuladas ativas, separadas das físicas.</summary>
+    public int CatracasSimuladasAtivas { get; init; }
 
     public long OutboxPendente { get; init; }
 
@@ -96,15 +106,34 @@ public sealed record EstadoDoPainel
             _ => (SaudeDoPainel.Atencao, "Estado desconhecido informado pelo serviço"),
         };
 
+        // As catracas funcionam, mas a nuvem precisa de alguém: "tudo funcionando" esconderia isso.
+        if (saude is SaudeDoPainel.Normal && resposta.SituacaoDaNuvem is SituacaoDaNuvem.ListaIncompleta
+                or SituacaoDaNuvem.FalhaDeAutenticacao or SituacaoDaNuvem.SegredoAusente)
+        {
+            saude = SaudeDoPainel.Atencao;
+            mensagem = "Catracas funcionando — a nuvem precisa de atenção (veja Sincronização)";
+        }
+
+        // A licença nunca para catraca (docs/60): aviso na barra só quando tudo o mais está bem.
+        if (saude is SaudeDoPainel.Normal && AvisoDaLicenca(resposta.SituacaoDaLicenca, resposta.DiasDaLicenca) is { } aviso)
+        {
+            saude = SaudeDoPainel.Atencao;
+            mensagem = aviso;
+        }
+
         if (resposta.SemConfiguracao)
         {
             saude = SaudeDoPainel.Acao;
             mensagem = "Instalação ainda não configurada — abra o Assistente de configuração";
         }
-        else if (resposta.EquipamentosConectados == 0)
+        else if (resposta.EquipamentosConectados == 0 && resposta.CatracasSimuladasAtivas == 0)
         {
             saude = SaudeDoPainel.Acao;
-            mensagem = "Nenhuma catraca conectada — verifique a rede e a alimentação";
+
+            // Com o motivo do worker que caiu, a barra diz o que falta (ex.: a DLL); sem ele, o de antes.
+            mensagem = string.IsNullOrWhiteSpace(resposta.MotivoDaCatraca)
+                ? "Nenhuma catraca conectada — verifique a rede e a alimentação"
+                : $"Nenhuma catraca conectada: o programa das catracas não está atendendo ({resposta.MotivoDaCatraca})";
         }
 
         if (resposta.Simulacao)
@@ -127,15 +156,32 @@ public sealed record EstadoDoPainel
             Mensagem = mensagem,
             SugerirAssistente = resposta.SemConfiguracao,
             Simulacao = resposta.Simulacao,
+            AtualizacaoIminente = resposta.AtualizacaoIminente,
             Detalhe = string.Create(
                 CultureInfo.InvariantCulture,
                 $"versão {resposta.Versao} · nível {resposta.Nivel} · outbox {resposta.OutboxPendente}"),
             WorkersAtivos = resposta.WorkersAtivos,
             EquipamentosConectados = resposta.EquipamentosConectados,
+            CatracasSimuladasAtivas = resposta.CatracasSimuladasAtivas,
             OutboxPendente = resposta.OutboxPendente,
             AtualizadoEm = em,
         };
     }
+
+    /// <summary>A frase da barra para a licença; nulo quando não há o que avisar.</summary>
+    public static string? AvisoDaLicenca(SituacaoDaLicenca situacao, int dias) => situacao switch
+    {
+        SituacaoDaLicenca.VenceEmBreve => dias == 0
+            ? "Catracas funcionando — a licença vence hoje (veja Diagnóstico)"
+            : $"Catracas funcionando — a licença vence em {Dias(dias)} (veja Diagnóstico)",
+        SituacaoDaLicenca.EmTolerancia =>
+            $"Catracas funcionando — licença vencida: renove em até {Dias(dias)} (veja Diagnóstico)",
+        SituacaoDaLicenca.Bloqueada =>
+            "Catracas funcionando — licença vencida: relatórios e atualizações bloqueados (veja Diagnóstico)",
+        _ => null,
+    };
+
+    private static string Dias(int n) => n == 1 ? "1 dia" : string.Create(CultureInfo.InvariantCulture, $"{n} dias");
 
     /// <summary>
     /// Estado quando o serviço local não respondeu.

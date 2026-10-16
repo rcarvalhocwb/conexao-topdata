@@ -25,7 +25,7 @@ public sealed class VersaoDaConfiguracaoTests
         "leitor1=1\n" +
         "leitor2=1\n" +
         "acionamento1=2,5\n" +
-        "acionamento2=0,0\n" +
+        "acionamento2=3,15\n" +
         "regime=online\n" +
         "teclado=0,0\n" +
         "mudanca_automatica=0,10\n" +
@@ -34,7 +34,7 @@ public sealed class VersaoDaConfiguracaoTests
         "data_hora_no_evento_online=-\n" +
         "cartao_master=-\n" +
         "tipo_de_lista=-\n" +
-        "formas_de_entrada_online=0,0,7,0,0\n" +
+        "formas_de_entrada_online=0,0,6,0,0\n" +
         "mensagem_padrao=19:Aproxime o ingresso\n" +
         "liberacao_da_entrada=Entrada\n";
 
@@ -42,7 +42,7 @@ public sealed class VersaoDaConfiguracaoTests
     /// SHA-256 de <see cref="CanonicaDoPadrao"/>, calculado fora do .NET
     /// (<c>printf '…' | sha256sum</c>): a mesma versão em qualquer execução e em qualquer máquina.
     /// </summary>
-    private const string VersaoDoPadrao = "1688bcc8e30188e56d1366cef4c28781d8a777e98531f7232fdc40ff28f08402";
+    private const string VersaoDoPadrao = "613bb325d2bc5d01bbc98375bb387d32db8847660897d7b04edb9c5fc7abe453";
 
     /// <summary>Todas as chaves técnicas ligadas e cada valor fora do padrão: tudo é "efetivo".</summary>
     private static DeviceConfiguration TudoLigado() => PadroesDeFabrica.TopFit4 with
@@ -72,8 +72,8 @@ public sealed class VersaoDaConfiguracaoTests
         [nameof(DeviceConfiguration.OperacaoDoLeitor2)] = c => c with { OperacaoDoLeitor2 = 0 },
         [nameof(DeviceConfiguration.FuncaoDoAcionamento1)] = c => c with { FuncaoDoAcionamento1 = 3 },
         [nameof(DeviceConfiguration.TempoDoAcionamento1)] = c => c with { TempoDoAcionamento1 = 6 },
-        [nameof(DeviceConfiguration.FuncaoDoAcionamento2)] = c => c with { FuncaoDoAcionamento2 = 3 },
-        [nameof(DeviceConfiguration.TempoDoAcionamento2)] = c => c with { TempoDoAcionamento2 = 5 },
+        [nameof(DeviceConfiguration.FuncaoDoAcionamento2)] = c => c with { FuncaoDoAcionamento2 = 4 },
+        [nameof(DeviceConfiguration.TempoDoAcionamento2)] = c => c with { TempoDoAcionamento2 = 6 },
         [nameof(DeviceConfiguration.Online)] = c => c with { Online = false },
         [nameof(DeviceConfiguration.TecladoHabilitado)] = c => c with { TecladoHabilitado = true },
         [nameof(DeviceConfiguration.EcoDoTeclado)] = c => c with { EcoDoTeclado = 1 },
@@ -203,7 +203,7 @@ public sealed class VersaoDaConfiguracaoTests
     public void Formas_de_entrada_entram_pelo_valor_efetivo()
     {
         var desligada = PadroesDeFabrica.TopFit4;
-        var ligadaComOsDeSempre = desligada with { EnviarFormasDeEntradaOnLine = true, FormasDeEntradaOnLine = FormasDeEntradaOnLine.DeHoje };
+        var ligadaComOsDeSempre = desligada with { EnviarFormasDeEntradaOnLine = true, FormasDeEntradaOnLine = desligada.FormasDeEntradaEfetivas };
 
         Assert.Equal(VersaoDaConfiguracao.Calcular(desligada), VersaoDaConfiguracao.Calcular(ligadaComOsDeSempre));
     }
@@ -226,8 +226,8 @@ public sealed class VersaoDaConfiguracaoTests
             EcoDoTeclado = 0,
             TecladoHabilitado = false,
             Online = true,
-            TempoDoAcionamento2 = 0,
-            FuncaoDoAcionamento2 = 0,
+            TempoDoAcionamento2 = 15,
+            FuncaoDoAcionamento2 = 3,
             TempoDoAcionamento1 = 5,
             FuncaoDoAcionamento1 = 2,
             OperacaoDoLeitor2 = 1,

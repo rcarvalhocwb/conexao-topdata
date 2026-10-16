@@ -180,7 +180,8 @@
     -->
     <Grid x:Name="Login" Grid.ColumnSpan="2" Background="{DynamicResource Rayzer.Background}" DataContext="{Binding Sessao}"
           Visibility="{Binding ForaDoSistema, Converter={StaticResource BoolParaVisibilidade}, FallbackValue=Collapsed}">
-      <Border Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Rayzer.Card}" Padding="32,28">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <Border Width="440" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Rayzer.Card}" Padding="32,28">
         <StackPanel>
           <rz:XAcessLogo Variante="ComAssinatura" Height="44" HorizontalAlignment="Left" Margin="0,0,0,20" />
 
@@ -189,8 +190,58 @@
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Usuário" />
             <TextBox x:Name="CampoLogin" Margin="0,4,0,12" Text="{Binding Login, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Usuário" />
             <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Senha" />
-            <PasswordBox x:Name="SenhaDoLogin" Margin="0,4,0,16" PasswordChanged="SenhaDoLoginMudou" AutomationProperties.Name="Senha" />
+            <!-- O olho mostra a senha só enquanto está pressionado (mouse ou barra de espaço). -->
+            <Grid Margin="0,4,0,16">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <PasswordBox x:Name="SenhaDoLogin" PasswordChanged="SenhaDoLoginMudou" AutomationProperties.Name="Senha" />
+              <TextBlock x:Name="SenhaVisivel" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"
+                         Style="{StaticResource Rayzer.Type.Mono}" Background="{DynamicResource Rayzer.Surface}" />
+              <Button x:Name="VerSenha" Grid.Column="1" Margin="6,0,0,0" MinWidth="0" Padding="10,0" Style="{StaticResource Rayzer.Button.Ghost}"
+                      ToolTip="Segure para ver a senha" AutomationProperties.Name="Segure para ver a senha"
+                      PreviewMouseLeftButtonDown="VerSenhaPressionado" PreviewMouseLeftButtonUp="VerSenhaSolto" MouseLeave="VerSenhaSolto"
+                      PreviewKeyDown="VerSenhaTecla" PreviewKeyUp="VerSenhaTeclaSolta" LostKeyboardFocus="VerSenhaSolto">
+                <TextBlock Style="{StaticResource Rayzer.Icon}" FontSize="14" Text="&#xE7B3;" />
+              </Button>
+            </Grid>
             <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Stretch" Content="_Entrar" IsDefault="True" Command="{Binding Entrar}" />
+            <Button Style="{StaticResource Rayzer.Button.Ghost}" HorizontalAlignment="Center" Margin="0,10,0,0" Content="Esqueci minha senha"
+                    Command="{Binding AlternarAjudaDaSenha}" AutomationProperties.Name="Esqueci minha senha" />
+
+            <!-- Esqueci minha senha (docs/58): primeiro o administrador local; sem ele, o suporte Rayzer. -->
+            <Border Margin="0,12,0,0" Padding="14,12" CornerRadius="{DynamicResource Rayzer.Radius.Md}" BorderThickness="1"
+                    BorderBrush="{DynamicResource Rayzer.Border}" Background="{DynamicResource Rayzer.Surface.Sunken}"
+                    Visibility="{Binding MostrandoAjudaDaSenha, Converter={StaticResource BoolParaVisibilidade}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" Text="1. Peça a um administrador" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Margin="0,2,0,12"
+                           Text="Na tela Usuários, ele escolhe o seu nome e gera uma senha provisória. Você entra com ela e escolhe uma nova." />
+                <TextBlock Style="{StaticResource Rayzer.Type.Body}" FontWeight="SemiBold" Text="2. É o único administrador? Use o suporte Rayzer" />
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Margin="0,2,0,8"
+                           Text="Digite o seu usuário acima e gere o código. Mande o código ao suporte; ele devolve uma resposta. Cole a resposta, escolha a senha nova e grave. Fica registrado." />
+                <Button Style="{StaticResource Rayzer.Button.Ghost}" HorizontalAlignment="Left" Content="Gerar código de pedido"
+                        Command="{Binding PedirRecuperacao}" />
+                <StackPanel Margin="0,10,0,0" Visibility="{Binding PedidoDeRecuperacao, Converter={StaticResource VazioSome}}">
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Código de pedido (selecione e copie)" />
+                  <TextBox IsReadOnly="True" TextWrapping="Wrap" FontFamily="{StaticResource Rayzer.Font.Mono}" Text="{Binding PedidoDeRecuperacao, Mode=OneWay}"
+                           AutomationProperties.Name="Código de pedido para o suporte" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Caption}" Margin="0,2,0,8" Text="{Binding ValidadeDoPedido}" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Resposta do suporte" />
+                  <TextBox TextWrapping="Wrap" AcceptsReturn="False" MinHeight="56" FontFamily="{StaticResource Rayzer.Font.Mono}"
+                           Text="{Binding RespostaDoSuporte, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Resposta do suporte" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,8,0,0" Text="Senha nova (pelo menos 8 caracteres)" />
+                  <PasswordBox x:Name="SenhaRecuperada" Margin="0,4,0,8" PasswordChanged="SenhaRecuperadaMudou" AutomationProperties.Name="Senha nova da recuperação" />
+                  <TextBlock Style="{StaticResource Rayzer.Type.Label}" Text="Confirme a senha nova" />
+                  <PasswordBox x:Name="ConfirmacaoRecuperada" Margin="0,4,0,10" PasswordChanged="ConfirmacaoRecuperadaMudou" AutomationProperties.Name="Confirme a senha nova da recuperação" />
+                  <Button Style="{StaticResource Rayzer.Button.Primary}" HorizontalAlignment="Stretch" Content="Gravar a senha nova"
+                          Command="{Binding ConfirmarRecuperacao}" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource Rayzer.Type.Secondary}" TextWrapping="Wrap" Margin="0,8,0,0" Text="{Binding MensagemDaRecuperacao}"
+                           Visibility="{Binding MensagemDaRecuperacao, Converter={StaticResource VazioSome}}" AutomationProperties.LiveSetting="Polite" />
+              </StackPanel>
+            </Border>
           </StackPanel>
 
           <StackPanel Visibility="{Binding PedindoTroca, Converter={StaticResource BoolParaVisibilidade}}">
@@ -218,6 +269,7 @@
                           Visibility="{Binding Mensagem, Converter={StaticResource VazioSome}}" AutomationProperties.LiveSetting="Assertive" />
         </StackPanel>
       </Border>
+      </ScrollViewer>
     </Grid>
 
     <!-- Abertura (brand board, seção 08): toca uma vez, some sozinha e nunca bloqueia clique. -->

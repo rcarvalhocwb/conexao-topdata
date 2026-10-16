@@ -137,7 +137,7 @@ Tipo: **CÓDIGO** (fazer e testar aqui) · **WINDOWS** (só no CI Windows ou VM)
 | P06 | Corte fechado | Snapshot, hash SHA-256 e código de conferência; reproduzível | CÓDIGO |
 | P07 | Maquininha e cortesia (Zet) | Fonte definida pela Zet; conciliação com teste | EXTERNO + CÓDIGO |
 | P08 | Caminho da venda on-line | Decisão A, B ou C; implementação do caminho escolhido | DECISÃO + CÓDIGO |
-| P09 | Meia-entrada (E10) | Campo de cota e número no R1 quando houver regra | DECISÃO |
+| P09 | Meia-entrada (E10) | Decidido em 15/10/2026: o XAcess informa as meias validadas (R1, R7); a cota legal é do sistema de venda (docs/25 §6) | FEITO |
 | P10 | Liberações manuais nos números | Linha própria no relatório, com teste | CÓDIGO |
 | P11 | Autoria do relatório | Evento, fornecedor, versão e responsável em todo relatório | CÓDIGO |
 | P12 | Disponibilidade e pico | Histórico de disponibilidade gravado; métricas testadas | CÓDIGO |

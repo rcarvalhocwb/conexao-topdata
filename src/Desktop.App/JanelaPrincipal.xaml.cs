@@ -267,6 +267,40 @@ public partial class JanelaPrincipal : Window
 
     private void ConfirmacaoMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.Confirmacao = ConfirmacaoDaSenha.Password;
 
+    private void SenhaRecuperadaMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.SenhaRecuperada = SenhaRecuperada.Password;
+
+    private void ConfirmacaoRecuperadaMudou(object sender, RoutedEventArgs e) => Janela.Sessao?.ConfirmacaoRecuperada = ConfirmacaoRecuperada.Password;
+
+    // O olho: a senha aparece por cima da caixa só enquanto o botão está pressionado, e some ao soltar,
+    // ao tirar o mouse ou ao perder o foco. Nunca fica à mostra esquecida.
+    private void VerSenhaPressionado(object sender, System.Windows.Input.MouseButtonEventArgs e) => MostrarSenha(true);
+
+    private void VerSenhaSolto(object sender, RoutedEventArgs e) => MostrarSenha(false);
+
+    private void VerSenhaTecla(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key is System.Windows.Input.Key.Space && !e.IsRepeat)
+        {
+            MostrarSenha(true);
+            e.Handled = true;
+        }
+    }
+
+    private void VerSenhaTeclaSolta(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key is System.Windows.Input.Key.Space)
+        {
+            MostrarSenha(false);
+            e.Handled = true;
+        }
+    }
+
+    private void MostrarSenha(bool mostrar)
+    {
+        SenhaVisivel.Text = mostrar ? SenhaDoLogin.Password : string.Empty;
+        SenhaVisivel.Visibility = mostrar && SenhaDoLogin.Password.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     /// <summary>Depois de entrar, trocar ou sair, as caixas de senha ficam vazias.</summary>
     private void LimparSenhas()
     {
@@ -274,5 +308,8 @@ public partial class JanelaPrincipal : Window
         SenhaAtual.Clear();
         SenhaNova.Clear();
         ConfirmacaoDaSenha.Clear();
+        SenhaRecuperada.Clear();
+        ConfirmacaoRecuperada.Clear();
+        MostrarSenha(false);
     }
 }

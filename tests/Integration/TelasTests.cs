@@ -132,7 +132,8 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Equal("1 de 2 catraca(s) atendendo", painel.Resumo);
         Assert.Equal(("Atendendo", Sinal.Bom), (painel.Catracas[0].Situacao, painel.Catracas[0].Sinal));
         Assert.Equal("Aguardando a catraca conectar", painel.Catracas[1].Situacao);
-        Assert.StartsWith("Nuvem: sem sincronização", painel.Internet, StringComparison.Ordinal);
+        // Sem configuração da nuvem nesta máquina: o painel diz isso, não "sem sincronização".
+        Assert.Contains("Nuvem: não configurada nesta máquina", painel.Internet, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -389,6 +390,37 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
+    /// Relatórios R1, R2, R3 e R7 (docs/25 §3) na Prestação de contas: o mesmo "Gerar" traz os quatro,
+    /// com o cabeçalho e o código de conferência, e o CSV leva as seções.
+    /// </summary>
+    [Fact]
+    public async Task Prestacao_de_contas_traz_o_boletim_do_dia_e_os_relatorios_no_csv()
+    {
+        var agora = DateTimeOffset.UtcNow;
+        var (_, tentativa) = _repositorio.TentarUsar(Qr, "p1", "inner-1", agora);
+        _repositorio.ConfirmarPassagemFisica(tentativa, agora.AddSeconds(2));
+        var hoje = FusoDoEvento.NoEvento(agora).Date;
+
+        var contas = new ContasViewModel(Cliente(), () => agora) { Desde = hoje.AddDays(-1), Ate = hoje };
+        await contas.Gerar.ExecutarAsync();
+
+        Assert.True(contas.TemRelatorios);
+        Assert.NotNull(contas.DiaEscolhido);
+        var linha = Assert.Single(contas.Boletim);
+        Assert.Equal(("meia", 1L, "100%"), (linha.Tipo, linha.Validados, linha.Participacao));
+        Assert.Contains("1 acessos validados, de 1 ingressos", contas.ResumoDoBoletim, StringComparison.Ordinal);
+        Assert.Single(contas.MovimentoPorCatraca);
+        Assert.Single(contas.Consolidado);
+        Assert.Matches("^[0-9A-F]{4}(-[0-9A-F]{4}){3}$", contas.Conferencia);
+        Assert.Contains("Rayzer Serviços e Tecnologia", contas.Cabecalho, StringComparison.Ordinal);
+
+        var csv = contas.ParaCsv();
+        Assert.Contains("R1 · Boletim do dia de operação", csv, StringComparison.Ordinal);
+        Assert.Contains("R7 · Consolidado do evento", csv, StringComparison.Ordinal);
+        Assert.Contains($"Código de conferência;{contas.Conferencia}", csv, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Defeito (relatório "não funcional", 01/10): com o campo "De" vazio a tela não mandava o
     /// início, e o serviço contava só as últimas 24 h — sem dizer. Vazio quer dizer "desde o
     /// começo", como na tela de Acessos.
@@ -444,18 +476,28 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     /// como ainda não disponíveis, cada um com o motivo.
     /// </summary>
     [Fact]
-    public void Relatorios_da_fase_6_aparecem_como_ainda_nao_disponiveis_com_motivo()
+    public void Relatorios_ainda_em_construcao_aparecem_com_motivo_e_os_prontos_saem_da_lista()
     {
         var contas = new ContasViewModel(Cliente());
 
-        foreach (var r in new[] { "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8" })
+        // R1, R2 e R7 estão prontos (14/10); do R3 falta só o tempo fora do ar.
+        foreach (var r in new[] { "R4", "R5", "R6", "R8" })
         {
             var item = Assert.Single(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith(r + " ", StringComparison.Ordinal));
-            Assert.Contains("Fase 6", item.Valor, StringComparison.Ordinal);
+            Assert.Contains("Em construção", item.Valor, StringComparison.Ordinal);
         }
 
-        Assert.Contains(contas.AindaNaoDisponivel, i => i.Rotulo.Contains("código de conferência", StringComparison.Ordinal));
-        Assert.Contains("(PDF)", contas.AindaNaoDisponivel[0].Rotulo, StringComparison.Ordinal);
+        foreach (var pronto in new[] { "R1 ", "R2 ", "R7 " })
+        {
+            Assert.DoesNotContain(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith(pronto, StringComparison.Ordinal));
+        }
+
+        Assert.Contains(contas.AindaNaoDisponivel, i => i.Rotulo.StartsWith("R3 · Tempo fora do ar", StringComparison.Ordinal));
+        Assert.All(contas.AindaNaoDisponivel, i => Assert.False(string.IsNullOrWhiteSpace(i.Valor)));
+
+        // E10 decidido (15/10): a cota é do sistema de venda; o R1 traz a nota, e o item sai da lista.
+        Assert.DoesNotContain(contas.AindaNaoDisponivel, i => i.Rotulo.Contains("meia", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("sistema de venda", ContasViewModel.NotaDaMeiaEntrada, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -483,7 +525,7 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
 
         Assert.Equal(("Operacional", Sinal.Bom), (painel.ServicoResumo, painel.ServicoSinal));
         Assert.Equal(("1/2 online", Sinal.Atencao), (painel.CatracasResumo, painel.CatracasSinal));
-        Assert.Equal(("Sem sincronização", Sinal.Neutro), (painel.NuvemResumo, painel.NuvemSinal));
+        Assert.Equal(("Não configurada", Sinal.Neutro), (painel.NuvemResumo, painel.NuvemSinal));
 
         // Sem serviço: o bloco do serviço diz na hora, sem esperar outra tela.
         var semServico = new PainelAoVivoViewModel(Cliente(TransporteLocal.EnderecoPadrao($"inexistente-{Guid.NewGuid():N}")));
@@ -748,15 +790,23 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         Assert.Single(tela.Historico);
     }
 
+    /// <summary>
+    /// A "Gerenciar catraca" foi fundida na "Configuração da catraca": o "Configurar" do cartão
+    /// abre a configuração naquela catraca, com os comandos dela embaixo; uma entrada só no menu.
+    /// </summary>
     [Fact]
-    public async Task Gerenciar_no_cartao_da_catraca_abre_a_tela_naquela_catraca()
+    public async Task Configurar_no_cartao_da_catraca_abre_a_configuracao_com_os_comandos_naquela_catraca()
     {
         var janela = new JanelaViewModel(Cliente());
 
-        await janela.Gerenciar.ExecutarAsync(2);
+        await janela.AbrirNoGemeo.ExecutarAsync(2);
 
-        var tela = Assert.IsType<GerenciarCatracaViewModel>(janela.TelaAtual);
-        Assert.Equal(2, tela.Catraca);
+        var tela = Assert.IsType<GemeoDigitalViewModel>(janela.TelaAtual);
+        await tela.AtualizarAsync();
+        Assert.Equal((2, 2), (tela.Catraca, tela.Central.Comandos.Catraca));
+        Assert.Equal(2, tela.Central.Comandos.Selecionada?.Inner);
+        Assert.DoesNotContain(janela.Telas, t => t is GerenciarCatracaViewModel);
+        Assert.Single(janela.TelasDoMenu, t => t is GemeoDigitalViewModel);
     }
 
     /// <summary>
@@ -906,6 +956,19 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
         using var consulta = leitura.CreateCommand();
         consulta.CommandText = "SELECT reprocessed_by FROM dead_letter;";
         Assert.Equal("Ana", consulta.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task Testar_conexao_sem_nuvem_configurada_diz_onde_configurar()
+    {
+        var tela = new SincronizacaoViewModel(Cliente());
+
+        await tela.TestarConexao.ExecutarAsync();
+
+        Assert.False(tela.Testando);
+        Assert.Equal(Sinal.Neutro, tela.SinalDoTeste);
+        Assert.Equal("A nuvem não está configurada neste computador.", tela.ResultadoDoTeste);
+        Assert.Contains("Assistente de configuração", tela.OrientacaoDoTeste, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1280,11 +1343,11 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task Parametrizacao_abre_pela_gerenciar_catraca_naquela_catraca_e_fica_fora_do_menu()
+    public async Task Parametrizacao_abre_pela_configuracao_da_catraca_naquela_catraca_e_fica_fora_do_menu()
     {
         var janela = new JanelaViewModel(Cliente());
-        await janela.Gerenciar.ExecutarAsync(2);
-        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana";
+        await janela.AbrirNoGemeo.ExecutarAsync(2);
+        ((GemeoDigitalViewModel)janela.TelaAtual).Central.Operador = "Ana";
 
         await janela.Parametrizar.ExecutarAsync(2);
 
@@ -1847,28 +1910,29 @@ public sealed class TelasTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
-    /// O gêmeo é a porta principal: "Abrir no gêmeo" (Gerenciar e Parametrização) leva à mesma
-    /// catraca, com o nome já digitado; "Ver em lista" leva de volta à Parametrização. Nada some.
+    /// O gêmeo é a porta principal: configuração e comandos usam a mesma catraca e o mesmo nome;
+    /// "Ver em lista" leva à Parametrização, e "Voltar à configuração" traz de volta. Nada some.
     /// </summary>
     [Fact]
     public async Task Abrir_no_gemeo_e_ver_em_lista_levam_a_mesma_catraca_com_o_nome()
     {
         var janela = new JanelaViewModel(Cliente());
-        await janela.Gerenciar.ExecutarAsync(2);
-        ((GerenciarCatracaViewModel)janela.TelaAtual).Operador = "Ana Sintética";
-
         await janela.AbrirNoGemeo.ExecutarAsync(2);
         var gemeo = Assert.IsType<GemeoDigitalViewModel>(janela.TelaAtual);
+        gemeo.Central.Operador = "Ana Sintética";
         await gemeo.AtualizarAsync();
         Assert.Equal((2, 2, "Ana Sintética"), (gemeo.Catraca, gemeo.Central.Catraca, gemeo.Central.Operador));
+        Assert.Equal((2, "Ana Sintética"), (gemeo.Central.Comandos.Catraca, gemeo.Central.Comandos.Operador));
 
         await janela.Parametrizar.ExecutarAsync(gemeo.Central.Catraca);
         var lista = Assert.IsType<ParametrizacaoViewModel>(janela.TelaAtual);
         await lista.AtualizarAsync();
         Assert.Equal((2, "Ana Sintética"), (lista.Catraca, lista.Operador));
 
-        // A Parametrização e a Gerenciar continuam existindo.
-        Assert.Contains(janela.Telas, t => t is GerenciarCatracaViewModel);
+        // De volta à configuração, na mesma catraca.
+        await janela.AbrirNoGemeo.ExecutarAsync(lista.Catraca);
+        Assert.Same(gemeo, janela.TelaAtual);
+        Assert.Equal(2, gemeo.Catraca);
         Assert.NotNull(janela.Parametrizacao);
     }
 

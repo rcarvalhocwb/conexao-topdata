@@ -74,6 +74,7 @@ public static class PorQueNegou
     {
         [nameof(MotivoDoUso.Desconhecido)] = ReasonCodes.CredencialDesconhecida,
         [nameof(MotivoDoUso.UsosEsgotados)] = ReasonCodes.UsosEsgotados,
+        [nameof(MotivoDoUso.CadastradoNoLote)] = ReasonCodes.CadastradoNoLote,
         [nameof(MotivoDoUso.Cancelado)] = ReasonCodes.IngressoCancelado,
         [nameof(MotivoDoUso.Bloqueado)] = ReasonCodes.CredencialBloqueada,
         [nameof(MotivoDoUso.ForaDaJanela)] = ReasonCodes.ForaDaJanela,
@@ -90,6 +91,10 @@ public static class PorQueNegou
         [nameof(MotivoDoUso.ForaDaValidade)] = ReasonCodes.PessoaForaDaValidade,
         [nameof(MotivoDoUso.LimiteDiario)] = ReasonCodes.LimiteDiario,
         [nameof(MotivoDoUso.CatracaFechada)] = ReasonCodes.CatracaFechada,
+        [nameof(MotivoDoUso.ForaDoPeriodoDoEvento)] = ReasonCodes.ForaDoPeriodoDoEvento,
+        [nameof(MotivoDoUso.SomenteEquipe)] = ReasonCodes.SomenteEquipe,
+        [nameof(MotivoDoUso.CredencialNaUrna)] = ReasonCodes.CredencialNaUrna,
+        [nameof(MotivoDoUso.EntradaDesligada)] = ReasonCodes.EntradaDesligada,
     };
 
     private const string ProcureOAtendimento = "Procure o atendimento, por favor.";
@@ -127,10 +132,26 @@ public static class PorQueNegou
             "O cadastro ou a credencial desta pessoa está fora da validade (visita encerrada ou ainda não começou).",
             "Seu acesso não vale nesta data. " + ProcureOAtendimento,
             "Confira as datas de validade na ficha da pessoa e o relógio desta catraca."),
+        [ReasonCodes.ForaDoPeriodoDoEvento] = (
+            "O evento ainda não começou ou já terminou, e as configurações do evento recusam ingressos fora do período.",
+            "A entrada não está aberta neste horário. " + ProcureOAtendimento,
+            "Confira o início e o fim em Configurações › Evento e o relógio desta catraca. Para abrir antes, ajuste o início."),
+        [ReasonCodes.SomenteEquipe] = (
+            "O leitor da frente (ou o teclado) desta catraca está reservado à equipe; ingresso do evento vai na urna.",
+            "Coloque o cartão na fenda da urna.",
+            "Confira o uso de cada entrada em Configurações › Padrão das catracas."),
+        [ReasonCodes.CredencialNaUrna] = (
+            "Um crachá da equipe foi colocado na fenda da urna, que recolhe o cartão: o sistema recusou para não engolir o crachá.",
+            "Use o leitor da frente.",
+            "Oriente a equipe a usar o leitor da frente; a urna é só para os cartões do evento."),
+        [ReasonCodes.EntradaDesligada] = (
+            "A entrada usada (leitor da frente, urna ou teclado) está desligada nesta catraca.",
+            UseOutraCatraca,
+            "Confira o uso de cada entrada em Configurações › Padrão das catracas."),
         [ReasonCodes.CatracaFechada] = (
             "Esta catraca está fechada pelo operador: ninguém passa até reabrir.",
             UseOutraCatraca,
-            "Reabra a catraca em Gerenciar catraca quando for o caso."),
+            "Reabra a catraca em Configuração da catraca, nos comandos, quando for o caso."),
         [ReasonCodes.CredencialBloqueada] = (
             "Este ingresso foi bloqueado pela operação do evento.",
             ProcureOAtendimento,
@@ -143,6 +164,10 @@ public static class PorQueNegou
             "O ingresso não vale neste horário: está fora do período de validade dele.",
             "Este ingresso não vale neste horário. " + ProcureOAtendimento,
             "Confira a data e o horário do ingresso e o relógio desta catraca (tela Catracas)."),
+        [ReasonCodes.CadastradoNoLote] = (
+            "Este cartão foi lido na urna durante o cadastro de um lote. Ele entrou no lote; ninguém passou.",
+            "Cartão cadastrado para o lote. Não é uma passagem.",
+            "Nada a fazer. Confira o lote na tela de cadastro de cartões, se precisar."),
         [ReasonCodes.SetorNaoPermitido] = (
             "O ingresso não vale para o setor desta catraca.",
             "Este ingresso é de outro setor. Procure a entrada indicada nele.",

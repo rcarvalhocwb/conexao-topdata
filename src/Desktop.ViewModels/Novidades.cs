@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 1;
+    public const int Edicao = 8;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,53 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "Urna: o cartão do evento colocado na fenda agora cai na urna antes de liberar a passagem. O visor pede " +
+        "\"Deposite o cartao\"; se o cartão não cair em 7 segundos, nada libera e o uso volta para o cartão (a pessoa tenta de novo). " +
+        "A urna usa os mesmos ajustes do sistema que operou no evento de 2025.",
+        "Configurações › Padrão das catracas ganhou o uso de cada entrada: leitor da frente (equipe e ingressos, só a " +
+        "equipe ou desligado) e teclado (desligado ou só a equipe). Teclado desligado: a catraca nem aceita digitação. Crachá da equipe colocado na urna é recusado para não ser recolhido.",
+        "O visor da catraca explica a recusa: \"Use a urna\", \"Use o leitor da frente\", \"Leitor so para equipe\", " +
+        "\"Urna cheia\" — em vez de só \"Acesso nao autorizado\".",
+        "A Catraca Fit com firmware da linha 19 passa a ser aceita e configurada: antes ela conectava, mas ficava " +
+        "parada como \"firmware não homologado\". Agora, depois de conectar, o display dela mostra \"Aproxime o ingresso\".",
+        "Diagnóstico ganhou \"Licença e atualizações\": a licença do sistema, com o vencimento, e as atualizações " +
+        "automáticas. A licença nunca para as catracas: a barra avisa 30 dias antes e, vencida, há 15 dias de tolerância.",
+
+        "Atualização automática (versões de produção, quando a Rayzer ativar): o sistema baixa a versão aprovada e " +
+        "instala sozinho quando o painel é fechado pela bandeja ou de madrugada, sempre com as catracas paradas.",
+
+        "Botão \"Testar conexão com a nuvem\" na tela Sincronização: fala com a nuvem na hora (baixa " +
+        "a lista de cartões e envia as passagens da fila) e mostra o resultado e o que fazer.",
+
+        "A lista de cartões vem inteira da nuvem a cada sincronização, mesmo acima de 1.000 cartões.",
+
+        "Boletim do dia (R1): uma nota lembra que ele conta as meias validadas na catraca; a cota " +
+        "legal de meia-entrada é apurada pelo sistema de venda.",
+
+        "Prestação de contas com relatórios: R1 boletim do dia por tipo (com reentradas, pico e " +
+        "negados por motivo), R2 por hora e tipo, R3 por catraca e R7 consolidado do evento. " +
+        "Imprima ou salve em PDF (\"Imprimir / PDF\"), com página numerada e código de conferência.",
+
+        "A nuvem não aparece mais como \"Offline\" quando está conectada: se a lista de cartões " +
+        "vier incompleta, o painel diz isso e o que fazer (tela Sincronização).",
+
+        "Login: o olho mostra a senha enquanto você segura o botão, e \"Esqueci minha senha\" " +
+        "explica como recuperar (pelo administrador ou, para o único administrador, pelo suporte Rayzer).",
+
+        "Configurações do evento em seis seções, sempre na mesma ordem: Evento (nome, período e hora " +
+        "de corte), Tipos de entrada, Cartões da bilheteria, Padrão das catracas, o que ainda não dá " +
+        "para configurar (com o motivo) e Avançado. Cada seção tem o próprio botão de salvar.",
+
+        "Sem nuvem (ou antes da primeira sincronização), os cartões já validados podem ser carregados " +
+        "de uma vez dos arquivos do sistema anterior (carregar-cartoes.ps1, como administrador).",
+
+        "Período do evento: com a opção ligada, a catraca recusa ingressos lidos antes do início ou " +
+        "depois do fim, com o motivo \"fora do período do evento\". A equipe credenciada não é afetada.",
+
+        "\"Gerenciar catraca\" agora fica dentro de \"Configuração da catraca\": a mesma tela tem o " +
+        "desenho, a configuração e, embaixo, os comandos (liberar um giro, recado no visor, relógio, " +
+        "fechar a catraca) com o histórico. No cartão da catraca, o botão passou a se chamar \"Configurar\".",
+
         "Configuração da catraca num lugar só: clique numa peça do desenho da catraca para ver e " +
         "ajustar o que ela faz, e use \"Aplicar nesta catraca\" para mandar tudo de uma vez.",
 

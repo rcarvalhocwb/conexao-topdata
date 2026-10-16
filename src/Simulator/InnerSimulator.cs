@@ -86,7 +86,17 @@ public sealed class InnerSimulator : ITopdataInnerAdapter
         return 0;
     });
 
-    public AdapterResult Ping(int inner) => ComDispositivo(inner, d => d.Desconectado ? 1 : 0);
+    /// <summary>PingOnLine: é o teste de conexão do produto (Conectar) e o keep-alive do polling.</summary>
+    public AdapterResult Ping(int inner) => ComDispositivo(inner, d =>
+    {
+        if (d.Desconectado)
+        {
+            return 1;
+        }
+
+        d.MarcarConexaoNovaSePreciso();
+        return 0;
+    });
 
     public (AdapterResult Resultado, FirmwareInfo? Firmware) LerFirmware(int inner)
     {

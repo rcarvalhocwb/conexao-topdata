@@ -56,6 +56,13 @@ public sealed class DeviceStateMachine
     public static readonly TimeSpan MargemDoGiro = TimeSpan.FromSeconds(3);
 
     /// <summary>
+    /// Quanto o laço espera o cartão cair na urna (origem 7) antes de negar e devolver o uso: 7 s, o valor
+    /// que o middleware de produção de 2025 usou na Catraca 4 com urna na entrada (subiu de 5 para 7 depois
+    /// de operar). Não depende do tempo do relé 2: a guia é fechada pelo laço (docs/61).
+    /// </summary>
+    public static readonly TimeSpan EsperaPeloDeposito = TimeSpan.FromSeconds(7);
+
+    /// <summary>
     /// Prazo de cada estado, medido desde a <b>entrada</b> nele (<see cref="EstadoAtualDesde"/>).
     /// </summary>
     /// <remarks>
@@ -79,6 +86,8 @@ public sealed class DeviceStateMachine
         [DeviceState.ValidarAcesso] = TimeSpan.FromMilliseconds(150),
         [DeviceState.LiberarCatraca] = TimeSpan.FromSeconds(5),
         [DeviceState.MonitoraGiroCatraca] = TimeSpan.FromSeconds(8),
+        [DeviceState.AcionarUrna] = TimeSpan.FromSeconds(5),
+        [DeviceState.MonitoraUrna] = EsperaPeloDeposito,
         [DeviceState.ColetarBilhetes] = TimeSpan.FromMinutes(10),
     }.ToFrozenDictionary();
 
@@ -291,6 +300,21 @@ public sealed class DeviceStateMachine
         Add(DeviceState.Polling, DeviceTrigger.ReconexaoSolicitada, DeviceState.Reconectar);
 
         Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoPermitido, DeviceState.LiberarCatraca);
+
+        // Urna (manual do SDK, fluxo 8 e seção 5.3): permitido na fenda abre a urna; o giro só é
+        // liberado depois da origem 7. Sem ela — ninguém depositou (origem 5), urna cheia (20), prazo
+        // ou erro —, a pessoa ouve a negação e o leitor é rearmado; a catraca nunca liberou o braço.
+        Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoPermitidoNaUrna, DeviceState.AcionarUrna);
+        Add(DeviceState.AcionarUrna, DeviceTrigger.UrnaAcionada, DeviceState.MonitoraUrna);
+        Add(DeviceState.AcionarUrna, DeviceTrigger.ErroDeComunicacao, DeviceState.Reconectar);
+        Add(DeviceState.AcionarUrna, DeviceTrigger.TempoEsgotado, DeviceState.Reconectar);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.CartaoRecolhido, DeviceState.LiberarCatraca);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.TempoDeAcionamentoEsgotado, DeviceState.EnviarMsgAcessoNegado);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.UrnaCheia, DeviceState.EnviarMsgAcessoNegado);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.TempoEsgotado, DeviceState.EnviarMsgAcessoNegado);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.SemEventos, DeviceState.MonitoraUrna);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.SinalDaCatraca, DeviceState.MonitoraUrna);
+        Add(DeviceState.MonitoraUrna, DeviceTrigger.ErroDeComunicacao, DeviceState.Reconectar);
         Add(DeviceState.ValidarAcesso, DeviceTrigger.AcessoNegado, DeviceState.EnviarMsgAcessoNegado);
         // Decisão que não chega no prazo NEGA (fail-secure, D8): nunca libera sem decisão (achado E4-1 do docs/41).
         Add(DeviceState.ValidarAcesso, DeviceTrigger.TempoEsgotado, DeviceState.EnviarMsgAcessoNegado);

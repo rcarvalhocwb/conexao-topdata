@@ -99,6 +99,10 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
                 return (nameof(IEasyInnerNative.DefinirTipoConexao), tipo);
             }
 
+            // Fecha a porta que sobrou de uma abertura anterior antes de abrir de novo, como o middleware
+            // que operou em 2025 e o LabEasyInner. Sem isso, a DLL devolve 3 (já aberta) e o worker não sobe.
+            _nativo.FecharPortaComunicacao();
+
             var abertura = _nativo.AbrirPortaComunicacao(porta);
             _portaAberta = abertura == 0;
             return (nameof(IEasyInnerNative.AbrirPortaComunicacao), abertura);
@@ -278,9 +282,9 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     {
         // Só com a chave catraca.enviar_formas_de_entrada os valores vêm do modelo (Etapa A.2);
         // desligada, são as constantes de sempre. O significado de cada FormaEntrada é T26.
-        var formas = configuracao is { EnviarFormasDeEntradaOnLine: true }
-            ? configuracao.FormasDeEntradaOnLine
-            : FormasDeEntradaDeSempre;
+        // Com a configuração, a forma de entrada sai das entradas ligadas (docs/61): sem teclado, o teclado não
+        // aceita digitação. Sem configuração (ferramentas), os valores de sempre.
+        var formas = configuracao?.FormasDeEntradaEfetivas ?? FormasDeEntradaDeSempre;
 
         return Medir(nameof(IEasyInnerNative.EnviarFormasEntradasOnLine), () =>
             // É este passo que rearma o leitor para a próxima leitura. Sem ele, a pista para de
@@ -297,7 +301,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     public AdapterResult EnviarMensagemPadrao(int inner, string mensagem)
     {
         ArgumentNullException.ThrowIfNull(mensagem);
-        return Medir(nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine), () => _nativo.EnviarMensagemPadraoOnLine(inner, 0, Cortar(mensagem, 32)));
+        return Medir(nameof(IEasyInnerNative.EnviarMensagemPadraoOnLine), () => _nativo.EnviarMensagemPadraoOnLine(inner, 0, ParaDisplay(mensagem, 32)));
     }
 
     public (AdapterResult Resultado, DeviceEvent? Evento) AguardarEvento(int inner, TimeSpan limite)
@@ -412,7 +416,7 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
 
         return Medir(
             nameof(IEasyInnerNative.EnviarMensagemTemporariaOnLine),
-            () => _nativo.EnviarMensagemTemporariaOnLine(inner, 0, Cortar(mensagem, 32), segundos));
+            () => _nativo.EnviarMensagemTemporariaOnLine(inner, 0, ParaDisplay(mensagem, 32), segundos));
     }
 
     public void Dispose()
@@ -455,6 +459,37 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
     /// <summary>Corta a mensagem no limite do display, sem quebrar no meio de nada.</summary>
     private static string Cortar(string texto, int limite) =>
         texto.Length <= limite ? texto : texto[..limite];
+
+    /// <summary>
+    /// Texto para o display da catraca: só ASCII imprimível, sem acento, e no máximo <paramref name="limite"/>
+    /// caracteres. O manual (EnviarMensagemPadraoOnLine) diz que o Inner não aceita acentuação, UNICODE nem
+    /// ANSI: "ação" sairia como lixo na tela. Acento vira a letra base ("ação" → "acao").
+    /// </summary>
+    internal static string ParaDisplay(string texto, int limite)
+    {
+        ArgumentNullException.ThrowIfNull(texto);
+
+        var ascii = new System.Text.StringBuilder(texto.Length);
+        foreach (var c in texto)
+        {
+            var indice = AcentosComuns.IndexOf(c);
+            if (indice >= 0)
+            {
+                ascii.Append(AcentosSemAcento[indice]);
+            }
+            else if (c is >= ' ' and <= '~')
+            {
+                ascii.Append(c);
+            }
+        }
+
+        return Cortar(ascii.ToString(), limite);
+    }
+
+    // Tabela explícita (não Normalize): a decomposição depende do ICU do ambiente e, em modo de
+    // globalização invariante, não acontece. Mesmo comprimento nas duas strings (ver o teste).
+    private const string AcentosComuns = "àáâãäåçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ";
+    private const string AcentosSemAcento = "aaaaaaceeeeiiiinooooouuuuyyAAAAAACEEEEIIIINOOOOOUUUUY";
 
     /// <summary>Validação completa antes da primeira chamada nativa (ADR-0020).</summary>
     private static void RecusarSeInvalida(DeviceConfiguration configuracao)

@@ -19,9 +19,13 @@ namespace Access.Application.Devices;
 /// <item>Acionamento 1 = <b>2, "registro entrada"</b>, 5 s — matriz de funções, SDK 6.0.2.0.</item>
 /// <item>Tipo de leitor <b>8</b> por padrão (QR por letras). A Topdata fala em "serial barcode",
 /// que no SDK pode ser o <b>5</b> — o ensaio decide (NOVO-HIL-QR-02, T25). <c>A_CONFIRMAR</c>.</item>
-/// <item><b>Relé 2 (urna) desligado.</b> A função que faz a urna recolher o cartão não está
-/// documentada. Na bancada, o leitor da urna lê e o sistema decide; o recolhimento é a Etapa
-/// A.11, bloqueada por bancada.</item>
+/// <item><b>Relé 2 (urna) = 3, 15 s</b> — o exemplo oficial em C# do SDK 6.0.2.0 (catraca com urna) e o
+/// middleware que operou em produção em 2025 na Catraca 4 com a urna na entrada. O manual descreve o 3
+/// como "aciona ao registrar saída"; o dono confirmou que a função 3 é a da urna (docs/61, U1).
+/// Com ele, a leitura aprovada na fenda abre a urna e o giro só sai depois da origem 7. A guia fecha
+/// sozinha pelo tempo configurado, sem <c>DesabilitarRele2</c>, como manda o manual (docs/61). Até 15/10/2026 ficava desligado e a catraca liberava o giro
+/// com o cartão na mão da pessoa. A chave técnica <c>catraca.funcao_do_rele_da_urna</c> troca sem versão
+/// nova, e 0 volta ao comportamento antigo.</item>
 /// <item>Mudança automática on-line/off-line <b>desligada</b>: a catraca só funciona com o
 /// sistema rodando, para que tudo que acontece passe por ele (sequência oficial: Etapa A.7).</item>
 /// <item>Liberação por <c>LiberarCatracaEntrada</c>, como sempre foi. A catraca instalada à
@@ -49,8 +53,8 @@ public static class PadroesDeFabrica
         OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorSomenteEntrada,
         FuncaoDoAcionamento1 = 2,
         TempoDoAcionamento1 = 5,
-        FuncaoDoAcionamento2 = 0,
-        TempoDoAcionamento2 = 0,
+        FuncaoDoAcionamento2 = MontadorDaConfiguracao.FuncaoPadraoDoReleDaUrna,
+        TempoDoAcionamento2 = MontadorDaConfiguracao.TempoPadraoDaUrna,
         Online = true,
         TecladoHabilitado = false,
         EcoDoTeclado = 0,
@@ -104,6 +108,24 @@ public sealed record SobreposicoesDoEvento
     /// (F2, docs/34 §2).
     /// </summary>
     public bool? EnviarDigitosVariaveis { get; init; }
+
+    /// <summary>
+    /// Função do relé 2 quando a urna está ligada (0 a 9, EI-017). Chave técnica
+    /// <c>catraca.funcao_do_rele_da_urna</c>; 0 desliga o recolhimento (docs/61).
+    /// </summary>
+    public byte? FuncaoDoReleDaUrna { get; init; }
+
+    /// <summary>Segundos que a urna fica aberta para o cartão cair (1 a 50). <c>catraca.tempo_da_urna</c>.</summary>
+    public byte? TempoDaUrna { get; init; }
+
+    /// <summary>
+    /// Leitor da frente (leitor 1): desligado vira 0 (docs/61, "uso das entradas"). Nulo ou ligado = o
+    /// padrão de fábrica. <c>entrada.frente</c>.
+    /// </summary>
+    public bool? LeitorDaFrente { get; init; }
+
+    /// <summary>Teclado aceito (uso "só a equipe", docs/61). Nulo = o padrão de fábrica (desligado). <c>entrada.teclado</c>.</summary>
+    public bool? TecladoHabilitado { get; init; }
 
     // Etapa A.2: o docs/34 não põe nenhum campo novo nas mãos do operador (anexo 02: só tipo
     // de leitor, urna, tempo e mensagem "vêm do operador"). O evento só liga ou desliga, por
@@ -224,6 +246,17 @@ public static class MontadorDaConfiguracao
     public const byte LeitorSomenteEntrada = 1;
 
     /// <summary>
+    /// <c>ConfigurarAcionamento2</c>: 3 = "aciona ao registrar uma saída / catraca saída" (manual de
+    /// desenvolvimento). É o valor do exemplo oficial em C# do SDK 6.0.2.0 para a catraca com urna e o que o
+    /// middleware de produção de 2025 usou na Catraca 4 com a urna na <b>entrada</b>. A descrição do manual e
+    /// o uso de produção não batem; o dono confirmou que 3 é a função da urna (docs/61, U1).
+    /// </summary>
+    public const byte FuncaoPadraoDoReleDaUrna = 3;
+
+    /// <summary>Tempo do relé 2 do middleware de produção de 2025 (subiu de 5 para 15 s); a guia fecha antes, pelo laço.</summary>
+    public const byte TempoPadraoDaUrna = 15;
+
+    /// <summary>
     /// Aplica as sobreposições do evento e da catraca ao padrão de fábrica, e o mapa de giro da
     /// catraca ao perfil físico (D9, docs/34 §9).
     /// </summary>
@@ -266,6 +299,8 @@ public static class MontadorDaConfiguracao
         var doEvento = padraoDeFabrica with
         {
             TipoDeLeitor = evento.TipoDeLeitor ?? padraoDeFabrica.TipoDeLeitor,
+            OperacaoDoLeitor1 = evento.LeitorDaFrente is false ? LeitorDesabilitado : padraoDeFabrica.OperacaoDoLeitor1,
+            TecladoHabilitado = evento.TecladoHabilitado ?? padraoDeFabrica.TecladoHabilitado,
             OperacaoDoLeitor2 = evento.LeitorDaUrna switch
             {
                 true => LeitorSomenteEntrada,
@@ -284,7 +319,7 @@ public static class MontadorDaConfiguracao
 
         // Etapa A.3: a catraca vence o evento, campo a campo; nulo herda. Sem sobreposição
         // nenhuma, o resultado é, valor a valor, o da camada do evento.
-        return doEvento with
+        var montada = doEvento with
         {
             TipoDeLeitor = catraca.TipoDeLeitor ?? doEvento.TipoDeLeitor,
             OperacaoDoLeitor1 = catraca.OperacaoDoLeitor1 ?? doEvento.OperacaoDoLeitor1,
@@ -297,5 +332,15 @@ public static class MontadorDaConfiguracao
             WiegandDoisLeitores = catraca.WiegandDoisLeitores ?? doEvento.WiegandDoisLeitores,
             FormasDeEntradaOnLine = catraca.FormasDeEntradaOnLine ?? doEvento.FormasDeEntradaOnLine,
         };
+
+        // Relé 2 = urna (docs/61): só existe com o leitor da fenda ligado — sem ele, a fenda não leria e a
+        // urna nunca abriria (regra da validação, manual 7.2.5). Com ele, a função e o tempo do evento.
+        return montada.OperacaoDoLeitor2 == LeitorDesabilitado
+            ? montada with { FuncaoDoAcionamento2 = 0, TempoDoAcionamento2 = 0 }
+            : montada with
+            {
+                FuncaoDoAcionamento2 = evento.FuncaoDoReleDaUrna ?? montada.FuncaoDoAcionamento2,
+                TempoDoAcionamento2 = evento.TempoDaUrna ?? montada.TempoDoAcionamento2,
+            };
     }
 }

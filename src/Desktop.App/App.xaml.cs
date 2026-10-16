@@ -60,6 +60,35 @@ public partial class App : Application
         AbrirComBandeja(naBandeja: e.Args.Contains(ArgumentoDaBandeja));
     }
 
+    /// <summary>
+    /// Deixa o relançador (PowerShell oculto, nesta conta) que reabre o painel depois da atualização. Falso se
+    /// não deu: aí o painel fica aberto e o instalador o fecha, como numa atualização manual.
+    /// </summary>
+    private static bool IniciarRelancador()
+    {
+        if (Environment.ProcessPath is not { } exe)
+        {
+            return false;
+        }
+
+        var powershell = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+        try
+        {
+            using var processo = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                powershell,
+                $"-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand {Desktop.ViewModels.Relancador.Codificado(exe)}")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
+            return processo is not null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Abre escondido, só com o ícone perto do relógio (início com o Windows).</summary>
     private const string ArgumentoDaBandeja = "--bandeja";
 
@@ -83,17 +112,37 @@ public partial class App : Application
         var janela = new JanelaPrincipal { FecharVaiParaBandeja = true };
         janela.Iniciar();
 
-        var bandeja = new BandejaDoSistema(janela, sair: () =>
+        // Finalizar o painel avisa o serviço: é hora boa para instalar uma atualização pronta (docs/60 §2.3).
+        var bandeja = new BandejaDoSistema(janela, sair: async () =>
         {
+            await janela.Janela.AvisarFinalizadoAsync().ConfigureAwait(true);
             janela.SairDeVez();
             Shutdown();
         });
-        janela.Atualizada += (_, _) => bandeja.Atualizar(janela.Janela.Painel);
+
+        var relancando = false;
+        janela.Atualizada += (_, _) =>
+        {
+            bandeja.Atualizar(janela.Janela.Painel);
+
+            // Atualização de madrugada em instantes: deixa o relançador e sai, para o instalador não derrubar o painel.
+            if (!relancando && janela.Janela.Painel.Estado.AtualizacaoIminente && IniciarRelancador())
+            {
+                relancando = true;
+                janela.SairDeVez();
+                Shutdown();
+            }
+        };
         janela.FoiParaBandeja += (_, _) => bandeja.AvisarQueContinua();
         instancia.AoPedirParaMostrar(() => Dispatcher.BeginInvoke(janela.Mostrar));
 
-        // Desligar ou sair do Windows fecha de verdade, sem ficar esperando a bandeja.
-        SessionEnding += (_, _) => janela.SairDeVez();
+        // Desligar ou sair do Windows fecha de verdade, sem ficar esperando a bandeja. Também conta como
+        // "sistema finalizado" para a atualização (sair da conta deixa o PC ligado).
+        SessionEnding += (_, _) =>
+        {
+            janela.Janela.AvisarFinalizadoAsync().Wait(TimeSpan.FromSeconds(2));
+            janela.SairDeVez();
+        };
         Exit += (_, _) =>
         {
             bandeja.Dispose();

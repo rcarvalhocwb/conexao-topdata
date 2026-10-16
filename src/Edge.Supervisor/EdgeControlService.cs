@@ -32,6 +32,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     private readonly string _versao;
     private readonly Access.Infrastructure.SQLite.Operacao? _operacao;
     private readonly EstadoDaNuvem? _nuvem;
+    private readonly Access.Infrastructure.SQLite.RepositorioDeIngressos? _cartoes;
     private readonly Access.Infrastructure.SQLite.ConsultasDaOperacao? _consultas;
     private readonly Access.Infrastructure.SQLite.ConfiguracoesDaBorda? _configuracoes;
     private readonly string _pastaDeDados;
@@ -94,6 +95,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <param name="pessoas">Cadastro local de pessoas (docs/43); nulo sem a chave dos dados pessoais.</param>
     /// <param name="parametrosDoCadastro">Empresas, salas, horários, feriados e perfis do cadastro.</param>
     /// <param name="importacaoDePessoas">Importação de pessoas por planilha; nula sem o cadastro.</param>
+    /// <param name="cartoes">Cadastro de cartões na operação (sessão de lote e cartão recusado); nulo se a instalação não o tem.</param>
     public EdgeControlService(
         WorkerSupervisor supervisor,
         string? versao = null,
@@ -119,7 +121,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         SessoesDoPainel? sessoes = null,
         Access.Infrastructure.SQLite.CadastroDePessoas? pessoas = null,
         Access.Infrastructure.SQLite.ParametrosDoCadastro? parametrosDoCadastro = null,
-        Access.Infrastructure.SQLite.ImportacaoDePessoas? importacaoDePessoas = null)
+        Access.Infrastructure.SQLite.ImportacaoDePessoas? importacaoDePessoas = null,
+        Access.Infrastructure.SQLite.RepositorioDeIngressos? cartoes = null)
     {
         ArgumentNullException.ThrowIfNull(supervisor);
         _supervisor = supervisor;
@@ -127,6 +130,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         _relogio = relogio ?? (() => DateTimeOffset.UtcNow);
         _operacao = operacao;
         _nuvem = nuvem;
+        _cartoes = cartoes;
         _consultas = consultas;
         _configuracoes = configuracoes;
         _pastaDeDados = pastaDeDados ?? string.Empty;
@@ -248,13 +252,40 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
     public DifusorDeEventos Eventos { get; } = new();
 
+    /// <summary>
+    /// O motivo que vai ao painel: o primeiro erro de um worker que caiu, com a operação ligada. Vazio nos
+    /// demais casos. Limitado a 160 caracteres: é uma frase de barra de status, não um registro.
+    /// </summary>
+    private string MotivoDaFalhaDoWorker()
+    {
+        if (_operacao is null)
+        {
+            return string.Empty;
+        }
+
+        var erro = _supervisor.Workers
+            .Where(w => !w.EstaVivo)
+            .Select(w => w.UltimoErro)
+            .FirstOrDefault(e => !string.IsNullOrWhiteSpace(e));
+
+        return erro is null ? string.Empty : erro.Length > 160 ? erro[..160] : erro;
+    }
+
     public override Task<ObterEstadoResponse> ObterEstado(ObterEstadoRequest request, ServerCallContext context)
     {
         var situacoes = _supervisor.Situacoes;
         var agora = _relogio();
         var catracas = CatracasPorInner(agora);
         var ultimaSincronizacao = _nuvem?.UltimoSucesso;
-        var internet = ultimaSincronizacao is { } s && agora - s < EstadoDaNuvem.ConsideradaFora;
+        // Medida pela última tentativa recente, não pelo último sucesso: ver EstadoDaNuvem.
+        var internetMedida = _nuvem?.Internet(agora) ?? InternetMedida.Desconhecida;
+        var internet = internetMedida == InternetMedida.Disponivel;
+        var resumo = _operacao?.Resumir(agora);
+        var configuradas = _supervisor.Workers.SelectMany(w => w.Inners).Distinct().ToList();
+
+        // Uma catraca conta numa única categoria: física ou simulada (P0-01).
+        int Contar(bool simulada) => configuradas.Count(inner =>
+            catracas.TryGetValue(inner, out var c) && c.EmOperacao && (c.Situacao.Simulacao == true) == simulada);
 
         var resposta = new ObterEstadoResponse
         {
@@ -265,8 +296,12 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             // configuração continua na base e não pode contar como conectada.
             EquipamentosConectados = _operacao is null
                 ? _supervisor.Workers.Where(w => situacoes[w.Nome] is SituacaoDoWorker.Saudavel).Sum(w => w.Inners.Count)
-                : _supervisor.Workers.SelectMany(w => w.Inners).Distinct()
-                    .Count(inner => catracas.TryGetValue(inner, out var c) && c.EmOperacao),
+                : Contar(simulada: false),
+            CatracasFisicasConectadas = _operacao is null ? 0 : Contar(simulada: false),
+            CatracasSimuladasAtivas = _operacao is null ? 0 : Contar(simulada: true),
+            SituacaoDaInternet = ParaProto(internetMedida),
+            SituacaoDaNuvem = ParaProto(_nuvem?.Nuvem(agora) ?? NuvemMedida.NaoConfigurada),
+            SituacaoDaFila = ParaProto(_nuvem?.Sincronizacao(resumo?.PendentesDeEnvio ?? 0) ?? SincronizacaoMedida.Desconhecida),
 
             // Sem internet é o regime NORMAL de um evento, não uma anomalia.
             // Ver docs/ADR/ADR-0017.
@@ -274,16 +309,29 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             InternetDisponivel = internet,
             SemConfiguracao = _semConfiguracao,
             Simulacao = _simulacao is not null,
+            AtualizacaoIminente = Atualizacao?.Iminente(agora) ?? false,
+            MotivoDaCatraca = MotivoDaFalhaDoWorker(),
         };
+
+        // Para o operador conectar a catraca: o IP deste PC e de onde já chegou conexão nas portas.
+        resposta.EnderecosDoPc.AddRange(RedeDoPc.EnderecosAgora());
+        resposta.IpsConectadosNaPorta.AddRange(RedeDoPc.IpsConectadosAgora(_supervisor.Workers.Select(w => w.Porta)));
+
+        Atualizacao?.PainelAtivo(agora);
+
+        if (Licenca?.Estado() is { } licenca)
+        {
+            resposta.SituacaoDaLicenca = ParaProto(licenca.Situacao);
+            resposta.DiasDaLicenca = licenca.Dias;
+        }
 
         if (ultimaSincronizacao is { } quando)
         {
             resposta.UltimaSincronizacao = Timestamp.FromDateTimeOffset(quando);
         }
 
-        if (_operacao is not null)
+        if (resumo is not null)
         {
-            var resumo = _operacao.Resumir(agora);
             resposta.Liberados = resumo.Liberados;
             resposta.Negados = resumo.Negados;
             resposta.Giros = resumo.Giros;
@@ -467,6 +515,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             TempoDeAcionamento = (byte)pedida.TempoDeAcionamentoSegundos,
             MensagemPadrao = pedida.MensagemPadrao ?? string.Empty,
             EsperaPeloGiroSegundos = pedida.EsperaPeloGiroSegundos > 0 ? pedida.EsperaPeloGiroSegundos : atual.EsperaPeloGiroSegundos,
+            UsoDaFrente = string.IsNullOrEmpty(pedida.UsoDaFrente) ? atual.UsoDaFrente : pedida.UsoDaFrente,
+            UsoDoTeclado = string.IsNullOrEmpty(pedida.UsoDoTeclado) ? atual.UsoDoTeclado : pedida.UsoDoTeclado,
         };
 
         var problemas = nova.Validar();
@@ -484,6 +534,34 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         return Task.FromResult(resposta);
     }
 
+    private static SituacaoDaInternet ParaProto(InternetMedida situacao) => situacao switch
+    {
+        InternetMedida.Disponivel => SituacaoDaInternet.Disponivel,
+        InternetMedida.Indisponivel => SituacaoDaInternet.Indisponivel,
+        _ => SituacaoDaInternet.Desconhecida,
+    };
+
+    private static SituacaoDaNuvem ParaProto(NuvemMedida situacao) => situacao switch
+    {
+        NuvemMedida.NaoConfigurada => SituacaoDaNuvem.NaoConfigurada,
+        NuvemMedida.Conectando => SituacaoDaNuvem.Conectando,
+        NuvemMedida.Conectada => SituacaoDaNuvem.Conectada,
+        NuvemMedida.SegredoAusente => SituacaoDaNuvem.SegredoAusente,
+        NuvemMedida.FalhaDeAutenticacao => SituacaoDaNuvem.FalhaDeAutenticacao,
+        NuvemMedida.Indisponivel => SituacaoDaNuvem.Indisponivel,
+        NuvemMedida.ListaIncompleta => SituacaoDaNuvem.ListaIncompleta,
+        _ => SituacaoDaNuvem.Desconhecida,
+    };
+
+    private static SituacaoDaFila ParaProto(SincronizacaoMedida situacao) => situacao switch
+    {
+        SincronizacaoMedida.Processando => SituacaoDaFila.Processando,
+        SincronizacaoMedida.Falha => SituacaoDaFila.Falha,
+        SincronizacaoMedida.Pendente => SituacaoDaFila.Pendente,
+        SincronizacaoMedida.Sincronizada => SituacaoDaFila.Sincronizada,
+        _ => SituacaoDaFila.Desconhecida,
+    };
+
     public override Task<SituacaoDaSincronizacao> ObterSincronizacao(ObterSincronizacaoRequest request, ServerCallContext context)
     {
         var resposta = new SituacaoDaSincronizacao
@@ -496,6 +574,13 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         {
             resposta.UltimoSucesso = Timestamp.FromDateTimeOffset(sucesso);
         }
+
+        if (_nuvem?.UltimoContato is { } contato)
+        {
+            resposta.UltimoContato = Timestamp.FromDateTimeOffset(contato);
+        }
+
+        resposta.ListaIncompletaCom = _nuvem?.ListaIncompletaCom ?? 0;
 
         if (_operacao is not null)
         {
@@ -696,7 +781,12 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
 
             linhas.Add(string.Empty);
             linhas.Add("Pré-requisitos:");
-            foreach (var pre in Edge.Worker.VerificadorDePreRequisitos.Verificar())
+            // O serviço é de 64 bits; quem carrega a EasyInner.dll é o programa das catracas (x86). Conferir
+            // o serviço dava "ARQUITETURA_X86: falta" num computador sem defeito (bancada de 15/10/2026).
+            var worker32 = _supervisor.Workers.Count > 0
+                && _supervisor.Workers.All(w => w.Executavel is { } exe && File.Exists(exe)
+                    && Instalacao.AssistenteDeConfiguracao.MaquinaDoPe(exe) is 0x014C);
+            foreach (var pre in Edge.Worker.VerificadorDePreRequisitos.Verificar(processoE64Bits: !worker32))
             {
                 linhas.Add($"  {pre.Id}: {(pre.Atendido is null ? "não conferido" : pre.Atendido is true ? "ok" : "falta")} · {pre.Mensagem}");
             }
@@ -1033,6 +1123,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         MensagemPadrao = c.MensagemPadrao,
         NuvemLigada = c.EspelhoLigado,
         EsperaPeloGiroSegundos = c.EsperaPeloGiroSegundos,
+        UsoDaFrente = c.UsoDaFrente,
+        UsoDoTeclado = c.UsoDoTeclado,
     };
 
     private static int InnerDe(string deviceId) =>

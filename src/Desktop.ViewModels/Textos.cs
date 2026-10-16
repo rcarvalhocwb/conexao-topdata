@@ -8,8 +8,62 @@ namespace Desktop.ViewModels;
 /// </summary>
 public static class Textos
 {
-    /// <summary>Situação de uma catraca em uma frase curta, e a cor dela.</summary>
+    /// <summary>
+    /// Situação de uma catraca em uma frase curta, e a cor dela. Catraca simulada ganha o prefixo
+    /// "Simulada · " para nunca parecer física (P0-01).
+    /// </summary>
     public static (string Texto, Sinal Sinal) SituacaoDaCatraca(Equipamento equipamento)
+    {
+        ArgumentNullException.ThrowIfNull(equipamento);
+        var (texto, sinal) = SituacaoBase(equipamento);
+        return (equipamento.Simulacao ? "Simulada · " + texto : texto, sinal);
+    }
+
+    /// <summary>Internet em uma frase, medida pela última tentativa recente (P0-02).</summary>
+    public static string Internet(SituacaoDaInternet situacao) => situacao switch
+    {
+        SituacaoDaInternet.Disponivel => "Internet: disponível",
+        SituacaoDaInternet.Indisponivel => "Internet: fora — o acesso segue pela lista local deste computador",
+        _ => "Internet: sem medida recente",
+    };
+
+    /// <summary>Nuvem em uma frase, com a cor dela. Segredo ausente e credencial recusada são estados distintos.</summary>
+    public static (string Texto, Sinal Sinal) Nuvem(SituacaoDaNuvem situacao, DateTimeOffset? ultimaSincronizacao, DateTimeOffset agora) => situacao switch
+    {
+        SituacaoDaNuvem.Conectada => ($"Nuvem: sincronizado {Ha(ultimaSincronizacao, agora)}", Sinal.Bom),
+        SituacaoDaNuvem.FalhaDeAutenticacao => ("Nuvem: o destino recusou a credencial desta máquina — os envios aguardam na fila; avise o suporte", Sinal.Problema),
+        SituacaoDaNuvem.SegredoAusente => ("Nuvem: segredo ausente nesta máquina — nada é enviado; grave-o pelo Assistente de configuração", Sinal.Problema),
+        SituacaoDaNuvem.Indisponivel => ("Nuvem: sem conexão com o destino — o acesso segue pela lista local deste computador", Sinal.Atencao),
+        SituacaoDaNuvem.ListaIncompleta => ("Nuvem: conectada, mas a lista de cartões veio incompleta — o acesso segue pela lista local; avise quem cuida da nuvem (veja Sincronização)", Sinal.Atencao),
+        SituacaoDaNuvem.Conectando => ("Nuvem: conectando…", Sinal.Neutro),
+        SituacaoDaNuvem.NaoConfigurada => ("Nuvem: não configurada nesta máquina", Sinal.Neutro),
+        _ => ("Nuvem: sem resposta recente", Sinal.Neutro),
+    };
+
+    /// <summary>Nuvem em duas palavras, para o bloco de resumo da barra.</summary>
+    public static (string Texto, Sinal Sinal) NuvemCurta(SituacaoDaNuvem situacao) => situacao switch
+    {
+        SituacaoDaNuvem.Conectada => ("Online", Sinal.Bom),
+        SituacaoDaNuvem.FalhaDeAutenticacao => ("Credencial recusada", Sinal.Problema),
+        SituacaoDaNuvem.SegredoAusente => ("Segredo ausente", Sinal.Problema),
+        SituacaoDaNuvem.Indisponivel => ("Offline — catracas seguem", Sinal.Atencao),
+        SituacaoDaNuvem.ListaIncompleta => ("Conectada — lista incompleta", Sinal.Atencao),
+        SituacaoDaNuvem.Conectando => ("Conectando", Sinal.Neutro),
+        SituacaoDaNuvem.NaoConfigurada => ("Não configurada", Sinal.Neutro),
+        _ => ("Sem resposta recente", Sinal.Neutro),
+    };
+
+    /// <summary>Fila de envio em uma frase (P0-02).</summary>
+    public static string Fila(SituacaoDaFila situacao, long pendentes) => situacao switch
+    {
+        SituacaoDaFila.Processando => "Fila: enviando agora",
+        SituacaoDaFila.Falha => $"Fila: falhou no último envio; {pendentes} aguardando (seguem na fila)",
+        SituacaoDaFila.Pendente => $"Fila: {pendentes} aguardando envio",
+        SituacaoDaFila.Sincronizada => "Fila em dia",
+        _ => "Fila: sem medida recente",
+    };
+
+    private static (string Texto, Sinal Sinal) SituacaoBase(Equipamento equipamento)
     {
         ArgumentNullException.ThrowIfNull(equipamento);
 
@@ -41,6 +95,64 @@ public static class Textos
             "Parado" => ("Parada", Sinal.Neutro),
             _ => (estado, Sinal.Atencao),
         };
+    }
+
+    /// <summary>
+    /// O que digitar na catraca para ela conectar a este PC (docs/62). Vazio quando a catraca já atende.
+    /// </summary>
+    public static string ComoConectar(int inner, IReadOnlyList<string> enderecosDoPc, int porta, bool emOperacao)
+    {
+        ArgumentNullException.ThrowIfNull(enderecosDoPc);
+        if (emOperacao)
+        {
+            return string.Empty;
+        }
+
+        if (enderecosDoPc.Count == 0)
+        {
+            return "Este PC não tem endereço de rede ativo. Confira o cabo ou o Wi-Fi e atualize esta tela.";
+        }
+
+        var passos = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Na catraca {inner:D2}, em \"IP do servidor\": {enderecosDoPc[0]} · \"porta do servidor\": {porta} · \"número do equipamento\": {inner}.");
+
+        return enderecosDoPc.Count == 1
+            ? passos
+            : $"{passos} Este PC tem mais de um endereço ({string.Join(", ", enderecosDoPc)}): use o da mesma rede da catraca.";
+    }
+
+    /// <summary>
+    /// Aviso quando a conexão chegou mas nenhuma catraca atende: o número Inner ou o IP do servidor não
+    /// batem (docs/62). Nulo quando não há o que avisar.
+    /// </summary>
+    public static string? AvisoDeConexaoSemCatraca(IReadOnlyList<string> ipsConectados, bool algumaEmOperacao)
+    {
+        ArgumentNullException.ThrowIfNull(ipsConectados);
+
+        return ipsConectados.Count > 0 && !algumaEmOperacao
+            ? $"Chegou conexão de {string.Join(", ", ipsConectados)}, mas nenhuma catraca atende. " +
+              "Confira na catraca o número do equipamento e o IP do servidor."
+            : null;
+    }
+
+    /// <summary>
+    /// Uma linha para a tela de catracas: o endereço deste PC e as conexões que já chegaram nele (docs/62).
+    /// </summary>
+    public static string ResumoDaRede(IReadOnlyList<string> enderecosDoPc, IReadOnlyList<string> ipsConectados, IReadOnlyList<int> portas)
+    {
+        ArgumentNullException.ThrowIfNull(enderecosDoPc);
+        ArgumentNullException.ThrowIfNull(ipsConectados);
+        ArgumentNullException.ThrowIfNull(portas);
+
+        var porta = portas.Count == 1 ? $", porta {portas[0]}" : string.Empty;
+        var quem = enderecosDoPc.Count == 0
+            ? "Este PC sem endereço de rede ativo"
+            : $"Este PC: IP {string.Join(" ou ", enderecosDoPc)}{porta}";
+
+        return ipsConectados.Count == 0
+            ? $"{quem}. Nenhuma conexão de catraca chegou ainda."
+            : $"{quem}. Conexão chegando de: {string.Join(", ", ipsConectados)}.";
     }
 
     /// <summary>"há 5 s", "há 3 min", "há 2 h" — ou "nunca".</summary>
@@ -218,7 +330,8 @@ public sealed record LinhaDeCatraca(
     int Reconexoes,
     string Relogio = "não conferido",
     bool RelogioDivergente = false,
-    bool Simulacao = false)
+    bool Simulacao = false,
+    string ComoConectar = "")
 {
     /// <summary>"CATRACA 01": como a catraca é chamada no cartão do dispositivo.</summary>
     public string Rotulo => string.Create(CultureInfo.InvariantCulture, $"CATRACA {Inner:D2}");

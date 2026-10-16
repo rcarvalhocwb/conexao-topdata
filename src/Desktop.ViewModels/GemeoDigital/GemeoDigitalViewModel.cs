@@ -22,7 +22,7 @@ namespace Desktop.ViewModels;
 /// <item><b>A configuração</b> (<see cref="Central"/>) é real nos dois modos: clicar numa peça
 /// abre os parâmetros dela; "Salvar" grava e "Aplicar nesta catraca…", com confirmação, envia
 /// pelo mesmo pedido da Parametrização. Os pedidos imediatos (mensagem temporária, relógio,
-/// reconexão) são os da "Gerenciar catraca", com o nome registrado.</item>
+/// reconexão) são os comandos da catraca, com o nome registrado.</item>
 /// </list>
 /// <para>
 /// "Rodar na catraca simulada" só existe com o serviço em modo simulação e usa o mesmo pedido
