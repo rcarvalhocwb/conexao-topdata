@@ -108,12 +108,16 @@ public partial class JanelaDoAssistente : Window
 
     private void VerificarAmbiente(object sender, RoutedEventArgs e)
     {
+        var porta = int.TryParse(CampoPorta.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var digitada) ? digitada : 3570;
         var itens = AssistenteDeConfiguracao.VerificarAmbiente(
             File.Exists,
             Net35Instalado(),
             PastaDoWorker,
             CaixaSimulacao.IsChecked == true,
-            ControleDaOperacao.FirewallLiberado());
+            ControleDaOperacao.FirewallLiberado(),
+            RedeDoPc.EnderecosAgora(),
+            RedeDoPc.PortaLivre(porta),
+            porta);
 
         ListaDoAmbiente.ItemsSource = itens.Select(i => i.Ok switch
         {

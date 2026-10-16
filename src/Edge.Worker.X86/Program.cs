@@ -94,7 +94,8 @@ internal static class Program
 
             if (abertura.Status is not AdapterStatus.Ok)
             {
-                Console.Error.WriteLine("A porta não abriu. O worker não sobe sem ela.");
+                // Porta ocupada (3) ou erro de comunicação (2): a frase diz o caso e o que fazer (DiagnosticoDaPorta).
+                Console.Error.WriteLine(DiagnosticoDaPorta.Mensagem(abertura.Status, porta) ?? "A porta não abriu. O worker não sobe sem ela.");
                 return 1;
             }
 

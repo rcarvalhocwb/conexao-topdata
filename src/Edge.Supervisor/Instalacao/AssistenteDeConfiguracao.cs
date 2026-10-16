@@ -220,12 +220,18 @@ public static class AssistenteDeConfiguracao
     /// Se a regra de entrada das catracas existe (<see cref="FirewallDasCatracas"/>); nulo se
     /// não deu para conferir.
     /// </param>
+    /// <param name="enderecosDoPc">IPv4 deste PC, para o operador digitar na catraca; nulo = não conferido.</param>
+    /// <param name="portaLivre">Se a porta das catracas está livre agora; nulo = não conferido.</param>
+    /// <param name="porta">Porta das catracas, para as orientações.</param>
     public static IReadOnlyList<ItemDoAmbiente> VerificarAmbiente(
         Func<string, bool> existeArquivo,
         bool? net35Instalado,
         string pastaDoWorker,
         bool simulacao = false,
-        bool? firewallLiberado = null)
+        bool? firewallLiberado = null,
+        IReadOnlyList<string>? enderecosDoPc = null,
+        bool? portaLivre = null,
+        int porta = 3570)
     {
         ArgumentNullException.ThrowIfNull(existeArquivo);
 
@@ -293,6 +299,25 @@ public static class AssistenteDeConfiguracao
                         false => "Bloqueado: as catracas não vão conseguir conectar. Clique em \"Liberar no firewall\".",
                         _ => "Não foi possível conferir. Clique em \"Liberar no firewall\" por garantia.",
                     }),
+            new ItemDoAmbiente(
+                $"Porta {porta} para as catracas",
+                portaLivre,
+                portaLivre switch
+                {
+                    true => "Livre. As catracas podem conectar nela quando o programa das catracas estiver rodando.",
+                    false => $"Em uso. Se o programa das catracas já está rodando, é o normal. Se não está, feche o " +
+                             $"outro programa que usa a porta {porta}; ela não pode ser de outro uso.",
+                    _ => "Não foi possível conferir.",
+                }),
+            new ItemDoAmbiente(
+                "Endereço deste PC para digitar na catraca",
+                enderecosDoPc is { Count: > 0 },
+                enderecosDoPc is { Count: > 0 }
+                    ? $"Na catraca, em \"IP do servidor\", digite {enderecosDoPc[0]} e em \"porta do servidor\" digite {porta}." +
+                      (enderecosDoPc.Count > 1
+                          ? $" Este PC tem mais de um endereço ({string.Join(", ", enderecosDoPc)}): use o da mesma rede da catraca."
+                          : string.Empty)
+                    : "Este PC não tem endereço de rede ativo. Conecte o cabo ou o Wi-Fi e confira de novo."),
         ];
     }
 

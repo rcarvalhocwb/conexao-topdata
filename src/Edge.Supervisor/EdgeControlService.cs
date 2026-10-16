@@ -313,6 +313,10 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             MotivoDaCatraca = MotivoDaFalhaDoWorker(),
         };
 
+        // Para o operador conectar a catraca: o IP deste PC e de onde já chegou conexão nas portas.
+        resposta.EnderecosDoPc.AddRange(RedeDoPc.EnderecosAgora());
+        resposta.IpsConectadosNaPorta.AddRange(RedeDoPc.IpsConectadosAgora(_supervisor.Workers.Select(w => w.Porta)));
+
         Atualizacao?.PainelAtivo(agora);
 
         if (Licenca?.Estado() is { } licenca)

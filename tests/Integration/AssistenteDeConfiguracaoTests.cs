@@ -148,7 +148,9 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
             existeArquivo: caminho => caminho == Path.Combine(_pasta, "EasyInner.dll") || caminho == Path.Combine(_pasta, "Inner.dll"),
             net35Instalado: true,
             pastaDoWorker: _pasta,
-            firewallLiberado: true);
+            firewallLiberado: true,
+            enderecosDoPc: ["192.168.0.5"],
+            portaLivre: true);
         Assert.All(achou, i => Assert.Equal(true, i.Ok));
 
         // Só a EasyInner.dll, sem a Inner.dll: a catraca não conecta (retorno 11), e o assistente diz isso.

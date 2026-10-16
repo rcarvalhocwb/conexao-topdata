@@ -97,6 +97,64 @@ public static class Textos
         };
     }
 
+    /// <summary>
+    /// O que digitar na catraca para ela conectar a este PC (docs/62). Vazio quando a catraca já atende.
+    /// </summary>
+    public static string ComoConectar(int inner, IReadOnlyList<string> enderecosDoPc, int porta, bool emOperacao)
+    {
+        ArgumentNullException.ThrowIfNull(enderecosDoPc);
+        if (emOperacao)
+        {
+            return string.Empty;
+        }
+
+        if (enderecosDoPc.Count == 0)
+        {
+            return "Este PC não tem endereço de rede ativo. Confira o cabo ou o Wi-Fi e atualize esta tela.";
+        }
+
+        var passos = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Na catraca {inner:D2}, em \"IP do servidor\": {enderecosDoPc[0]} · \"porta do servidor\": {porta} · \"número do equipamento\": {inner}.");
+
+        return enderecosDoPc.Count == 1
+            ? passos
+            : $"{passos} Este PC tem mais de um endereço ({string.Join(", ", enderecosDoPc)}): use o da mesma rede da catraca.";
+    }
+
+    /// <summary>
+    /// Aviso quando a conexão chegou mas nenhuma catraca atende: o número Inner ou o IP do servidor não
+    /// batem (docs/62). Nulo quando não há o que avisar.
+    /// </summary>
+    public static string? AvisoDeConexaoSemCatraca(IReadOnlyList<string> ipsConectados, bool algumaEmOperacao)
+    {
+        ArgumentNullException.ThrowIfNull(ipsConectados);
+
+        return ipsConectados.Count > 0 && !algumaEmOperacao
+            ? $"Chegou conexão de {string.Join(", ", ipsConectados)}, mas nenhuma catraca atende. " +
+              "Confira na catraca o número do equipamento e o IP do servidor."
+            : null;
+    }
+
+    /// <summary>
+    /// Uma linha para a tela de catracas: o endereço deste PC e as conexões que já chegaram nele (docs/62).
+    /// </summary>
+    public static string ResumoDaRede(IReadOnlyList<string> enderecosDoPc, IReadOnlyList<string> ipsConectados, IReadOnlyList<int> portas)
+    {
+        ArgumentNullException.ThrowIfNull(enderecosDoPc);
+        ArgumentNullException.ThrowIfNull(ipsConectados);
+        ArgumentNullException.ThrowIfNull(portas);
+
+        var porta = portas.Count == 1 ? $", porta {portas[0]}" : string.Empty;
+        var quem = enderecosDoPc.Count == 0
+            ? "Este PC sem endereço de rede ativo"
+            : $"Este PC: IP {string.Join(" ou ", enderecosDoPc)}{porta}";
+
+        return ipsConectados.Count == 0
+            ? $"{quem}. Nenhuma conexão de catraca chegou ainda."
+            : $"{quem}. Conexão chegando de: {string.Join(", ", ipsConectados)}.";
+    }
+
     /// <summary>"há 5 s", "há 3 min", "há 2 h" — ou "nunca".</summary>
     public static string Ha(DateTimeOffset? quando, DateTimeOffset agora)
     {
@@ -272,7 +330,8 @@ public sealed record LinhaDeCatraca(
     int Reconexoes,
     string Relogio = "não conferido",
     bool RelogioDivergente = false,
-    bool Simulacao = false)
+    bool Simulacao = false,
+    string ComoConectar = "")
 {
     /// <summary>"CATRACA 01": como a catraca é chamada no cartão do dispositivo.</summary>
     public string Rotulo => string.Create(CultureInfo.InvariantCulture, $"CATRACA {Inner:D2}");

@@ -239,6 +239,14 @@ message ObterEstadoResponse {
   // Por que o programa das catracas não está atendendo, em uma frase, quando um worker caiu com erro
   // (ex.: a DLL que falta). Vazio enquanto o programa das catracas roda ou sem erro registrado.
   string motivo_da_catraca = 27;
+
+  // IPv4 deste PC, nas interfaces ativas, privados primeiro. É o IP que o operador digita na catraca
+  // como "IP do servidor" (docs/62).
+  repeated string enderecos_do_pc = 28;
+
+  // IPs com conexão estabelecida nas portas das catracas agora: a catraca alcançou este PC e veio
+  // deste endereço. Não é varredura da rede.
+  repeated string ips_conectados_na_porta = 29;
 }
 
 enum SituacaoDaLicenca {

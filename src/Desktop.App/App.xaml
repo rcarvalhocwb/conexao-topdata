@@ -133,6 +133,10 @@
                 <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Sync}" Rotulo="Reconexões" Valor="{Binding Reconexoes}" />
                 <rz:RayzerMetaItem Icone="{DynamicResource Rayzer.Icon.Clock}" Rotulo="Relógio" Valor="{Binding Relogio}" />
               </WrapPanel>
+              <!-- Como conectar (docs/62): o que digitar na catraca enquanto ela não atende. Some quando atende. -->
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Style="{StaticResource Rayzer.Type.Body}"
+                         Foreground="{DynamicResource Rayzer.Text.Secondary}" Text="{Binding ComoConectar}"
+                         Visibility="{Binding ComoConectar, Converter={StaticResource VazioSome}}" />
               <!-- Relógio divergente não tira a catraca de operação: é um aviso, não uma falha. -->
               <TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
                          Foreground="{DynamicResource Rayzer.Warning}"

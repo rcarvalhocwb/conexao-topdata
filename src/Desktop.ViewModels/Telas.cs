@@ -184,7 +184,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
             Giros = estado.Giros;
             LiberadosUltimos5Minutos = estado.LiberadosUltimos5Minutos;
             PendentesDeEnvio = estado.OutboxPendente;
-            Catracas = [.. lista.Equipamentos.Select(e => Linha(e, agora))];
+            Catracas = [.. lista.Equipamentos.Select(e => Linha(e, agora, estado.EnderecosDoPc))];
             // Físicas e simuladas em contagens separadas: uma simulada nunca vira "atendendo" de catraca real.
             var simuladas = estado.CatracasSimuladasAtivas;
             Resumo = simuladas > 0
@@ -193,6 +193,11 @@ public sealed class PainelAoVivoViewModel : TelaBase
             var nuvem = Textos.Nuvem(estado.SituacaoDaNuvem, estado.UltimaSincronizacao?.ToDateTimeOffset(), agora);
             Internet = $"{Textos.Internet(estado.SituacaoDaInternet)} · {nuvem.Texto} · {Textos.Fila(estado.SituacaoDaFila, estado.OutboxPendente)}";
             Mensagem = string.Empty;
+
+            if (Textos.AvisoDeConexaoSemCatraca(estado.IpsConectadosNaPorta, lista.Equipamentos.Any(e => e.EmOperacao)) is { } aviso)
+            {
+                Mensagem = aviso;
+            }
 
             ServicoResumo = "Operacional";
             ServicoSinal = Sinal.Bom;
@@ -371,7 +376,7 @@ public sealed class PainelAoVivoViewModel : TelaBase
         }
     }
 
-    internal static LinhaDeCatraca Linha(Equipamento e, DateTimeOffset agora)
+    internal static LinhaDeCatraca Linha(Equipamento e, DateTimeOffset agora, IReadOnlyList<string>? enderecosDoPc = null)
     {
         var (texto, sinal) = Textos.SituacaoDaCatraca(e);
         var (relogio, relogioDivergente) = Textos.Relogio(e, agora);
@@ -394,7 +399,8 @@ public sealed class PainelAoVivoViewModel : TelaBase
             e.TentativasDeReconexao,
             relogio,
             relogioDivergente,
-            e.Simulacao);
+            e.Simulacao,
+            Textos.ComoConectar(e.Inner, enderecosDoPc ?? [], e.Porta, e.EmOperacao));
     }
 }
 
@@ -411,6 +417,11 @@ public sealed class CatracasViewModel : TelaBase
     public override string Titulo => "Catracas";
 
     public IReadOnlyList<LinhaDeCatraca> Catracas { get => _catracas; private set => Definir(ref _catracas, value); }
+
+    private string _redeDaPorta = string.Empty;
+
+    /// <summary>O IP deste PC, a porta e de onde já chegou conexão: o que o operador precisa para conectar (docs/62).</summary>
+    public string RedeDaPorta { get => _redeDaPorta; private set => Definir(ref _redeDaPorta, value); }
 
     private bool _servicoRespondeu = true;
 
@@ -436,10 +447,14 @@ public sealed class CatracasViewModel : TelaBase
     {
         ServicoRespondeu = await Tentar(async () =>
         {
+            var estado = await Cliente.ObterEstadoAsync(new ObterEstadoRequest(), cancellationToken: cancelamento);
             var lista = await Cliente.ListarEquipamentosAsync(new ListarEquipamentosRequest(), cancellationToken: cancelamento);
             var agora = Relogio();
-            Catracas = [.. lista.Equipamentos.Select(e => PainelAoVivoViewModel.Linha(e, agora))];
-            Mensagem = Catracas.Count == 0 ? "Nenhuma catraca cadastrada na instalação." : string.Empty;
+            Catracas = [.. lista.Equipamentos.Select(e => PainelAoVivoViewModel.Linha(e, agora, estado.EnderecosDoPc))];
+            RedeDaPorta = Textos.ResumoDaRede(estado.EnderecosDoPc, estado.IpsConectadosNaPorta, [.. lista.Equipamentos.Select(e => e.Porta).Distinct()]);
+            Mensagem = Catracas.Count == 0
+                ? "Nenhuma catraca cadastrada na instalação."
+                : Textos.AvisoDeConexaoSemCatraca(estado.IpsConectadosNaPorta, lista.Equipamentos.Any(e => e.EmOperacao)) ?? string.Empty;
         }).ConfigureAwait(true);
 
         if (!ServicoRespondeu)
