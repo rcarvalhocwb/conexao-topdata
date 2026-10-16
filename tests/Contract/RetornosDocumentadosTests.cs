@@ -72,4 +72,23 @@ public sealed partial class RetornosDocumentadosTests
 
         Assert.True(faltando.Count == 0, "Retornos da matriz sem tratamento por função: " + string.Join(", ", faltando));
     }
+
+    /// <summary>
+    /// Plano de reparo, Fase 1 (docs/61): a 11 de <c>AbrirPortaComunicacao</c> é a Inner.dll ausente, a DLL de
+    /// apoio da versão 6.x. Tem de virar falta de dependência com o nome da DLL, não "A porta não abriu".
+    /// </summary>
+    [Theory]
+    [InlineData(4, "Inner2K.dll")]
+    [InlineData(5, "InnerTCP.dll")]
+    [InlineData(6, "InnerTCPLib.dll")]
+    [InlineData(10, "InnerPendrive.dll")]
+    [InlineData(11, "Inner.dll")]
+    public void As_DLLs_de_apoio_ausentes_na_abertura_da_porta_dizem_qual_falta(int retorno, string dll)
+    {
+        var documentado = RetornosDocumentados.Consultar("AbrirPortaComunicacao", retorno);
+
+        Assert.NotNull(documentado);
+        Assert.Equal(AdapterStatus.FalhaDeDependencia, documentado.Status);
+        Assert.Contains(dll, documentado.Significado, StringComparison.Ordinal);
+    }
 }

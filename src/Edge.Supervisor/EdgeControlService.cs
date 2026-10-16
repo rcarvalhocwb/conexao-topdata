@@ -252,6 +252,25 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
     /// <summary>Por onde os acessos chegam aos painéis conectados.</summary>
     public DifusorDeEventos Eventos { get; } = new();
 
+    /// <summary>
+    /// O motivo que vai ao painel: o primeiro erro de um worker que caiu, com a operação ligada. Vazio nos
+    /// demais casos. Limitado a 160 caracteres: é uma frase de barra de status, não um registro.
+    /// </summary>
+    private string MotivoDaFalhaDoWorker()
+    {
+        if (_operacao is null)
+        {
+            return string.Empty;
+        }
+
+        var erro = _supervisor.Workers
+            .Where(w => !w.EstaVivo)
+            .Select(w => w.UltimoErro)
+            .FirstOrDefault(e => !string.IsNullOrWhiteSpace(e));
+
+        return erro is null ? string.Empty : erro.Length > 160 ? erro[..160] : erro;
+    }
+
     public override Task<ObterEstadoResponse> ObterEstado(ObterEstadoRequest request, ServerCallContext context)
     {
         var situacoes = _supervisor.Situacoes;
@@ -291,6 +310,7 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             SemConfiguracao = _semConfiguracao,
             Simulacao = _simulacao is not null,
             AtualizacaoIminente = Atualizacao?.Iminente(agora) ?? false,
+            MotivoDaCatraca = MotivoDaFalhaDoWorker(),
         };
 
         Atualizacao?.PainelAtivo(agora);

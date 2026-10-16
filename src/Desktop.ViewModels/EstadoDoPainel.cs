@@ -129,7 +129,11 @@ public sealed record EstadoDoPainel
         else if (resposta.EquipamentosConectados == 0 && resposta.CatracasSimuladasAtivas == 0)
         {
             saude = SaudeDoPainel.Acao;
-            mensagem = "Nenhuma catraca conectada — verifique a rede e a alimentação";
+
+            // Com o motivo do worker que caiu, a barra diz o que falta (ex.: a DLL); sem ele, o de antes.
+            mensagem = string.IsNullOrWhiteSpace(resposta.MotivoDaCatraca)
+                ? "Nenhuma catraca conectada — verifique a rede e a alimentação"
+                : $"Nenhuma catraca conectada: o programa das catracas não está atendendo ({resposta.MotivoDaCatraca})";
         }
 
         if (resposta.Simulacao)

@@ -128,6 +128,7 @@ por cima. Quem precisar fixar a forma à mão ainda tem a chave `catraca.enviar_
 
 | # | Pergunta | Como ver | Se falhar |
 |---|---|---|---|
+| U0 | **Antes de tudo:** a pasta do programa das catracas tem **EasyInner.dll e Inner.dll**? Sem a Inner.dll a porta não abre (retorno 11) e o painel diz "falta a Inner.dll". Copiar pelo Assistente (Localizar EasyInner.dll, pasta "Porta Fixa" do SDK) | Painel: a catraca aparece ao conectar; registro: "porta aberta" | Se o painel mostrar a causa, copiar a DLL que ela nomear |
 | U1 | Com o relé 2 em **(3, 15 s)**, `AcionarRele2` abre a guia e o cartão cai? | Cartão do evento na fenda: o display pede o depósito, ouve-se o solenoide, o cartão cai, o braço libera | Trocar `catraca.funcao_do_rele_da_urna` para **2** e depois **1**; anotar qual abre |
 | U2 | A origem 7 chega depois que o cartão cai? | Registro do worker: "cartão recolhido pela urna (origem 7) — liberando o giro" | Se não chegar, o prazo nega e devolve; conferir o jumper ST3 e o cabo do sensor 3 (artigo do suporte, §1) |
 | U3 | Sem depositar (puxar o cartão de volta): vem a origem 5 e nada libera? | Display "Cartao nao caiu…", painel com a tentativa estornada | — |

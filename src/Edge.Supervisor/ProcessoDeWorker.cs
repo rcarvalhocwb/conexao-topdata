@@ -280,6 +280,17 @@ public sealed class ProcessoDeWorker : IWorkerHost
     }
 
     /// <summary>As últimas linhas que o worker escreveu, da mais antiga à mais nova.</summary>
+    public string? UltimoErro
+    {
+        get
+        {
+            lock (_travaDasLinhas)
+            {
+                return _ultimoErro;
+            }
+        }
+    }
+
     public IReadOnlyList<string> UltimasLinhas()
     {
         lock (_travaDasLinhas)

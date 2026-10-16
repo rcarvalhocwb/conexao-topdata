@@ -61,6 +61,14 @@ public static class AssistenteDeConfiguracao
     /// <summary>Até quantas catracas um worker atende (ADR-0005).</summary>
     public const int CatracasPorGrupo = 20;
 
+    /// <summary>
+    /// DLLs de apoio da EasyInner.dll, na lista do manual de desenvolvimento. A <c>Inner.dll</c> é a da
+    /// versão 6.x: sem ela, <c>AbrirPortaComunicacao</c> devolve 11 e a catraca nunca conecta (docs/61).
+    /// As demais só são copiadas quando estão na mesma pasta da EasyInner.dll escolhida.
+    /// </summary>
+    public static readonly IReadOnlyList<string> DllsDeApoio =
+        ["Inner.dll", "Inner2K.dll", "InnerTCP.dll", "InnerTCPLib.dll", "InnerPendrive.dll"];
+
     private static readonly JsonSerializerOptions Escrita = new()
     {
         WriteIndented = true,
@@ -232,6 +240,14 @@ public static class AssistenteDeConfiguracao
         };
         var dll = locaisDaDll.FirstOrDefault(existeArquivo);
 
+        // A Inner.dll (apoio da versão 6.x) segue os mesmos lugares da EasyInner.dll.
+        var dllDeApoio = new[]
+        {
+            Path.Combine(pastaDoWorker, "Inner.dll"),
+            Path.Combine(windows, "SysWOW64", "Inner.dll"),
+            Path.Combine(windows, "System32", "Inner.dll"),
+        }.FirstOrDefault(existeArquivo);
+
         return
         [
             new ItemDoAmbiente(
@@ -243,6 +259,16 @@ public static class AssistenteDeConfiguracao
                     ? $"Encontrada em {dll}."
                     : "Não encontrada. Instale o SDK Inner Acesso da Topdata, ou clique em \"Localizar EasyInner.dll\" " +
                       "para copiá-la de onde estiver (pasta do SDK, pendrive)."),
+            new ItemDoAmbiente(
+                "DLL de apoio Inner.dll (versão 6.x)",
+                simulacao || dllDeApoio is not null,
+                simulacao && dllDeApoio is null
+                    ? "Não é necessária no modo simulação."
+                    : dllDeApoio is not null
+                    ? $"Encontrada em {dllDeApoio}."
+                    : "Não encontrada. Sem ela a catraca não conecta (retorno 11 ao abrir a porta). " +
+                      "Clique em \"Localizar EasyInner.dll\" e escolha a da pasta \"Porta Fixa\" do SDK: " +
+                      "ela copia a Inner.dll junto."),
             new ItemDoAmbiente(
                 ".NET Framework 3.5",
                 net35Instalado,
@@ -291,6 +317,83 @@ public static class AssistenteDeConfiguracao
         var destino = Path.Combine(pastaDoWorker, "EasyInner.dll");
         File.Copy(origem, destino, overwrite: true);
         return destino;
+    }
+
+    /// <summary>
+    /// Copia da pasta da EasyInner.dll escolhida as DLLs de apoio que estiverem lá (<see cref="DllsDeApoio"/>).
+    /// </summary>
+    /// <remarks>
+    /// Nenhuma DLL de apoio de 64 bits passa: o programa das catracas é de 32 bits, e a DLL errada só
+    /// apareceria na primeira abertura de porta. Ausente na pasta de origem não é erro: a conferência do
+    /// ambiente mostra a falta.
+    /// </remarks>
+    /// <returns>Os nomes copiados.</returns>
+    /// <exception cref="ArgumentException">Uma das DLLs de apoio não é de 32 bits.</exception>
+    public static IReadOnlyList<string> CopiarDllsDeApoio(string origem, string pastaDoWorker)
+    {
+        ConferirEasyInner(origem);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pastaDoWorker);
+
+        var copiadas = new List<string>();
+        foreach (var nome in DllsDeApoioNaOrigem(origem))
+        {
+            var fonte = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(origem))!, nome);
+            ConferirDe32Bits(fonte, nome);
+            Directory.CreateDirectory(pastaDoWorker);
+            File.Copy(fonte, Path.Combine(pastaDoWorker, nome), overwrite: true);
+            copiadas.Add(nome);
+        }
+
+        return copiadas;
+    }
+
+    /// <summary>
+    /// As DLLs de apoio que a pasta da origem tem e que a pasta do worker ainda não tem igual; é o que falta
+    /// copiar. Vazia quando a EasyInner.dll e as de apoio já estão lá (o programa segue sem cópia).
+    /// </summary>
+    public static IReadOnlyList<string> DllsDeApoioPendentes(string origem, string pastaDoWorker)
+    {
+        ConferirEasyInner(origem);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pastaDoWorker);
+
+        var pastaDaOrigem = Path.GetDirectoryName(Path.GetFullPath(origem))!;
+        return DllsDeApoioNaOrigem(origem)
+            .Where(nome => !MesmoConteudo(Path.Combine(pastaDaOrigem, nome), Path.Combine(pastaDoWorker, nome)))
+            .ToList();
+    }
+
+    private static IEnumerable<string> DllsDeApoioNaOrigem(string origem)
+    {
+        var pastaDaOrigem = Path.GetDirectoryName(Path.GetFullPath(origem))!;
+        return DllsDeApoio.Where(nome => File.Exists(Path.Combine(pastaDaOrigem, nome)));
+    }
+
+    private static void ConferirDe32Bits(string arquivo, string nome)
+    {
+        if (MaquinaDoPe(arquivo) is not 0x014C)
+        {
+            throw new ArgumentException(
+                $"A {nome} desta pasta não é de 32 bits. Use a do SDK Inner Acesso para Windows 32 bits.", arquivo);
+        }
+    }
+
+    /// <summary>Verdadeiro quando os dois arquivos existem e têm o mesmo conteúdo (SHA-256).</summary>
+    private static bool MesmoConteudo(string a, string b)
+    {
+        if (!File.Exists(a) || !File.Exists(b))
+        {
+            return false;
+        }
+
+        if (string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        using var fa = new FileStream(a, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var fb = new FileStream(b, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return fa.Length == fb.Length
+            && System.Security.Cryptography.SHA256.HashData(fa).AsSpan().SequenceEqual(System.Security.Cryptography.SHA256.HashData(fb));
     }
 
     /// <summary>

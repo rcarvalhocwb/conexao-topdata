@@ -145,11 +145,22 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
         Assert.Equal(true, itens.Single(i => i.Item == ".NET 10").Ok);
 
         var achou = AssistenteDeConfiguracao.VerificarAmbiente(
-            existeArquivo: caminho => caminho == Path.Combine(_pasta, "EasyInner.dll"),
+            existeArquivo: caminho => caminho == Path.Combine(_pasta, "EasyInner.dll") || caminho == Path.Combine(_pasta, "Inner.dll"),
             net35Instalado: true,
             pastaDoWorker: _pasta,
             firewallLiberado: true);
         Assert.All(achou, i => Assert.Equal(true, i.Ok));
+
+        // Só a EasyInner.dll, sem a Inner.dll: a catraca não conecta (retorno 11), e o assistente diz isso.
+        var semApoio = AssistenteDeConfiguracao.VerificarAmbiente(
+            existeArquivo: caminho => caminho == Path.Combine(_pasta, "EasyInner.dll"),
+            net35Instalado: true,
+            pastaDoWorker: _pasta,
+            firewallLiberado: true);
+        var apoio = semApoio.Single(i => i.Item.StartsWith("DLL de apoio Inner.dll", StringComparison.Ordinal));
+        Assert.Equal(false, apoio.Ok);
+        Assert.Contains("Porta Fixa", apoio.Orientacao, StringComparison.Ordinal);
+        Assert.Equal(true, semApoio.Single(i => i.Item.StartsWith("SDK da Topdata", StringComparison.Ordinal)).Ok);
 
         // Sem a regra do firewall, a catraca nem conecta: é falta, não detalhe.
         var semFirewall = AssistenteDeConfiguracao.VerificarAmbiente(_ => true, true, _pasta, firewallLiberado: false);
@@ -229,6 +240,39 @@ public sealed class AssistenteDeConfiguracaoTests : IDisposable
         var diferente = Path.Combine(Directory.CreateDirectory(Path.Combine(_pasta, "sdk-nova")).FullName, "EasyInner.dll");
         File.WriteAllBytes(diferente, bytes);
         Assert.False(AssistenteDeConfiguracao.EasyInnerJaInstalada(diferente, worker));
+    }
+
+    /// <summary>
+    /// Plano de reparo, Fase 1 (docs/61): escolher a EasyInner.dll da pasta "Porta Fixa" do SDK tem de levar
+    /// a Inner.dll junto. Sem ela a catraca não conecta (retorno 11). Ausência na origem não é erro.
+    /// </summary>
+    [Fact]
+    public void As_dlls_de_apoio_da_mesma_pasta_do_SDK_vao_junto_e_a_64_bits_e_recusada()
+    {
+        var origem = Directory.CreateDirectory(Path.Combine(_pasta, "sdk-porta-fixa")).FullName;
+        var worker = Path.Combine(_pasta, "Worker");
+        var dll = Path.Combine(origem, "EasyInner.dll");
+        File.WriteAllBytes(dll, Pe(0x014C));
+        File.WriteAllBytes(Path.Combine(origem, "Inner.dll"), Pe(0x014C));
+        File.WriteAllText(Path.Combine(origem, "Inner.tlb"), "não é DLL de apoio da lista");
+
+        Assert.Equal(["Inner.dll"], AssistenteDeConfiguracao.DllsDeApoioPendentes(dll, worker));
+        var copiadas = AssistenteDeConfiguracao.CopiarDllsDeApoio(dll, worker);
+        Assert.Equal(["Inner.dll"], copiadas);
+        Assert.True(File.Exists(Path.Combine(worker, "Inner.dll")));
+        Assert.False(File.Exists(Path.Combine(worker, "Inner.tlb")));
+
+        // Já copiada e igual: nada pendente. Se a pasta do worker tem uma Inner.dll diferente, volta a ser pendente.
+        Assert.Empty(AssistenteDeConfiguracao.DllsDeApoioPendentes(dll, worker));
+        var bytes = Pe(0x014C);
+        bytes[^1] = 0x7F;
+        File.WriteAllBytes(Path.Combine(origem, "Inner.dll"), bytes);
+        Assert.Equal(["Inner.dll"], AssistenteDeConfiguracao.DllsDeApoioPendentes(dll, worker));
+
+        // A de 64 bits não entra: o programa das catracas é de 32 bits.
+        File.WriteAllBytes(Path.Combine(origem, "Inner.dll"), Pe(0x8664));
+        var erro = Assert.Throws<ArgumentException>(() => AssistenteDeConfiguracao.CopiarDllsDeApoio(dll, worker));
+        Assert.Contains("Inner.dll", erro.Message, StringComparison.Ordinal);
     }
 
     // Cabeçalho PE mínimo: "MZ", o ponteiro em 0x3C, "PE\0\0" e o campo Machine.

@@ -235,6 +235,10 @@ message ObterEstadoResponse {
 
   // A atualização automática vai instalar em instantes: o painel deixa o relançador e fecha.
   bool atualizacao_iminente = 26;
+
+  // Por que o programa das catracas não está atendendo, em uma frase, quando um worker caiu com erro
+  // (ex.: a DLL que falta). Vazio enquanto o programa das catracas roda ou sem erro registrado.
+  string motivo_da_catraca = 27;
 }
 
 enum SituacaoDaLicenca {

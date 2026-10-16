@@ -47,6 +47,12 @@ public interface IWorkerHost : IDisposable
     /// <summary>Diagnóstico legível, para log e para o pacote de suporte.</summary>
     string Diagnostico { get; }
 
+    /// <summary>
+    /// A primeira linha de erro que o worker escreveu na última execução: costuma ser a causa (ex.: a DLL que
+    /// falta). Nulo se não houve erro. Vai ao painel como motivo quando as catracas não conectam.
+    /// </summary>
+    string? UltimoErro => null;
+
     /// <summary>O executável do worker, para o diagnóstico conferir a arquitetura; nulo se não há (testes).</summary>
     string? Executavel => null;
 

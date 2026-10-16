@@ -75,9 +75,11 @@ internal static class Program
 
             if (abertura.Status is AdapterStatus.FalhaDeDependencia && abertura.Significado is { } dependencia)
             {
-                // Retornos 4 a 6 de AbrirPortaComunicacao (EI-002): DLL de apoio ausente.
+                // Retornos 4, 5, 6, 10 e 11 de AbrirPortaComunicacao (EI-002): DLL de apoio ausente. A primeira
+                // linha de erro vai ao painel como motivo, então diz o que fazer, em português e sem jargão.
                 Console.Error.WriteLine(
-                    $"Retorno {abertura.NativeReturn} ({dependencia}). Rode installer/verificar-ambiente.ps1.");
+                    $"Retorno {abertura.NativeReturn}: {dependencia}. Copie a DLL que falta para a pasta do " +
+                    "programa das catracas (Assistente de configuração, Localizar EasyInner.dll, pasta \"Porta Fixa\" do SDK).");
                 return 2;
             }
 
