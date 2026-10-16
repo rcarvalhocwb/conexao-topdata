@@ -44,7 +44,9 @@ public sealed class AdapterTests
         var resultado = adapter.AbrirPorta(3570);
 
         Assert.Equal(AdapterStatus.Ok, resultado.Status);
-        Assert.Equal(["DefinirTipoConexao", "AbrirPortaComunicacao"], costura.Chamadas);
+
+        // Como o middleware que operou em 2025: fecha a porta que sobrou antes de abrir (sem isso a DLL devolve 3).
+        Assert.Equal(["DefinirTipoConexao", "FecharPortaComunicacao", "AbrirPortaComunicacao"], costura.Chamadas);
     }
 
     /// <summary>
@@ -741,6 +743,7 @@ public sealed class AdapterTests
         adapter.Dispose();
         adapter.Dispose();
 
-        Assert.Single(costura.Chamadas, c => c == "FecharPortaComunicacao");
+        // Uma vez antes de abrir (a porta que sobrou) e uma vez no Dispose; o segundo Dispose não fecha de novo.
+        Assert.Equal(2, costura.Chamadas.Count(c => c == "FecharPortaComunicacao"));
     }
 }

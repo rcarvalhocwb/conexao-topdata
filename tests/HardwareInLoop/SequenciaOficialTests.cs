@@ -92,7 +92,7 @@ public sealed class SequenciaOficialTests
     /// <summary>1 conectar e 2 identidade, antes da configuração.</summary>
     private static readonly object[][] ConectarEIdentificar =
     [
-        Chamada(nameof(IEasyInnerNative.Ping), Inner),
+        Chamada(nameof(IEasyInnerNative.PingOnLine), Inner),
         Chamada(nameof(IEasyInnerNative.ReceberVersaoFirmware), Inner),
     ];
 
@@ -282,7 +282,8 @@ public sealed class SequenciaOficialTests
         Assert.Equal(
             [nameof(IEasyInnerNative.EnviarRelogio), nameof(IEasyInnerNative.ReceberDadosOnLine)],
             costura.Chamadas.Skip(antes));
-        Assert.DoesNotContain(nameof(IEasyInnerNative.PingOnLine), costura.Chamadas);
+        // O PingOnLine do Conectar já passou antes desta janela; a janela de 20 ms não chega ao próximo keep-alive (3 s).
+        Assert.DoesNotContain(nameof(IEasyInnerNative.PingOnLine), costura.Chamadas.Skip(antes));
         Assert.Equal(DeviceState.Polling, catraca.Maquina.Current);
     }
 

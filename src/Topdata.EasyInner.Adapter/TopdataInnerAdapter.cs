@@ -99,6 +99,10 @@ public sealed class TopdataInnerAdapter : ITopdataInnerAdapter
                 return (nameof(IEasyInnerNative.DefinirTipoConexao), tipo);
             }
 
+            // Fecha a porta que sobrou de uma abertura anterior antes de abrir de novo, como o middleware
+            // que operou em 2025 e o LabEasyInner. Sem isso, a DLL devolve 3 (já aberta) e o worker não sobe.
+            _nativo.FecharPortaComunicacao();
+
             var abertura = _nativo.AbrirPortaComunicacao(porta);
             _portaAberta = abertura == 0;
             return (nameof(IEasyInnerNative.AbrirPortaComunicacao), abertura);

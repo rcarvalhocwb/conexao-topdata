@@ -535,7 +535,9 @@ public sealed class DevicePump
             Disparar(d, DeviceTrigger.EquipamentoApareceu, agora);
         }
 
-        var resultado = _adapter.TestarConexao(d.Inner);
+        // PingOnLine, como o middleware que operou em 2025 e como o manual indica para TCP/IP. O Ping (teste
+        // de presença) não é o teste de conexão que o produto usava antes.
+        var resultado = _adapter.Ping(d.Inner);
 
         if (resultado.IsOk)
         {

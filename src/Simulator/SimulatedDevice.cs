@@ -74,8 +74,42 @@ public sealed class SimulatedDevice : IDisposable
     /// <remarks>Use 8 para reproduzir o GPF documentado.</remarks>
     public int? RetornoForcado { get; set; }
 
+    private bool _desconectado;
+
     /// <summary>Simula cabo removido ou equipamento desligado.</summary>
-    public bool Desconectado { get; set; }
+    public bool Desconectado
+    {
+        get => _desconectado;
+        set
+        {
+            _desconectado = value;
+            if (value)
+            {
+                ConexaoPendente = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verdadeiro desde uma queda (ou desde o início da sessão) até a primeira resposta depois dela: é a
+    /// "conexão nova". Começa verdadeiro porque um processo que reinicia também conecta de novo.
+    /// </summary>
+    internal bool ConexaoPendente { get; private set; } = true;
+
+    /// <summary>
+    /// Marca a conexão nova na primeira resposta depois de uma queda. O keep-alive (PingOnLine a cada 3 s)
+    /// passa por aqui sem efeito depois que a conexão já voltou.
+    /// </summary>
+    internal void MarcarConexaoNovaSePreciso()
+    {
+        if (!ConexaoPendente)
+        {
+            return;
+        }
+
+        ConexaoPendente = false;
+        AoConectar();
+    }
 
     /// <summary>
     /// Simula o laço bloqueante travado: <c>AguardarEvento</c> fica preso, segurando o
