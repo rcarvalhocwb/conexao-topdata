@@ -462,6 +462,14 @@ anotado bate com a seta (ou a função foi trocada), e entradas e saídas no pai
 se passou. A chave `catraca.exibir_texto_do_giro` só é ligada se o passo 10 não atrapalhar o giro
 nem a vazão (cada chamada a mais no caminho da passagem custa tempo, docs/34 §8).
 
+## 6K. Urna, leitor da frente e teclado (docs/61)
+
+O roteiro completo está no [docs/61 §5](61-urna-leitores-e-teclado.md) (U1 a U7). O essencial: em
+Configurações › Padrão das catracas, leitor da frente = **Só a equipe**, urna **ligada**, teclado
+**Desligado**, **Aplicar agora nas catracas**. Cartão do evento na fenda: o display pede o depósito, a
+guia abre, o cartão cai e só então o braço libera. Se a guia não abrir, troque a chave técnica
+`catraca.funcao_do_rele_da_urna` para 1 e depois 3 e anote qual abre.
+
 ## 6J. Prazo do giro (`NOVO-HIL-GIRO-04`, Etapa I.1b)
 
 Defeito F9 ([docs/34](34-estudo-modulo-catraca.md) §2, achado do [docs/36](36-inovacao-sobre-a-catraca.md)):

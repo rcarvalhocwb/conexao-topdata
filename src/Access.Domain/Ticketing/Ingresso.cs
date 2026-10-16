@@ -121,7 +121,22 @@ public enum MotivoDoUso
     /// Ingresso ou cartão da bilheteria lido fora do período do evento, com "recusar fora do período"
     /// ligado nas configurações do evento (docs/57 §4). Pessoas credenciadas não passam por esta regra.
     /// </summary>
-    ForaDoPeriodoDoEvento
+    ForaDoPeriodoDoEvento,
+
+    /// <summary>
+    /// Ingresso lido no leitor da frente (ou digitado no teclado) com essa entrada reservada à equipe
+    /// (docs/61): o leitor da frente é dos crachás, e o cartão do evento vai na urna.
+    /// </summary>
+    SomenteEquipe,
+
+    /// <summary>
+    /// Crachá ou cartão de pessoa lido na fenda da urna (docs/61). A urna recolhe o cartão: aceitar ali
+    /// engoliria o crachá de quem trabalha no evento. A pessoa usa o leitor da frente.
+    /// </summary>
+    CredencialNaUrna,
+
+    /// <summary>A entrada (leitor da frente, urna ou teclado) está desligada nesta operação (docs/61).</summary>
+    EntradaDesligada,
 }
 
 /// <summary>

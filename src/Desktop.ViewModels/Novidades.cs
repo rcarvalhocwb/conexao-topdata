@@ -21,7 +21,7 @@ public static class Novidades
     /// A edição do texto abaixo. Suba de um ao trocar as <see cref="Itens"/> por uma atualização
     /// que o operador precisa conhecer; mantenha ao corrigir só build, versão ou coisa interna.
     /// </summary>
-    public const int Edicao = 7;
+    public const int Edicao = 8;
 
     /// <summary>Título do aviso.</summary>
     public const string Titulo = "Novidades desta versão";
@@ -36,6 +36,12 @@ public static class Novidades
     /// </summary>
     public static IReadOnlyList<string> Itens { get; } =
     [
+        "Urna: o cartão do evento colocado na fenda agora cai na urna antes de liberar a passagem. O visor pede " +
+        "\"Deposite o cartao\"; se o cartão não cair, nada libera e o uso volta para o cartão (a pessoa tenta de novo).",
+        "Configurações › Padrão das catracas ganhou o uso de cada entrada: leitor da frente (equipe e ingressos, só a " +
+        "equipe ou desligado) e teclado (desligado ou só a equipe). Crachá da equipe colocado na urna é recusado para não ser recolhido.",
+        "O visor da catraca explica a recusa: \"Use a urna\", \"Use o leitor da frente\", \"Leitor so para equipe\", " +
+        "\"Urna cheia\" — em vez de só \"Acesso nao autorizado\".",
         "A Catraca Fit com firmware da linha 19 passa a ser aceita e configurada: antes ela conectava, mas ficava " +
         "parada como \"firmware não homologado\". Agora, depois de conectar, o display dela mostra \"Aproxime o ingresso\".",
         "Diagnóstico ganhou \"Licença e atualizações\": a licença do sistema, com o vencimento, e as atualizações " +

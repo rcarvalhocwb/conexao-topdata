@@ -244,7 +244,26 @@ public sealed class SimulatedDevice : IDisposable
 
     internal void RegistrarBip(TipoDeBip bip) => BipsAcionados.Add(bip);
 
-    internal void RegistrarAcionamentoDaUrna() => AcionamentosDaUrna++;
+    /// <summary>
+    /// O que acontece quando a urna abre (relé 2): o cartão cai e a catraca manda a origem 7 (o padrão),
+    /// ou ninguém deposita e vem a origem 5, como no fim do tempo do relé (manual do SDK, seção 5.3).
+    /// </summary>
+    public bool CartaoCaiNaUrna { get; set; } = true;
+
+    /// <summary>A urna abre e a catraca não manda nada: nem origem 7, nem 5 (para o prazo do laço).</summary>
+    public bool UrnaMuda { get; set; }
+
+    internal void RegistrarAcionamentoDaUrna()
+    {
+        AcionamentosDaUrna++;
+        if (UrnaMuda)
+        {
+            return;
+        }
+
+        Roteirizar(new ScriptedEvent(EventOrigin.From(
+            CartaoCaiNaUrna ? KnownEventOrigin.CartaoRecolhidoUrna : KnownEventOrigin.FimTempoAcionamento)));
+    }
 
     internal void RegistrarReabilitacaoDoLeitor() => ReabilitacoesDoLeitor++;
 

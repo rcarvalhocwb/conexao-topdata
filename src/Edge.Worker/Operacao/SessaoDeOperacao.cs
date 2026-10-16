@@ -43,6 +43,8 @@ public sealed class SessaoDeOperacao
         DeviceState.EnviarMsgAcessoNegado,
         DeviceState.LiberarCatraca,
         DeviceState.MonitoraGiroCatraca,
+        DeviceState.AcionarUrna,
+        DeviceState.MonitoraUrna,
         DeviceState.ColetarBilhetes,
     };
 
@@ -253,7 +255,8 @@ public sealed class SessaoDeOperacao
             gravadorDeBilhetes: gravadorDeBilhetes,
             exibirTextoDoGiro: exibirTextoDoGiro,
             aoDesistirDoGiro: decisor.DescartarPendente,
-            aoFalharALiberacao: decisor.RegistrarCausaSemGiro);
+            aoFalharALiberacao: decisor.RegistrarCausaSemGiro,
+            aoDesistirDaUrna: decisor.DevolverNaUrna);
 
         _laco = new DeviceGroupLoop(
             adapter,

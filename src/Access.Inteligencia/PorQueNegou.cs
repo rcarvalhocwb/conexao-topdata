@@ -92,6 +92,9 @@ public static class PorQueNegou
         [nameof(MotivoDoUso.LimiteDiario)] = ReasonCodes.LimiteDiario,
         [nameof(MotivoDoUso.CatracaFechada)] = ReasonCodes.CatracaFechada,
         [nameof(MotivoDoUso.ForaDoPeriodoDoEvento)] = ReasonCodes.ForaDoPeriodoDoEvento,
+        [nameof(MotivoDoUso.SomenteEquipe)] = ReasonCodes.SomenteEquipe,
+        [nameof(MotivoDoUso.CredencialNaUrna)] = ReasonCodes.CredencialNaUrna,
+        [nameof(MotivoDoUso.EntradaDesligada)] = ReasonCodes.EntradaDesligada,
     };
 
     private const string ProcureOAtendimento = "Procure o atendimento, por favor.";
@@ -133,6 +136,18 @@ public static class PorQueNegou
             "O evento ainda não começou ou já terminou, e as configurações do evento recusam ingressos fora do período.",
             "A entrada não está aberta neste horário. " + ProcureOAtendimento,
             "Confira o início e o fim em Configurações › Evento e o relógio desta catraca. Para abrir antes, ajuste o início."),
+        [ReasonCodes.SomenteEquipe] = (
+            "O leitor da frente (ou o teclado) desta catraca está reservado à equipe; ingresso do evento vai na urna.",
+            "Coloque o cartão na fenda da urna.",
+            "Confira o uso de cada entrada em Configurações › Padrão das catracas."),
+        [ReasonCodes.CredencialNaUrna] = (
+            "Um crachá da equipe foi colocado na fenda da urna, que recolhe o cartão: o sistema recusou para não engolir o crachá.",
+            "Use o leitor da frente.",
+            "Oriente a equipe a usar o leitor da frente; a urna é só para os cartões do evento."),
+        [ReasonCodes.EntradaDesligada] = (
+            "A entrada usada (leitor da frente, urna ou teclado) está desligada nesta catraca.",
+            UseOutraCatraca,
+            "Confira o uso de cada entrada em Configurações › Padrão das catracas."),
         [ReasonCodes.CatracaFechada] = (
             "Esta catraca está fechada pelo operador: ninguém passa até reabrir.",
             UseOutraCatraca,

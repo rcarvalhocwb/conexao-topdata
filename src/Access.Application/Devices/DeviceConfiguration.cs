@@ -196,6 +196,13 @@ public sealed record DeviceConfiguration
     /// <summary>Tempo do relé 2, de 0 a 50 segundos.</summary>
     public required byte TempoDoAcionamento2 { get; init; }
 
+    /// <summary>
+    /// A catraca recolhe o cartão na urna: leitor 2 ligado e relé 2 configurado. Com isso, a leitura
+    /// aprovada na fenda abre a urna e o giro só é liberado depois da origem 7 (manual do SDK, seção
+    /// 5.3 e fluxo 8; docs/61).
+    /// </summary>
+    public bool RecolheNaUrna => OperacaoDoLeitor2 != 0 && FuncaoDoAcionamento2 != 0;
+
     /// <summary>Verdadeiro para modo on-line; falso para off-line.</summary>
     /// <remarks>
     /// É o <c>RegimeAlvo</c> do docs/34 §4.1 (anexo 01 §3.1: "<c>Online</c> → <c>RegimeAlvo</c>"),

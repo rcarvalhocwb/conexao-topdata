@@ -92,6 +92,19 @@ public interface IValidadorDeIngressos
     void RegistrarLiberacaoFalhou(Guid tentativaId, DateTimeOffset em, string causa)
     {
     }
+
+    /// <summary>
+    /// Devolve o uso de uma tentativa consumida cujo cartão não caiu na urna (docs/61; manual do SDK,
+    /// fluxo 8: "NaoRegistrarAcesso"). A catraca nunca liberou o braço, ninguém passou, e o cartão
+    /// continua com a pessoa, que pode tentar de novo.
+    /// </summary>
+    /// <remarks>Implementação padrão: não grava nada (dublês de teste).</remarks>
+    /// <param name="tentativaId">A tentativa consumida na leitura da fenda.</param>
+    /// <param name="em">Quando a urna desistiu.</param>
+    /// <param name="causa">O que aconteceu, em texto para o operador.</param>
+    void DevolverUsoNaoRecolhido(Guid tentativaId, DateTimeOffset em, string causa)
+    {
+    }
 }
 
 /// <summary>
@@ -124,6 +137,7 @@ public sealed class DecisorDeIngresso
     private readonly Dictionary<string, Guid> _pendentes = new(StringComparer.Ordinal);
     private readonly List<(Guid Tentativa, DateTimeOffset Em, byte Complemento)> _confirmacoesAGravar = [];
     private readonly List<(Guid Tentativa, DateTimeOffset Em, string Causa)> _falhasDeLiberacaoAGravar = [];
+    private readonly List<(Guid Tentativa, DateTimeOffset Em, string Causa)> _devolucoesAGravar = [];
 
     /// <summary>
     /// </summary>
@@ -161,7 +175,10 @@ public sealed class DecisorDeIngresso
     /// Giros já recebidos, e causas de liberação que falhou, cuja gravação na base ainda não deu certo
     /// (base ocupada, por exemplo).
     /// </summary>
-    public int ConfirmacoesAGravar => _confirmacoesAGravar.Count + _falhasDeLiberacaoAGravar.Count;
+    public int ConfirmacoesAGravar => _confirmacoesAGravar.Count + _falhasDeLiberacaoAGravar.Count + _devolucoesAGravar.Count;
+
+    /// <summary>Usos devolvidos porque o cartão não caiu na urna. Para o painel da bancada.</summary>
+    public int UsosDevolvidosNaUrna { get; private set; }
 
     /// <summary>Tentativas de gravar uma confirmação de giro que falharam e serão repetidas.</summary>
     public int FalhasAoGravarConfirmacao { get; private set; }
@@ -278,6 +295,7 @@ public sealed class DecisorDeIngresso
     public void GravarConfirmacoesPendentes()
     {
         GravarFalhasDeLiberacao();
+        GravarDevolucoes();
 
         while (_confirmacoesAGravar.Count > 0)
         {
@@ -358,6 +376,46 @@ public sealed class DecisorDeIngresso
         }
     }
 
+    /// <summary>
+    /// A urna abriu e o cartão não caiu (origem 5, urna cheia, prazo ou erro): encerra a tentativa
+    /// pendente do equipamento e devolve o uso (docs/61). Nunca lança: o que não gravar fica para a
+    /// próxima volta.
+    /// </summary>
+    /// <param name="deviceId">O equipamento.</param>
+    /// <param name="causa">O que aconteceu, em texto para o operador.</param>
+    public void DevolverNaUrna(string deviceId, string causa)
+    {
+        ArgumentNullException.ThrowIfNull(deviceId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(causa);
+
+        if (_pendentes.Remove(deviceId, out var tentativa))
+        {
+            AutorizacoesSemGiro++;
+            UsosDevolvidosNaUrna++;
+            _devolucoesAGravar.Add((tentativa, _relogio.GetUtcNow(), causa));
+            GravarDevolucoes();
+        }
+    }
+
+    private void GravarDevolucoes()
+    {
+        while (_devolucoesAGravar.Count > 0)
+        {
+            var (tentativa, em, causa) = _devolucoesAGravar[0];
+            try
+            {
+                _validador.DevolverUsoNaoRecolhido(tentativa, em, causa);
+            }
+            catch (Exception erro) when (erro is not OutOfMemoryException)
+            {
+                FalhasAoGravarConfirmacao++;
+                return;
+            }
+
+            _devolucoesAGravar.RemoveAt(0);
+        }
+    }
+
     /// <summary>Tradução estável de motivo de uso para código de relatório.</summary>
     public static ReasonCode CodigoPara(MotivoDoUso motivo) => motivo switch
     {
@@ -382,6 +440,9 @@ public sealed class DecisorDeIngresso
         MotivoDoUso.LimiteDiario => ReasonCodes.LimiteDiario,
         MotivoDoUso.CatracaFechada => ReasonCodes.CatracaFechada,
         MotivoDoUso.ForaDoPeriodoDoEvento => ReasonCodes.ForaDoPeriodoDoEvento,
+        MotivoDoUso.SomenteEquipe => ReasonCodes.SomenteEquipe,
+        MotivoDoUso.CredencialNaUrna => ReasonCodes.CredencialNaUrna,
+        MotivoDoUso.EntradaDesligada => ReasonCodes.EntradaDesligada,
         _ => ReasonCodes.MotivoNaoMapeado,
     };
 

@@ -25,7 +25,10 @@ namespace Integration.Tests;
 /// </remarks>
 public sealed class MontadorDaConfiguracaoTests
 {
-    /// <summary><c>ConfiguracaoDeBancada.TopFit4</c> como era no commit 8c524ef.</summary>
+    /// <summary>
+    /// <c>ConfiguracaoDeBancada.TopFit4</c> como era no commit 8c524ef, com a única mudança desde então: o
+    /// relé 2 da urna (2, 5 s) quando o leitor da fenda está ligado (docs/61, bancada de 15/10/2026).
+    /// </summary>
     private static DeviceConfiguration TopFit4DeAntes(byte tipoDeLeitor = 8, bool leitorDaUrna = true) => new()
     {
         PadraoCartao = 1,
@@ -35,8 +38,8 @@ public sealed class MontadorDaConfiguracaoTests
         OperacaoDoLeitor2 = leitorDaUrna ? (byte)1 : (byte)0,
         FuncaoDoAcionamento1 = 2,
         TempoDoAcionamento1 = 5,
-        FuncaoDoAcionamento2 = 0,
-        TempoDoAcionamento2 = 0,
+        FuncaoDoAcionamento2 = leitorDaUrna ? MontadorDaConfiguracao.ReleDaUrnaNaEntrada : (byte)0,
+        TempoDoAcionamento2 = leitorDaUrna ? MontadorDaConfiguracao.TempoPadraoDaUrna : (byte)0,
         Online = true,
         TecladoHabilitado = false,
         EcoDoTeclado = 0,

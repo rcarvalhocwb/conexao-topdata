@@ -97,6 +97,8 @@ public static class VersaoDaConfiguracao
     /// <summary>Propriedades que ficam fora da versão, e por quê.</summary>
     public static IReadOnlyDictionary<string, string> CamposForaDaVersao { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        [nameof(DeviceConfiguration.RecolheNaUrna)] =
+            "não é campo: é calculado do leitor 2 e do relé 2, que entram",
         [nameof(DeviceConfiguration.ModoDeDigitos)] =
             "não é enviado: só liga as regras 1 e 2 de Validar(); o que vai são a quantidade fixa e os tamanhos variáveis, que entram",
         [nameof(DeviceConfiguration.WebServerDesabilitado)] = "não é enviado (sem linha na matriz FUN; T32, NOVO-SEC-WEB-01)",

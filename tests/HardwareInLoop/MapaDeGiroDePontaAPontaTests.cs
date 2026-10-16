@@ -65,6 +65,16 @@ public sealed class MapaDeGiroDePontaAPontaTests
 
         costura.OrigemADevolver = (byte)origem;
         costura.CartaoADevolver = "0000000101";
+
+        // Na fenda, a catraca recolhe o cartão antes de liberar (docs/61): a urna abre, cai o cartão
+        // (origem 7) e só então vem a liberação.
+        if (origem is KnownEventOrigin.Leitor2)
+        {
+            Ate(laco, catraca, DeviceState.MonitoraUrna);
+            Assert.Contains("AcionarRele2", costura.Chamadas);
+            costura.OrigemADevolver = (byte)KnownEventOrigin.CartaoRecolhidoUrna;
+        }
+
         Ate(laco, catraca, DeviceState.LiberarCatraca);
         costura.Chamadas.Clear();
 
@@ -142,6 +152,8 @@ public sealed class MapaDeGiroDePontaAPontaTests
 
         costura.OrigemADevolver = (byte)KnownEventOrigin.Leitor2;
         costura.CartaoADevolver = "0000000101";
+        Ate(laco, catraca, DeviceState.MonitoraUrna);
+        costura.OrigemADevolver = (byte)KnownEventOrigin.CartaoRecolhidoUrna;
         Ate(laco, catraca, DeviceState.LiberarCatraca);
         costura.Chamadas.Clear();
         costura.ChamadasComArgumentos.Clear();

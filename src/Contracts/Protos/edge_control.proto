@@ -453,6 +453,10 @@ message ConfiguracaoDoEvento {
   string mensagem_padrao = 4;
   bool nuvem_ligada = 5;                   // só leitura: vem da instalação
   int32 espera_pelo_giro_segundos = 6;
+  // Uso das entradas (docs/61). Leitor da frente: "equipe_e_ingressos", "equipe" ou "desligada".
+  // Teclado: "desligado" ou "equipe". A urna aceita só o do evento. Vazio ao gravar = mantém.
+  string uso_da_frente = 7;
+  string uso_do_teclado = 8;
 }
 
 message GravarConfiguracaoRequest {

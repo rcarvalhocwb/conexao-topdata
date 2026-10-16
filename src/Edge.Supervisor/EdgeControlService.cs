@@ -491,6 +491,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
             TempoDeAcionamento = (byte)pedida.TempoDeAcionamentoSegundos,
             MensagemPadrao = pedida.MensagemPadrao ?? string.Empty,
             EsperaPeloGiroSegundos = pedida.EsperaPeloGiroSegundos > 0 ? pedida.EsperaPeloGiroSegundos : atual.EsperaPeloGiroSegundos,
+            UsoDaFrente = string.IsNullOrEmpty(pedida.UsoDaFrente) ? atual.UsoDaFrente : pedida.UsoDaFrente,
+            UsoDoTeclado = string.IsNullOrEmpty(pedida.UsoDoTeclado) ? atual.UsoDoTeclado : pedida.UsoDoTeclado,
         };
 
         var problemas = nova.Validar();
@@ -1097,6 +1099,8 @@ public sealed partial class EdgeControlService : EdgeControl.EdgeControlBase
         MensagemPadrao = c.MensagemPadrao,
         NuvemLigada = c.EspelhoLigado,
         EsperaPeloGiroSegundos = c.EsperaPeloGiroSegundos,
+        UsoDaFrente = c.UsoDaFrente,
+        UsoDoTeclado = c.UsoDoTeclado,
     };
 
     private static int InnerDe(string deviceId) =>

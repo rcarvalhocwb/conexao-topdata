@@ -157,6 +157,24 @@ public sealed class DeviceSlot
     /// <summary>Última decisão tomada para este equipamento.</summary>
     public Decision? UltimaDecisao { get; internal set; }
 
+    /// <summary>
+    /// A leitura que está sendo atendida. Na urna, o último evento passa a ser a origem 7 (cartão
+    /// recolhido), e é esta leitura que diz de qual leitor veio, para o mapa de giro.
+    /// </summary>
+    internal DeviceEvent? LeituraEmCurso { get; set; }
+
+    /// <summary>"Deposite o cartao" já foi ao display nesta urna: o próximo passo abre a urna.</summary>
+    internal bool PedidoDeDepositoExibido { get; set; }
+
+    /// <summary>O texto da próxima negação no display; nulo = "Acesso nao autorizado".</summary>
+    internal string? MensagemDeNegacao { get; set; }
+
+    /// <summary>Urnas abertas que terminaram sem o cartão cair (origem 5, prazo ou erro).</summary>
+    public long UrnasSemRecolhimento { get; internal set; }
+
+    /// <summary>A catraca avisou urna cheia (origem 20). Fica até a próxima urna que recolher.</summary>
+    public bool UrnaCheia { get; internal set; }
+
     /// <summary>Quando acertar o relógio da catraca. Marcado a cada conexão.</summary>
     public DateTimeOffset? AcertarRelogioEm { get; internal set; }
 
@@ -279,6 +297,7 @@ public sealed class DevicePump
     private readonly bool _exibirTextoDoGiro;
     private readonly Action<string>? _aoDesistirDoGiro;
     private readonly Action<string, string>? _aoFalharALiberacao;
+    private readonly Action<string, string>? _aoDesistirDaUrna;
     private readonly TimeSpan _sondaDeVida;
 
     /// <param name="adapter">Acesso à EasyInner.</param>
@@ -341,6 +360,11 @@ public sealed class DevicePump
     /// do docs/41). O decisor grava a causa na tentativa, que fica consumida e aparece no painel para o
     /// operador estornar.
     /// </param>
+    /// <param name="aoDesistirDaUrna">
+    /// Chamado com o id do equipamento e a causa quando a urna foi aberta e o cartão não caiu (origem 5,
+    /// urna cheia, prazo ou erro): a catraca não liberou o braço, ninguém passou, e o cartão continua com
+    /// a pessoa. O decisor devolve o uso (manual do SDK, fluxo 8: "NaoRegistrarAcesso").
+    /// </param>
     public DevicePump(
         ITopdataInnerAdapter adapter,
         Func<DateTimeOffset>? relogio = null,
@@ -355,9 +379,11 @@ public sealed class DevicePump
         bool exibirTextoDoGiro = false,
         Action<string>? aoDesistirDoGiro = null,
         TimeSpan? sondaDeVida = null,
-        Action<string, string>? aoFalharALiberacao = null)
+        Action<string, string>? aoFalharALiberacao = null,
+        Action<string, string>? aoDesistirDaUrna = null)
     {
         ArgumentNullException.ThrowIfNull(adapter);
+        _aoDesistirDaUrna = aoDesistirDaUrna;
         _aoDesistirDoGiro = aoDesistirDoGiro;
         _aoFalharALiberacao = aoFalharALiberacao;
         _sondaDeVida = sondaDeVida ?? TimeSpan.FromSeconds(10);
@@ -478,7 +504,9 @@ public sealed class DevicePump
             DeviceState.SincronizandoDadosOffline => SincronizarDadosOffline(dispositivo, agora),
             DeviceState.ConfigurarEntradasOnline => ConfigurarEntradas(dispositivo, agora),
             DeviceState.EnviarMsgPadrao => EnviarMensagemPadrao(dispositivo, agora),
-            DeviceState.Polling or DeviceState.MonitoraGiroCatraca => Aguardar(dispositivo, agora, limiteDeEspera),
+            DeviceState.Polling or DeviceState.MonitoraGiroCatraca or DeviceState.MonitoraUrna =>
+                Aguardar(dispositivo, agora, limiteDeEspera),
+            DeviceState.AcionarUrna => AbrirUrna(dispositivo, agora),
             DeviceState.ValidarAcesso => Decidir(dispositivo, agora),
             DeviceState.LiberarCatraca => Liberar(dispositivo, agora),
             DeviceState.EnviarMsgAcessoNegado => ExibirNegado(dispositivo, agora),
@@ -632,6 +660,19 @@ public sealed class DevicePump
                     manual.Girou = true;
                 }
 
+                if (evento.Origin.Known is KnownEventOrigin.UrnaCheia)
+                {
+                    d.UrnaCheia = true;
+                }
+
+                // Urna aberta (fluxo 8 do manual): a resposta é a origem 7. Sem ela, a desistência vai
+                // para o decisor ANTES do evento, porque a origem 5 encerra a tentativa lá sem devolver o
+                // uso — e aqui ninguém passou: a catraca nem liberou o braço.
+                if (d.Maquina.Current is DeviceState.MonitoraUrna)
+                {
+                    return EventoNaUrna(d, evento, agora);
+                }
+
                 // Todo evento vai inteiro para quem registra, leitura ou não (ADR-0018).
                 _aoReceberEvento?.Invoke(evento);
 
@@ -672,7 +713,8 @@ public sealed class DevicePump
                 // Prazo do giro (C1, docs/36): só depois de uma espera que voltou vazia. Um giro
                 // ou uma origem 5 que já esteja na fila da DLL sai antes, por mais que a volta
                 // tenha demorado; o prazo nunca corta o que a catraca já mandou.
-                if (d.Maquina.Current is DeviceState.MonitoraGiroCatraca && PrazoEstourado(d, agora) is { } prazo)
+                if (d.Maquina.Current is DeviceState.MonitoraGiroCatraca or DeviceState.MonitoraUrna
+                    && PrazoEstourado(d, agora) is { } prazo)
                 {
                     var desistiu = EsgotarPrazo(d, agora, prazo);
                     return erroDeRecepcao is null ? desistiu : $"{desistiu} · {erroDeRecepcao}";
@@ -815,10 +857,22 @@ public sealed class DevicePump
 
         var decisao = _decidir(evento);
         d.UltimaDecisao = decisao;
+        d.LeituraEmCurso = evento;
+        d.MensagemDeNegacao = decisao.ShouldRelease ? null : MensagensDaCatraca.ParaNegacao(decisao.Reason);
 
         // Uma liberação nova começa sem texto exibido, mesmo que a anterior tenha sido
         // interrompida entre o texto e a liberação.
         d.TextoDoGiroExibido = false;
+
+        // Cartão na fenda de uma catraca que recolhe (manual do SDK, fluxo 8 e seção 5.3): primeiro a
+        // urna, e o giro só depois da origem 7. Antes, o giro era liberado na hora e a pessoa passava
+        // levando o cartão (bancada de 15/10/2026).
+        if (decisao.ShouldRelease && evento.Origin.Known is KnownEventOrigin.Leitor2 && d.Configuracao.RecolheNaUrna)
+        {
+            d.PedidoDeDepositoExibido = false;
+            Disparar(d, DeviceTrigger.AcessoPermitidoNaUrna, agora);
+            return $"decisão {decisao.Outcome} ({decisao.Reason}) — abrindo a urna";
+        }
 
         Disparar(d, decisao.ShouldRelease ? DeviceTrigger.AcessoPermitido : DeviceTrigger.AcessoNegado, agora);
         return $"decisão {decisao.Outcome} ({decisao.Reason})";
@@ -837,7 +891,7 @@ public sealed class DevicePump
         {
             TipoDeComando.LiberarSaida or TipoDeComando.LiberarDoisSentidos => null,
             TipoDeComando.LiberacaoManual => perfil.Resolver(OrigemDoGiro.LiberacaoManual),
-            _ => d.UltimoEvento is { } leitura && MapaDeGiro.DaLeitura(leitura.Origin) is { } origem
+            _ => (d.LeituraEmCurso ?? d.UltimoEvento) is { } leitura && MapaDeGiro.DaLeitura(leitura.Origin) is { } origem
                 ? perfil.Resolver(origem)
                 : null,
         };
@@ -883,12 +937,85 @@ public sealed class DevicePump
         return $"falha ao liberar giro ({resultado})";
     }
 
-    private string ExibirNegado(DeviceSlot d, DateTimeOffset agora)
+    /// <summary>
+    /// Pede o depósito no display e abre a urna (relé 2), em dois passos de uma chamada cada — como o
+    /// exemplo oficial em Java do SDK 6.0.2.0 (<c>PASSO_ESTADO_ENVIA_MSG_URNA</c>: mensagem
+    /// "DEPOSITE O CARTAO" e <c>AcionarRele2</c>, depois <c>ESTADO_MONITORA_URNA</c>).
+    /// </summary>
+    private string AbrirUrna(DeviceSlot d, DateTimeOffset agora)
     {
-        var resultado = _adapter.ExibirMensagemTemporaria(d.Inner, "Acesso nao autorizado", TimeSpan.FromSeconds(3));
+        if (!d.PedidoDeDepositoExibido)
+        {
+            // Falha aqui não impede a urna: a mensagem só ajuda quem está na frente da catraca.
+            d.PedidoDeDepositoExibido = true;
+            var exibido = _adapter.ExibirMensagemTemporaria(
+                d.Inner, MensagensDaCatraca.DepositeOCartao, TimeSpan.FromSeconds(Math.Max((byte)1, d.Configuracao.TempoDoAcionamento2)));
+            return exibido.IsOk ? "pedindo o depósito do cartão no display" : $"pedido de depósito não exibido ({exibido}); a urna abre a seguir";
+        }
+
+        d.PedidoDeDepositoExibido = false;
+        var resultado = _adapter.AcionarReleDaUrna(d.Inner);
 
         if (resultado.IsOk)
         {
+            Disparar(d, DeviceTrigger.UrnaAcionada, agora);
+            return "urna aberta — esperando o cartão cair (origem 7) para liberar o giro";
+        }
+
+        DesistirDaUrna(d, $"a urna não abriu ({resultado})");
+        Falhar(d, agora, DeviceTrigger.ErroDeComunicacao);
+        return $"falha ao abrir a urna ({resultado}) — giro não liberado";
+    }
+
+    /// <summary>Um evento com a urna aberta: origem 7 libera o giro; 5 e 20 negam e devolvem o uso.</summary>
+    private string EventoNaUrna(DeviceSlot d, DeviceEvent evento, DateTimeOffset agora)
+    {
+        switch (evento.Origin.Known)
+        {
+            case KnownEventOrigin.CartaoRecolhidoUrna:
+                d.UrnaCheia = false;
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.CartaoRecolhido, agora);
+                return "cartão recolhido pela urna (origem 7) — liberando o giro";
+
+            case KnownEventOrigin.FimTempoAcionamento:
+                DesistirDaUrna(d, "o cartão não caiu na urna no tempo do relé 2 (origem 5)");
+                d.MensagemDeNegacao = MensagensDaCatraca.CartaoNaoRecolhido;
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.TempoDeAcionamentoEsgotado, agora);
+                return "o cartão não caiu na urna (origem 5) — giro não liberado, uso devolvido";
+
+            case KnownEventOrigin.UrnaCheia:
+                DesistirDaUrna(d, "urna cheia (origem 20)");
+                d.MensagemDeNegacao = MensagensDaCatraca.UrnaCheia;
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.UrnaCheia, agora);
+                return "urna cheia (origem 20) — giro não liberado, uso devolvido; esvazie a urna";
+
+            default:
+                // Outra leitura ou sinal com a urna aberta: fica registrado e a espera continua. A leitura
+                // nova não é decidida — a vez é de quem está com o cartão na fenda.
+                _aoReceberEvento?.Invoke(evento);
+                Disparar(d, DeviceTrigger.SinalDaCatraca, agora);
+                return $"{evento.Origin} com a urna aberta — registrado, esperando o cartão cair";
+        }
+    }
+
+    /// <summary>A urna terminou sem o cartão cair: conta e avisa o decisor para devolver o uso.</summary>
+    private void DesistirDaUrna(DeviceSlot d, string causa)
+    {
+        d.UrnasSemRecolhimento++;
+        _aoDesistirDaUrna?.Invoke(d.Maquina.DeviceId, causa);
+    }
+
+    private string ExibirNegado(DeviceSlot d, DateTimeOffset agora)
+    {
+        var texto = d.MensagemDeNegacao ?? MensagensDaCatraca.AcessoNaoAutorizado;
+        var resultado = _adapter.ExibirMensagemTemporaria(d.Inner, texto, TimeSpan.FromSeconds(3));
+
+        if (resultado.IsOk)
+        {
+            d.MensagemDeNegacao = null;
             Disparar(d, DeviceTrigger.MensagemExibida, agora);
             return "mensagem de negação exibida";
         }
@@ -1230,7 +1357,22 @@ public sealed class DevicePump
     private string EsgotarPrazo(DeviceSlot d, DateTimeOffset agora, TimeSpan prazo)
     {
         var estado = d.Maquina.Current;
+
+        if (estado is DeviceState.MonitoraUrna or DeviceState.AcionarUrna)
+        {
+            // A urna não respondeu: ninguém passou (o braço não foi liberado), o uso volta.
+            DesistirDaUrna(d, estado is DeviceState.MonitoraUrna
+                ? $"o cartão não caiu na urna no prazo de {Segundos(prazo)} s, sem origem 5 nem 7"
+                : $"a urna não abriu no prazo de {Segundos(prazo)} s");
+            d.MensagemDeNegacao = MensagensDaCatraca.CartaoNaoRecolhido;
+        }
+
         Disparar(d, DeviceTrigger.TempoEsgotado, agora);
+
+        if (estado is DeviceState.MonitoraUrna)
+        {
+            return $"prazo de {Segundos(prazo)} s esperando o cartão cair na urna — giro não liberado, uso devolvido";
+        }
 
         if (estado is not DeviceState.MonitoraGiroCatraca)
         {
@@ -1293,6 +1435,14 @@ public sealed class DevicePump
     /// </summary>
     private void DesistirDoGiroEmCurso(DeviceSlot d)
     {
+        if (d.Maquina.Current is DeviceState.MonitoraUrna)
+        {
+            // O braço não foi liberado: ninguém passou. Se o cartão caiu e o aviso se perdeu, ele está na
+            // urna e a contagem dela mostra a diferença (docs/04 §6).
+            DesistirDaUrna(d, "a comunicação caiu esperando o cartão cair na urna");
+            return;
+        }
+
         if (d.Maquina.Current is DeviceState.LiberarCatraca or DeviceState.MonitoraGiroCatraca)
         {
             _aoFalharALiberacao?.Invoke(

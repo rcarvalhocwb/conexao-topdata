@@ -86,8 +86,16 @@ public sealed class ComandosDaCatracaPorInnerTests : IDisposable
         _banco.Dispose();
     }
 
+    /// <summary>
+    /// Padrão sintético do worker que só quebra com a urna ligada: com o evento sem urna
+    /// (<see cref="EventoSemUrna"/>) o montador desliga o relé 2 (docs/61) e tudo vale; ligar a fenda na
+    /// catraca leva o tempo do relé 2 (60 s) acima da faixa.
+    /// </summary>
     private static DeviceConfiguration ComReleDois() =>
-        PadroesDeFabrica.TopFit4 with { FuncaoDoAcionamento2 = 3, TempoDoAcionamento2 = 5 };
+        PadroesDeFabrica.TopFit4 with { OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorDesabilitado, TempoDoAcionamento2 = 60 };
+
+    private void EventoSemUrna() =>
+        new ConfiguracoesDaBorda(_banco.Fabrica).GravarValor(ConfiguracoesDaBorda.ChaveLeitorDaUrna, "0", _agora);
 
     private SessaoDeOperacao Sessao => _sessao ?? throw new InvalidOperationException("Suba o worker antes.");
 
@@ -223,19 +231,20 @@ public sealed class ComandosDaCatracaPorInnerTests : IDisposable
     [Fact]
     public void Configuracao_recusada_na_2_falha_o_comando_e_a_1_segue_em_polling_sem_reenvio()
     {
+        EventoSemUrna();
         Subir(ComReleDois);
         var enviadasA1 = Recebidas(1).Count;
         var enviadasA2 = Recebidas(2).Count;
         var configuracaoDa2 = Slot(2).Configuracao;
 
         // Válida contra o padrão TopFit 4 (o da gravação); recusada contra o do worker.
-        Gravar(2, new SobreposicoesDaCatraca { OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorDesabilitado });
+        Gravar(2, new SobreposicoesDaCatraca { OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorSomenteEntrada });
         Aplicar(2);
         Voltas(16);
 
         var desfecho = Desfecho(2);
         Assert.Equal(SituacaoIpc.Falhou, desfecho.Situacao);
-        Assert.StartsWith("configuração não aplicada: Catraca 2: O relé 2 está configurado (urna)", desfecho.Resultado, StringComparison.Ordinal);
+        Assert.StartsWith("configuração não aplicada: Catraca 2: TempoDoAcionamento2 vai de 0 a 50", desfecho.Resultado, StringComparison.Ordinal);
 
         // A 2 segue com a configuração que tinha, sem reconectar; a 1 nem percebe.
         Assert.Equal(enviadasA2, Recebidas(2).Count);
@@ -280,10 +289,11 @@ public sealed class ComandosDaCatracaPorInnerTests : IDisposable
         Gravar(1, new SobreposicoesDaCatraca { MensagemPadrao = "Portao sintetico 1" });
         Gravar(2, new SobreposicoesDaCatraca
         {
-            OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorDesabilitado,
+            OperacaoDoLeitor2 = MontadorDaConfiguracao.LeitorSomenteEntrada,
             MensagemPadrao = "Portao sintetico 2",
         });
 
+        EventoSemUrna();
         Subir(ComReleDois);
 
         Assert.Equal("Portao sintetico 1", Recebidas(1)[^1].MensagemPadrao);
@@ -291,7 +301,7 @@ public sealed class ComandosDaCatracaPorInnerTests : IDisposable
         // A 2 sobe com o padrão dela (fábrica + evento), inteira, sem nada da camada.
         var da2 = Recebidas(2)[^1];
         Assert.Equal("Aproxime o ingresso", da2.MensagemPadrao);
-        Assert.Equal(MontadorDaConfiguracao.LeitorSomenteEntrada, da2.OperacaoDoLeitor2);
+        Assert.Equal(MontadorDaConfiguracao.LeitorDesabilitado, da2.OperacaoDoLeitor2);
         Assert.Empty(da2.Validar());
 
         var aviso = Assert.Single(_registro, l => l.StartsWith("Catraca 2:", StringComparison.Ordinal));

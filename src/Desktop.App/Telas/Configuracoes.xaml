@@ -172,7 +172,17 @@
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,16,0,6" Text="Segundos que a catraca fica liberada esperando o giro (1 a 50)" />
           <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding TempoDeAcionamento, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tempo de acionamento" />
 
-          <CheckBox Margin="0,16,0,0" IsChecked="{Binding LeitorDaUrna}" Content="Leitor da urna ligado (o cartão da bilheteria entra pela fenda)" />
+          <CheckBox Margin="0,16,0,0" IsChecked="{Binding LeitorDaUrna}" Content="Urna ligada: o cartão do evento entra pela fenda e só libera depois de cair na urna" />
+
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,16,0,6" Text="Leitor da frente (tampa)" />
+          <ComboBox Width="420" HorizontalAlignment="Left" ItemsSource="{x:Static vm:ConfiguracoesViewModel.UsosDaFrente}"
+                    DisplayMemberPath="Nome" SelectedItem="{Binding UsoDaFrente}" AutomationProperties.Name="Uso do leitor da frente" />
+
+          <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,16,0,6" Text="Teclado" />
+          <ComboBox Width="420" HorizontalAlignment="Left" ItemsSource="{x:Static vm:ConfiguracoesViewModel.UsosDoTeclado}"
+                    DisplayMemberPath="Nome" SelectedItem="{Binding UsoDoTeclado}" AutomationProperties.Name="Uso do teclado" />
+          <TextBlock Margin="0,4,0,0" Style="{StaticResource Rayzer.Type.Caption}" TextWrapping="Wrap"
+                     Text="A urna aceita só o cartão do evento: crachá da equipe colocado na fenda é recusado para não ser recolhido. Leitor da frente desligado também vai desligado para a catraca." />
 
           <TextBlock Style="{StaticResource Rayzer.Type.Label}" Margin="0,16,0,6" Text="Leitor de ingressos" />
           <ComboBox Width="320" HorizontalAlignment="Left" ItemsSource="{x:Static vm:ConfiguracoesViewModel.TiposDeLeitor}"

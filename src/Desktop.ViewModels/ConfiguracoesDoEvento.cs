@@ -7,6 +7,9 @@ namespace Desktop.ViewModels;
 /// <summary>Uma opção de lista: o valor gravado e o nome que o operador lê.</summary>
 public sealed record OpcaoDaLista(int Valor, string Nome);
 
+/// <summary>Uma opção de lista com valor de texto (o do contrato) e o nome que o operador lê.</summary>
+public sealed record OpcaoDeTexto(string Valor, string Nome);
+
 /// <summary>Uma seção ainda bloqueada da tela: o que ela vai ter e do que depende.</summary>
 public sealed record SecaoBloqueada(string Titulo, string Motivo);
 

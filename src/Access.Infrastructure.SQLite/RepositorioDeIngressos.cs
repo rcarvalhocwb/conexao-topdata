@@ -415,6 +415,26 @@ public sealed partial class RepositorioDeIngressos : IDestinoDeIngressos, IValid
                 foraDoPeriodo.Setor, Categoria: foraDoPeriodo.Categoria), negada);
         }
 
+        // Uso das entradas (docs/61): o leitor da frente e o teclado podem estar desligados ou só para a
+        // equipe, e a urna nunca recolhe crachá. Nega sem consumir, antes de qualquer escrita de uso.
+        if (BloqueioDaEntrada(conexao, transacao, qrNormalizado, EntradaDaLeitura(leitor, origemBruta)) is { } bloqueio)
+        {
+            var negada = Guid.CreateVersion7(agora);
+            var doIngresso = bloqueio.Ingresso;
+            var categoria = doIngresso?.Categoria ?? bloqueio.Pessoa?.Perfil;
+            RegistrarTentativa(conexao, transacao, negada, doIngresso?.Id, doIngresso?.Provedor, qrNormalizado, gateId, deviceId,
+                "negado", bloqueio.Motivo, decisionId, agora, categoria, origemBruta, pessoaId: bloqueio.Pessoa?.PessoaId);
+            if (bloqueio.Pessoa is null)
+            {
+                Espelhar(conexao, transacao, negada, qrNormalizado, deviceId, gateId, agora,
+                    liberado: false, bloqueio.Motivo, doIngresso?.Provedor, doIngresso?.Categoria);
+            }
+
+            transacao.Commit();
+            return (new ResultadoDoUso(bloqueio.Motivo, doIngresso?.Id, doIngresso?.Provedor, doIngresso?.Setor,
+                Categoria: categoria, PessoaId: bloqueio.Pessoa?.PessoaId), negada);
+        }
+
         // A escrita vem primeiro, de propósito: é ela que pega a trava. Ler antes e
         // escrever depois, numa transação adiada, é a receita do SQLITE_BUSY que não
         // se recupera.
@@ -494,6 +514,83 @@ public sealed partial class RepositorioDeIngressos : IDestinoDeIngressos, IValid
         return (resultado, tentativaId);
     }
 
+    /// <summary>De qual entrada da catraca veio a leitura (docs/61).</summary>
+    private enum EntradaDaCatraca
+    {
+        Desconhecida,
+        Frente,
+        Urna,
+        Teclado,
+    }
+
+    // O decisor manda o leitor 1 ou 2 quando sabe; o teclado (origem 1) e o QR (21, leitor da frente) vêm só
+    // na origem bruta. Sem origem (bancada, ferramentas), nenhuma regra de entrada se aplica.
+    private static EntradaDaCatraca EntradaDaLeitura(KnownEventOrigin? leitor, int? origemBruta) => (leitor, origemBruta) switch
+    {
+        (KnownEventOrigin.Leitor2, _) or (_, (int)KnownEventOrigin.Leitor2) => EntradaDaCatraca.Urna,
+        (KnownEventOrigin.Leitor1, _) or (_, (int)KnownEventOrigin.Leitor1 or (int)KnownEventOrigin.QrCode) => EntradaDaCatraca.Frente,
+        (_, (int)KnownEventOrigin.Teclado) => EntradaDaCatraca.Teclado,
+        _ => EntradaDaCatraca.Desconhecida,
+    };
+
+    private sealed record BloqueioDeEntrada(MotivoDoUso Motivo, EstadoDoIngresso? Ingresso, DecisaoDePessoas.CredencialDePessoa? Pessoa);
+
+    /// <summary>
+    /// A regra do uso das entradas (docs/61), lida na transação da decisão. Nulo = a entrada aceita esta leitura,
+    /// e o resto da decisão segue como sempre.
+    /// </summary>
+    private static BloqueioDeEntrada? BloqueioDaEntrada(
+        SqliteConnection conexao, SqliteTransaction transacao, string qr, EntradaDaCatraca entrada)
+    {
+        if (entrada is EntradaDaCatraca.Desconhecida)
+        {
+            return null;
+        }
+
+        string frente, teclado;
+        using (var comando = conexao.CreateCommand())
+        {
+            comando.Transaction = transacao;
+            comando.CommandText = "SELECT key, value FROM edge_setting WHERE key IN ($frente, $teclado);";
+            comando.Parameters.AddWithValue("$frente", ConfiguracoesDaBorda.ChaveUsoDaFrente);
+            comando.Parameters.AddWithValue("$teclado", ConfiguracoesDaBorda.ChaveUsoDoTeclado);
+            var valores = new Dictionary<string, string>(StringComparer.Ordinal);
+            using (var leitor = comando.ExecuteReader())
+            {
+                while (leitor.Read())
+                {
+                    valores[leitor.GetString(0)] = leitor.GetString(1);
+                }
+            }
+
+            frente = valores.GetValueOrDefault(ConfiguracoesDaBorda.ChaveUsoDaFrente, UsoDasEntradas.EquipeEIngressos);
+            teclado = valores.GetValueOrDefault(ConfiguracoesDaBorda.ChaveUsoDoTeclado, UsoDasEntradas.TecladoDesligado);
+        }
+
+        if (entrada is EntradaDaCatraca.Frente && frente == UsoDasEntradas.Desligada
+            || entrada is EntradaDaCatraca.Teclado && teclado == UsoDasEntradas.TecladoDesligado)
+        {
+            return new BloqueioDeEntrada(MotivoDoUso.EntradaDesligada, Estado(conexao, transacao, qr), null);
+        }
+
+        var ingresso = Estado(conexao, transacao, qr);
+        var pessoa = ingresso is null ? DecisaoDePessoas.Credencial(conexao, transacao, qr) : null;
+
+        return entrada switch
+        {
+            // Ingresso no leitor só da equipe, ou digitado: o cartão do evento vai na urna.
+            EntradaDaCatraca.Frente when frente == UsoDasEntradas.SoEquipe && ingresso is not null =>
+                new BloqueioDeEntrada(MotivoDoUso.SomenteEquipe, ingresso, null),
+            EntradaDaCatraca.Teclado when ingresso is not null =>
+                new BloqueioDeEntrada(MotivoDoUso.SomenteEquipe, ingresso, null),
+
+            // A urna recolhe: crachá de pessoa ali seria engolido.
+            EntradaDaCatraca.Urna when pessoa is not null =>
+                new BloqueioDeEntrada(MotivoDoUso.CredencialNaUrna, null, pessoa),
+            _ => null,
+        };
+    }
+
     // As chaves do período do evento, lidas na transação da decisão (três linhas pela chave primária).
     private static bool ForaDoPeriodoDoEvento(SqliteConnection conexao, SqliteTransaction transacao, DateTimeOffset agora)
     {
@@ -563,6 +660,107 @@ public sealed partial class RepositorioDeIngressos : IDestinoDeIngressos, IValid
         comando.Parameters.AddWithValue("$id", tentativaId.ToString());
         comando.Parameters.AddWithValue("$em", Iso(em));
         comando.Parameters.AddWithValue("$causa", causa.Length > 300 ? causa[..300] : causa);
+        comando.ExecuteNonQuery();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Na mesma transação: a tentativa vira <c>estornado</c> com a causa, o ingresso recebe o uso de volta
+    /// (como no estorno do operador, <see cref="EstornosDeUso"/>), o estorno fica gravado em
+    /// <c>ticket_use_refund</c> como feito pelo <c>sistema</c>, e os avisos desta leitura que ainda não
+    /// saíram para a nuvem e para o provedor são retirados da fila — para o lado de lá, a leitura não
+    /// aconteceu. O que já saiu fica como foi: o contrato do retorno não tem estorno (docs/18 §10).
+    /// </para>
+    /// <para>
+    /// Sem espera, ao contrário do estorno do operador: aqui não há giro que ainda possa chegar, porque a
+    /// catraca nem liberou o braço. Tentativa já girada, já estornada ou negada não muda.
+    /// </para>
+    /// </remarks>
+    public void DevolverUsoNaoRecolhido(Guid tentativaId, DateTimeOffset em, string causa)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(causa);
+        var texto = causa.Length > 300 ? causa[..300] : causa;
+
+        using var conexao = _fabrica.Abrir();
+        using var transacao = conexao.BeginTransaction();
+
+        string? ingresso;
+        string lidaEm;
+        using (var leitura = conexao.CreateCommand())
+        {
+            leitura.Transaction = transacao;
+            leitura.CommandText =
+                """
+                SELECT ticket_id, at FROM ticket_use_attempt
+                WHERE id = $id AND outcome = 'consumido' AND passage_confirmed_at IS NULL;
+                """;
+            leitura.Parameters.AddWithValue("$id", tentativaId.ToString());
+            using var leitor = leitura.ExecuteReader();
+            if (!leitor.Read())
+            {
+                return;
+            }
+
+            ingresso = leitor.IsDBNull(0) ? null : leitor.GetString(0);
+            lidaEm = leitor.GetString(1);
+        }
+
+        Executar(conexao, transacao,
+            """
+            UPDATE ticket_use_attempt
+            SET outcome = 'estornado', release_failed_at = $em, release_failure = $causa
+            WHERE id = $id AND outcome = 'consumido';
+            """,
+            ("$id", tentativaId.ToString()), ("$em", Iso(em)), ("$causa", texto));
+
+        // Pessoa do cadastro local não tem ingresso: a tentativa estornada já deixa de contar no limite do dia.
+        if (ingresso is not null)
+        {
+            Executar(conexao, transacao,
+                $"""
+                UPDATE ticket
+                SET used_count      = used_count - 1,
+                    status          = CASE WHEN status = '{StatusConsumido}' THEN '{StatusValido}' ELSE status END,
+                    first_used_at   = CASE WHEN used_count - 1 = 0 THEN NULL ELSE first_used_at END,
+                    last_used_epoch = CASE WHEN used_count - 1 = 0 THEN NULL ELSE last_used_epoch END
+                WHERE id = $ingresso AND used_count > 0;
+                """,
+                ("$ingresso", ingresso));
+
+            Executar(conexao, transacao,
+                """
+                INSERT OR IGNORE INTO ticket_use_refund (attempt_id, ticket_id, refunded_at, refunded_by, reason)
+                VALUES ($id, $ingresso, $em, 'sistema', $causa);
+                """,
+                ("$id", tentativaId.ToString()), ("$ingresso", ingresso), ("$em", Iso(em)), ("$causa", texto));
+
+            // O aviso de uso ao provedor sai na transação da leitura, com o mesmo instante.
+            Executar(conexao, transacao,
+                """
+                DELETE FROM outbox
+                WHERE sent_at IS NULL AND aggregate_type = 'ticket_use' AND aggregate_id = $ingresso AND created_at = $lida;
+                """,
+                ("$ingresso", ingresso), ("$lida", lidaEm));
+        }
+
+        Executar(conexao, transacao,
+            "DELETE FROM outbox WHERE sent_at IS NULL AND idempotency_key = $chave;",
+            ("$chave", $"tentativa:{tentativaId}"));
+
+        transacao.Commit();
+    }
+
+    private static void Executar(SqliteConnection conexao, SqliteTransaction transacao, string sql, params (string Nome, object Valor)[] parametros)
+    {
+        using var comando = conexao.CreateCommand();
+        comando.Transaction = transacao;
+        comando.CommandText = sql;
+        foreach (var (nome, valor) in parametros)
+        {
+            comando.Parameters.AddWithValue(nome, valor);
+        }
+
         comando.ExecuteNonQuery();
     }
 

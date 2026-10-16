@@ -67,6 +67,17 @@ public static class ReasonCodes
     public static readonly ReasonCode CredencialInativa = new("CREDENCIAL_INATIVA");
     public static readonly ReasonCode PessoaForaDaValidade = new("PESSOA_FORA_DA_VALIDADE");
 
+    // --- Uso de cada entrada da catraca (docs/61) ---
+
+    /// <summary>Ingresso no leitor da frente ou no teclado, reservados à equipe.</summary>
+    public static readonly ReasonCode SomenteEquipe = new("ENTRADA_SO_EQUIPE");
+
+    /// <summary>Crachá de pessoa na fenda da urna, que recolheria o cartão.</summary>
+    public static readonly ReasonCode CredencialNaUrna = new("CREDENCIAL_NA_URNA");
+
+    /// <summary>A entrada usada está desligada.</summary>
+    public static readonly ReasonCode EntradaDesligada = new("ENTRADA_DESLIGADA");
+
     // --- Operação ---
     public static readonly ReasonCode LiberacaoManual = new("LIBERACAO_MANUAL");
     public static readonly ReasonCode TempoDeDecisaoEsgotado = new("TEMPO_DE_DECISAO_ESGOTADO");

@@ -1082,6 +1082,8 @@ public sealed partial class ConfiguracoesViewModel : TelaBase
 {
     private int _tipoDeLeitor = 8;
     private bool _leitorDaUrna = true;
+    private string _usoDaFrente = "equipe_e_ingressos";
+    private string _usoDoTeclado = "desligado";
     private int _tempo = 5;
     private string _mensagemPadrao = string.Empty;
     private int _espera = 10;
@@ -1179,6 +1181,47 @@ public sealed partial class ConfiguracoesViewModel : TelaBase
 
     public bool LeitorDaUrna { get => _leitorDaUrna; set => Definir(ref _leitorDaUrna, value); }
 
+    /// <summary>Para que serve o leitor da frente (docs/61). O valor é o do contrato (<c>uso_da_frente</c>).</summary>
+    public static IReadOnlyList<OpcaoDeTexto> UsosDaFrente { get; } =
+    [
+        new("equipe_e_ingressos", "Equipe e ingressos (QR); cartão do evento vai na urna"),
+        new("equipe", "Só a equipe (crachás do cadastro de pessoas)"),
+        new("desligada", "Desligado"),
+    ];
+
+    /// <summary>Para que serve o teclado (docs/61). O valor é o do contrato (<c>uso_do_teclado</c>).</summary>
+    public static IReadOnlyList<OpcaoDeTexto> UsosDoTeclado { get; } =
+    [
+        new("desligado", "Desligado"),
+        new("equipe", "Só a equipe (código digitado do cadastro de pessoas)"),
+    ];
+
+    public OpcaoDeTexto? UsoDaFrente
+    {
+        get => UsosDaFrente.FirstOrDefault(o => o.Valor == _usoDaFrente);
+        set
+        {
+            if (value is not null && value.Valor != _usoDaFrente)
+            {
+                _usoDaFrente = value.Valor;
+                Avisar();
+            }
+        }
+    }
+
+    public OpcaoDeTexto? UsoDoTeclado
+    {
+        get => UsosDoTeclado.FirstOrDefault(o => o.Valor == _usoDoTeclado);
+        set
+        {
+            if (value is not null && value.Valor != _usoDoTeclado)
+            {
+                _usoDoTeclado = value.Valor;
+                Avisar();
+            }
+        }
+    }
+
     public int TempoDeAcionamento { get => _tempo; set => Definir(ref _tempo, value); }
 
     public string MensagemPadrao { get => _mensagemPadrao; set => Definir(ref _mensagemPadrao, value ?? string.Empty); }
@@ -1196,6 +1239,10 @@ public sealed partial class ConfiguracoesViewModel : TelaBase
             TipoDeLeitor = c.TipoDeLeitor;
             Avisar(nameof(TipoDeLeitorEscolhido));
             LeitorDaUrna = c.LeitorDaUrna;
+            _usoDaFrente = string.IsNullOrEmpty(c.UsoDaFrente) ? "equipe_e_ingressos" : c.UsoDaFrente;
+            _usoDoTeclado = string.IsNullOrEmpty(c.UsoDoTeclado) ? "desligado" : c.UsoDoTeclado;
+            Avisar(nameof(UsoDaFrente));
+            Avisar(nameof(UsoDoTeclado));
             TempoDeAcionamento = c.TempoDeAcionamentoSegundos;
             MensagemPadrao = c.MensagemPadrao;
             EsperaPeloGiro = c.EsperaPeloGiroSegundos;
@@ -1215,6 +1262,8 @@ public sealed partial class ConfiguracoesViewModel : TelaBase
                 {
                     TipoDeLeitor = TipoDeLeitor,
                     LeitorDaUrna = LeitorDaUrna,
+                    UsoDaFrente = _usoDaFrente,
+                    UsoDoTeclado = _usoDoTeclado,
                     TempoDeAcionamentoSegundos = TempoDeAcionamento,
                     MensagemPadrao = MensagemPadrao,
                     EsperaPeloGiroSegundos = EsperaPeloGiro,
