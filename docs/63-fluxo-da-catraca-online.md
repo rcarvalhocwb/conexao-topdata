@@ -84,3 +84,14 @@ Quando D-A, D-B e D-C forem decididas, o fluxo fica assim:
 - **U8:** depois do giro, o próximo cartão é lido em quanto tempo sem `DesabilitarRele2`?
 - **U-A:** com relé 1 em 5 s e em 15 s, quantas pessoas completam o giro?
 - **U-D:** o `AcionarRele2` abre a urna na catraca de produção (já em uso no antigo).
+
+## 7. Atualização após o manual Rev. 17
+
+Ver `docs/64-manual-catracas4-rev17.md`. Decisões confirmadas pelo dono:
+
+- **Urna na entrada** é a configuração de produção. O manual descreve a urna na saída como padrão, mas
+  permite a configuração de entrada pelo leitor 2.
+- **O prazo do giro é definido pelo operador.** O padrão do manual é 5 s, e a faixa é de 1 a 255 s no Web
+  Server. O SDK aceita de 0 a 50 s.
+- **D-A (relé 1, 5 s ou 15 s) deixa de ser uma correção.** Passa a ser um parâmetro do operador. O
+  prazo efetivo ainda soma a margem de 3 s do `MargemDoGiro`, que precisa de decisão (ver `docs/64`, §9).
